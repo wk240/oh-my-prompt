@@ -9,6 +9,7 @@ import {
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { usePromptStore } from '../../lib/store'
+import { useToast } from '../../hooks/use-toast'
 
 interface AddCategoryDialogProps {
   open: boolean
@@ -17,11 +18,13 @@ interface AddCategoryDialogProps {
 
 function AddCategoryDialog({ open, onClose }: AddCategoryDialogProps) {
   const { addCategory } = usePromptStore()
+  const { toast } = useToast()
   const [name, setName] = useState('')
 
   const handleSave = () => {
     if (!name.trim()) return
     addCategory(name.trim())
+    toast({ title: '分类已添加' })
     setName('')
     onClose()
   }

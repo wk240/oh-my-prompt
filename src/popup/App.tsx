@@ -29,8 +29,18 @@ function App() {
   } | null>(null)
 
   useEffect(() => {
-    loadFromStorage()
-  }, [loadFromStorage])
+    const load = async () => {
+      const result = await loadFromStorage()
+      if (!result.success) {
+        toast({
+          title: '加载失败',
+          description: result.error || '数据加载失败',
+          variant: 'destructive'
+        })
+      }
+    }
+    load()
+  }, [loadFromStorage, toast])
 
   const handleImport = async () => {
     // Create file input
@@ -106,10 +116,12 @@ function App() {
       deleteCategory(categoryToDelete.id)
       // Auto-select default category after deletion
       setSelectedCategory('default')
+      toast({ title: '分类已删除', description: '提示词已移至默认分类' })
       setCategoryToDelete(null)
       setDeleteDialogOpen(false)
     } else if (promptToDelete) {
       deletePrompt(promptToDelete.id)
+      toast({ title: '提示词已删除' })
       setPromptToDelete(null)
       setDeleteDialogOpen(false)
     }

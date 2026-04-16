@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from './ui/select'
 import { usePromptStore } from '../../lib/store'
+import { useToast } from '../../hooks/use-toast'
 import type { Prompt } from '../../shared/types'
 
 interface PromptEditDialogProps {
@@ -32,6 +33,7 @@ function PromptEditDialog({
 }: PromptEditDialogProps) {
   const { categories, addPrompt, updatePrompt, selectedCategoryId } =
     usePromptStore()
+  const { toast } = useToast()
 
   const [name, setName] = useState('')
   const [content, setContent] = useState('')
@@ -58,9 +60,11 @@ function PromptEditDialog({
     if (prompt) {
       // Edit mode - update existing prompt
       updatePrompt(prompt.id, { name: name.trim(), content: content.trim(), categoryId })
+      toast({ title: '提示词已更新' })
     } else {
       // Add mode - create new prompt
       addPrompt({ name: name.trim(), content: content.trim(), categoryId })
+      toast({ title: '提示词已添加' })
     }
     onClose()
   }

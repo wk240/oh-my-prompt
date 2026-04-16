@@ -66,24 +66,35 @@ export function validateImportData(json: unknown): ValidationResult {
   // Validate prompt structure
   for (const prompt of data.prompts as unknown[]) {
     if (typeof prompt !== 'object' || prompt === null) {
-      return { valid: false, error: 'prompts 中包含无效数据' }
+      return { valid: false, error: '提示词数据格式错误：每项需包含 id、name、content、categoryId' }
     }
     const p = prompt as Record<string, unknown>
     if (typeof p.id !== 'string' || typeof p.name !== 'string' ||
         typeof p.content !== 'string' || typeof p.categoryId !== 'string') {
-      return { valid: false, error: '提示词结构不完整' }
+      return { valid: false, error: '提示词缺少必要字段：id、name、content、categoryId' }
     }
   }
 
   // Validate category structure
   for (const category of data.categories as unknown[]) {
     if (typeof category !== 'object' || category === null) {
-      return { valid: false, error: 'categories 中包含无效数据' }
+      return { valid: false, error: '分类数据格式错误：每项需包含 id、name、order' }
     }
     const c = category as Record<string, unknown>
     if (typeof c.id !== 'string' || typeof c.name !== 'string' || typeof c.order !== 'number') {
-      return { valid: false, error: '分类结构不完整' }
+      return { valid: false, error: '分类缺少必要字段：id、name、order' }
     }
+  }
+
+  // Validate default category exists
+  const hasDefaultCategory = (data.categories as Array<{id: string}>).some(c => c.id === 'default')
+  if (!hasDefaultCategory) {
+    return { valid: false, error: '缺少默认分类，导入数据必须包含 id 为 "default" 的分类' }
+  }
+
+  // Validate prompts not empty when categories exist
+  if (data.prompts.length === 0 && data.categories.length > 1) {
+    return { valid: false, error: '提示词列表为空，请导入包含提示词的数据' }
   }
 
   return { valid: true, data: json as StorageSchema }

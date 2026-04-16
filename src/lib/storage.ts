@@ -94,3 +94,41 @@ export class StorageManager {
 
 // Export singleton instance for convenience
 export const storageManager = StorageManager.getInstance()
+
+/**
+ * Chrome storage.local quota constants
+ */
+const STORAGE_QUOTA_BYTES = 10 * 1024 * 1024 // 10MB = 10,485,760 bytes
+
+/**
+ * Check current storage usage and quota status
+ * Returns usage statistics with percentage calculation
+ */
+export async function checkStorageQuota(): Promise<{
+  usedBytes: number
+  quotaBytes: number
+  percentage: number
+}> {
+  try {
+    const usedBytes = await chrome.storage.local.getBytesInUse(STORAGE_KEY)
+    const percentage = Math.round((usedBytes / STORAGE_QUOTA_BYTES) * 100)
+
+    // Log warning if usage exceeds 80%
+    if (percentage > 80) {
+      console.warn(`[Lovart Injector] Storage usage warning: ${percentage}%`)
+    }
+
+    return {
+      usedBytes,
+      quotaBytes: STORAGE_QUOTA_BYTES,
+      percentage
+    }
+  } catch (error: unknown) {
+    console.error('[Lovart Injector] Failed to check storage quota:', error)
+    return {
+      usedBytes: 0,
+      quotaBytes: STORAGE_QUOTA_BYTES,
+      percentage: 0
+    }
+  }
+}

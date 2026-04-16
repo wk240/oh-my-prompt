@@ -16,8 +16,8 @@ interface PromptStore {
   isLoading: boolean
 
   // Actions
-  loadFromStorage: () => Promise<void>
-  saveToStorage: () => Promise<void>
+  loadFromStorage: () => Promise<{ success: boolean; error?: string }>
+  saveToStorage: () => Promise<{ success: boolean; error?: string }>
   setSelectedCategory: (categoryId: string | null) => void
 
   // Prompt CRUD
@@ -101,6 +101,7 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
           categories: data.categories,
           isLoading: false
         })
+        return { success: true }
       } else {
         // Use default state if no data
         const defaultState = getDefaultState()
@@ -110,6 +111,7 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
           selectedCategoryId: defaultState.selectedCategoryId,
           isLoading: false
         })
+        return { success: true }
       }
     } catch (error) {
       console.error('[Lovart Injector] Failed to load storage:', error)
@@ -120,6 +122,7 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
         selectedCategoryId: defaultState.selectedCategoryId,
         isLoading: false
       })
+      return { success: false, error: '数据加载失败，请检查存储权限' }
     }
   },
 
@@ -131,8 +134,10 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
         categories,
         version: '1.0.0'
       })
+      return { success: true }
     } catch (error) {
       console.error('[Lovart Injector] Failed to save storage:', error)
+      return { success: false, error: '数据保存失败，请检查存储配额' }
     }
   },
 

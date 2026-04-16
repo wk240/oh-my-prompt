@@ -18,6 +18,9 @@ const uiInjector = new UIInjector()
  * Inject UI when Lovart input is found
  */
 function handleInputDetected(inputElement: HTMLElement): void {
+  if (uiInjector.isInjected()) {
+    console.log('[Lovart Injector] Cleaning up existing UI before re-injection')
+  }
   console.log('[Lovart Injector] Injecting UI near input element')
   uiInjector.inject(inputElement)
 }

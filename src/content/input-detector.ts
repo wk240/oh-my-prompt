@@ -30,6 +30,13 @@ export class InputDetector {
   private debounceTimer: ReturnType<typeof setTimeout> | undefined
   private inputElement: HTMLElement | null = null
   private onInputDetected: (element: HTMLElement) => void
+  // Store original history methods for cleanup
+  private originalPushState: typeof history.pushState | null = null
+  private originalReplaceState: typeof history.replaceState | null = null
+  // Store bound popstate handler for cleanup
+  private boundPopstateHandler: (() => void) | null = null
+  // Periodic health check interval
+  private healthCheckInterval: ReturnType<typeof setInterval> | undefined
 
   constructor(callback: (element: HTMLElement) => void) {
     this.onInputDetected = callback
@@ -55,6 +62,14 @@ export class InputDetector {
 
     // Handle SPA navigation
     this.watchNavigation()
+
+    // Set up periodic health check (30 seconds)
+    this.healthCheckInterval = setInterval(() => {
+      // Force a detection attempt periodically if no input detected
+      if (!this.inputElement) {
+        this.tryDetect()
+      }
+    }, 30000)
   }
 
   /**
@@ -65,6 +80,21 @@ export class InputDetector {
     this.navObserver?.disconnect()
     if (this.debounceTimer !== undefined) {
       clearTimeout(this.debounceTimer)
+    }
+    if (this.healthCheckInterval !== undefined) {
+      clearInterval(this.healthCheckInterval)
+      this.healthCheckInterval = undefined
+    }
+    // Restore original history methods
+    if (this.originalPushState) {
+      history.pushState = this.originalPushState
+    }
+    if (this.originalReplaceState) {
+      history.replaceState = this.originalReplaceState
+    }
+    // Remove popstate listener
+    if (this.boundPopstateHandler) {
+      window.removeEventListener('popstate', this.boundPopstateHandler)
     }
   }
 
@@ -130,9 +160,39 @@ export class InputDetector {
   }
 
   /**
+   * Handle SPA navigation - reset and re-detect
+   */
+  private handleNavigation(): void {
+    console.log(LOG_PREFIX, 'Navigation detected via history API')
+    this.inputElement = null
+    this.tryDetect()
+  }
+
+  /**
    * Watch for SPA navigation (URL changes without page reload)
    */
   private watchNavigation(): void {
+    // Store original history methods
+    this.originalPushState = history.pushState
+    this.originalReplaceState = history.replaceState
+
+    // Intercept history.pushState
+    history.pushState = (...args: Parameters<typeof history.pushState>) => {
+      this.originalPushState!.apply(history, args)
+      this.handleNavigation()
+    }
+
+    // Intercept history.replaceState
+    history.replaceState = (...args: Parameters<typeof history.replaceState>) => {
+      this.originalReplaceState!.apply(history, args)
+      this.handleNavigation()
+    }
+
+    // Listen for popstate (back/forward navigation)
+    this.boundPopstateHandler = () => this.handleNavigation()
+    window.addEventListener('popstate', this.boundPopstateHandler)
+
+    // Keep MutationObserver-based URL watching as fallback
     let lastUrl = location.href
 
     this.navObserver = new MutationObserver(() => {

@@ -497,6 +497,14 @@ export class UIInjector {
       .empty-state-btn:hover {
         background: #e6f4ff;
       }
+
+      /* Large dataset hint */
+      .more-prompts-hint {
+        padding: 8px 12px;
+        font-size: 12px;
+        color: #999;
+        text-align: center;
+      }
     `
   }
 

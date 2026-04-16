@@ -128,6 +128,15 @@ function App() {
   }
 
   const handleDeleteCategory = (id: string, name: string) => {
+    // Prevent deleting default category
+    if (id === 'default') {
+      toast({
+        title: '无法删除',
+        description: '默认分类不可删除',
+        variant: 'destructive'
+      })
+      return
+    }
     setCategoryToDelete({ id, name })
     setPromptToDelete(null)
     setDeleteDialogOpen(true)

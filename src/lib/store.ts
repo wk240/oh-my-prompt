@@ -96,6 +96,10 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
     try {
       const data = await sendStorageMessage(MessageType.GET_STORAGE)
       if (data) {
+        // Warn for large datasets
+        if (data.prompts.length > 500) {
+          console.warn('[Lovart Injector] Large dataset loaded:', data.prompts.length, 'prompts')
+        }
         set({
           prompts: data.prompts,
           categories: data.categories,

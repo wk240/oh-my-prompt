@@ -11,9 +11,11 @@ interface PromptListProps {
 
 function PromptList({ onEditPrompt, onDeletePrompt }: PromptListProps) {
   const prompts = usePromptStore(state => state.getFilteredPrompts())
+  const allPrompts = usePromptStore(state => state.prompts)
+  const selectedCategoryId = usePromptStore(state => state.selectedCategoryId)
 
   if (prompts.length === 0) {
-    return <EmptyState />
+    return <EmptyState hasPromptsElsewhere={allPrompts.length > 0} selectedCategoryId={selectedCategoryId} />
   }
 
   return (

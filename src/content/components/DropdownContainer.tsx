@@ -145,6 +145,11 @@ export function DropdownContainer({
     return content.substring(0, 50) + '...'
   }
 
+  // Limit displayed prompts for large datasets
+  const MAX_DISPLAY_PROMPTS = 100
+  const displayPrompts = prompts.slice(0, MAX_DISPLAY_PROMPTS)
+  const hasMore = prompts.length > MAX_DISPLAY_PROMPTS
+
   // Build dynamic style based on expansion direction
   // When expandUp=true: bottom aligned to button top (with gap), dropdown expands upward
   // When expandUp=false: top aligned to button bottom (with gap), dropdown expands downward
@@ -168,7 +173,7 @@ export function DropdownContainer({
       {prompts.length === 0 ? (
         <div className="empty-state">
           <div className="empty-message">暂无提示词</div>
-          <div className="empty-subtext">点击下方按钮添加</div>
+          <div className="empty-subtext">点击浏览器工具栏图标打开管理面板</div>
           <div className="empty-state-actions">
             <button className="empty-state-btn" onClick={onAddPrompt}>
               新增提示词
@@ -181,7 +186,7 @@ export function DropdownContainer({
       ) : (
         <>
           {categories.map((category) => {
-            const categoryPrompts = prompts.filter(
+            const categoryPrompts = displayPrompts.filter(
               (p) => p.categoryId === category.id
             )
 
@@ -221,6 +226,11 @@ export function DropdownContainer({
               </div>
             )
           })}
+          {hasMore && (
+            <div className="more-prompts-hint">
+              显示前{MAX_DISPLAY_PROMPTS}条，共 {prompts.length} 条提示词
+            </div>
+          )}
           <div className="dropdown-footer">
             <button className="dropdown-footer-btn" onClick={onImport}>
               导入

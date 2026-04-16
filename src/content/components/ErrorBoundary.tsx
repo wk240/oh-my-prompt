@@ -39,18 +39,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   render() {
     if (this.state.hasError) {
-      return this.props.fallback || (
-        <div className="dropdown-app" style={{ padding: '8px' }}>
-          <div style={{
-            fontSize: '11px',
-            color: '#64748B',
-            textAlign: 'center',
-            padding: '12px'
-          }}>
-            扩展已更新，请刷新页面
-          </div>
-        </div>
-      )
+      // Silently handle all errors, don't show UI
+      console.log('[Lovart Injector] Component error:', this.state.error?.message)
+      return null
     }
 
     return this.props.children

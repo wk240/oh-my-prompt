@@ -24,7 +24,7 @@ export function DropdownApp({ inputElement }: DropdownAppProps) {
   useEffect(() => {
     // Check if extension context is still valid
     if (!chrome.runtime?.id) {
-      console.log('[Lovart Injector] Extension context invalidated, skipping load')
+      console.log('[Lovart Injector] Extension context invalidated')
       setIsLoading(false)
       return
     }
@@ -47,7 +47,7 @@ export function DropdownApp({ inputElement }: DropdownAppProps) {
         }
       )
     } catch (error) {
-      console.log('[Lovart Injector] Extension context invalidated')
+      console.log('[Lovart Injector] Extension context error:', error)
       setIsLoading(false)
     }
   }, [])
@@ -76,7 +76,7 @@ export function DropdownApp({ inputElement }: DropdownAppProps) {
           onClick={handleToggle}
         />
         {isOpen && (
-          <div className="dropdown-container open" style={{ top: '52px', left: '0', width: '280px' }}>
+          <div className="dropdown-container open" style={{ top: '52px', left: '0', width: '360px' }}>
             <div className="dropdown-header">
               <span className="dropdown-header-title">PROMPTS</span>
             </div>
@@ -97,7 +97,7 @@ export function DropdownApp({ inputElement }: DropdownAppProps) {
           onClick={handleToggle}
         />
         {isOpen && (
-          <div className="dropdown-container open" style={{ top: '52px', left: '0', width: '280px' }}>
+          <div className="dropdown-container open" style={{ top: '52px', left: '0', width: '360px' }}>
             <div className="dropdown-header">
               <span className="dropdown-header-title">PROMPTS</span>
             </div>

@@ -2,7 +2,7 @@
 
 ## What This Is
 
-一个Chrome浏览器插件，用于在Lovart AI设计/绘图平台的输入框中一键插入预设的提示词模板。用户通过输入框旁的下拉菜单选择提示词，提示词按用途分类管理，支持内置编辑和数据导入导出。
+一个Chrome浏览器插件，用于在Lovart AI设计/绘图平台的输入框中一键插入预设的提示词模板。用户通过输入框旁的下拉菜单选择提示词，提示词按用途分类管理，支持内置编辑和数据导入导出。插件已发布v1.0版本，完整实现核心功能。
 
 ## Core Value
 
@@ -12,25 +12,29 @@
 
 ### Validated
 
-(None yet — ship to validate)
+- ✓ 用户可在Lovart输入框旁看到下拉菜单按钮 — v1.0
+- ✓ 用户可通过下拉菜单选择并插入预设提示词 — v1.0
+- ✓ 用户可按用途分类管理提示词模板 — v1.0
+- ✓ 用户可在插件内新增、编辑、删除提示词 — v1.0
+- ✓ 用户可导出提示词数据为JSON文件 — v1.0
+- ✓ 用户可导入JSON文件恢复提示词数据 — v1.0
+- ✓ 插件数据本地持久化存储 — v1.0
+- ✓ Lovart平台识别插入的提示词 — v1.0
+- ✓ 下拉菜单样式美观且与Lovart风格协调 — v1.0
+- ✓ 扩展仅在Lovart平台页面激活 — v1.0
 
 ### Active
 
-- [ ] 用户可在Lovart输入框旁看到下拉菜单按钮
-- [ ] 用户可通过下拉菜单选择并插入预设提示词
-- [ ] 用户可按用途分类管理提示词模板
-- [ ] 用户可在插件内新增、编辑、删除提示词
-- [ ] 用户可导出提示词数据为JSON文件
-- [ ] 用户可导入JSON文件恢复提示词数据
-- [ ] 插件数据本地持久化存储
+(None — all v1 requirements validated)
 
 ### Out of Scope
 
-- 云端自动同步 — 用户选择手动导入导出即可满足跨设备需求
-- Firefox支持 — 初期专注Chrome系浏览器，后续可扩展
-- 多人/团队协作 — 个人使用场景
-- 使用历史/统计功能 — 基础功能优先
-- 实时协作编辑 — 个人本地使用
+- 云端自动同步 — 用户选择手动导入导出即可满足跨设备需求 ✓ Still valid
+- Firefox支持 — 初期专注Chrome系浏览器，后续可扩展 ✓ Still valid
+- 多人/团队协作 — 个人使用场景 ✓ Still valid
+- 使用历史/统计功能 — 基础功能优先 ✓ Still valid
+- 实时协作编辑 — 个人本地使用 ✓ Still valid
+- AI自动生成提示词 — API成本不可控，质量不稳定 ✓ Still valid
 
 ## Context
 
@@ -42,24 +46,33 @@
 
 **提示词内容类型：** 风格描述、主题设定、技术参数（光照、角度、构图）、质量/尺寸设定等模板化内容。
 
+**Shipped v1.0:** 12,000 LOC TypeScript + React. Chrome Extension Manifest V3.
+Tech stack: Vite, @crxjs/vite-plugin, React, Zustand, Shadow DOM.
+
 ## Constraints
 
-- **Tech stack:** Chrome Extension (Manifest V3) — 现代Chrome插件标准
-- **平台依赖:** 需适配Lovart平台的页面结构和输入框元素
-- **数据存储:** chrome.storage.local 本地存储，容量有限制
-- **浏览器支持:** Chrome/Edge/Brave等Chromium系浏览器
+- **Tech stack:** Chrome Extension (Manifest V3) — 现代Chrome插件标准 ✓ Implemented
+- **平台依赖:** 需适配Lovart平台的页面结构和输入框元素 ✓ Implemented via MutationObserver
+- **数据存储:** chrome.storage.local 本地存储，容量有限制 ✓ Implemented
+- **浏览器支持:** Chrome/Edge/Brave等Chromium系浏览器 ✓ Supported
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| 下拉菜单触发方式 | 输入框旁直接显示，操作路径最短 | — Pending |
-| 内置编辑而非外部文件 | 降低用户操作门槛，无需额外工具 | — Pending |
-| 手动导入导出同步 | 无需后端开发，MVP最快实现 | — Pending |
-| 按用途分类管理 | 符合用户心智模型，便于查找 | — Pending |
+| TypeScript + Vite + React | 2025 Chrome Extension标准栈 | ✓ Good |
+| Shadow DOM隔离 | 避免CSS冲突 | ✓ Good |
+| 手动导入导出同步 | 无需后端开发，MVP最快实现 | ✓ Good |
+| 按用途分类管理 | 符合用户心智模型，便于查找 | ✓ Good |
+| Lightning bolt图标 | 暗示"快速/一键"效率价值 | ✓ Good |
+| MutationObserver检测 | 处理SPA动态渲染 | ✓ Good |
+| History API interception | SPA导航检测更可靠 | ✓ Good |
+| Toast on CRUD actions | 用户操作反馈 | ✓ Good |
+| Large dataset limit (100) | 下拉性能优化 | ✓ Good |
+| 插入后保持下拉打开 | 支持连续插入多个提示词 | ✓ Good |
 
 ---
-*Last updated: 2026-04-16 after initialization*
+*Last updated: 2026-04-16 after v1.0 milestone*
 
 ## Evolution
 

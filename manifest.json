@@ -9,7 +9,11 @@
   },
   "content_scripts": [
     {
-      "matches": ["*://*.lovart.ai/*"],
+      "matches": [
+        "*://lovart.ai/*",
+        "*://*.lovart.ai/*",
+        "file:///*"
+      ],
       "js": ["src/content/content-script.ts"],
       "run_at": "document_idle"
     }

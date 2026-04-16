@@ -23,8 +23,9 @@ chrome.runtime.onMessage.addListener(
         break
 
       case MessageType.INSERT_PROMPT:
-        // Phase 2: Implement prompt insertion
-        sendResponse({ success: false, error: 'INSERT_PROMPT not implemented' })
+        // Phase 2: Return success for content script acknowledgment
+        // Phase 3 will add storage retrieval
+        sendResponse({ success: true, data: message.payload } as MessageResponse)
         break
 
       default:

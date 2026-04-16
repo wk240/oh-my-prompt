@@ -1,8 +1,33 @@
+/**
+ * Content Script - Main entry point for Lovart page integration
+ * Coordinates input detection, UI injection, and prompt insertion
+ */
+
 import { MessageType } from '../shared/messages'
+import { InputDetector } from './input-detector'
+import { UIInjector } from './ui-injector'
 
 console.log('[Lovart Injector] Content script loaded on:', window.location.href)
 
-// Phase 1: Test message routing with ping
+// Initialize components
+const inputDetector = new InputDetector(handleInputDetected)
+const uiInjector = new UIInjector()
+
+/**
+ * Handle input element detection
+ * Inject UI when Lovart input is found
+ */
+function handleInputDetected(inputElement: HTMLElement): void {
+  console.log('[Lovart Injector] Injecting UI near input element')
+  uiInjector.inject(inputElement)
+}
+
+/**
+ * Start input detection on page load
+ */
+inputDetector.start()
+
+// Test message routing with ping
 chrome.runtime.sendMessage(
   { type: MessageType.PING },
   (response) => {
@@ -14,7 +39,26 @@ chrome.runtime.sendMessage(
   }
 )
 
-// Phase 2 will add:
-// - InputDetector: MutationObserver for Lovart input box
-// - Dropdown UI: Shadow DOM menu
-// - InsertHandler: Prompt insertion logic
+/**
+ * Handle messages from Service Worker
+ */
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  console.log('[Lovart Injector] Received message:', message.type)
+
+  // Handle storage updates (Phase 3)
+  if (message.type === MessageType.GET_STORAGE) {
+    // Phase 3: Refresh prompts from storage
+    sendResponse({ success: true })
+  }
+
+  return true // Required for async sendResponse
+})
+
+/**
+ * Cleanup on page unload
+ */
+window.addEventListener('unload', () => {
+  inputDetector.stop()
+  uiInjector.remove()
+  console.log('[Lovart Injector] Cleanup complete')
+})

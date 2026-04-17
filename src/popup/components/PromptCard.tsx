@@ -42,7 +42,7 @@ function PromptCard({ prompt, isActive = false, onEdit, onDelete }: PromptCardPr
 
       {/* Name */}
       <span
-        className="text-[13px] font-medium text-[#171717] text-center truncate w-full"
+        className="text-[13px] font-medium text-[#171717] text-center truncate w-full min-w-0 px-1"
         style={{ fontFamily: 'Inter, sans-serif' }}
         title={prompt.name}
       >
@@ -52,7 +52,7 @@ function PromptCard({ prompt, isActive = false, onEdit, onDelete }: PromptCardPr
       {/* Description */}
       {prompt.description && (
         <span
-          className="text-[11px] text-[#64748B] text-center truncate w-full mt-1"
+          className="text-[11px] text-[#64748B] text-center truncate w-full min-w-0 px-1 mt-0.5"
           style={{ fontFamily: 'Inter, sans-serif' }}
           title={prompt.description}
         >

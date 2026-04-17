@@ -9,7 +9,7 @@ import PromptList from './components/PromptList'
 import PromptEditDialog from './components/PromptEditDialog'
 import AddCategoryDialog from './components/AddCategoryDialog'
 import DeleteConfirmDialog from './components/DeleteConfirmDialog'
-import { Button } from './components/ui/button'
+import { Plus } from 'lucide-react'
 import { Toaster } from './components/ui/toaster'
 
 function App() {
@@ -174,7 +174,7 @@ function App() {
   }
 
   return (
-    <div className="w-[300px] min-h-[400px] max-h-[600px] flex flex-col bg-background">
+    <div className="w-[300px] h-[500px] flex flex-col bg-white overflow-hidden">
       <Header onImport={handleImport} onExport={handleExport} />
       <div className="flex flex-1 overflow-hidden">
         <CategorySidebar
@@ -186,10 +186,20 @@ function App() {
           onDeletePrompt={handleDeletePrompt}
         />
       </div>
-      <div className="p-4 border-t border-border">
-        <Button onClick={handleAddPrompt} className="w-full">
-          添加提示词
-        </Button>
+      {/* CTA Section */}
+      <div className="flex flex-col justify-center px-5 pt-4 pb-5 border-t border-[#E5E5E5] bg-white">
+        <button
+          onClick={handleAddPrompt}
+          className="flex items-center justify-center gap-2 h-[44px] w-full bg-[#171717] hover:bg-[#171717]/90 transition-colors"
+        >
+          <Plus className="w-4 h-4 text-white" strokeWidth={2} />
+          <span
+            className="text-[12px] font-medium tracking-[0.5px] text-white"
+            style={{ fontFamily: 'Inter, sans-serif' }}
+          >
+            Add Prompt
+          </span>
+        </button>
       </div>
 
       {/* Dialogs */}

@@ -107,7 +107,7 @@ function PromptEditDialog({
             </label>
             <Select value={categoryId} onValueChange={setCategoryId}>
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue placeholder="选择分类" />
               </SelectTrigger>
               <SelectContent>
                 {categories.map((cat) => (

@@ -1,129 +1,152 @@
 /**
  * DropdownContainer - Main dropdown wrapper with Lovart-native styling
- * Handles positioning, animation, and scroll behavior
  * Auto-adapts position to stay within viewport boundaries
+ * Dropdown appears to the LEFT of the trigger button
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import type { Prompt, Category } from '../../shared/types'
+import { Sparkles, Palette, Shapes, ArrowUpRight, X, ChevronDown, FolderOpen } from 'lucide-react'
 
 interface DropdownContainerProps {
   prompts: Prompt[]
-  categories: Category[]
   onSelect: (prompt: Prompt) => void
   isOpen: boolean
   selectedPromptId: string | null
-  onAddPrompt: () => void
-  onImport: () => void
+  onClose?: () => void
 }
 
 interface DropdownPosition {
-  expandUp: boolean  // true = expand upward from button top, false = expand downward from button bottom
+  expandUp: boolean
   left: number
   maxHeight: number
 }
 
-/**
- * Calculate optimal dropdown position to stay within viewport
- * Priority: expand upward from trigger button, adjust if needed
- */
-function calculateDropdownPosition(): DropdownPosition {
-  // Dropdown dimensions
-  const dropdownWidth = 280
+// Dropdown appears to the LEFT of the trigger button
+// So left = -dropdownWidth - gap (negative to move left)
+function calculateDropdownPosition(dropdownWidth: number): DropdownPosition {
   const dropdownMaxHeight = 320
-  const gap = 4
+  const gap = 8
   const padding = 8
 
-  // Viewport dimensions
   const viewportWidth = window.innerWidth
   const viewportHeight = window.innerHeight
 
-  // Get host element (trigger button container) position
   const host = document.getElementById('lovart-injector-host')
   if (!host) {
-    return { expandUp: true, left: 0, maxHeight: dropdownMaxHeight }
+    return { expandUp: false, left: 0, maxHeight: dropdownMaxHeight }
   }
 
   const hostRect = host.getBoundingClientRect()
 
-  // Calculate horizontal position - stay within viewport
-  let leftPos = 0  // Relative to host (left-aligned by default)
+  // Position dropdown to the LEFT of the button
+  // dropdown right edge aligns with button left edge
+  let leftPos = -(dropdownWidth + gap)
 
-  // If dropdown would overflow right edge, shift left
-  const absoluteRight = hostRect.left + dropdownWidth
-  if (absoluteRight > viewportWidth - padding) {
-    // Shift so right edge aligns with viewport right edge (relative to host)
-    const overflow = absoluteRight - viewportWidth + padding
-    leftPos = -overflow
-  }
-
-  // Ensure left edge doesn't go negative (absolute position)
+  // Check if dropdown would overflow left edge of viewport
   const absoluteLeft = hostRect.left + leftPos
   if (absoluteLeft < padding) {
-    leftPos = padding - hostRect.left
+    // Not enough space on left, position to the RIGHT of button instead
+    leftPos = hostRect.width + gap
+
+    // Check if it would overflow right edge
+    const absoluteRight = hostRect.left + leftPos + dropdownWidth
+    if (absoluteRight > viewportWidth - padding) {
+      // Not enough space on either side, center and limit width
+      leftPos = Math.max(padding - hostRect.left, -(dropdownWidth + gap))
+    }
   }
 
-  // Calculate vertical position - prefer upward expansion
   const spaceAbove = hostRect.top - padding
   const spaceBelow = viewportHeight - hostRect.bottom - padding
 
-  // Determine expansion direction and max height
-  let expandUp = true
+  let expandUp = false
   let maxHeight = dropdownMaxHeight
 
-  // If not enough space above, try below
-  if (spaceAbove < dropdownMaxHeight + gap) {
-    if (spaceBelow >= dropdownMaxHeight + gap) {
-      // Expand below instead
-      expandUp = false
-      maxHeight = dropdownMaxHeight
+  // Prefer expanding down, but check space
+  if (spaceBelow >= dropdownMaxHeight + gap) {
+    expandUp = false
+    maxHeight = dropdownMaxHeight
+  } else if (spaceAbove >= dropdownMaxHeight + gap) {
+    expandUp = true
+    maxHeight = dropdownMaxHeight
+  } else {
+    // Not enough space in either direction, use the larger space
+    if (spaceAbove >= spaceBelow) {
+      expandUp = true
+      maxHeight = Math.min(spaceAbove - gap, dropdownMaxHeight)
     } else {
-      // Both directions constrained - pick the larger space and limit height
-      if (spaceAbove >= spaceBelow) {
-        // Expand upward with limited height
-        expandUp = true
-        maxHeight = spaceAbove - gap
-      } else {
-        // Expand downward with limited height
-        expandUp = false
-        maxHeight = spaceBelow - gap
-      }
+      expandUp = false
+      maxHeight = Math.min(spaceBelow - gap, dropdownMaxHeight)
     }
   }
 
-  return { expandUp, left: leftPos, maxHeight: Math.max(maxHeight, 150) }
+  return { expandUp, left: leftPos, maxHeight: Math.max(maxHeight, 200) }
 }
+
+// Icon mapping
+const ICON_MAP: Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
+  design: Sparkles,
+  style: Palette,
+  default: Shapes,
+}
+
+// Default categories
+const DEFAULT_CATEGORIES: Category[] = [
+  { id: 'all', name: '全部分类', order: 0 },
+  { id: 'design', name: '设计', order: 1 },
+  { id: 'style', name: '风格', order: 2 },
+  { id: 'other', name: '其他', order: 3 },
+]
 
 export function DropdownContainer({
   prompts,
-  categories,
   onSelect,
   isOpen,
   selectedPromptId,
-  onAddPrompt,
-  onImport,
+  onClose,
 }: DropdownContainerProps) {
   const dropdownRef = useRef<HTMLDivElement>(null)
   const [position, setPosition] = useState<DropdownPosition>({
-    expandUp: true,
+    expandUp: false,
     left: 0,
     maxHeight: 320,
   })
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all')
+  const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false)
+  const categoryMenuRef = useRef<HTMLDivElement>(null)
 
-  // Calculate position when dropdown opens
+  const dropdownWidth = 360
+
+  // Get categories from prompts or use defaults
+  const categories = useMemo(() => {
+    const uniqueCategoryIds = [...new Set(prompts.map((p) => p.categoryId))]
+    const cats: Category[] = [{ id: 'all', name: '全部分类', order: 0 }]
+    uniqueCategoryIds.forEach((catId) => {
+      const existing = DEFAULT_CATEGORIES.find((c) => c.id === catId)
+      cats.push(existing || { id: catId, name: catId, order: 99 })
+    })
+    return cats
+  }, [prompts])
+
+  // Filter prompts by selected category
+  const filteredPrompts = useMemo(() => {
+    if (selectedCategoryId === 'all') return prompts
+    return prompts.filter((p) => p.categoryId === selectedCategoryId)
+  }, [prompts, selectedCategoryId])
+
   useEffect(() => {
     if (isOpen) {
-      const newPosition = calculateDropdownPosition()
+      const newPosition = calculateDropdownPosition(dropdownWidth)
       setPosition(newPosition)
     }
-  }, [isOpen])
+  }, [isOpen, dropdownWidth])
 
-  // Recalculate on resize/scroll
   useEffect(() => {
     if (!isOpen) return
 
     const handleReposition = () => {
-      setPosition(calculateDropdownPosition())
+      setPosition(calculateDropdownPosition(dropdownWidth))
     }
 
     window.addEventListener('resize', handleReposition)
@@ -133,33 +156,38 @@ export function DropdownContainer({
       window.removeEventListener('resize', handleReposition)
       window.removeEventListener('scroll', handleReposition)
     }
-  }, [isOpen])
+  }, [isOpen, dropdownWidth])
+
+  // Close category menu when clicking outside
+  useEffect(() => {
+    if (!isCategoryMenuOpen) return
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (categoryMenuRef.current && !categoryMenuRef.current.contains(e.target as Node)) {
+        setIsCategoryMenuOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [isCategoryMenuOpen])
 
   if (!isOpen) return null
 
-  /**
-   * Truncate preview text to ~50 chars (D-06)
-   */
   const truncatePreview = (content: string): string => {
-    if (content.length <= 50) return content
-    return content.substring(0, 50) + '...'
+    if (content.length <= 40) return content
+    return content.substring(0, 40) + '...'
   }
 
-  // Limit displayed prompts for large datasets
-  const MAX_DISPLAY_PROMPTS = 100
-  const displayPrompts = prompts.slice(0, MAX_DISPLAY_PROMPTS)
-  const hasMore = prompts.length > MAX_DISPLAY_PROMPTS
+  const selectedCategory = categories.find((c) => c.id === selectedCategoryId) || categories[0]
 
-  // Build dynamic style based on expansion direction
-  // When expandUp=true: bottom aligned to button top (with gap), dropdown expands upward
-  // When expandUp=false: top aligned to button bottom (with gap), dropdown expands downward
-  const gap = 4
-  const buttonHeight = 44
+  const gap = 8
+  const buttonHeight = 48
   const dropdownStyle: React.CSSProperties = {
+    position: 'absolute',
     left: position.left,
     maxHeight: position.maxHeight,
-    // expandUp: bottom = buttonHeight + gap (dropdown bottom sits just above button)
-    // expandDown: top = buttonHeight + gap (dropdown top sits just below button)
+    width: dropdownWidth,
     top: position.expandUp ? 'auto' : buttonHeight + gap,
     bottom: position.expandUp ? buttonHeight + gap : 'auto',
   }
@@ -170,76 +198,85 @@ export function DropdownContainer({
       className="dropdown-container open"
       style={dropdownStyle}
     >
-      {prompts.length === 0 ? (
+      {/* Header with Category Selector */}
+      <div className="dropdown-header">
+        <div className="dropdown-header-left">
+          <span className="dropdown-header-title">PROMPTS</span>
+          {/* Category Selector */}
+          <div className="category-selector" ref={categoryMenuRef}>
+            <button
+              className="category-selector-button"
+              onClick={() => setIsCategoryMenuOpen(!isCategoryMenuOpen)}
+              aria-label="选择分类"
+            >
+              <FolderOpen className="category-icon w-3 h-3" />
+              <span className="category-name">{selectedCategory.name}</span>
+              <ChevronDown className={`category-chevron w-3 h-3 ${isCategoryMenuOpen ? 'open' : ''}`} />
+            </button>
+            {isCategoryMenuOpen && (
+              <div className="category-menu">
+                {categories.map((category) => (
+                  <button
+                    key={category.id}
+                    className={`category-menu-item ${selectedCategoryId === category.id ? 'selected' : ''}`}
+                    onClick={() => {
+                      setSelectedCategoryId(category.id)
+                      setIsCategoryMenuOpen(false)
+                    }}
+                  >
+                    {category.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        <button
+          className="dropdown-close"
+          onClick={onClose}
+          aria-label="关闭"
+        >
+          <X className="w-3 h-3" />
+        </button>
+      </div>
+
+      {/* Prompt Items */}
+      {filteredPrompts.length === 0 ? (
         <div className="empty-state">
-          <div className="empty-message">暂无提示词</div>
-          <div className="empty-subtext">点击浏览器工具栏图标打开管理面板</div>
-          <div className="empty-state-actions">
-            <button className="empty-state-btn" onClick={onAddPrompt}>
-              新增提示词
-            </button>
-            <button className="empty-state-btn" onClick={onImport}>
-              导入数据
-            </button>
+          <div className="empty-message">
+            {selectedCategoryId === 'all' ? '暂无提示词' : '该分类暂无提示词'}
           </div>
         </div>
       ) : (
-        <>
-          {categories.map((category) => {
-            const categoryPrompts = displayPrompts.filter(
-              (p) => p.categoryId === category.id
-            )
-
-            if (categoryPrompts.length === 0) return null
+        <div className="dropdown-items">
+          {filteredPrompts.map((prompt, index) => {
+            const IconComponent = ICON_MAP[prompt.categoryId === 'design' ? 'design' : prompt.categoryId === 'style' ? 'style' : 'default']
 
             return (
-              <div key={category.id} className="category-group">
-                <div className="category-header">
-                  {category.name} ({categoryPrompts.length})
+              <div
+                key={prompt.id}
+                className={`dropdown-item${selectedPromptId === prompt.id ? ' selected' : ''}${index === filteredPrompts.length - 1 ? ' last' : ''}`}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => onSelect(prompt)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    onSelect(prompt)
+                  }
+                }}
+              >
+                <IconComponent className="dropdown-item-icon w-4 h-4" />
+                <div className="dropdown-item-text">
+                  <span className="dropdown-item-name">{prompt.name}</span>
+                  <span className="dropdown-item-preview">{truncatePreview(prompt.content)}</span>
                 </div>
-                {categoryPrompts.map((prompt) => (
-                  <div
-                    key={prompt.id}
-                    className={`prompt-item${selectedPromptId === prompt.id ? ' selected' : ''}`}
-                    onMouseDown={(e) => {
-                      // CRITICAL: Prevent focus transfer to dropdown item
-                      // This keeps the cursor position intact in the Lovart input
-                      // onClick will still fire, but focus remains on the input
-                      e.preventDefault()
-                    }}
-                    onClick={() => onSelect(prompt)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault()
-                        onSelect(prompt)
-                      }
-                    }}
-                  >
-                    <div className="prompt-name">{prompt.name}</div>
-                    <div className="prompt-preview">
-                      {truncatePreview(prompt.content)}
-                    </div>
-                  </div>
-                ))}
+                <ArrowUpRight className="dropdown-item-arrow w-3 h-3" />
               </div>
             )
           })}
-          {hasMore && (
-            <div className="more-prompts-hint">
-              显示前{MAX_DISPLAY_PROMPTS}条，共 {prompts.length} 条提示词
-            </div>
-          )}
-          <div className="dropdown-footer">
-            <button className="dropdown-footer-btn" onClick={onImport}>
-              导入
-            </button>
-            <button className="dropdown-footer-btn primary" onClick={onAddPrompt}>
-              新增
-            </button>
-          </div>
-        </>
+        </div>
       )}
     </div>
   )

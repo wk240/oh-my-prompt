@@ -1,15 +1,14 @@
 /**
- * TriggerButton - Lightning icon button to toggle dropdown
- * Positioned left of Lovart input with WCAG touch target size
+ * TriggerButton - "Select Prompt" trigger with accent dot
+ * Positioned left of Lovart input
  */
 
 interface TriggerButtonProps {
   isOpen: boolean
   onClick: () => void
-  lovartIconColor: string
 }
 
-export function TriggerButton({ isOpen, onClick, lovartIconColor }: TriggerButtonProps) {
+export function TriggerButton({ isOpen, onClick }: TriggerButtonProps) {
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -30,18 +29,14 @@ export function TriggerButton({ isOpen, onClick, lovartIconColor }: TriggerButto
       onKeyDown={handleKeyDown}
       role="button"
       tabIndex={0}
-      aria-label="插入预设提示词"
+      aria-label="选择预设提示词"
       aria-expanded={isOpen}
       title="Lovart Prompt Injector"
     >
-      {/* Lightning bolt SVG icon (D-03) */}
-      <svg
-        viewBox="0 0 24 24"
-        fill="currentColor"
-        style={{ color: lovartIconColor }}
-      >
-        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-      </svg>
+      {/* Accent Dot */}
+      <div className="trigger-dot" />
+      {/* Label */}
+      <span className="trigger-label">Select Prompt</span>
     </button>
   )
 }

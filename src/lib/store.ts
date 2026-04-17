@@ -41,16 +41,21 @@ async function sendStorageMessage(
   type: MessageType.GET_STORAGE | MessageType.SET_STORAGE,
   payload?: StorageSchema
 ): Promise<StorageSchema | undefined> {
-  const response = await chrome.runtime.sendMessage({
-    type,
-    payload
-  })
+  try {
+    const response = await chrome.runtime.sendMessage({
+      type,
+      payload
+    })
 
-  if (!response?.success) {
-    throw new Error(response?.error || 'Storage operation failed')
+    if (!response?.success) {
+      throw new Error(response?.error || 'Storage operation failed')
+    }
+
+    return response.data
+  } catch (error) {
+    console.error('[Lovart Injector] Storage message error:', error)
+    throw error
   }
-
-  return response.data
 }
 
 /**

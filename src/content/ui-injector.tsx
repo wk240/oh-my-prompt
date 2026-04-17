@@ -5,7 +5,7 @@
 
 import { createRoot, type Root } from 'react-dom/client'
 import { DropdownApp } from './components/DropdownApp'
-import { extractLovartButtonStyle, getLovartIconColor } from './style-extractor'
+import { ErrorBoundary } from './components/ErrorBoundary'
 
 const LOG_PREFIX = '[Lovart Injector]'
 
@@ -23,7 +23,6 @@ export class UIInjector {
   private shadowRoot: ShadowRoot | null = null
   private reactRoot: Root | null = null
   private inputElement: HTMLElement | null = null
-  private lovartIconColor: string = '#666'
   private repositionCleanup: (() => void) | null = null
 
   /**
@@ -40,17 +39,13 @@ export class UIInjector {
     this.hostElement = document.createElement('div')
     this.hostElement.id = HOST_ID
 
-    // Extract Lovart style at runtime
-    const lovartStyle = extractLovartButtonStyle()
-    this.lovartIconColor = getLovartIconColor()
-
     // Attach Shadow DOM
     this.shadowRoot = this.hostElement.attachShadow({ mode: 'open' })
 
     // Inject styles and mount point
     this.shadowRoot.innerHTML = `
       <style>
-        ${this.getStyles(lovartStyle)}
+        ${this.getStyles()}
       </style>
       <div id="react-root"></div>
     `
@@ -66,10 +61,11 @@ export class UIInjector {
     if (mountPoint) {
       this.reactRoot = createRoot(mountPoint)
       this.reactRoot.render(
-        <DropdownApp
-          lovartIconColor={this.lovartIconColor}
-          inputElement={inputElement}
-        />
+        <ErrorBoundary>
+          <DropdownApp
+            inputElement={inputElement}
+          />
+        </ErrorBoundary>
       )
     }
 
@@ -82,24 +78,21 @@ export class UIInjector {
   /**
    * Position host element relative to input
    * Use fixed positioning (relative to viewport)
-   * Position button to the left of input with some distance
    */
   private positionHost(): void {
     if (!this.hostElement || !this.inputElement) return
 
     const rect = this.inputElement.getBoundingClientRect()
 
-    // Button dimensions
-    const buttonWidth = 44
-    const buttonHeight = 44
-    const gapX = 12  // Horizontal distance from input
-    const gapY = 4   // Vertical offset (move slightly upward)
+    // Trigger button dimensions (wider now for "Select Prompt" label)
+    const buttonWidth = 140
+    const buttonHeight = 48
+    const gapX = 12
+    const gapY = 4
 
-    // Calculate position - slightly above center, with more distance from input
     const verticalCenter = rect.top + (rect.height - buttonHeight) / 2 - gapY
     const leftPos = Math.max(8, rect.left - buttonWidth - gapX)
 
-    // Use cssText to set all styles at once with !important for override
     this.hostElement.style.cssText = `
       position: fixed !important;
       top: ${verticalCenter}px !important;
@@ -134,15 +127,15 @@ export class UIInjector {
   /**
    * Get CSS styles for Shadow DOM
    */
-  private getStyles(lovartStyle: { backgroundColor: string; borderRadius: string }): string {
+  private getStyles(): string {
     return `
-      /* Container reset - preserve display for visibility */
+      /* Container reset */
       #react-root {
         all: initial;
         display: block;
         width: 100%;
         height: 100%;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         box-sizing: border-box;
       }
 
@@ -153,55 +146,71 @@ export class UIInjector {
         position: relative;
       }
 
-      /* Trigger button (WCAG 44px touch target) */
+      /* Trigger button - Select Prompt style */
       .trigger-button {
-        width: 44px;
-        height: 44px;
-        border-radius: ${lovartStyle.borderRadius};
-        background: ${lovartStyle.backgroundColor};
-        border: none;
+        width: auto;
+        min-width: 120px;
+        height: 48px;
+        border-radius: 8px;
+        background: #ffffff;
+        border: 1px solid #E5E5E5;
+        border-bottom: 1px solid #E5E5E5;
         cursor: pointer;
         display: flex;
         align-items: center;
-        justify-content: center;
-        transition: background 0.15s ease;
-        padding: 0;
+        gap: 12px;
+        padding: 12px 16px;
+        transition: background 0.15s ease, border-color 0.15s ease;
+        box-sizing: border-box;
       }
 
       .trigger-button:hover {
-        background: #e8e8e8;
+        background: #f8f8f8;
+        border-color: #d0d0d0;
       }
 
       .trigger-button:active {
-        background: #dcdcdc;
+        background: #f0f0f0;
       }
 
       .trigger-button:focus {
-        outline: 2px solid #1890ff;
+        outline: 2px solid #A16207;
         outline-offset: 2px;
       }
 
-      .trigger-button svg {
-        width: 20px;
-        height: 20px;
+      .trigger-button.open {
+        border-bottom-color: #A16207;
+      }
+
+      .trigger-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #A16207;
+      }
+
+      .trigger-label {
+        font-size: 12px;
+        font-weight: 500;
+        color: #171717;
+        font-family: 'Inter', sans-serif;
       }
 
       /* Dropdown container */
       .dropdown-container {
         position: absolute;
-        top: 48px;
-        left: 0;
         width: 280px;
-        max-height: 320px;
+        max-height: 260px;
         overflow-y: auto;
         background: #ffffff;
-        border: 1px solid #e0e0e0;
+        border: 1px solid #E5E5E5;
         border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        padding: 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.12);
         opacity: 0;
         transform: translateY(-4px);
         transition: opacity 150ms ease-out, transform 150ms ease-out;
+        padding: 16px;
+        box-sizing: border-box;
       }
 
       .dropdown-container.open {
@@ -209,64 +218,102 @@ export class UIInjector {
         transform: translateY(0);
       }
 
-      .dropdown-container.closing {
-        opacity: 0;
-        transform: translateY(0);
-        transition: opacity 100ms ease-in;
+      /* Dropdown header */
+      .dropdown-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 12px;
+        border-bottom: 1px solid #E5E5E5;
+        margin-bottom: 12px;
       }
 
-      /* Category header */
-      .category-header {
-        padding: 8px 12px;
-        font-size: 12px;
+      .dropdown-header-title {
+        font-size: 10px;
         font-weight: 500;
-        color: #999;
-        text-transform: uppercase;
+        color: #64748B;
+        letter-spacing: 1px;
+        font-family: 'Inter', sans-serif;
       }
 
-      .category-header:first-child {
-        margin-top: 0;
-      }
-
-      .category-header:not(:first-child) {
-        margin-top: 12px;
-      }
-
-      /* Prompt item */
-      .prompt-item {
-        padding: 12px;
-        border-radius: 8px;
+      .dropdown-close {
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #ffffff;
+        border: 1px solid #171717;
+        border-radius: 4px;
         cursor: pointer;
         transition: background 0.15s ease;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
       }
 
-      .prompt-item:hover {
+      .dropdown-close:hover {
         background: #f8f8f8;
       }
 
-      .prompt-item.selected {
-        background: #e6f4ff;
-        border-left: 2px solid #1890ff;
+      .dropdown-close svg {
+        color: #171717;
       }
 
-      .prompt-name {
-        font-size: 14px;
-        font-weight: 500;
-        color: #333;
-        line-height: 1.4;
+      /* Dropdown item */
+      .dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 0;
+        border-bottom: 1px solid #E5E5E5;
+        cursor: pointer;
+        transition: background 0.15s ease;
       }
 
-      .prompt-preview {
+      .dropdown-item:hover {
+        background: #f8f8f8;
+      }
+
+      .dropdown-item.last {
+        border-bottom: none;
+      }
+
+      .dropdown-item.selected {
+        background: #fef3e2;
+      }
+
+      .dropdown-item-icon {
+        width: 16px;
+        height: 16px;
+        color: #171717;
+      }
+
+      .dropdown-item-text {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .dropdown-item-name {
         font-size: 12px;
-        color: #666;
-        line-height: 1.3;
+        font-weight: 500;
+        color: #171717;
+        font-family: 'Inter', sans-serif;
+      }
+
+      .dropdown-item-preview {
+        font-size: 10px;
+        color: #64748B;
+        font-family: 'Inter', sans-serif;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        max-width: 250px;
+      }
+
+      .dropdown-item-arrow {
+        width: 12px;
+        height: 12px;
+        color: #171717;
       }
 
       /* Empty state */
@@ -276,14 +323,9 @@ export class UIInjector {
       }
 
       .empty-message {
-        font-size: 14px;
-        color: #666;
-      }
-
-      .empty-subtext {
         font-size: 12px;
-        color: #999;
-        margin-top: 8px;
+        color: #64748B;
+        font-family: 'Inter', sans-serif;
       }
 
       /* Scrollbar styling */

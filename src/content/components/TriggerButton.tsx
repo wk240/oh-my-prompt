@@ -33,7 +33,20 @@ export function TriggerButton({ isOpen, onClick }: TriggerButtonProps) {
       aria-expanded={isOpen}
       title="Prompt-Script"
     >
-      <span className="trigger-icon">P</span>
+      <svg
+        className="trigger-icon"
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M13 3L4 14h7l-1 7 9-11h-7l1-7z"
+          fill="currentColor"
+          fillOpacity="0.9"
+        />
+      </svg>
     </button>
   )
 }

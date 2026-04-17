@@ -15,35 +15,40 @@ const LOG_PREFIX = '[Prompt-Script]'
 const HOST_ID = 'prompt-script-host'
 
 /**
+ * Target selector for insertion point (before the "more" button)
+ */
+const TARGET_SELECTOR = '[data-testid="agent-input-bottom-more-button"]'
+
+/**
  * UIInjector creates Shadow DOM isolated UI container
- * positioned relative to input element
+ * injected before the target element in page DOM
  */
 export class UIInjector {
   private hostElement: HTMLElement | null = null
   private shadowRoot: ShadowRoot | null = null
   private reactRoot: Root | null = null
-  private inputElement: HTMLElement | null = null
-  private anchorElement: HTMLElement | null = null
-  private repositionCleanup: (() => void) | null = null
 
   /**
-   * Inject UI container near the input element
+   * Inject UI container before the target element
    */
   inject(inputElement: HTMLElement): void {
-    // Remove existing instance if present (this clears all properties)
+    // Remove existing instance if present
     this.remove()
 
-    // NOW set input element AFTER remove() clears it
-    this.inputElement = inputElement
+    // Find the target element for insertion (more button)
+    const targetElement = document.querySelector<HTMLElement>(TARGET_SELECTOR)
 
-    // Find the anchor element for positioning (footer menus)
-    this.anchorElement = document.querySelector<HTMLElement>('#agent-chat-footer-menus')
+    if (!targetElement) {
+      console.warn(LOG_PREFIX, 'Target element not found, skipping injection')
+      return
+    }
 
-    // Create host element
-    this.hostElement = document.createElement('div')
+    // Create host element (span to match sibling elements)
+    this.hostElement = document.createElement('span')
     this.hostElement.id = HOST_ID
+    this.hostElement.setAttribute('data-testid', 'prompt-script-trigger')
 
-    // Attach Shadow DOM
+    // Attach Shadow DOM for style isolation
     this.shadowRoot = this.hostElement.attachShadow({ mode: 'open' })
 
     // Inject styles and mount point
@@ -54,11 +59,8 @@ export class UIInjector {
       <div id="react-root"></div>
     `
 
-    // Inject into page FIRST (required for style calculations)
-    document.body.appendChild(this.hostElement)
-
-    // Position host element AFTER it's in DOM
-    this.positionHost()
+    // Insert BEFORE the target element
+    targetElement.parentNode?.insertBefore(this.hostElement, targetElement)
 
     // Mount React
     const mountPoint = this.shadowRoot.querySelector('#react-root')
@@ -73,64 +75,7 @@ export class UIInjector {
       )
     }
 
-    // Set up repositioning
-    this.setupRepositioning()
-
-    console.log(LOG_PREFIX, 'UI injected successfully')
-  }
-
-  /**
-   * Position host element relative to footer menus anchor
-   * Use fixed positioning (relative to viewport)
-   */
-  private positionHost(): void {
-    if (!this.hostElement) return
-
-    // Use anchor element if available, fallback to input element
-    const anchor = this.anchorElement || this.inputElement
-    if (!anchor) return
-
-    const rect = anchor.getBoundingClientRect()
-
-    // Trigger button dimensions (circular P icon)
-    const buttonWidth = 32
-    const buttonHeight = 32
-    const gap = 8  // Distance from anchor's left edge
-
-    // Position vertically centered with anchor
-    const verticalCenter = rect.top + (rect.height - buttonHeight) / 2
-    // Position to the left of anchor with gap
-    const leftPos = rect.left - buttonWidth - gap
-
-    this.hostElement.style.cssText = `
-      position: fixed !important;
-      top: ${verticalCenter}px !important;
-      left: ${Math.max(8, leftPos)}px !important;
-      width: ${buttonWidth}px !important;
-      height: ${buttonHeight}px !important;
-      z-index: 2147483647 !important;
-      box-sizing: border-box !important;
-      margin: 0 !important;
-      padding: 0 !important;
-      border: none !important;
-      background: transparent !important;
-    `
-  }
-
-  /**
-   * Setup scroll/resize event handlers for repositioning
-   */
-  private setupRepositioning(): void {
-    const reposition = () => this.positionHost()
-
-    window.addEventListener('scroll', reposition, { passive: true })
-    window.addEventListener('resize', reposition)
-
-    // Cleanup function
-    this.repositionCleanup = () => {
-      window.removeEventListener('scroll', reposition)
-      window.removeEventListener('resize', reposition)
-    }
+    console.log(LOG_PREFIX, 'UI injected before target element')
   }
 
   /**
@@ -141,67 +86,63 @@ export class UIInjector {
       /* Container reset */
       #react-root {
         all: initial;
-        display: block;
-        width: 100%;
-        height: 100%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         box-sizing: border-box;
       }
 
       /* Dropdown app wrapper */
       .dropdown-app {
-        width: 100%;
-        height: 100%;
+        display: inline-flex;
         position: relative;
       }
 
-      /* Trigger button - Circular P icon */
+      /* Trigger button - Circular lightning icon matching Lovart style */
       .trigger-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         width: 32px;
         height: 32px;
         border-radius: 50%;
-        background: #ffffff;
+        background: transparent;
         border: none;
         cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
         padding: 0;
-        transition: background 0.15s ease, box-shadow 0.15s ease;
+        transition: background 0.15s ease;
         box-sizing: border-box;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        color: #171717;
       }
 
       .trigger-button:hover {
-        background: #ffffff;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        background: rgba(0, 0, 0, 0.05);
       }
 
       .trigger-button:active {
-        background: #f8f8f8;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        background: rgba(0, 0, 0, 0.1);
       }
 
       .trigger-button:focus {
         outline: none;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.12);
       }
 
       .trigger-button.open {
-        box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        background: rgba(0, 0, 0, 0.08);
       }
 
       .trigger-icon {
-        font-size: 14px;
-        font-weight: 700;
-        color: #171717;
-        font-family: 'Inter', sans-serif;
-        line-height: 1;
+        width: 18px;
+        height: 18px;
+        color: inherit;
       }
 
       /* Dropdown container */
       .dropdown-container {
         position: absolute;
+        bottom: calc(100% + 8px);
+        right: 0;
         width: 360px;
         max-height: 400px;
         overflow-y: auto;
@@ -211,8 +152,9 @@ export class UIInjector {
         border-radius: 12px;
         box-shadow: 0 8px 24px rgba(0,0,0,0.15);
         opacity: 0;
-        transform: translateY(-4px);
+        transform: translateY(4px);
         transition: opacity 150ms ease-out, transform 150ms ease-out;
+        pointer-events: none;
         padding: 16px;
         box-sizing: border-box;
       }
@@ -220,6 +162,7 @@ export class UIInjector {
       .dropdown-container.open {
         opacity: 1;
         transform: translateY(0);
+        pointer-events: auto;
       }
 
       /* Dropdown items wrapper */
@@ -364,6 +307,155 @@ export class UIInjector {
 
       .dropdown-close svg {
         color: #171717;
+      }
+
+      /* Dropdown header actions container */
+      .dropdown-header-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      /* Settings button */
+      .dropdown-settings {
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #ffffff;
+        border: 1px solid #E5E5E5;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background 0.15s ease, border-color 0.15s ease;
+      }
+
+      .dropdown-settings:hover {
+        background: #f8f8f8;
+        border-color: #171717;
+      }
+
+      .dropdown-settings svg {
+        color: #171717;
+      }
+
+      /* Settings overlay */
+      .settings-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+      }
+
+      /* Settings popup */
+      .settings-popup {
+        width: 320px;
+        background: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+        padding: 16px;
+        box-sizing: border-box;
+      }
+
+      /* Settings header */
+      .settings-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 12px;
+        border-bottom: 1px solid #E5E5E5;
+        margin-bottom: 16px;
+      }
+
+      .settings-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #171717;
+        font-family: 'Inter', sans-serif;
+      }
+
+      .settings-close {
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background 0.15s ease;
+      }
+
+      .settings-close:hover {
+        background: #f8f8f8;
+      }
+
+      .settings-close svg {
+        color: #171717;
+      }
+
+      /* Settings content */
+      .settings-content {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .settings-section {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .settings-section-title {
+        font-size: 11px;
+        font-weight: 600;
+        color: #64748B;
+        letter-spacing: 0.5px;
+        font-family: 'Inter', sans-serif;
+      }
+
+      .settings-actions {
+        display: flex;
+        gap: 8px;
+      }
+
+      .settings-action-btn {
+        flex: 1;
+        padding: 10px 12px;
+        background: #f8f8f8;
+        border: 1px solid #E5E5E5;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 500;
+        color: #171717;
+        font-family: 'Inter', sans-serif;
+        transition: background 0.15s ease, border-color 0.15s ease;
+      }
+
+      .settings-action-btn:hover {
+        background: #f0f0f0;
+        border-color: #d0d0d0;
+      }
+
+      .settings-info {
+        font-size: 12px;
+        color: #64748B;
+        font-family: 'Inter', sans-serif;
+      }
+
+      .settings-version {
+        font-size: 12px;
+        color: #171717;
+        font-family: 'Inter', sans-serif;
       }
 
       /* Dropdown item */
@@ -663,12 +755,6 @@ export class UIInjector {
    * Remove UI container and cleanup
    */
   remove(): void {
-    // Cleanup event listeners
-    if (this.repositionCleanup) {
-      this.repositionCleanup()
-      this.repositionCleanup = null
-    }
-
     // Unmount React
     if (this.reactRoot) {
       this.reactRoot.unmount()
@@ -682,8 +768,6 @@ export class UIInjector {
     }
 
     this.shadowRoot = null
-    this.inputElement = null
-    this.anchorElement = null
   }
 
   /**

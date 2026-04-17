@@ -48,6 +48,16 @@ chrome.runtime.onMessage.addListener(
         sendResponse({ success: true, data: message.payload } as MessageResponse)
         break
 
+      case MessageType.OPEN_SETTINGS:
+        // Open settings page in a new tab (bypasses ad blockers)
+        chrome.tabs.create({ url: chrome.runtime.getURL('src/popup/settings.html') })
+          .then(() => sendResponse({ success: true } as MessageResponse))
+          .catch(error => {
+            console.error('[Prompt-Script] OPEN_SETTINGS error:', error)
+            sendResponse({ success: false, error: 'Failed to open settings' })
+          })
+        return true // Required for async response
+
       default:
         sendResponse({ success: false, error: `Unknown message type: ${message.type}` })
     }

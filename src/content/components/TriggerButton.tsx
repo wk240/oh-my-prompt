@@ -1,6 +1,6 @@
 /**
  * TriggerButton - "Select Prompt" trigger with accent dot
- * Positioned left of Lovart input
+ * Positioned left of input
  */
 
 interface TriggerButtonProps {
@@ -31,12 +31,9 @@ export function TriggerButton({ isOpen, onClick }: TriggerButtonProps) {
       tabIndex={0}
       aria-label="选择预设提示词"
       aria-expanded={isOpen}
-      title="Lovart Prompt Injector"
+      title="Prompt-Script"
     >
-      {/* Accent Dot */}
-      <div className="trigger-dot" />
-      {/* Label */}
-      <span className="trigger-label">Select Prompt</span>
+      <span className="trigger-icon">P</span>
     </button>
   )
 }

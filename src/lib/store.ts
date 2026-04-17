@@ -52,7 +52,7 @@ async function sendStorageMessage(
 
     return response.data
   } catch (error) {
-    console.error('[Lovart Injector] Storage message error:', error)
+    console.error('[Prompt-Script] Storage message error:', error)
     throw error
   }
 }
@@ -90,7 +90,7 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
       if (data) {
         // Warn for large datasets
         if (data.prompts.length > 500) {
-          console.warn('[Lovart Injector] Large dataset loaded:', data.prompts.length, 'prompts')
+          console.warn('[Prompt-Script] Large dataset loaded:', data.prompts.length, 'prompts')
         }
         set({
           prompts: data.prompts,
@@ -111,7 +111,7 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
         return { success: true }
       }
     } catch (error) {
-      console.error('[Lovart Injector] Failed to load storage:', error)
+      console.error('[Prompt-Script] Failed to load storage:', error)
       const defaultState = getDefaultState()
       set({
         prompts: defaultState.prompts,
@@ -133,7 +133,7 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
       })
       return { success: true }
     } catch (error) {
-      console.error('[Lovart Injector] Failed to save storage:', error)
+      console.error('[Prompt-Script] Failed to save storage:', error)
       return { success: false, error: '数据保存失败，请检查存储配额' }
     }
   },

@@ -24,11 +24,13 @@ function PromptList({ onEditPrompt, onDeletePrompt, onAddPrompt }: PromptListPro
     return prompts.filter(p => p.categoryId === selectedCategoryId)
   }, [prompts, selectedCategoryId])
 
+  const hasPromptsElsewhere = prompts.length > 0
+
   if (filteredPrompts.length === 0) {
     return (
       <div className="flex-1 flex flex-col p-5 overflow-hidden bg-white">
         <div className="flex-1 flex flex-col items-center justify-center">
-          <EmptyState />
+          <EmptyState hasPromptsElsewhere={hasPromptsElsewhere} selectedCategoryId={selectedCategoryId} />
         </div>
         {/* Add Prompt Button */}
         <div className="pt-4 mt-2 border-t border-[#E5E5E5]">

@@ -7,16 +7,16 @@ import { createRoot, type Root } from 'react-dom/client'
 import { DropdownApp } from './components/DropdownApp'
 import { ErrorBoundary } from './components/ErrorBoundary'
 
-const LOG_PREFIX = '[Lovart Injector]'
+const LOG_PREFIX = '[Prompt-Script]'
 
 /**
  * Host element ID for Shadow DOM container
  */
-const HOST_ID = 'lovart-injector-host'
+const HOST_ID = 'prompt-script-host'
 
 /**
  * UIInjector creates Shadow DOM isolated UI container
- * positioned relative to Lovart input element
+ * positioned relative to input element
  */
 export class UIInjector {
   private hostElement: HTMLElement | null = null
@@ -84,11 +84,11 @@ export class UIInjector {
 
     const rect = this.inputElement.getBoundingClientRect()
 
-    // Trigger button dimensions (wider now for "Select Prompt" label)
-    const buttonWidth = 140
-    const buttonHeight = 48
-    const gapX = 12
-    const gapY = 4
+    // Trigger button dimensions (circular P icon)
+    const buttonWidth = 40
+    const buttonHeight = 40
+    const gapX = 8
+    const gapY = 0
 
     const verticalCenter = rect.top + (rect.height - buttonHeight) / 2 - gapY
     const leftPos = Math.max(8, rect.left - buttonWidth - gapX)
@@ -146,54 +146,48 @@ export class UIInjector {
         position: relative;
       }
 
-      /* Trigger button - Select Prompt style */
+      /* Trigger button - Circular P icon */
       .trigger-button {
-        width: auto;
-        min-width: 120px;
-        height: 48px;
-        border-radius: 8px;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
         background: #ffffff;
-        border: 1px solid #E5E5E5;
-        border-bottom: 1px solid #E5E5E5;
+        border: none;
         cursor: pointer;
         display: flex;
         align-items: center;
-        gap: 12px;
-        padding: 12px 16px;
-        transition: background 0.15s ease, border-color 0.15s ease;
+        justify-content: center;
+        padding: 0;
+        transition: background 0.15s ease, box-shadow 0.15s ease;
         box-sizing: border-box;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
       }
 
       .trigger-button:hover {
-        background: #f8f8f8;
-        border-color: #d0d0d0;
+        background: #ffffff;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.12);
       }
 
       .trigger-button:active {
-        background: #f0f0f0;
+        background: #f8f8f8;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.08);
       }
 
       .trigger-button:focus {
-        outline: 2px solid #A16207;
-        outline-offset: 2px;
+        outline: none;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.12);
       }
 
       .trigger-button.open {
-        border-bottom-color: #A16207;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.12);
       }
 
-      .trigger-dot {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: #A16207;
-      }
-
-      .trigger-label {
-        font-size: 12px;
-        font-weight: 500;
+      .trigger-icon {
+        font-size: 18px;
+        font-weight: 700;
         color: #171717;
         font-family: 'Inter', sans-serif;
+        line-height: 1;
       }
 
       /* Dropdown container */

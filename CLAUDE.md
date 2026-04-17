@@ -1,16 +1,16 @@
 <!-- GSD:project-start source:PROJECT.md -->
 ## Project
 
-**Lovart Prompt Injector**
+**Prompt-Script**
 
 一个Chrome浏览器插件，用于在Lovart AI设计/绘图平台的输入框中一键插入预设的提示词模板。用户通过输入框旁的下拉菜单选择提示词，提示词按用途分类管理，支持内置编辑和数据导入导出。
 
-**Core Value:** 一键插入预设提示词，提升Lovart平台创作效率。
+**Core Value:** 一键插入预设提示词，提升创作效率。
 
 ### Constraints
 
 - **Tech stack:** Chrome Extension (Manifest V3) — 现代Chrome插件标准
-- **平台依赖:** 需适配Lovart平台的页面结构和输入框元素
+- **平台依赖:** 需适配目标平台的页面结构和输入框元素
 - **数据存储:** chrome.storage.local 本地存储，容量有限制
 - **浏览器支持:** Chrome/Edge/Brave等Chromium系浏览器
 <!-- GSD:project-end -->

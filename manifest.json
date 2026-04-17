@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Lovart Prompt Injector",
+  "name": "Prompt-Script",
   "version": "1.0.0",
-  "description": "一键插入预设提示词，提升Lovart平台创作效率",
+  "description": "一键插入预设提示词，提升创作效率",
   "background": {
     "service_worker": "src/background/service-worker.ts",
     "type": "module"

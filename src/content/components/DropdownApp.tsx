@@ -24,7 +24,7 @@ export function DropdownApp({ inputElement }: DropdownAppProps) {
   useEffect(() => {
     // Check if extension context is still valid
     if (!chrome.runtime?.id) {
-      console.log('[Lovart Injector] Extension context invalidated')
+      console.log('[Prompt-Script] Extension context invalidated')
       setIsLoading(false)
       return
     }
@@ -35,7 +35,7 @@ export function DropdownApp({ inputElement }: DropdownAppProps) {
         (response) => {
           // Check again in callback - context might have been invalidated
           if (chrome.runtime?.lastError) {
-            console.log('[Lovart Injector] Runtime error:', chrome.runtime.lastError.message)
+            console.log('[Prompt-Script] Runtime error:', chrome.runtime.lastError.message)
             setIsLoading(false)
             return
           }
@@ -47,7 +47,7 @@ export function DropdownApp({ inputElement }: DropdownAppProps) {
         }
       )
     } catch (error) {
-      console.log('[Lovart Injector] Extension context error:', error)
+      console.log('[Prompt-Script] Extension context error:', error)
       setIsLoading(false)
     }
   }, [])

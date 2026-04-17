@@ -33,14 +33,14 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.log('[Lovart Injector] Error caught:', error.message)
-    console.log('[Lovart Injector] Component stack:', errorInfo.componentStack)
+    console.log('[Prompt-Script] Error caught:', error.message)
+    console.log('[Prompt-Script] Component stack:', errorInfo.componentStack)
   }
 
   render() {
     if (this.state.hasError) {
       // Silently handle all errors, don't show UI
-      console.log('[Lovart Injector] Component error:', this.state.error?.message)
+      console.log('[Prompt-Script] Component error:', this.state.error?.message)
       return null
     }
 

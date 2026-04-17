@@ -10,8 +10,19 @@ function Header({ onImport, onExport }: HeaderProps) {
     <header className="h-[68px] px-6 flex items-center justify-between border-b border-[#E5E5E5] bg-white">
       {/* Brand Section */}
       <div className="flex items-center gap-2.5">
-        {/* Accent Dot */}
-        <div className="w-[8px] h-[8px] rounded-full bg-[#A16207]" />
+        {/* Lightning Bolt Icon */}
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M9.5 1L4 8H7.5L6.5 15L12 8H8.5L9.5 1Z"
+            fill="#A16207"
+          />
+        </svg>
         {/* Title */}
         <span
           className="text-[16px] font-semibold text-[#171717] tracking-[1px]"

@@ -23,6 +23,7 @@ export class UIInjector {
   private shadowRoot: ShadowRoot | null = null
   private reactRoot: Root | null = null
   private inputElement: HTMLElement | null = null
+  private anchorElement: HTMLElement | null = null
   private repositionCleanup: (() => void) | null = null
 
   /**
@@ -34,6 +35,9 @@ export class UIInjector {
 
     // NOW set input element AFTER remove() clears it
     this.inputElement = inputElement
+
+    // Find the anchor element for positioning (footer menus)
+    this.anchorElement = document.querySelector<HTMLElement>('#agent-chat-footer-menus')
 
     // Create host element
     this.hostElement = document.createElement('div')
@@ -76,27 +80,32 @@ export class UIInjector {
   }
 
   /**
-   * Position host element relative to input
+   * Position host element relative to footer menus anchor
    * Use fixed positioning (relative to viewport)
    */
   private positionHost(): void {
-    if (!this.hostElement || !this.inputElement) return
+    if (!this.hostElement) return
 
-    const rect = this.inputElement.getBoundingClientRect()
+    // Use anchor element if available, fallback to input element
+    const anchor = this.anchorElement || this.inputElement
+    if (!anchor) return
+
+    const rect = anchor.getBoundingClientRect()
 
     // Trigger button dimensions (circular P icon)
-    const buttonWidth = 40
-    const buttonHeight = 40
-    const gapX = 8
-    const gapY = 0
+    const buttonWidth = 32
+    const buttonHeight = 32
+    const gap = 8  // Distance from anchor's left edge
 
-    const verticalCenter = rect.top + (rect.height - buttonHeight) / 2 - gapY
-    const leftPos = Math.max(8, rect.left - buttonWidth - gapX)
+    // Position vertically centered with anchor
+    const verticalCenter = rect.top + (rect.height - buttonHeight) / 2
+    // Position to the left of anchor with gap
+    const leftPos = rect.left - buttonWidth - gap
 
     this.hostElement.style.cssText = `
       position: fixed !important;
       top: ${verticalCenter}px !important;
-      left: ${leftPos}px !important;
+      left: ${Math.max(8, leftPos)}px !important;
       width: ${buttonWidth}px !important;
       height: ${buttonHeight}px !important;
       z-index: 2147483647 !important;
@@ -148,8 +157,8 @@ export class UIInjector {
 
       /* Trigger button - Circular P icon */
       .trigger-button {
-        width: 40px;
-        height: 40px;
+        width: 32px;
+        height: 32px;
         border-radius: 50%;
         background: #ffffff;
         border: none;
@@ -183,7 +192,7 @@ export class UIInjector {
       }
 
       .trigger-icon {
-        font-size: 18px;
+        font-size: 14px;
         font-weight: 700;
         color: #171717;
         font-family: 'Inter', sans-serif;
@@ -674,6 +683,7 @@ export class UIInjector {
 
     this.shadowRoot = null
     this.inputElement = null
+    this.anchorElement = null
   }
 
   /**

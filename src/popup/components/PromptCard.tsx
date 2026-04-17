@@ -49,6 +49,17 @@ function PromptCard({ prompt, isActive = false, onEdit, onDelete }: PromptCardPr
         {prompt.name}
       </span>
 
+      {/* Description */}
+      {prompt.description && (
+        <span
+          className="text-[11px] text-[#64748B] text-center truncate w-full mt-1"
+          style={{ fontFamily: 'Inter, sans-serif' }}
+          title={prompt.description}
+        >
+          {prompt.description}
+        </span>
+      )}
+
       {/* Action Menu */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

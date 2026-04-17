@@ -90,17 +90,7 @@ export function validateImportData(json: unknown): ValidationResult {
     }
   }
 
-  // Validate default category exists
-  const hasDefaultCategory = (data.categories as Array<{id: string}>).some(c => c.id === 'default')
-  if (!hasDefaultCategory) {
-    return { valid: false, error: '缺少默认分类，导入数据必须包含 id 为 "default" 的分类' }
-  }
-
-  // Validate prompts not empty when categories exist
-  if (data.prompts.length === 0 && data.categories.length > 1) {
-    return { valid: false, error: '提示词列表为空，请导入包含提示词的数据' }
-  }
-
+  
   return { valid: true, data: json as StorageSchema }
 }
 

@@ -130,7 +130,6 @@ Prompt insertion uses `execCommand('insertText')` for React/Lexical compatibilit
 
 ### Category ID
 - `'all'` is reserved for "show all prompts" filter (not a real category)
-- `'default'` is the required default category in imported data
 
 ### Shadow DOM Isolation
 - Content script UI must use Shadow DOM to prevent host page CSS conflicts

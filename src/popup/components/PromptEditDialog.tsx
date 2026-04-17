@@ -76,16 +76,16 @@ function PromptEditDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="w-[280px]">
+      <DialogContent className="w-[900px] h-[600px] max-w-[90vw] max-h-[85vh]">
         <DialogHeader>
           <DialogTitle>{prompt ? '编辑提示词' : '添加提示词'}</DialogTitle>
           <DialogDescription>
             {prompt ? '修改提示词的名称、内容和分类' : '添加新的提示词到您的收藏'}
           </DialogDescription>
         </DialogHeader>
-        <div className="flex flex-col gap-4 py-2">
+        <div className="flex flex-col gap-5 py-4">
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">
+            <label className="text-sm text-muted-foreground mb-2 block">
               名称
             </label>
             <Input
@@ -95,18 +95,19 @@ function PromptEditDialog({
             />
           </div>
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">
+            <label className="text-sm text-muted-foreground mb-2 block">
               内容
             </label>
             <Textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="提示词内容"
-              rows={4}
+              rows={10}
+              className="min-h-[200px]"
             />
           </div>
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">
+            <label className="text-sm text-muted-foreground mb-2 block">
               所属分类
             </label>
             <Select value={categoryId} onValueChange={setCategoryId}>
@@ -123,7 +124,7 @@ function PromptEditDialog({
             </Select>
           </div>
         </div>
-        <DialogFooter>
+        <DialogFooter className="gap-2">
           <Button variant="outline" onClick={handleClose}>
             取消
           </Button>

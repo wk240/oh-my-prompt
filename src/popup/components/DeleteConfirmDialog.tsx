@@ -25,14 +25,14 @@ function DeleteConfirmDialog({
 }: DeleteConfirmDialogProps) {
   return (
     <AlertDialog open={open} onOpenChange={onClose}>
-      <AlertDialogContent className="w-[280px]">
+      <AlertDialogContent className="w-[640px] h-[270px] max-w-[90vw] max-h-[85vh]">
         <AlertDialogHeader>
           <AlertDialogTitle>确定删除{itemName}？</AlertDialogTitle>
           <AlertDialogDescription>
             {description || '此操作无法撤销，请谨慎操作。'}
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-2 pt-4">
           <AlertDialogCancel>取消</AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}

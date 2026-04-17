@@ -37,20 +37,20 @@ function AddCategoryDialog({ open, onClose }: AddCategoryDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="w-[280px]">
+      <DialogContent className="w-[640px] h-[360px] max-w-[90vw] max-h-[85vh]">
         <DialogHeader>
           <DialogTitle>添加分类</DialogTitle>
           <DialogDescription>创建新的提示词分类</DialogDescription>
         </DialogHeader>
-        <div>
-          <label className="text-xs text-muted-foreground mb-1">分类名称</label>
+        <div className="py-4">
+          <label className="text-sm text-muted-foreground mb-2 block">分类名称</label>
           <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="新分类名称"
           />
         </div>
-        <DialogFooter>
+        <DialogFooter className="gap-2">
           <Button variant="outline" onClick={handleClose}>
             取消
           </Button>

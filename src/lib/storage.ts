@@ -5,7 +5,7 @@
  */
 
 import type { Prompt, Category, StorageSchema } from '../shared/types'
-import { STORAGE_KEY, DEFAULT_CATEGORY_NAME } from '../shared/constants'
+import { STORAGE_KEY } from '../shared/constants'
 
 /**
  * StorageManager class for managing extension data persistence
@@ -29,13 +29,7 @@ export class StorageManager {
   getDefaultData(): StorageSchema {
     return {
       version: '1.0.0',
-      categories: [
-        {
-          id: 'default',
-          name: DEFAULT_CATEGORY_NAME,
-          order: 0,
-        },
-      ],
+      categories: [],
       prompts: [],
     }
   }

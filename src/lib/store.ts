@@ -7,7 +7,6 @@
 import { create } from 'zustand'
 import type { Prompt, Category, StorageSchema } from '../shared/types'
 import { MessageType } from '../shared/messages'
-import { DEFAULT_CATEGORY_NAME } from '../shared/constants'
 
 interface PromptStore {
   prompts: Prompt[]
@@ -71,28 +70,16 @@ function generateId(): string {
 function getDefaultState(): { prompts: Prompt[]; categories: Category[]; selectedCategoryId: string | null } {
   return {
     prompts: [],
-    categories: [
-      {
-        id: 'default',
-        name: DEFAULT_CATEGORY_NAME,
-        order: 0
-      }
-    ],
-    selectedCategoryId: 'default'
+    categories: [],
+    selectedCategoryId: 'all'
   }
 }
 
 export const usePromptStore = create<PromptStore>((set, get) => ({
   // Initial state
   prompts: [],
-  categories: [
-    {
-      id: 'default',
-      name: DEFAULT_CATEGORY_NAME,
-      order: 0
-    }
-  ],
-  selectedCategoryId: 'default',
+  categories: [],
+  selectedCategoryId: 'all',
   isLoading: true,
 
   // Actions
@@ -104,6 +91,7 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
         set({
           prompts: data.prompts,
           categories: data.categories,
+          selectedCategoryId: 'all',
           isLoading: false
         })
       } else {
@@ -112,7 +100,7 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
         set({
           prompts: defaultState.prompts,
           categories: defaultState.categories,
-          selectedCategoryId: defaultState.selectedCategoryId,
+          selectedCategoryId: 'all',
           isLoading: false
         })
       }
@@ -122,7 +110,7 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
       set({
         prompts: defaultState.prompts,
         categories: defaultState.categories,
-        selectedCategoryId: defaultState.selectedCategoryId,
+        selectedCategoryId: 'all',
         isLoading: false
       })
     }
@@ -188,25 +176,18 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
   },
 
   deleteCategory: (id: string) => {
-    // Cannot delete 'default' category
-    if (id === 'default') {
-      return
-    }
-
     set((state) => {
       // Remove category from list
       const updatedCategories = state.categories.filter((cat) => cat.id !== id)
 
-      // Move prompts from deleted category to 'default'
-      const updatedPrompts = state.prompts.map((prompt) =>
-        prompt.categoryId === id ? { ...prompt, categoryId: 'default' } : prompt
-      )
+      // Delete prompts that belong to this category
+      const updatedPrompts = state.prompts.filter((prompt) => prompt.categoryId !== id)
 
       return {
         categories: updatedCategories,
         prompts: updatedPrompts,
-        // If deleted category was selected, switch to 'default'
-        selectedCategoryId: state.selectedCategoryId === id ? 'default' : state.selectedCategoryId
+        // If deleted category was selected, switch to 'all'
+        selectedCategoryId: state.selectedCategoryId === id ? 'all' : state.selectedCategoryId
       }
     })
     get().saveToStorage()
@@ -220,7 +201,7 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
 
   getFilteredPrompts: () => {
     const { prompts, selectedCategoryId } = get()
-    if (selectedCategoryId === null) {
+    if (selectedCategoryId === 'all' || selectedCategoryId === null) {
       return prompts
     }
     return prompts.filter((prompt) => prompt.categoryId === selectedCategoryId)

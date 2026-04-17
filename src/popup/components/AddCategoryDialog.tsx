@@ -4,6 +4,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from './ui/dialog'
 import { Button } from './ui/button'
@@ -36,6 +37,7 @@ function AddCategoryDialog({ open, onClose }: AddCategoryDialogProps) {
       <DialogContent className="w-[280px]">
         <DialogHeader>
           <DialogTitle>添加分类</DialogTitle>
+          <DialogDescription>创建新的提示词分类</DialogDescription>
         </DialogHeader>
         <div>
           <label className="text-xs text-muted-foreground mb-1">分类名称</label>

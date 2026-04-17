@@ -18,8 +18,8 @@ const ICON_MAP = {
 }
 
 function PromptCard({ prompt, isActive = false, onEdit, onDelete }: PromptCardProps) {
-  const previewContent = prompt.content.length > 40
-    ? prompt.content.slice(0, 40) + '...'
+  const previewContent = prompt.content.length > 80
+    ? prompt.content.slice(0, 80) + '...'
     : prompt.content
 
   // Determine icon based on category
@@ -30,49 +30,49 @@ function PromptCard({ prompt, isActive = false, onEdit, onDelete }: PromptCardPr
 
   return (
     <div
-      className="flex items-center gap-4 p-4 bg-white border border-[#E5E5E5] rounded-sm hover:bg-gray-50 transition-colors"
+      className="flex items-start gap-5 p-5 bg-white border border-[#E5E5E5] rounded-sm hover:bg-gray-50 transition-colors"
     >
       {/* Icon Frame */}
       <div
-        className="w-[32px] h-[32px] flex items-center justify-center border"
+        className="w-[40px] h-[40px] flex items-center justify-center border shrink-0"
         style={{ borderColor }}
       >
         <IconComponent
-          className="w-4 h-4"
+          className="w-5 h-5"
           style={{ color: iconColor }}
         />
       </div>
 
       {/* Content */}
-      <div className="flex-1 flex flex-col gap-1 min-w-0">
+      <div className="flex-1 flex flex-col gap-2 min-w-0">
         <span
-          className="text-[13px] font-medium text-[#171717] truncate"
+          className="text-[15px] font-medium text-[#171717]"
           style={{ fontFamily: 'Inter, sans-serif' }}
         >
           {prompt.name}
         </span>
         <span
-          className="text-[11px] text-[#64748B] truncate"
+          className="text-[13px] text-[#64748B] leading-relaxed"
           style={{ fontFamily: 'Inter, sans-serif' }}
         >
           {previewContent}
         </span>
       </div>
 
-      {/* Action Menu or Arrow */}
+      {/* Action Menu */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-7 w-7 p-0 hover:bg-gray-100">
-            <MoreVertical className="h-3.5 w-3.5 text-[#171717]" />
+          <Button variant="ghost" size="icon" className="h-9 w-9 p-0 hover:bg-gray-100 shrink-0">
+            <MoreVertical className="h-4 w-4 text-[#171717]" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-32">
-          <DropdownMenuItem onClick={() => onEdit(prompt)} className="text-[12px]">
+        <DropdownMenuContent align="end" className="w-36">
+          <DropdownMenuItem onClick={() => onEdit(prompt)} className="text-[13px] py-2">
             编辑
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => onDelete(prompt.id)}
-            className="text-[12px] text-red-500 focus:text-red-500"
+            className="text-[13px] text-red-500 focus:text-red-500 py-2"
           >
             删除
           </DropdownMenuItem>

@@ -28,9 +28,9 @@ function DeleteConfirmDialog({
       <AlertDialogContent className="w-[280px]">
         <AlertDialogHeader>
           <AlertDialogTitle>确定删除{itemName}？</AlertDialogTitle>
-          {description && (
-            <AlertDialogDescription>{description}</AlertDialogDescription>
-          )}
+          <AlertDialogDescription>
+            {description || '此操作无法撤销，请谨慎操作。'}
+          </AlertDialogDescription>
         </AlertDialogHeader>
         <div className="flex justify-end gap-2">
           <AlertDialogCancel>取消</AlertDialogCancel>

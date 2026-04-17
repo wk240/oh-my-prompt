@@ -4,6 +4,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from './ui/dialog'
 import { Button } from './ui/button'
@@ -35,7 +36,7 @@ function PromptEditDialog({
 
   const [name, setName] = useState('')
   const [content, setContent] = useState('')
-  const [categoryId, setCategoryId] = useState(selectedCategoryId || 'default')
+  const [categoryId, setCategoryId] = useState(selectedCategoryId || categories[0]?.id || '')
 
   // Reset form when dialog opens or prompt changes
   useEffect(() => {
@@ -47,13 +48,13 @@ function PromptEditDialog({
       } else {
         setName('')
         setContent('')
-        setCategoryId(selectedCategoryId || 'default')
+        setCategoryId(selectedCategoryId || categories[0]?.id || '')
       }
     }
   }, [prompt, open, selectedCategoryId])
 
   const handleSave = () => {
-    if (!name.trim() || !content.trim()) return
+    if (!name.trim() || !content.trim() || !categoryId) return
 
     if (prompt) {
       // Edit mode - update existing prompt
@@ -74,6 +75,9 @@ function PromptEditDialog({
       <DialogContent className="w-[280px]">
         <DialogHeader>
           <DialogTitle>{prompt ? '编辑提示词' : '添加提示词'}</DialogTitle>
+          <DialogDescription>
+            {prompt ? '修改提示词的名称、内容和分类' : '添加新的提示词到您的收藏'}
+          </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-4 py-2">
           <div>
@@ -121,7 +125,7 @@ function PromptEditDialog({
           </Button>
           <Button
             onClick={handleSave}
-            disabled={!name.trim() || !content.trim()}
+            disabled={!name.trim() || !content.trim() || !categoryId}
           >
             保存
           </Button>

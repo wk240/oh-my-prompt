@@ -20,7 +20,7 @@ function Header({ onImport, onExport }: HeaderProps) {
         >
           <path
             d="M9.5 1L4 8H7.5L6.5 15L12 8H8.5L9.5 1Z"
-            fill="#A16207"
+            fill="#171717"
           />
         </svg>
         {/* Title */}

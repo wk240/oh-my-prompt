@@ -16,6 +16,7 @@ interface DropdownContainerProps {
   isOpen: boolean
   selectedPromptId: string | null
   onClose?: () => void
+  isLoading?: boolean
 }
 
 interface DropdownPosition {
@@ -120,7 +121,7 @@ function getDropdownStyles(): string {
       align-items: center;
       justify-content: center;
       background: #ffffff;
-      border: 1px solid #171717;
+      border: none;
       border-radius: 4px;
       cursor: pointer;
       transition: background 0.15s ease;
@@ -315,6 +316,7 @@ export function DropdownContainer({
   isOpen,
   selectedPromptId,
   onClose,
+  isLoading = false,
 }: DropdownContainerProps) {
   const dropdownRef = useRef<HTMLDivElement>(null)
   const [position, setPosition] = useState<DropdownPosition>({ top: 0, right: 0 })
@@ -478,11 +480,15 @@ export function DropdownContainer({
         </div>
       </div>
 
-      {/* Prompt Items */}
-      {filteredPrompts.length === 0 ? (
+      {/* Content Area */}
+      {isLoading ? (
+        <div className="empty-state">
+          <div className="empty-message">加载中...</div>
+        </div>
+      ) : filteredPrompts.length === 0 ? (
         <div className="empty-state">
           <div className="empty-message">
-            {selectedCategoryId === 'all' ? '暂无提示词' : '该分类暂无提示词'}
+            {selectedCategoryId === 'all' ? '暂无提示词，请点击设置添加' : '该分类暂无提示词'}
           </div>
         </div>
       ) : (

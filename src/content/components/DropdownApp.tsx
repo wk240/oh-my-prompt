@@ -9,7 +9,6 @@ import { DropdownContainer } from './DropdownContainer'
 import { MessageType } from '../../shared/messages'
 import type { Prompt, StorageSchema } from '../../shared/types'
 import { InsertHandler } from '../insert-handler'
-import { Settings, X } from 'lucide-react'
 
 interface DropdownAppProps {
   inputElement: HTMLElement
@@ -69,70 +68,7 @@ export function DropdownApp({ inputElement }: DropdownAppProps) {
     }, 2000)
   }, [inputElement])
 
-  const handleOpenSettings = useCallback(() => {
-    // Send message to background worker to open settings (bypasses ad blockers)
-    chrome.runtime.sendMessage({ type: MessageType.OPEN_SETTINGS })
-    setIsOpen(false)
-  }, [])
-
-  if (isLoading) {
-    return (
-      <div className="dropdown-app">
-        <TriggerButton
-          isOpen={isOpen}
-          onClick={handleToggle}
-        />
-        {isOpen && (
-          <div className="dropdown-container open">
-            <div className="dropdown-header">
-              <span className="dropdown-header-title">PROMPTS</span>
-            </div>
-            <div className="empty-state">
-              <div className="empty-message">加载中...</div>
-            </div>
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  if (prompts.length === 0) {
-    return (
-      <div className="dropdown-app">
-        <TriggerButton
-          isOpen={isOpen}
-          onClick={handleToggle}
-        />
-        {isOpen && (
-          <div className="dropdown-container open">
-            <div className="dropdown-header">
-              <span className="dropdown-header-title">PROMPTS</span>
-              <div className="dropdown-header-actions">
-                <button
-                  className="dropdown-settings"
-                  onClick={handleOpenSettings}
-                  aria-label="设置"
-                >
-                  <Settings style={{ width: 12, height: 12 }} />
-                </button>
-                <button
-                  className="dropdown-close"
-                  onClick={handleClose}
-                  aria-label="关闭"
-                >
-                  <X style={{ width: 12, height: 12 }} />
-                </button>
-              </div>
-            </div>
-            <div className="empty-state">
-              <div className="empty-message">暂无提示词，请点击设置添加</div>
-            </div>
-          </div>
-        )}
-      </div>
-    )
-  }
-
+  // Always use DropdownContainer (Portal) to escape overflow clipping
   return (
     <div className="dropdown-app">
       <TriggerButton
@@ -146,6 +82,7 @@ export function DropdownApp({ inputElement }: DropdownAppProps) {
         isOpen={isOpen}
         selectedPromptId={selectedPromptId}
         onClose={handleClose}
+        isLoading={isLoading}
       />
     </div>
   )

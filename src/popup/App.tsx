@@ -144,14 +144,14 @@ function App() {
 
   if (isLoading) {
     return (
-      <div className="w-[680px] h-[520px] flex items-center justify-center p-6">
+      <div className="w-full h-full flex items-center justify-center p-6">
         <span className="text-muted-foreground text-base">加载中...</span>
       </div>
     )
   }
 
   return (
-    <div className="w-[680px] h-[520px] flex flex-col bg-white overflow-hidden">
+    <div className="w-full h-full flex flex-col bg-white overflow-hidden">
       <Header onImport={handleImport} onExport={handleExport} />
       <div className="flex flex-1 overflow-hidden min-h-0">
         <CategorySidebar

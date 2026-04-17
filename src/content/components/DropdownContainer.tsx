@@ -23,6 +23,7 @@ interface DropdownContainerProps {
 interface DropdownPosition {
   top: number
   right: number
+  isStickyTop: boolean // 是否吸顶模式
 }
 
 // Icon mapping
@@ -307,12 +308,13 @@ export function DropdownContainer({
   isLoading = false,
 }: DropdownContainerProps) {
   const dropdownRef = useRef<HTMLDivElement>(null)
-  const [position, setPosition] = useState<DropdownPosition>({ top: 0, right: 0 })
+  const [position, setPosition] = useState<DropdownPosition>({ top: 0, right: 0, isStickyTop: false })
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all')
 
   const dropdownGap = 8
+  const dropdownMaxHeight = 600
 
-  // Calculate position relative to trigger button
+  // Calculate position relative to trigger button with viewport boundary check
   useEffect(() => {
     if (!isOpen) return
 
@@ -325,9 +327,21 @@ export function DropdownContainer({
 
       // Position dropdown above the button, right edge aligned to button's left edge
       const rightPos = viewportWidth - rect.left
-      const topPos = rect.top - dropdownGap
+      const preferredTopPos = rect.top - dropdownGap
 
-      setPosition({ top: topPos, right: rightPos })
+      // Check if dropdown would exceed viewport top when positioned above button
+      // Dropdown height is max 600px, translateY(-100%) means bottom of dropdown at preferredTopPos
+      const dropdownBottom = preferredTopPos
+      const dropdownTop = dropdownBottom - dropdownMaxHeight
+
+      // If dropdown top would be above viewport top, use sticky top positioning
+      const isStickyTop = dropdownTop < 0
+
+      setPosition({
+        top: isStickyTop ? 0 : preferredTopPos,
+        right: rightPos,
+        isStickyTop
+      })
     }
 
     calculatePosition()
@@ -340,7 +354,7 @@ export function DropdownContainer({
       window.removeEventListener('scroll', handleReposition)
       window.removeEventListener('resize', handleReposition)
     }
-  }, [isOpen, dropdownGap])
+  }, [isOpen, dropdownGap, dropdownMaxHeight])
 
   // Use passed categories or fallback to default logic
   const categories = useMemo(() => {
@@ -390,7 +404,8 @@ export function DropdownContainer({
   const dropdownStyle: React.CSSProperties = {
     top: position.top,
     right: position.right,
-    transform: 'translateY(-100%)',
+    // Only translateY(-100%) when not sticky at top (normal positioning above button)
+    transform: position.isStickyTop ? 'none' : 'translateY(-100%)',
   }
 
   // Open settings page via background worker (bypasses ad blockers)

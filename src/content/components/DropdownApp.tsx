@@ -7,7 +7,7 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { TriggerButton } from './TriggerButton'
 import { DropdownContainer } from './DropdownContainer'
 import { MessageType } from '../../shared/messages'
-import type { Prompt, StorageSchema } from '../../shared/types'
+import type { Prompt, Category, StorageSchema } from '../../shared/types'
 import { InsertHandler } from '../insert-handler'
 
 interface DropdownAppProps {
@@ -18,6 +18,7 @@ export function DropdownApp({ inputElement }: DropdownAppProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null)
   const [prompts, setPrompts] = useState<Prompt[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const insertHandlerRef = useRef<InsertHandler>(new InsertHandler())
 
@@ -42,6 +43,7 @@ export function DropdownApp({ inputElement }: DropdownAppProps) {
           if (response?.success && response.data) {
             const data = response.data as StorageSchema
             setPrompts(data.prompts)
+            setCategories(data.categories)
           }
           setIsLoading(false)
         }
@@ -78,6 +80,7 @@ export function DropdownApp({ inputElement }: DropdownAppProps) {
 
       <DropdownContainer
         prompts={prompts}
+        categories={categories}
         onSelect={handleSelect}
         isOpen={isOpen}
         selectedPromptId={selectedPromptId}

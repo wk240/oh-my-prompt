@@ -12,6 +12,7 @@ import { Sparkles, Palette, Shapes, ArrowUpRight, X, Settings, FolderOpen, Layer
 
 interface DropdownContainerProps {
   prompts: Prompt[]
+  categories: Category[]
   onSelect: (prompt: Prompt) => void
   isOpen: boolean
   selectedPromptId: string | null
@@ -66,7 +67,7 @@ function getDropdownStyles(): string {
     #${PORTAL_ID} .dropdown-container {
       position: fixed;
       width: 480px;
-      max-height: 400px;
+      max-height: 600px;
       background: #ffffff;
       border: 1px solid #E5E5E5;
       border-radius: 12px;
@@ -298,6 +299,7 @@ const CATEGORY_ICON_MAP: Record<string, React.ComponentType<{ className?: string
 
 export function DropdownContainer({
   prompts,
+  categories: propCategories,
   onSelect,
   isOpen,
   selectedPromptId,
@@ -340,16 +342,21 @@ export function DropdownContainer({
     }
   }, [isOpen, dropdownGap])
 
-  // Get categories from prompts or use defaults
+  // Use passed categories or fallback to default logic
   const categories = useMemo(() => {
+    const allCategory: Category = { id: 'all', name: '全部分类', order: 0 }
+    if (propCategories.length > 0) {
+      return [allCategory, ...propCategories.sort((a, b) => a.order - b.order)]
+    }
+    // Fallback: infer from prompts if no categories passed
     const uniqueCategoryIds = [...new Set(prompts.map((p) => p.categoryId))]
-    const cats: Category[] = [{ id: 'all', name: '全部分类', order: 0 }]
+    const cats: Category[] = [allCategory]
     uniqueCategoryIds.forEach((catId) => {
       const existing = DEFAULT_CATEGORIES.find((c) => c.id === catId)
       cats.push(existing || { id: catId, name: catId, order: 99 })
     })
     return cats
-  }, [prompts])
+  }, [propCategories, prompts])
 
   // Filter prompts by selected category
   const filteredPrompts = useMemo(() => {

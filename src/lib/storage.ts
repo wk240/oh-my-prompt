@@ -6,6 +6,7 @@
 
 import type { Prompt, Category, StorageSchema } from '../shared/types'
 import { STORAGE_KEY } from '../shared/constants'
+import { BUILT_IN_CATEGORIES, BUILT_IN_PROMPTS } from '../data/built-in-data'
 
 /**
  * StorageManager class for managing extension data persistence
@@ -25,12 +26,13 @@ export class StorageManager {
 
   /**
    * Returns default data structure for first-time users
+   * Includes built-in prompts and categories for immediate use
    */
   getDefaultData(): StorageSchema {
     return {
       version: '1.0.0',
-      categories: [],
-      prompts: [],
+      categories: BUILT_IN_CATEGORIES,
+      prompts: BUILT_IN_PROMPTS,
     }
   }
 

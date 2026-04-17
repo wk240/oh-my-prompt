@@ -89,14 +89,14 @@ function PromptEditDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="w-[900px] h-[600px] max-w-[90vw] max-h-[85vh]">
-        <DialogHeader>
+      <DialogContent className="w-[900px] max-w-[90vw] max-h-[85vh]">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>{prompt ? '编辑提示词' : '添加提示词'}</DialogTitle>
           <DialogDescription>
             {prompt ? '修改提示词的名称、内容和分类' : '添加新的提示词到您的收藏'}
           </DialogDescription>
         </DialogHeader>
-        <div className="flex flex-col gap-5 py-4">
+        <div className="flex flex-col gap-5 py-4 px-1 overflow-y-auto flex-1 min-h-0 -mx-1">
           <div>
             <label className="text-sm text-muted-foreground mb-2 block">
               名称
@@ -147,7 +147,7 @@ function PromptEditDialog({
             </Select>
           </div>
         </div>
-        <DialogFooter className="gap-2">
+        <DialogFooter className="flex-shrink-0 gap-2">
           <Button variant="outline" onClick={handleClose}>
             取消
           </Button>

@@ -1,105 +1,72 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: completed
-last_updated: "2026-04-16T15:40:55.045Z"
+milestone: v1.1.0
+milestone_name: network-prompts
+status: ready
+last_updated: "2026-04-19T00:00:00.000Z"
 progress:
   total_phases: 4
-  completed_phases: 4
-  total_plans: 27
-  completed_plans: 27
-  percent: 100
+  completed_phases: 0
+  total_plans: 18
+  completed_plans: 0
+  percent: 0
 ---
 
 # STATE.md
 
 **Project:** Lovart Prompt Injector
 **Created:** 2026-04-16
-**Last Updated:** 2026-04-16
+**Last Updated:** 2026-04-19
 
 ---
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-16)
+See: .planning/PROJECT.md (updated 2026-04-19)
 
 **Core value:** 一键插入预设提示词，提升Lovart平台创作效率
-**Current focus:** Milestone v1.0 Complete
+**Current focus:** Phase 5 — Provider Foundation
 
 ---
 
-## Roadmap Status
+## Current Milestone: v1.1.0 网络提示词数据源接入
 
-| Phase | Name | Status | Plans | Progress |
-|-------|------|--------|-------|----------|
-| 1 | Foundation & Manifest Setup | ✓ Complete | 8/8 | 100% |
-| 2 | Lovart Integration & Content Script | ✓ Complete | 4/4 | 100% |
-| 3 | Data Management & Popup UI | ✓ Complete | 9/9 | 100% |
-| 4 | Polish & End-to-End Testing | ✓ Complete | 6/6 | 100% |
+**Goal:** 实时接入GitHub开源Prompt数据源，用户可在线浏览、搜索、收藏网络提示词
 
-**Phase progress legend:**
-
-- ○ Pending
-- ◆ Active
-- ✓ Complete
-- ✗ Blocked
+**Status:** Ready to execute (roadmap defined)
 
 ---
 
-## Requirements Coverage
+## Current Position
 
-| Category | v1 Requirements | Covered | Status |
-|----------|-----------------|---------|--------|
-| Core Functionality | 4 | 4 | ✓ Complete |
-| Prompt Management | 6 | 6 | ✓ Complete |
-| Data Persistence | 4 | 4 | ✓ Complete |
-| Extension Behavior | 4 | 4 | ✓ Complete |
-| **Total** | **18** | **18** | **100% Complete** |
+Phase: 5 of 8 (Provider Foundation)
+Plan: 0 of 4 in current phase
+Status: Ready to plan
+Last activity: 2026-04-19 — v1.1.0 roadmap created
 
----
-
-## Current Phase
-
-**Phase:** All phases complete
-**Status:** v1.0 milestone complete
-**Next:** Manual testing via TEST-CHECKLIST.md, Chrome Web Store submission
+Progress: [████████░░] 50% (v1.0 complete, v1.1.0 starting)
 
 ---
 
-## Session History
+## Milestone History
 
-| Date | Action | Outcome |
-|------|--------|---------|
-| 2026-04-16 | Project initialized | PROJECT.md, config.json created |
-| 2026-04-16 | Domain research completed | STACK.md, FEATURES.md, ARCHITECTURE.md, PITFALLS.md, SUMMARY.md |
-| 2026-04-16 | Requirements defined | 18 v1 requirements mapped |
-| 2026-04-16 | Roadmap created | 4 phases, 100% coverage |
-| 2026-04-16 | Phase 1 context gathered | Lovart域名匹配决策：*.lovart.ai/* |
-| 2026-04-16 | Phase 1 executed | 8 plans completed, extension loads in Chrome |
-| 2026-04-16 | Phase 2 context gathered | UI decisions: trigger position, lightning icon, Lovart-native style |
-| 2026-04-16 | Phase 2 executed | 4 plans completed, content script injects dropdown UI |
-| 2026-04-16 | Phase 3 planned | 9 plans created: Storage, Service Worker, Zustand, UI, CRUD, Import/Export |
-| 2026-04-16 | Phase 3 executed | 9 plans completed, full Popup UI with data management |
-| 2026-04-16 | Phase 4 executed | 6 plans completed, error handling, SPA nav, edge cases, docs, packaging |
+| Milestone | Status | Phases | Completed |
+|-----------|--------|--------|-----------|
+| v1.0 MVP | ✓ Complete | 4 | 2026-04-16 |
+| v1.1.0 网络提示词数据源接入 | 🚧 In Progress | 4 (5-8) | — |
 
 ---
 
-## Key Decisions Log
+## Key Decisions Log (Milestone v1.1.0)
 
 | Decision | Rationale | Phase | Outcome |
 |----------|-----------|-------|---------|
-| TypeScript + Vite + React | 2025 Chrome Extension标准栈 | 1 | ✓ Implemented |
-| Shadow DOM隔离 | 避免CSS冲突 | 2 | ✓ Implemented |
-| 手动导入导出 | 无需后端，MVP最快 | 3 | ✓ Implemented |
-| MutationObserver检测 | 处理SPA动态渲染 | 2 | ✓ Implemented |
-| Lovart域名匹配 *.lovart.ai/* | 用户确认域名，覆盖所有页面路径 | 1 | ✓ Decided |
-| Lightning bolt图标 | 暗示"快速/一键"效率价值 | 2 | ✓ Implemented |
-| 插入后保持下拉打开 | 支持连续插入多个提示词 | 2 | ✓ Implemented |
-| 光标位置插入 | 保留前后文本，不替换 | 2 | ✓ Implemented |
-| History API interception | SPA导航检测更可靠 | 4 | ✓ Implemented |
-| Toast on CRUD actions | 用户操作反馈 | 4 | ✓ Implemented |
-| Large dataset limit (100) | 下拉性能优化 | 4 | ✓ Implemented |
+| Provider abstraction pattern | Enables future data source extensibility (NET-05) | 5 | Pending |
+| Service Worker network routing | CSP compliance for content scripts | 5 | Pending |
+| Nano Banana as first source | 900+ image prompts, ~80% Lovart-relevant (NET-06) | 5 | Pending |
+| 24-hour cache TTL | Balance freshness with offline utility (NET-04) | 6 | Pending |
+| 50 prompts per page | Performance optimization for 900+ dataset | 7 | Pending |
+| Substring search | Simple implementation, MVP scope | 8 | Pending |
 
 ---
 
@@ -111,10 +78,8 @@ See: .planning/PROJECT.md (updated 2026-04-16)
 
 ## Next Action
 
-**Recommended:** Manual testing via TEST-CHECKLIST.md
-
-**Alternative:** Chrome Web Store submission preparation
+**Current:** Start Phase 5 planning with `/gsd-plan-phase 5`
 
 ---
 
-*STATE.md updated: 2026-04-16 after Phase 4 execution - Milestone v1.0 Complete*
+*STATE.md updated: 2026-04-19 — v1.1.0 roadmap created*

@@ -1,231 +1,257 @@
-# Pitfalls Research
+# Pitfalls Research: Network Prompt Data Source Integration
 
-**Domain:** Chrome Extension (Manifest V3)
-**Researched:** 2026-04-16
+**Milestone:** v1.1.0 网络提示词数据源接入
+**Domain:** Chrome Extension (Manifest V3) / Network Integration
+**Researched:** 2026-04-19
 **Confidence:** HIGH
 
-## Critical Pitfalls
+---
 
-### Pitfall 1: Manifest V2 Patterns in V3 Context
+## 1. Chrome Extension Network Pitfalls
 
-**What goes wrong:**
-Using deprecated V2 APIs like background pages, chrome.runtime.onInstalled for persistent state, or remote code loading.
+### 1.1 CSP Violation in Content Script
 
-**Why it happens:**
-Developers copy from old tutorials/examples that haven been updated for V3 requirements.
-
-**How to avoid:**
-- Use service worker (not background page)
-- Bundle all code locally (no remote scripts)
-- Check Chrome Extension docs for V3-specific patterns
+**Pitfall:** Content script cannot make cross-origin fetch directly.
 
 **Warning signs:**
-- `background: { scripts: [...] }` in manifest (V2 syntax)
-- Any `eval()` or `new Function()` calls
-- External script URLs in manifest
+- `fetch()` calls in content script files
+- Network-related imports in content components
+- CORS errors in console
 
-**Phase to address:**
-Phase 1 — Project setup and manifest configuration
+**Prevention:**
+- All network requests through Service Worker
+- Use `chrome.runtime.sendMessage` pattern
+- Content script only handles UI, not network
+
+**Phase:** Phase 6 (Service Worker handlers)
 
 ---
 
-### Pitfall 2: Content Script Storage Access
+### 1.2 Service Worker Termination During Fetch
 
-**What goes wrong:**
-Content script attempts direct `chrome.storage` calls but fails because storage API is restricted in content scripts.
-
-**Why it happens:**
-Assumption that all chrome.* APIs are available everywhere.
-
-**How to avoid:**
-- Content script sends message to service worker
-- Service worker handles storage operations
-- Service worker responds with data
+**Pitfall:** Service Worker can be terminated while fetch is in progress.
 
 **Warning signs:**
-- `chrome.storage.local.get` in content script files
-- Uncaught TypeError in content script console
+- Long fetch operations (>30s)
+- Large data files (Nano Banana README ~600KB)
+- Silent failures without error messages
 
-**Phase to address:**
-Phase 1 — Architecture and messaging setup
+**Prevention:**
+- Keep fetch operations short (~600KB is acceptable)
+- Handle response errors gracefully
+- Cache results immediately after fetch
+- Use try-catch with meaningful error messages
+
+**Phase:** Phase 6 (Service Worker handlers)
 
 ---
 
-### Pitfall 3: DOM Injection Timing
+### 1.3 Missing host_permissions
 
-**What goes wrong:**
-Content script runs before Lovart's input element exists, causing selector to fail and dropdown not to appear.
-
-**Why it happens:**
-Modern SPA frameworks render dynamically, elements may not exist at document_idle.
-
-**How to avoid:**
-- Use MutationObserver to watch for element creation
-- Implement retry logic with exponential backoff
-- Check for element before injection attempt
+**Pitfall:** Fetch to GitHub URLs fails without host_permissions.
 
 **Warning signs:**
-- Dropdown appears inconsistently
-- "Element not found" errors
-- Works after page refresh but not initial load
+- Network errors in Service Worker
+- CORS-like failures
+- `net::ERR_BLOCKED_BY_CLIENT` errors
 
-**Phase to address:**
-Phase 2 — Content script and Lovart detection
+**Prevention:**
+- Add `host_permissions` in manifest.json:
+```json
+"host_permissions": [
+  "https://raw.githubusercontent.com/*"
+]
+```
+
+**Phase:** Phase 5 (Provider setup)
 
 ---
 
-### Pitfall 4: CSS Conflicts with Host Page
+## 2. Data Source Integration Pitfalls
 
-**What goes wrong:**
-Injected UI styles conflict with Lovart's styles, causing visual glitches or broken layout.
+### 2.1 Markdown Parsing Breaks on Format Changes
 
-**Why it happens:**
-Global CSS selectors match both extension UI and host page elements.
-
-**How to avoid:**
-- Use Shadow DOM for complete isolation
-- Prefix all class names with extension-specific identifier
-- Avoid generic selectors like `.button`, `.input`
+**Pitfall:** Nano Banana README structure may change upstream.
 
 **Warning signs:**
-- Lovart page styling breaks after extension loads
-- Dropdown looks different in different pages
-- Style inheritance issues
+- Parser returns empty or malformed data
+- Regex patterns no longer match
+- Missing prompts in output
 
-**Phase to address:**
-Phase 2 — Content script UI implementation
+**Prevention:**
+- Use flexible regex patterns (allow variations)
+- Add fallback parsing strategies
+- Log parse errors for debugging
+- Test parsing on actual README content
+
+**Phase:** Phase 5 (NanoBananaProvider)
 
 ---
 
-### Pitfall 5: Storage Quota Exhaustion
+### 2.2 Large Dataset Performance (900+ Prompts)
 
-**What goes wrong:**
-Extension stores too much data, hitting chrome.storage.local 10MB limit, causing writes to fail.
-
-**Why it happens:**
-Prompt data grows over time, users import large libraries.
-
-**How to avoid:**
-- Implement data size monitoring
-- Warn user when approaching quota
-- Consider IndexedDB for large datasets
+**Pitfall:** 900+ prompts cause UI lag in dropdown.
 
 **Warning signs:**
-- "QUOTA_BYTES_EXCEEDED" error
-- Prompts not saving after import
-- Settings reset unexpectedly
+- Slow dropdown rendering (>500ms)
+- High memory usage
+- UI jank during scroll
+- Search input lag
 
-**Phase to address:**
-Phase 3 — Storage and data management
+**Prevention:**
+- Implement pagination (50 items per page)
+- Use search as primary navigation
+- Debounce search input (300ms)
+- Use React.memo for NetworkPromptCard
+- Pre-filter by category before rendering
+
+**Phase:** Phase 8 (Online library UI)
 
 ---
 
-### Pitfall 6: Event Dispatch Not Triggering Lovart
+### 2.3 Category Mapping Complexity
 
-**What goes wrong:**
-Prompt inserted into input.value but Lovart doesn't recognize the change, submit button remains disabled.
-
-**Why it happens:**
-React/framework apps listen for specific events, not just value changes.
-
-**How to avoid:**
-- Dispatch appropriate events after insertion:
-  - `input` event for React apps
-  - `change` event for form validation
-  - `blur` event for some frameworks
-- Simulate user interaction sequence
+**Pitfall:** Source categories don't map cleanly to local categories.
 
 **Warning signs:**
-- Text appears but submit doesn't enable
-- Lovart says "empty input" despite text visible
-- Works manually but not via extension
+- User confusion about category names
+- Duplicate categories after mapping
+- Lost prompts in unmapped categories
 
-**Phase to address:**
-Phase 2 — Insert handler implementation
+**Prevention:**
+- Show source category as badge on network prompt
+- Allow user to select target category when collecting
+- Don't auto-create categories from source
+- Provide "Select category" dropdown in collect dialog
+
+**Phase:** Phase 9 (Collect functionality)
 
 ---
 
-## Technical Debt Patterns
+## 3. UI Performance Pitfalls
 
-| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
-|----------|-------------------|----------------|-----------------|
-| Skip Shadow DOM | Faster initial dev | CSS conflicts forever | Never for production |
-| Direct localStorage | Easier storage access | Not available in extension context | Never |
-| Skip MutationObserver | Simpler timing logic | Inconsistent detection | Prototype only |
-| Hard-code selectors | Quick implementation | Breaks on Lovart updates | Short-term only |
-| No error handling | Faster initial code | Silent failures, confusing UX | Never |
+### 3.1 Dropdown Performance with 900+ Items
 
-## Integration Gotchas
+**Pitfall:** Dropdown becomes unusable with large dataset.
 
-| Integration | Common Mistake | Correct Approach |
-|-------------|----------------|------------------|
-| Lovart input | Hard-coded selector | Dynamic detection + MutationObserver |
-| Lovart events | Only setting value | Dispatch input/change/blur events |
-| chrome.storage | Direct access in content script | Message service worker |
-| Popup ↔ Content | Direct function calls | chrome.tabs.sendMessage |
+**Warning signs:**
+- Opening dropdown takes >500ms
+- Scroll lag
+- Search input lag
+- Browser memory warnings
 
-## Performance Traps
+**Prevention:**
+- Category filter as first-level navigation
+- Search before showing full list
+- Pagination (show 50, load more on scroll)
+- Lazy render only visible items
 
-| Trap | Symptoms | Prevention | When It Breaks |
-|------|----------|------------|----------------|
-| Excessive MutationObserver | Page slowdown | Scope observation to relevant area | Large pages |
-| Large prompt lists | Dropdown lag | Virtualized rendering | 500+ prompts |
-| Frequent storage reads | UI delays | Cache data, update on change | Real-time sync needs |
+**Phase:** Phase 8 (Online library UI)
 
-## Security Mistakes
+---
 
-| Mistake | Risk | Prevention |
-|---------|------|------------|
-| Inline event handlers | CSP violation | Use addEventListener only |
-| eval() for templates | CSP blocked | Pre-parse templates or use regex |
-| External script loading | Blocked in V3 | Bundle everything locally |
-| Unvalidated import data | XSS/malicious prompts | Validate JSON structure, sanitize |
+### 3.2 Search Performance
 
-## UX Pitfalls
+**Pitfall:** Text search across 900+ prompts is slow.
 
-| Pitfall | User Impact | Better Approach |
-|---------|-------------|-----------------|
-| Dropdown covers input | Can't see what typing | Position relative to input, not fixed |
-| No feedback on insert | User uncertain if worked | Brief success animation/indicator |
-| No empty state | Confusing blank UI | Show "No prompts yet" with add button |
-| Category required | Friction to add prompts | Allow uncategorized prompts |
+**Warning signs:**
+- Search input typing lag
+- Results appear slowly (>200ms)
 
-## "Looks Done But Isn't" Checklist
+**Prevention:**
+- Debounce search input (300ms delay)
+- Pre-index prompts on fetch (array of searchable strings)
+- Use simple substring match (no regex)
+- Filter by category first, then search
 
-- [ ] **Dropdown:** Often missing Shadow DOM — verify styles isolated
-- [ ] **Insert:** Often missing event dispatch — verify Lovart recognizes input
-- [ ] **Storage:** Often missing message routing — verify content script can access data
-- [ ] **Import:** Often missing validation — verify malformed JSON handled
-- [ ] **Export:** Often missing download trigger — verify file actually downloads
+**Phase:** Phase 9 (Search/filter UI)
 
-## Recovery Strategies
+---
 
-| Pitfall | Recovery Cost | Recovery Steps |
-|---------|---------------|----------------|
-| V2 patterns in manifest | LOW | Rewrite manifest, update service worker |
-| CSS conflicts | MEDIUM | Add Shadow DOM wrapper |
-| Storage in content script | LOW | Add message handlers in service worker |
-| Timing issues | MEDIUM | Add MutationObserver |
-| Quota exceeded | LOW | Clear old data or migrate to IndexedDB |
+## 4. Offline Handling Pitfalls
 
-## Pitfall-to-Phase Mapping
+### 4.1 No Data on First Use (Offline)
 
-| Pitfall | Prevention Phase | Verification |
-|---------|------------------|--------------|
-| Manifest V2 patterns | Phase 1 | Manifest validates in Chrome |
-| Content script storage | Phase 1 | Message routing tests pass |
-| DOM injection timing | Phase 2 | Dropdown appears on SPA loads |
-| CSS conflicts | Phase 2 | Lovart styling unchanged |
-| Storage quota | Phase 3 | Import large dataset test |
-| Event dispatch | Phase 2 | Lovart submit enables after insert |
+**Pitfall:** User opens "在线库" offline, sees nothing.
+
+**Warning signs:**
+- Empty state on offline first visit
+- No guidance on what to do
+
+**Prevention:**
+- Show clear offline message: "无法连接网络，请稍后重试"
+- "Refresh" button disabled when offline
+- Detect offline state via `navigator.onLine`
+
+**Phase:** Phase 7 (Network cache)
+
+---
+
+### 4.2 Stale Cache Data
+
+**Pitfall:** Cache never updates, user sees old prompts.
+
+**Warning signs:**
+- Cache timestamp > 24h
+- User complaints about missing new prompts
+- Data freshness unknown
+
+**Prevention:**
+- Show cache timestamp in UI ("上次更新: 2026-04-19 10:00")
+- Auto-suggest refresh when stale (>24h)
+- Allow manual refresh button
+- Set reasonable TTL (24h default)
+
+**Phase:** Phase 7 (Network cache)
+
+---
+
+## 5. Rate Limiting Pitfalls
+
+### 5.1 GitHub Raw File Rate Limit
+
+**Pitfall:** GitHub raw files have implicit rate limits.
+
+**Warning signs:**
+- 403 responses on repeated fetches
+- Slow response times
+- Connection timeouts
+
+**Prevention:**
+- Don't auto-refresh (user-triggered only)
+- Cache aggressively (24h TTL)
+- Handle 403 gracefully with "Rate limited, try later" message
+- Use raw.githubusercontent.com (higher limits than API)
+
+**Phase:** Phase 6 (Service Worker handlers)
+
+---
+
+## 6. Phase Mapping Summary
+
+| Pitfall | Primary Phase | Prevention Action |
+|---------|---------------|-------------------|
+| CSP violation | Phase 6 | Service Worker fetch only |
+| Service Worker termination | Phase 6 | Error handling, immediate cache |
+| Missing permissions | Phase 5 | Add host_permissions |
+| Markdown parsing breaks | Phase 5 | Flexible regex, logging |
+| Large dataset performance | Phase 8 | Pagination, category filter |
+| Category mapping | Phase 9 | User-select on collect |
+| Dropdown performance | Phase 8 | Lazy render, pagination |
+| Search performance | Phase 9 | Debounce, pre-index |
+| No data offline | Phase 7 | Offline message, navigator.onLine |
+| Stale cache | Phase 7 | Timestamp display, refresh button |
+| Rate limiting | Phase 6 | User-triggered, cache, 403 handling |
+
+---
 
 ## Sources
 
-- Chrome Extension Manifest V3 migration guide
-- Chrome Web Store rejection common reasons
-- Extension developer community forums
-- Previous extension development experience
+- Chrome Extension CSP documentation
+- Service Worker lifecycle patterns
+- GitHub rate limit documentation
+- Large dataset UI performance research
 
 ---
-*Pitfalls research for: Chrome Extension (Manifest V3)*
-*Researched: 2026-04-16*
+*Pitfalls research for: Network Prompt Data Source Integration*
+*Researched: 2026-04-19*

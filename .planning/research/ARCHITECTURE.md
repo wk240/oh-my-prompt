@@ -1,252 +1,280 @@
-# Architecture Research
+# Architecture Research: Network Prompt Data Source Integration
 
-**Domain:** Chrome Extension (Manifest V3)
-**Researched:** 2026-04-16
+**Milestone:** v1.1.0 网络提示词数据源接入
+**Domain:** Chrome Extension (Manifest V3) / Network Integration
+**Researched:** 2026-04-19
 **Confidence:** HIGH
 
-## Standard Architecture
+---
 
-### System Overview
+## 1. New Components Required
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Lovart Web Page                           │
-│  ┌─────────────────────────────────────────────────────┐    │
-│  │              Content Script (isolated)               │    │
-│  │  ┌────────────┐  ┌────────────┐  ┌────────────┐    │    │
-│  │  │ Input      │  │ Dropdown   │  │ Insert     │    │    │
-│  │  │ Detector   │  │ UI         │  │ Handler    │    │    │
-│  │  └────┬───────┘  └────┬───────┘  └────┬───────┘    │    │
-│  │       │              │              │              │    │
-│  │       └──────────────┴──────────────┘              │    │
-│  └─────────────────────────────────────────────────────┘    │
-│                              │                               │
-├──────────────────────────────┼──────────────────────────────┤
-│                    Service Worker                            │
-│  ┌─────────────────────────────────────────────────────┐    │
-│  │              Message Coordinator                      │    │
-│  │  ┌────────────┐  ┌────────────┐  ┌────────────┐    │    │
-│  │  │ Storage    │  │ Import/    │  │ Message    │    │    │
-│  │  │ Manager    │  │ Export     │  │ Router     │    │    │
-│  │  └────┬───────┘  └────┬───────┘  └────┬───────┘    │    │
-│  │       │              │              │              │    │
-│  └─────────────────────────────────────────────────────┘    │
-│                              │                               │
-├──────────────────────────────┼──────────────────────────────┤
-│                     Popup (Options)                          │
-│  ┌─────────────────────────────────────────────────────┐    │
-│  │              Prompt Management UI                    │    │
-│  │  ┌────────────┐  ┌────────────┐  ┌────────────┐    │    │
-│  │  │ Category   │  │ Prompt     │  │ Import/    │    │    │
-│  │  │ List       │  │ Editor     │  │ Export     │    │    │
-│  │  └────┬───────┘  └────┬───────┘  └────┬───────┘    │    │
-│  │       │              │              │              │    │
-│  └─────────────────────────────────────────────────────┘    │
-│                              │                               │
-├──────────────────────────────┴──────────────────────────────┤
-│                    chrome.storage.local                      │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐                   │
-│  │ Prompts  │  │ Categories│  │ Settings │                   │
-│  │ Store    │  │ Store     │  │ Store    │                   │
-│  └──────────┘  └──────────┘  └──────────┘                   │
-└─────────────────────────────────────────────────────────────┘
-```
+### 1.1 Core Components
 
-### Component Responsibilities
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| `DataSourceProvider` | `src/lib/providers/base.ts` | Abstract interface for data sources |
+| `NanoBananaProvider` | `src/lib/providers/nano-banana.ts` | Nano Banana README parser |
+| `ProviderRegistry` | `src/lib/providers/registry.ts` | Provider lookup and management |
+| `NetworkCacheManager` | `src/lib/network-cache.ts` | Cache lifecycle management |
 
-| Component | Responsibility | Typical Implementation |
-|-----------|----------------|------------------------|
-| Content Script | DOM interaction, UI injection | TypeScript + React in Shadow DOM |
-| Input Detector | Find Lovart input element | MutationObserver + selectors |
-| Dropdown UI | Prompt selection interface | React components, Shadow DOM |
-| Insert Handler | Text insertion to input | DOM manipulation, event dispatch |
-| Service Worker | Coordination, storage access | chrome.runtime.onMessage handlers |
-| Storage Manager | CRUD operations on prompts | chrome.storage.local API |
-| Popup UI | Prompt management interface | React + Zustand state |
-| Message Router | Component communication | chrome.runtime.sendMessage |
+### 1.2 UI Components
 
-## Recommended Project Structure
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| `OnlineLibraryTab` | `src/content/components/OnlineLibraryTab.tsx` | Dropdown "在线库" section |
+| `NetworkPromptCard` | `src/content/components/NetworkPromptCard.tsx` | Single network prompt display |
+| `SearchFilterBar` | `src/content/components/SearchFilterBar.tsx` | Search input for network prompts |
+| `ProviderSelector` | `src/content/components/ProviderSelector.tsx` | Data source switcher |
 
-```
-src/
-├── content/              # Content script (runs on Lovart page)
-│   ├── index.tsx         # Content script entry
-│   ├── InputDetector.ts  # Find and monitor input element
-│   ├── Dropdown.tsx      # Dropdown prompt selector
-│   └── InsertHandler.ts  # Insert prompt to input
-│
-├── background/           # Service worker
-│   ├── index.ts          # Service worker entry
-│   ├── storage.ts        # Storage operations
-│   ├── messaging.ts      # Message routing
-│   └── importExport.ts   # Import/export handlers
-│
-├── popup/                # Extension popup/options
-│   ├── index.tsx         # Popup entry
-│   ├── App.tsx           # Main popup component
-│   ├── components/       # UI components
-│   │   ├── CategoryList.tsx
-│   │   ├── PromptEditor.tsx
-│   │   ├── ImportExport.tsx
-│   │   └── SearchBar.tsx
-│   └── store/            # Zustand stores
-│   │   ├── promptStore.ts
-│   │   └── categoryStore.ts
-│
-├── shared/               # Shared utilities
-│   ├── types.ts          # TypeScript types
-│   ├── constants.ts      # Constants
-│   ├── messaging.ts      # Message types
-│   └── utils.ts          # Helpers
-│
-├── manifest.json         # Extension manifest
-└── vite.config.ts        # Build configuration
-```
+---
 
-### Structure Rationale
+## 2. Data Source Provider Abstraction
 
-- **content/:** Isolated from extension, runs in page context
-- **background/:** Service worker, no DOM access
-- **popup/:** React-based management UI
-- **shared/:** Types and utilities used across components
+### 2.1 Interface Design
 
-## Architectural Patterns
-
-### Pattern 1: Shadow DOM Isolation
-
-**What:** Content script UI wrapped in Shadow DOM
-**When to use:** When injecting UI into third-party pages
-**Trade-offs:** Styles isolated (good) but harder to debug (bad)
-
-**Example:**
 ```typescript
-// Create shadow root for dropdown
-const container = document.createElement('div');
-container.id = 'lovart-prompt-injector';
-const shadow = container.attachShadow({ mode: 'open' });
+// src/lib/providers/base.ts
 
-// Render React into shadow root
-const root = createRoot(shadow);
-root.render(<DropdownApp />);
+interface ParsedPrompt {
+  id: string // Generated: providerId + index
+  title: string
+  content: string
+  sourceCategory: string
+  description?: string
+  imageUrl?: string
+  sourceUrl?: string
+}
+
+interface DataSourceProvider {
+  readonly id: string
+  readonly name: string
+  readonly description: string
+  readonly dataUrl: string
+  
+  // Lifecycle
+  fetch(): Promise<string>
+  parse(rawData: string): ParsedPrompt[]
+  
+  // Metadata
+  getSourceCategories(): string[]
+  getCategoryDescription(category: string): string
+}
 ```
 
-### Pattern 2: Message-Based Communication
+### 2.2 Provider Implementations
 
-**What:** Components communicate via chrome.runtime.sendMessage
-**When to use:** Content script ↔ Service Worker ↔ Popup
-**Trade-offs:** Async overhead but clean separation
-
-**Example:**
 ```typescript
-// Content script requests prompts
-chrome.runtime.sendMessage({ type: 'GET_PROMPTS' }, (response) => {
-  setPrompts(response.prompts);
-});
-
-// Service worker handles
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  if (msg.type === 'GET_PROMPTS') {
-    chrome.storage.local.get('prompts', (data) => {
-      sendResponse({ prompts: data.prompts });
-    });
-    return true; // Keep channel open for async response
+// NanoBananaProvider (src/lib/providers/nano-banana.ts)
+class NanoBananaProvider implements DataSourceProvider {
+  id = 'nano-banana'
+  name = 'Nano Banana Prompts'
+  dataUrl = 'https://raw.githubusercontent.com/devanshug2307/Awesome-Nano-Banana-Prompts/main/README.md'
+  
+  parse(markdown: string): ParsedPrompt[] {
+    // Regex-based markdown parsing
+    // Extract: ### Title, **Prompt:** blocks, Source links
   }
-});
+}
 ```
 
-### Pattern 3: Storage-First Architecture
+---
 
-**What:** All state derives from chrome.storage.local
-**When to use:** Extensions without backend
-**Trade-offs:** No real-time sync but simple and reliable
+## 3. Integration with Existing Components
 
-## Data Flow
+### 3.1 Dropdown Container Extension
 
-### Request Flow
+Current: `DropdownContainer.tsx` shows local prompts only.
 
+New structure:
 ```
-[User Click Dropdown]
-    ↓
-[Content Script] → [Service Worker] → [chrome.storage.local]
-    ↓              ↓           ↓
-[Render Prompts] ← [Response] ← [Data]
-```
-
-### Insert Flow
-
-```
-[User Select Prompt]
-    ↓
-[Content Script: InsertHandler]
-    ↓
-[Find Input Element] → [Set Value] → [Dispatch Input Event]
-    ↓
-[Prompt inserted in Lovart input]
+DropdownContainer
+├── TabSelector (Local | 在线库)
+├── LocalPromptsList (existing)
+│   ├── CategoryFilter
+│   └── PromptCard[]
+└── OnlineLibraryTab (NEW)
+    ├── ProviderSelector (Nano Banana only initially)
+    ├── SearchFilterBar
+    ├── CategoryFilter (source categories)
+    └── NetworkPromptCard[]
+        ├── PreviewButton → Show full prompt
+        ├── CollectButton → Save to local storage
+        └── InsertButton → Direct insert (optional)
 ```
 
-### Key Data Flows
+### 3.2 Service Worker Extension
 
-1. **Prompt Selection:** Popup → Storage → Content Script (via message)
-2. **Prompt Insert:** Content Script → Lovart Input (direct DOM)
-3. **Prompt CRUD:** Popup → Storage (direct API)
+Current handlers: `PING`, `GET_STORAGE`, `SET_STORAGE`, `INSERT_PROMPT`
 
-## Scaling Considerations
+New handlers:
+```typescript
+// src/background/service-worker.ts
 
-| Scale | Architecture Adjustments |
-|-------|--------------------------|
-| 0-100 prompts | Current architecture sufficient |
-| 100-1000 prompts | Add search/filter, lazy loading |
-| 1000+ prompts | Consider IndexedDB instead of storage.local |
+case MessageType.FETCH_NETWORK_PROMPTS:
+  const providerId = message.payload.providerId
+  const provider = ProviderRegistry.get(providerId)
+  const rawData = await provider.fetch()
+  const prompts = provider.parse(rawData)
+  // Cache the result
+  await NetworkCacheManager.store(providerId, prompts)
+  sendResponse({ success: true, data: prompts })
+  return true
 
-### Scaling Priorities
+case MessageType.GET_NETWORK_CACHE:
+  const cache = await NetworkCacheManager.get(providerId)
+  sendResponse({ success: true, data: cache })
+  return true
 
-1. **First bottleneck:** Storage quota (10MB default) — switch to IndexedDB
-2. **Second bottleneck:** UI performance — virtualized lists
+case MessageType.COLLECT_NETWORK_PROMPT:
+  // Convert network prompt to local Prompt format
+  // Save to storage
+  sendResponse({ success: true })
+  return true
+```
 
-## Anti-Patterns
+---
 
-### Anti-Pattern 1: Direct Storage in Content Script
+## 4. Message Protocol Extensions
 
-**What people do:** Content script directly reads chrome.storage
-**Why it's wrong:** Storage API unavailable in content script context
-**Do this instead:** Message service worker for storage access
+### 4.1 New MessageType Values
 
-### Anti-Pattern 2: Polling for Input Element
+```typescript
+// src/shared/messages.ts
 
-**What people do:** setInterval to check if input exists
-**Why it's wrong:** Performance impact, unreliable timing
-**Do this instead:** MutationObserver for dynamic content
+export enum MessageType {
+  // Existing
+  PING = 'PING',
+  GET_STORAGE = 'GET_STORAGE',
+  SET_STORAGE = 'SET_STORAGE',
+  INSERT_PROMPT = 'INSERT_PROMPT',
+  OPEN_SETTINGS = 'OPEN_SETTINGS',
+  
+  // NEW for v1.1.0
+  FETCH_NETWORK_PROMPTS = 'FETCH_NETWORK_PROMPTS',
+  GET_NETWORK_CACHE = 'GET_NETWORK_CACHE',
+  REFRESH_NETWORK_CACHE = 'REFRESH_NETWORK_CACHE',
+  COLLECT_NETWORK_PROMPT = 'COLLECT_NETWORK_PROMPT',
+}
+```
 
-### Anti-Pattern 3: Global CSS Injection
+### 4.2 Message Payload Types
 
-**What people do:** Inject styles into host page head
-**Why it's wrong:** Styles bleed/conflict with host page
-**Do this instead:** Shadow DOM with scoped styles
+```typescript
+interface FetchNetworkPromptsPayload {
+  providerId: string
+  forceRefresh?: boolean // Skip cache if true
+}
 
-## Integration Points
+interface NetworkCachePayload {
+  providerId: string
+  fetchedAt: string
+  prompts: ParsedPrompt[]
+}
 
-### External Services
+interface CollectNetworkPromptPayload {
+  prompt: ParsedPrompt
+  targetCategoryId?: string // User-selected category
+}
+```
 
-| Service | Integration Pattern | Notes |
-|---------|---------------------|-------|
-| Lovart Platform | DOM observation | Monitor input element presence |
-| Chrome Storage | Direct API | chrome.storage.local |
+---
 
-### Internal Boundaries
+## 5. Data Flow Diagram
 
-| Boundary | Communication | Notes |
-|----------|---------------|-------|
-| Content ↔ Background | chrome.runtime.sendMessage | Async, request-response |
-| Popup ↔ Storage | chrome.storage.local | Direct API access |
-| Popup ↔ Content | chrome.tabs.sendMessage | Target specific tab |
+```
+User clicks "在线库"
+    │
+    ▼
+DropdownContainer sends message
+FETCH_NETWORK_PROMPTS { providerId }
+    │
+    ▼
+Service Worker receives message
+    │
+    ├─► Check NetworkCacheManager
+    │       │
+    │       ├─► Cache valid (< 24h) → Return cached data
+    │       │
+    │       └─► Cache stale → Fetch from network
+    │               │
+    │               ▼
+    │           fetch(provider.dataUrl)
+    │               │
+    │               ▼
+    │           provider.parse(rawData)
+    │               │
+    │               ▼
+    │           NetworkCacheManager.store(data)
+    │               │
+    │               ▼
+    │           Return parsed prompts
+    │
+    ▼
+Content script receives response
+    │
+    ▼
+OnlineLibraryTab renders NetworkPromptCard[]
+    │
+    ├─► User clicks "Collect"
+    │       │
+    │       ▼
+    │   COLLECT_NETWORK_PROMPT { prompt, categoryId }
+    │       │
+    │       ▼
+    │   Service Worker converts to Prompt format
+    │       │
+    │       ▼
+    │   Store to chrome.storage.local
+    │       │
+    │       ▼
+    │   Prompt now available in "Local" tab
+    │
+    └─► User clicks "Insert"
+            │
+            ▼
+        INSERT_PROMPT { content }
+            │
+            ▼
+        Insert handler (existing)
+```
+
+---
+
+## 6. Suggested Build Order
+
+| Phase | Components | Dependencies | LOC |
+|-------|------------|--------------|-----|
+| **Phase 5** | Provider abstraction + NanoBananaProvider | None | ~180 |
+| **Phase 6** | Service Worker network handlers | Phase 5 | ~100 |
+| **Phase 7** | Network cache layer | Phase 5, 6 | ~150 |
+| **Phase 8** | Dropdown UI "在线库" section | Phase 6, 7 | ~300 |
+| **Phase 9** | Search/filter UI + Collect functionality | Phase 8 | ~200 |
+
+**Total phases:** 5 new phases for v1.1.0 milestone
+**Starting phase:** Phase 5 (continues from v1.0's Phase 4)
+
+---
+
+## 7. Key Architecture Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| Provider pattern | Extensible for future data sources without core changes |
+| Cache in service worker | Centralized, survives content script reload, CSP compliant |
+| Regex markdown parsing | No heavy dependencies, Nano Banana structure predictable |
+| Message-based network | Respects Chrome Extension CSP restrictions |
+| Collect vs Insert separate | User can preview before committing to local storage |
+| 24h cache TTL | Balance between data freshness and offline usability |
+
+---
 
 ## Sources
 
-- Chrome Extension Architecture docs
-- Manifest V3 migration guide
-- @crxjs/vite-plugin patterns
-- Shadow DOM best practices
+- Chrome Extension Manifest V3 CSP documentation
+- Existing architecture from v1.0
+- Nano Banana README structure analysis
 
 ---
-*Architecture research for: Chrome Extension (Manifest V3)*
-*Researched: 2026-04-16*
+*Architecture research for: Network Prompt Data Source Integration*
+*Researched: 2026-04-19*

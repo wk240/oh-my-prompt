@@ -72,7 +72,24 @@ Tech stack: Vite, @crxjs/vite-plugin, React, Zustand, Shadow DOM.
 | 插入后保持下拉打开 | 支持连续插入多个提示词 | ✓ Good |
 
 ---
-*Last updated: 2026-04-16 after v1.0 milestone*
+*Last updated: 2026-04-19 after v1.1.0 milestone initialization*
+
+## Current Milestone: v1.1.0 网络提示词数据源接入
+
+**Goal:** 实时接入GitHub开源Prompt数据源，用户可在线浏览、搜索、收藏网络提示词
+
+**Target features:**
+- 下拉菜单增加"在线库"入口，实时浏览Nano Banana数据源
+- 支持在线搜索/分类筛选网络prompts
+- 用户选择收藏的prompt自动缓存到本地，离线可用
+- 预留数据源扩展接口架构（方便未来接入更多数据源）
+- 优先接入 Nano Banana (900+ 图像生成prompts)
+
+**Key context:**
+- 实时调用GitHub raw文件或API获取数据
+- Chrome Extension CSP限制：需通过background service worker代理网络请求
+- 本地缓存已收藏prompts到chrome.storage.local
+- 数据源接口需要抽象设计，便于扩展
 
 ## Evolution
 

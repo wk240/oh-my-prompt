@@ -278,15 +278,6 @@ function getDropdownStyles(): string {
       color: #64748B;
     }
 
-    #${PORTAL_ID} .sidebar-footer {
-      padding: 12px;
-      border-top: 1px solid #E5E5E5;
-      font-size: 10px;
-      color: #64748B;
-      text-align: center;
-      margin-top: auto;
-    }
-
     #${PORTAL_ID} .dropdown-content::-webkit-scrollbar,
     #${PORTAL_ID} .sidebar-categories::-webkit-scrollbar {
       width: 6px;
@@ -309,6 +300,10 @@ function getDropdownStyles(): string {
     }
 
     #${PORTAL_ID} .dropdown-item-drag-handle {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
       width: 16px;
       height: 16px;
       display: flex;
@@ -316,17 +311,20 @@ function getDropdownStyles(): string {
       justify-content: center;
       cursor: grab;
       color: #64748B;
-      opacity: 0.6;
-      transition: opacity 0.15s ease;
-      margin-right: -8px;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.15s ease, visibility 0.15s ease;
+      z-index: 100;
+      pointer-events: auto;
+      background: #ffffff;
+      border-radius: 3px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
 
-    #${PORTAL_ID} .dropdown-item:hover .dropdown-item-drag-handle {
-      opacity: 1;
-    }
-
+    #${PORTAL_ID} .dropdown-item:hover .dropdown-item-drag-handle,
     #${PORTAL_ID} .dropdown-item-drag-handle:hover {
       opacity: 1;
+      visibility: visible;
     }
 
     #${PORTAL_ID} .dropdown-item-drag-handle:active {
@@ -338,7 +336,32 @@ function getDropdownStyles(): string {
       background: #f8f8f8;
     }
 
+    #${PORTAL_ID} .dropdown-item-icon-wrapper {
+      position: relative;
+      width: 16px;
+      height: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    #${PORTAL_ID} .dropdown-item-icon {
+      width: 16px;
+      height: 16px;
+      color: #171717;
+      transition: opacity 0.15s ease;
+    }
+
+    #${PORTAL_ID} .dropdown-item:hover .dropdown-item-icon {
+      opacity: 0;
+    }
+
     #${PORTAL_ID} .sidebar-category-drag-handle {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
       width: 14px;
       height: 14px;
       display: flex;
@@ -347,16 +370,47 @@ function getDropdownStyles(): string {
       cursor: grab;
       color: #64748B;
       opacity: 0;
-      transition: opacity 0.15s ease;
-      flex-shrink: 0;
+      visibility: hidden;
+      transition: opacity 0.15s ease, visibility 0.15s ease;
+      z-index: 100;
+      pointer-events: auto;
+      background: #f8f8f8;
+      border-radius: 3px;
     }
 
-    #${PORTAL_ID} .sidebar-category-item:hover .sidebar-category-drag-handle {
+    #${PORTAL_ID} .sidebar-category-item:hover .sidebar-category-drag-handle,
+    #${PORTAL_ID} .sidebar-category-drag-handle:hover {
       opacity: 1;
+      visibility: visible;
     }
 
     #${PORTAL_ID} .sidebar-category-drag-handle:active {
       cursor: grabbing;
+    }
+
+    #${PORTAL_ID} .sidebar-category-icon-wrapper {
+      position: relative;
+      width: 14px;
+      height: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    #${PORTAL_ID} .sidebar-category-icon {
+      width: 14px;
+      height: 14px;
+      color: #64748B;
+      transition: opacity 0.15s ease;
+    }
+
+    #${PORTAL_ID} .sidebar-category-item.selected .sidebar-category-icon {
+      color: #A16207;
+    }
+
+    #${PORTAL_ID} .sidebar-category-item:hover .sidebar-category-icon {
+      opacity: 0;
     }
   `
 }
@@ -413,12 +467,14 @@ function SortableCategoryItem({
         }
       }}
     >
-      {showDragHandle && (
-        <div className="sidebar-category-drag-handle" {...attributes} {...listeners}>
-          <GripVertical style={{ width: 10, height: 10 }} />
-        </div>
-      )}
-      <IconComponent className="sidebar-category-icon" />
+      <div className="sidebar-category-icon-wrapper">
+        {showDragHandle && (
+          <div className="sidebar-category-drag-handle" {...attributes} {...listeners}>
+            <GripVertical style={{ width: 12, height: 12 }} />
+          </div>
+        )}
+        <IconComponent className="sidebar-category-icon" />
+      </div>
       <span>{category.name}</span>
     </div>
   )
@@ -471,12 +527,14 @@ function SortableDropdownItem({
         }
       }}
     >
-      {showDragHandle && (
-        <div className="dropdown-item-drag-handle" {...attributes} {...listeners}>
-          <GripVertical style={{ width: 12, height: 12 }} />
-        </div>
-      )}
-      <IconComponent className="dropdown-item-icon" />
+      <div className="dropdown-item-icon-wrapper">
+        {showDragHandle && (
+          <div className="dropdown-item-drag-handle" {...attributes} {...listeners}>
+            <GripVertical style={{ width: 12, height: 12 }} />
+          </div>
+        )}
+        <IconComponent className="dropdown-item-icon" />
+      </div>
       <div className="dropdown-item-text">
         <span className="dropdown-item-name">{prompt.name}</span>
         <span className="dropdown-item-preview">{truncateText(prompt.content, 40)}</span>
@@ -715,7 +773,9 @@ export function DropdownContainer({
             onClick={() => setSelectedCategoryId('all')}
             aria-label="全部分类"
           >
-            <FolderOpen className="sidebar-category-icon" />
+            <div className="sidebar-category-icon-wrapper">
+              <FolderOpen className="sidebar-category-icon" />
+            </div>
             <span>全部分类</span>
           </button>
 
@@ -741,7 +801,6 @@ export function DropdownContainer({
             </SortableContext>
           </DndContext>
         </div>
-        <div className="sidebar-footer">power by neo</div>
       </div>
 
       <div className="dropdown-main">

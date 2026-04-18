@@ -29,6 +29,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'high quality, best quality, masterpiece, 4K, 8K, ultra HD',
     categoryId: 'cat-quality',
     description: '提升整体画质和分辨率',
+    order: 0,
   },
   {
     id: 'q2',
@@ -36,6 +37,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'intricate details, highly detailed, sharp focus, fine texture, detailed texture',
     categoryId: 'cat-quality',
     description: '增强细节纹理和清晰度',
+    order: 1,
   },
   {
     id: 'q3',
@@ -43,6 +45,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'professional photography, studio lighting, DSLR, RAW photo, photorealistic',
     categoryId: 'cat-quality',
     description: '专业摄影级别效果',
+    order: 2,
   },
   {
     id: 'q4',
@@ -50,6 +53,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'sharp, crisp, clear edges, no blur, high resolution',
     categoryId: 'cat-quality',
     description: '清晰锐利无模糊',
+    order: 3,
   },
 
   // 术风格 (cat-style)
@@ -59,6 +63,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'cyberpunk style, neon lights, futuristic, tech aesthetic, holographic elements',
     categoryId: 'cat-style',
     description: '未来科幻霓虹美学',
+    order: 0,
   },
   {
     id: 's2',
@@ -66,6 +71,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'anime style, vibrant colors, Japanese animation, cel shading, anime aesthetic',
     categoryId: 'cat-style',
     description: '日式动漫风格效果',
+    order: 1,
   },
   {
     id: 's3',
@@ -73,6 +79,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'oil painting, classical art, brush strokes, museum quality, masterpiece oil painting',
     categoryId: 'cat-style',
     description: '古典油画艺术效果',
+    order: 2,
   },
   {
     id: 's4',
@@ -80,6 +87,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'watercolor painting, soft edges, flowing colors, artistic watercolor',
     categoryId: 'cat-style',
     description: '柔和流动水彩效果',
+    order: 3,
   },
   {
     id: 's5',
@@ -87,6 +95,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'pencil sketch, charcoal drawing, hand-drawn, sketch style, artistic lines',
     categoryId: 'cat-style',
     description: '铅笔素描手绘效果',
+    order: 4,
   },
   {
     id: 's6',
@@ -94,6 +103,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'pixel art, retro game style, 8-bit, pixelated, nostalgic',
     categoryId: 'cat-style',
     description: '复古像素游戏风格',
+    order: 5,
   },
   {
     id: 's7',
@@ -101,6 +111,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'minimalist, clean lines, simple composition, modern minimal',
     categoryId: 'cat-style',
     description: '简洁现代极简主义',
+    order: 6,
   },
   {
     id: 's8',
@@ -108,6 +119,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'abstract art, geometric shapes, non-representational, modern abstract',
     categoryId: 'cat-style',
     description: '几何抽象艺术效果',
+    order: 7,
   },
   {
     id: 's9',
@@ -115,6 +127,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'pop art, bold colors, Andy Warhol style, comic aesthetic',
     categoryId: 'cat-style',
     description: '大胆色彩波普风格',
+    order: 8,
   },
   {
     id: 's10',
@@ -122,6 +135,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'steampunk, Victorian era, brass and copper, mechanical gears, vintage machinery',
     categoryId: 'cat-style',
     description: '维多利亚机械美学',
+    order: 9,
   },
 
   // 光影效果 (cat-lighting)
@@ -131,6 +145,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'soft lighting, gentle illumination, warm tones, ambient light',
     categoryId: 'cat-lighting',
     description: '温暖柔和光照效果',
+    order: 0,
   },
   {
     id: 'l2',
@@ -138,6 +153,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'dramatic lighting, strong contrast, chiaroscuro, spotlight effect',
     categoryId: 'cat-lighting',
     description: '强烈对比戏剧光影',
+    order: 1,
   },
   {
     id: 'l3',
@@ -145,6 +161,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'natural sunlight, golden hour, warm sunlight, outdoor lighting',
     categoryId: 'cat-lighting',
     description: '黄金时刻自然阳光',
+    order: 2,
   },
   {
     id: 'l4',
@@ -152,6 +169,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'neon lighting, vibrant neon colors, glowing lights, urban night',
     categoryId: 'cat-lighting',
     description: '城市霓虹发光效果',
+    order: 3,
   },
   {
     id: 'l5',
@@ -159,6 +177,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'cinematic lighting, movie scene, volumetric lighting, atmospheric',
     categoryId: 'cat-lighting',
     description: '电影体积光效果',
+    order: 4,
   },
   {
     id: 'l6',
@@ -166,6 +185,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'backlighting, silhouette, rim light, glow effect',
     categoryId: 'cat-lighting',
     description: '逆光剪影轮廓光',
+    order: 5,
   },
 
   // 构图视角 (cat-composition)
@@ -175,6 +195,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'wide angle, panoramic view, distant perspective, landscape composition',
     categoryId: 'cat-composition',
     description: '全景广角远景构图',
+    order: 0,
   },
   {
     id: 'c2',
@@ -182,6 +203,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'close-up, macro shot, detailed view, intimate perspective',
     categoryId: 'cat-composition',
     description: '近距离细节特写',
+    order: 1,
   },
   {
     id: 'c3',
@@ -189,6 +211,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'bird\'s eye view, top-down, overhead shot, aerial perspective',
     categoryId: 'cat-composition',
     description: '鸟瞰俯视高空视角',
+    order: 2,
   },
   {
     id: 'c4',
@@ -196,6 +219,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'low angle, looking up, dramatic perspective, heroic view',
     categoryId: 'cat-composition',
     description: '仰视英雄戏剧视角',
+    order: 3,
   },
   {
     id: 'c5',
@@ -203,6 +227,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'side view, profile, lateral perspective, three-quarter view',
     categoryId: 'cat-composition',
     description: '侧面轮廓侧视图',
+    order: 4,
   },
   {
     id: 'c6',
@@ -210,6 +235,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'centered composition, symmetrical, balanced frame, focal point',
     categoryId: 'cat-composition',
     description: '对称中心平衡构图',
+    order: 5,
   },
 
   // 色彩配色 (cat-color)
@@ -219,6 +245,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'warm color palette, golden tones, orange and yellow, cozy atmosphere',
     categoryId: 'cat-color',
     description: '金黄橙暖色调',
+    order: 0,
   },
   {
     id: 'cl2',
@@ -226,6 +253,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'cool color palette, blue and cyan, cold tones, serene atmosphere',
     categoryId: 'cat-color',
     description: '蓝青冷色调效果',
+    order: 1,
   },
   {
     id: 'cl3',
@@ -233,6 +261,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'high contrast, bold color differences, strong visual impact',
     categoryId: 'cat-color',
     description: '强烈色彩对比度',
+    order: 2,
   },
   {
     id: 'cl4',
@@ -240,6 +269,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'pastel colors, soft tones, muted palette, gentle colors',
     categoryId: 'cat-color',
     description: '柔和淡雅配色',
+    order: 3,
   },
   {
     id: 'cl5',
@@ -247,6 +277,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'monochromatic, single color theme, shades of one color',
     categoryId: 'cat-color',
     description: '单色渐变配色',
+    order: 4,
   },
   {
     id: 'cl6',
@@ -254,6 +285,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'vibrant colors, saturated, bright palette, colorful',
     categoryId: 'cat-color',
     description: '鲜艳饱和明亮色',
+    order: 5,
   },
   {
     id: 'cl7',
@@ -261,6 +293,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'black and white, grayscale, noir style, monochrome',
     categoryId: 'cat-color',
     description: '黑白灰度风格',
+    order: 6,
   },
 
   // 主题场景 (cat-theme)
@@ -270,6 +303,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'natural landscape, mountains, rivers, forests, outdoor scenery',
     categoryId: 'cat-theme',
     description: '山川河流自然风光',
+    order: 0,
   },
   {
     id: 't2',
@@ -277,6 +311,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'cityscape at night, urban streets, city lights, metropolitan scene',
     categoryId: 'cat-theme',
     description: '都市夜景城市灯光',
+    order: 1,
   },
   {
     id: 't3',
@@ -284,6 +319,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'mysterious forest, ancient trees, misty woods, enchanted forest',
     categoryId: 'cat-theme',
     description: '神秘古老迷雾森林',
+    order: 2,
   },
   {
     id: 't4',
@@ -291,6 +327,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'ocean scene, underwater, marine life, coral reef, deep sea',
     categoryId: 'cat-theme',
     description: '深海珊瑚海洋场景',
+    order: 3,
   },
   {
     id: 't5',
@@ -298,6 +335,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'sky scene, clouds, sunset sky, celestial atmosphere',
     categoryId: 'cat-theme',
     description: '日落云彩天空景象',
+    order: 4,
   },
   {
     id: 't6',
@@ -305,6 +343,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'interior scene, indoor environment, room setting, home decor',
     categoryId: 'cat-theme',
     description: '室内家居环境场景',
+    order: 5,
   },
   {
     id: 't7',
@@ -312,6 +351,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'sci-fi space, futuristic, spaceship, cosmic scene, galaxy',
     categoryId: 'cat-theme',
     description: '宇宙星系科幻太空',
+    order: 6,
   },
   {
     id: 't8',
@@ -319,6 +359,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'classical architecture, ancient buildings, historical structures, monument',
     categoryId: 'cat-theme',
     description: '历史古迹古典建筑',
+    order: 7,
   },
 
   // 媒介材质 (cat-medium)
@@ -328,6 +369,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'digital art, digital painting, CG artwork, computer graphics',
     categoryId: 'cat-medium',
     description: '数字CG电脑绘画',
+    order: 0,
   },
   {
     id: 'm2',
@@ -335,6 +377,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'traditional illustration, hand-drawn illustration, classic illustration',
     categoryId: 'cat-medium',
     description: '传统手绘插画风格',
+    order: 1,
   },
   {
     id: 'm3',
@@ -342,6 +385,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: '3D render, CGI, rendered image, 3D modeling, Octane render',
     categoryId: 'cat-medium',
     description: '高质量3D渲染',
+    order: 2,
   },
   {
     id: 'm4',
@@ -349,6 +393,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'concept art, design concept, visual development, preliminary design',
     categoryId: 'cat-medium',
     description: '视觉概念设计稿',
+    order: 3,
   },
   {
     id: 'm5',
@@ -356,6 +401,7 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'illustration design, creative illustration, artistic design',
     categoryId: 'cat-medium',
     description: '创意艺术插画设计',
+    order: 4,
   },
   {
     id: 'm6',
@@ -363,5 +409,6 @@ export const BUILT_IN_PROMPTS: Prompt[] = [
     content: 'realistic photo, photorealistic, true-to-life, naturalistic',
     categoryId: 'cat-medium',
     description: '逼真写实照片效果',
+    order: 5,
   },
 ]

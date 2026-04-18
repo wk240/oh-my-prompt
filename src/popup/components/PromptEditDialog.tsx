@@ -32,7 +32,7 @@ function PromptEditDialog({
   open,
   onClose,
 }: PromptEditDialogProps) {
-  const { categories, addPrompt, updatePrompt, selectedCategoryId } =
+  const { categories, prompts, addPrompt, updatePrompt, selectedCategoryId } =
     usePromptStore()
   const { toast } = useToast()
 
@@ -72,11 +72,18 @@ function PromptEditDialog({
       toast({ title: '提示词已更新' })
     } else {
       // Add mode - create new prompt
+      // Calculate next order value for the category
+      const promptsInCategory = prompts.filter(p => p.categoryId === categoryId)
+      const maxOrder = promptsInCategory.length > 0
+        ? Math.max(...promptsInCategory.map(p => p.order))
+        : -1
+
       addPrompt({
         name: name.trim(),
         description: description.trim(),
         content: content.trim(),
-        categoryId
+        categoryId,
+        order: maxOrder + 1
       })
       toast({ title: '提示词已添加' })
     }

@@ -25,18 +25,21 @@ export const SAMPLE_PROMPTS: Prompt[] = [
     name: '高质量渲染',
     content: 'high quality, detailed, 4k, masterpiece',
     categoryId: 'c1',
+    order: 0,
   },
   {
     id: 'p2',
     name: '超精细细节',
     content: 'ultra detailed, intricate details, sharp focus',
     categoryId: 'c1',
+    order: 1,
   },
   {
     id: 'p3',
     name: '专业摄影',
     content: 'professional photography, studio lighting, HDR',
     categoryId: 'c1',
+    order: 2,
   },
 
   // Styles (c2)
@@ -45,18 +48,21 @@ export const SAMPLE_PROMPTS: Prompt[] = [
     name: '赛博朋克风格',
     content: 'cyberpunk style, neon lights, futuristic city, tech aesthetic',
     categoryId: 'c2',
+    order: 0,
   },
   {
     id: 'p5',
     name: '动漫风格',
     content: 'anime style, vibrant colors, Japanese animation',
     categoryId: 'c2',
+    order: 1,
   },
   {
     id: 'p6',
     name: '油画风格',
     content: 'oil painting, classical art, brush strokes, museum quality',
     categoryId: 'c2',
+    order: 2,
   },
 
   // Technical parameters (c3)
@@ -65,18 +71,21 @@ export const SAMPLE_PROMPTS: Prompt[] = [
     name: '正面光照',
     content: 'front lighting, soft shadows, even illumination',
     categoryId: 'c3',
+    order: 0,
   },
   {
     id: 'p8',
     name: '侧面光照',
     content: 'side lighting, dramatic shadows, depth',
     categoryId: 'c3',
+    order: 1,
   },
   {
     id: 'p9',
     name: '远景构图',
     content: 'wide angle, distant view, landscape composition',
     categoryId: 'c3',
+    order: 2,
   },
 
   // Theme settings (c4)
@@ -85,12 +94,14 @@ export const SAMPLE_PROMPTS: Prompt[] = [
     name: '自然风景',
     content: 'natural landscape, mountains, rivers, forests',
     categoryId: 'c4',
+    order: 0,
   },
   {
     id: 'p11',
     name: '城市夜景',
     content: 'city night, urban streets, city lights, metropolitan',
     categoryId: 'c4',
+    order: 1,
   },
 ]
 

@@ -1,6 +1,10 @@
 import { usePromptStore } from '../../lib/store'
 import { cn } from '../../lib/utils'
 import { Trash2 } from 'lucide-react'
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core'
+import { SortableItem } from './SortableItem'
+import { sortCategoriesByOrder } from '../../shared/utils'
 
 const ALL_CATEGORY_ID = 'all'
 
@@ -10,7 +14,23 @@ interface CategorySidebarProps {
 }
 
 function CategorySidebar({ onDeleteCategory, onAddCategory }: CategorySidebarProps) {
-  const { categories, selectedCategoryId, setSelectedCategory, prompts } = usePromptStore()
+  const { categories, selectedCategoryId, setSelectedCategory, prompts, reorderCategories } = usePromptStore()
+
+  // Sort categories by order
+  const sortedCategories = sortCategoriesByOrder(categories)
+  const showDragHandles = categories.length >= 2
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (over && active.id !== over.id) {
+      const oldIndex = sortedCategories.findIndex(c => c.id === active.id)
+      const newIndex = sortedCategories.findIndex(c => c.id === over.id)
+      const newOrder = [...sortedCategories]
+      newOrder.splice(oldIndex, 1)
+      newOrder.splice(newIndex, 0, sortedCategories[oldIndex])
+      reorderCategories(newOrder.map(c => c.id))
+    }
+  }
 
   return (
     <div className="w-[160px] h-full flex flex-col bg-white border-r border-[#E5E5E5]">
@@ -54,45 +74,52 @@ function CategorySidebar({ onDeleteCategory, onAddCategory }: CategorySidebarPro
           </button>
         </div>
 
-        {categories.map((category) => (
-          <div
-            key={category.id}
-            className="group relative"
+        {/* Sortable Categories */}
+        <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext
+            items={sortedCategories.map(c => c.id)}
+            strategy={verticalListSortingStrategy}
           >
-            <button
-              onClick={() => setSelectedCategory(category.id)}
-              className={cn(
-                "w-full py-3 flex flex-col items-center transition-colors",
-                selectedCategoryId === category.id
-                  ? "border-b-2 border-[#A16207]"
-                  : "border-b border-[#E5E5E5]"
-              )}
-            >
-              <span
-                className={cn(
-                  "text-[13px] leading-tight",
-                  selectedCategoryId === category.id
-                    ? "text-[#171717] font-semibold"
-                    : "text-[#64748B]"
-                )}
-                style={{ fontFamily: 'Inter, sans-serif' }}
-              >
-                {category.name}
-              </span>
-              <span className="text-[10px] text-[#94A3B8] mt-0.5">
-                {prompts.filter(p => p.categoryId === category.id).length} 个
-              </span>
-            </button>
+            {sortedCategories.map((category) => (
+              <SortableItem key={category.id} id={category.id} showHandle={showDragHandles}>
+                <div className="group relative">
+                  <button
+                    onClick={() => setSelectedCategory(category.id)}
+                    className={cn(
+                      "w-full py-3 flex flex-col items-center transition-colors",
+                      selectedCategoryId === category.id
+                        ? "border-b-2 border-[#A16207]"
+                        : "border-b border-[#E5E5E5]"
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "text-[13px] leading-tight",
+                        selectedCategoryId === category.id
+                          ? "text-[#171717] font-semibold"
+                          : "text-[#64748B]"
+                      )}
+                      style={{ fontFamily: 'Inter, sans-serif' }}
+                    >
+                      {category.name}
+                    </span>
+                    <span className="text-[10px] text-[#94A3B8] mt-0.5">
+                      {prompts.filter(p => p.categoryId === category.id).length} 个
+                    </span>
+                  </button>
 
-            {/* Delete button for categories */}
-            <button
-              onClick={() => onDeleteCategory(category.id, category.name)}
-              className="absolute right-0 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1.5 hover:bg-gray-100 rounded transition-opacity"
-            >
-              <Trash2 className="w-3.5 h-3.5 text-[#64748B] hover:text-red-500" />
-            </button>
-          </div>
-        ))}
+                  {/* Delete button for categories */}
+                  <button
+                    onClick={() => onDeleteCategory(category.id, category.name)}
+                    className="absolute right-0 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1.5 hover:bg-gray-100 rounded transition-opacity"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-[#64748B] hover:text-red-500" />
+                  </button>
+                </div>
+              </SortableItem>
+            ))}
+          </SortableContext>
+        </DndContext>
       </div>
 
       {/* Add Category Button */}

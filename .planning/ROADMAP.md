@@ -39,13 +39,13 @@
   2. NanoBananaProvider implements interface and parses 900+ prompts from GitHub
   3. Service worker responds to FETCH_NETWORK_PROMPTS message with parsed prompt data
   4. Network request to Nano Banana data source succeeds and returns valid data
-**Plans**: 4 plans
+**Plans:** 4 plans
 
 Plans:
-- [ ] 05-01: Define DataSourceProvider abstract interface
-- [ ] 05-02: Implement NanoBananaProvider with Markdown parser
-- [ ] 05-03: Add network fetch handlers to service worker
-- [ ] 05-04: Test end-to-end data flow
+- [ ] 05-01-PLAN.md — Define DataSourceProvider interface, NetworkPrompt/ProviderCategory types
+- [ ] 05-02-PLAN.md — Implement NanoBananaProvider with Markdown parser (~900 prompts)
+- [ ] 05-03-PLAN.md — Add network fetch handlers to service worker + manifest host_permissions
+- [ ] 05-04-PLAN.md — Test end-to-end data flow (manual verification checkpoint)
 
 #### Phase 6: Network Cache Layer
 **Goal**: 网络提示词自动缓存，离线可用
@@ -56,7 +56,7 @@ Plans:
   2. Cached prompts include timestamp and expire after 24 hours
   3. When offline, previously cached prompts are still accessible via GET_NETWORK_CACHE message
   4. Cache shows timestamp of last successful fetch
-**Plans**: 4 plans
+**Plans:** 4 plans
 
 Plans:
 - [ ] 06-01: Implement NetworkCacheManager with TTL support
@@ -75,7 +75,7 @@ Plans:
   4. User can click to expand and see full prompt content
   5. Pagination shows 50 prompts per page for large datasets
 **UI hint**: yes
-**Plans**: 5 plans
+**Plans:** 5 plans
 
 Plans:
 - [ ] 07-01: Add OnlineLibraryTab component to dropdown
@@ -95,7 +95,7 @@ Plans:
   4. User can select target category when collecting (or create new category)
   5. Collected prompts appear in selected local category immediately
 **UI hint**: yes
-**Plans**: 5 plans
+**Plans:** 5 plans
 
 Plans:
 - [ ] 08-01: Implement search input with debounce
@@ -114,11 +114,11 @@ Plans:
 | 2. Lovart Integration & Content Script | v1.0 | 4/4 | Complete | 2026-04-16 |
 | 3. Data Management & Popup UI | v1.0 | 9/9 | Complete | 2026-04-16 |
 | 4. Polish & End-to-End Testing | v1.0 | 6/6 | Complete | 2026-04-16 |
-| 5. Provider Foundation | v1.1.0 | 0/4 | Not started | - |
+| 5. Provider Foundation | v1.1.0 | 0/4 | Planned | - |
 | 6. Network Cache Layer | v1.1.0 | 0/4 | Not started | - |
 | 7. Dropdown Online Library UI | v1.1.0 | 0/5 | Not started | - |
 | 8. Search & Collect Features | v1.1.0 | 0/5 | Not started | - |
 
 ---
 
-*Roadmap updated: 2026-04-19 — v1.1.0 phases added*
+*Roadmap updated: 2026-04-19 — Phase 5 plans created*

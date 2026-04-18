@@ -2,7 +2,7 @@
  * Shared utility functions for text processing and array operations
  */
 
-import type { Category } from './types'
+import type { Category, Prompt } from './types'
 
 /**
  * Truncate text to a maximum length with ellipsis suffix
@@ -20,6 +20,13 @@ export function sortCategoriesByOrder(categories: Category[]): Category[] {
 }
 
 /**
+ * Sort prompts by their order field within a category (immutable - returns new array)
+ */
+export function sortPromptsByOrder(prompts: Prompt[]): Prompt[] {
+  return [...prompts].sort((a, b) => a.order - b.order)
+}
+
+/**
  * Create an event handler that stops propagation and calls the callback
  */
 export function stopPropagationHandler<T extends (...args: unknown[]) => void>(fn: T): (e: React.MouseEvent) => void {
@@ -33,3 +40,8 @@ export function stopPropagationHandler<T extends (...args: unknown[]) => void>(f
  * Fallback category order for unknown categories
  */
 export const FALLBACK_CATEGORY_ORDER = 99
+
+/**
+ * Fallback prompt order for prompts without order field
+ */
+export const FALLBACK_PROMPT_ORDER = 99

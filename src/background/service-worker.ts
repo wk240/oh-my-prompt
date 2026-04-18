@@ -1,5 +1,5 @@
 import { MessageType, MessageResponse, NetworkDataResponse } from '../shared/messages'
-import type { StorageSchema, NetworkPrompt, ProviderCategory } from '../shared/types'
+import type { StorageSchema } from '../shared/types'
 import { StorageManager } from '../lib/storage'
 import { NanoBananaProvider } from '../lib/providers/nano-banana'
 import { NETWORK_TIMEOUT } from '../shared/constants'
@@ -58,6 +58,34 @@ chrome.runtime.onMessage.addListener(
           .catch(error => {
             console.error('[Prompt-Script] OPEN_SETTINGS error:', error)
             sendResponse({ success: false, error: 'Failed to open settings' })
+          })
+        return true // Required for async response
+
+      case MessageType.FETCH_NETWORK_PROMPTS:
+        // D-06: 10 second timeout with AbortController
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), NETWORK_TIMEOUT)
+
+        nanoBananaProvider.fetch()
+          .then(rawData => {
+            clearTimeout(timeoutId)
+            const prompts = nanoBananaProvider.parse(rawData)
+            const categories = nanoBananaProvider.getCategories()
+
+            console.log('[Prompt-Script] FETCH_NETWORK_PROMPTS: parsed', prompts.length, 'prompts')
+
+            sendResponse({
+              success: true,
+              data: { prompts, categories }
+            } as MessageResponse<NetworkDataResponse>)
+          })
+          .catch(error => {
+            clearTimeout(timeoutId)
+            const errorMsg = error instanceof Error
+              ? (error.name === 'AbortError' ? 'Request timeout' : error.message)
+              : 'Network fetch failed'
+            console.error('[Prompt-Script] FETCH_NETWORK_PROMPTS error:', errorMsg)
+            sendResponse({ success: false, error: errorMsg })
           })
         return true // Required for async response
 

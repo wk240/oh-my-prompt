@@ -5,6 +5,7 @@ export interface Prompt {
   content: string
   categoryId: string
   description?: string // Optional description for display in selection UI
+  order: number // 分类内排序顺序
 }
 
 // Phase 3: Category types

@@ -7,6 +7,7 @@
 import { create } from 'zustand'
 import type { Prompt, Category, StorageSchema } from '../shared/types'
 import { MessageType } from '../shared/messages'
+import { sortPromptsByOrder } from '../shared/utils'
 
 interface PromptStore {
   prompts: Prompt[]
@@ -27,6 +28,10 @@ interface PromptStore {
   // Category CRUD
   addCategory: (name: string) => void
   deleteCategory: (id: string) => void
+
+  // Reorder
+  reorderCategories: (newOrder: string[]) => void
+  reorderPrompts: (categoryId: string, newOrder: string[]) => void
 
   // Computed getters
   getPromptsByCategory: (categoryId: string) => Prompt[]
@@ -75,6 +80,40 @@ function getDefaultState(): { prompts: Prompt[]; categories: Category[]; selecte
   }
 }
 
+/**
+ * Migrate prompts without order field
+ * Assigns order based on current array position within each category
+ */
+function migratePromptOrders(prompts: Prompt[]): Prompt[] {
+  const needsMigration = prompts.some(p => p.order === undefined || p.order === null)
+  if (!needsMigration) return prompts
+
+  // Group by category and assign order
+  const categoryMap = new Map<string, Prompt[]>()
+  prompts.forEach(p => {
+    const list = categoryMap.get(p.categoryId) || []
+    list.push(p)
+    categoryMap.set(p.categoryId, list)
+  })
+
+  // Assign order values
+  const migrated: Prompt[] = []
+  categoryMap.forEach((categoryPrompts) => {
+    categoryPrompts.forEach((p, index) => {
+      migrated.push({
+        ...p,
+        order: p.order ?? index
+      })
+    })
+  })
+
+  console.log('[Prompt-Script] Migrated prompt order field for', migrated.length, 'prompts')
+  return migrated
+}
+
+// Debounce timer for delayed storage save
+let saveDebounceTimer: ReturnType<typeof setTimeout> | null = null
+
 export const usePromptStore = create<PromptStore>((set, get) => ({
   // Initial state
   prompts: [],
@@ -92,12 +131,22 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
         if (data.prompts.length > 500) {
           console.warn('[Prompt-Script] Large dataset loaded:', data.prompts.length, 'prompts')
         }
+
+        // Migrate prompts without order field
+        const migratedPrompts = migratePromptOrders(data.prompts)
+
         set({
-          prompts: data.prompts,
+          prompts: migratedPrompts,
           categories: data.categories,
           selectedCategoryId: 'all',
           isLoading: false
         })
+
+        // Save migrated data if migration happened
+        if (migratedPrompts !== data.prompts) {
+          get().saveToStorage()
+        }
+
         return { success: true }
       } else {
         // Use default state if no data
@@ -144,9 +193,17 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
 
   // Prompt CRUD
   addPrompt: (prompt: Omit<Prompt, 'id'>) => {
+    const { prompts } = get()
+    // Find max order in the same category
+    const categoryPrompts = prompts.filter(p => p.categoryId === prompt.categoryId)
+    const maxOrder = categoryPrompts.length > 0
+      ? Math.max(...categoryPrompts.map(p => p.order))
+      : -1
+
     const newPrompt: Prompt = {
       ...prompt,
-      id: generateId()
+      id: generateId(),
+      order: maxOrder + 1
     }
     set((state) => ({
       prompts: [...state.prompts, newPrompt]
@@ -202,10 +259,54 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
     get().saveToStorage()
   },
 
+  // Reorder categories
+  reorderCategories: (newOrder: string[]) => {
+    set((state) => {
+      const updatedCategories = state.categories.map((cat) => ({
+        ...cat,
+        order: newOrder.indexOf(cat.id)
+      }))
+      return { categories: updatedCategories }
+    })
+    // Debounced save
+    if (saveDebounceTimer) {
+      clearTimeout(saveDebounceTimer)
+    }
+    saveDebounceTimer = setTimeout(() => {
+      get().saveToStorage()
+      saveDebounceTimer = null
+    }, 500)
+  },
+
+  // Reorder prompts within a category
+  reorderPrompts: (categoryId: string, newOrder: string[]) => {
+    set((state) => {
+      const updatedPrompts = state.prompts.map((prompt) => {
+        if (prompt.categoryId === categoryId) {
+          return {
+            ...prompt,
+            order: newOrder.indexOf(prompt.id)
+          }
+        }
+        return prompt
+      })
+      return { prompts: updatedPrompts }
+    })
+    // Debounced save
+    if (saveDebounceTimer) {
+      clearTimeout(saveDebounceTimer)
+    }
+    saveDebounceTimer = setTimeout(() => {
+      get().saveToStorage()
+      saveDebounceTimer = null
+    }, 500)
+  },
+
   // Computed getters
   getPromptsByCategory: (categoryId: string) => {
     const { prompts } = get()
-    return prompts.filter((prompt) => prompt.categoryId === categoryId)
+    const categoryPrompts = prompts.filter((prompt) => prompt.categoryId === categoryId)
+    return sortPromptsByOrder(categoryPrompts)
   },
 
   getFilteredPrompts: () => {
@@ -213,6 +314,7 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
     if (selectedCategoryId === 'all' || selectedCategoryId === null) {
       return prompts
     }
-    return prompts.filter((prompt) => prompt.categoryId === selectedCategoryId)
+    const categoryPrompts = prompts.filter((prompt) => prompt.categoryId === selectedCategoryId)
+    return sortPromptsByOrder(categoryPrompts)
   }
 }))

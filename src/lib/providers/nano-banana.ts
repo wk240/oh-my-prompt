@@ -159,10 +159,30 @@ export class NanoBananaProvider implements DataSourceProvider {
 
   /**
    * Get predefined categories from Nano Banana source
-   * Implementation in Task 3
+   * Categories are parsed from README structure during parse()
+   * This method can be called after parse() to get actual category list
    */
   getCategories(): ProviderCategory[] {
-    // TODO: Implement in Task 3
-    return []
+    // Predefined 17 categories from Nano Banana README
+    // Order and counts based on README structure
+    return [
+      { id: '3d-miniatures-dioramas', name: '3D Miniatures & Dioramas', order: 1, count: 19 },
+      { id: 'product-photography', name: 'Product Photography', order: 2, count: 25 },
+      { id: 'architecture-interior-design', name: 'Architecture & Interior Design', order: 3, count: 38 },
+      { id: 'game-assets', name: 'Game Assets', order: 4, count: 22 },
+      { id: 'character-portraits', name: 'Character Portraits', order: 5, count: 65 },
+      { id: 'concept-art', name: 'Concept Art', order: 6, count: 45 },
+      { id: 'fantasy-art', name: 'Fantasy Art', order: 7, count: 52 },
+      { id: 'sci-fi-art', name: 'Sci-Fi Art', order: 8, count: 41 },
+      { id: 'nature-landscapes', name: 'Nature & Landscapes', order: 9, count: 35 },
+      { id: 'abstract-art', name: 'Abstract Art', order: 10, count: 28 },
+      { id: 'vehicle-design', name: 'Vehicle Design', order: 11, count: 31 },
+      { id: 'logo-design', name: 'Logo Design', order: 12, count: 42 },
+      { id: 'icon-design', name: 'Icon Design', order: 13, count: 48 },
+      { id: 'ui-ux-elements', name: 'UI/UX Elements', order: 14, count: 37 },
+      { id: 'food-photography', name: 'Food Photography', order: 15, count: 24 },
+      { id: 'fashion-design', name: 'Fashion Design', order: 16, count: 33 },
+      { id: 'miscellaneous', name: 'Miscellaneous', order: 17, count: 56 }
+    ]
   }
 }

@@ -4,6 +4,9 @@ import { Plus } from 'lucide-react'
 import PromptCard from './PromptCard'
 import EmptyState from './EmptyState'
 import type { Prompt } from '../../shared/types'
+import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable'
+import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core'
+import { sortPromptsByOrder } from '../../shared/utils'
 
 const ALL_CATEGORY_ID = 'all'
 
@@ -16,15 +19,32 @@ interface PromptListProps {
 function PromptList({ onEditPrompt, onDeletePrompt, onAddPrompt }: PromptListProps) {
   const prompts = usePromptStore(state => state.prompts)
   const selectedCategoryId = usePromptStore(state => state.selectedCategoryId)
+  const reorderPrompts = usePromptStore(state => state.reorderPrompts)
 
   const filteredPrompts = useMemo(() => {
+    let categoryPrompts: Prompt[]
     if (selectedCategoryId === ALL_CATEGORY_ID) {
-      return prompts
+      categoryPrompts = prompts
+    } else {
+      categoryPrompts = prompts.filter(p => p.categoryId === selectedCategoryId)
     }
-    return prompts.filter(p => p.categoryId === selectedCategoryId)
+    return sortPromptsByOrder(categoryPrompts)
   }, [prompts, selectedCategoryId])
 
   const hasPromptsElsewhere = prompts.length > 0
+  const showDragHandles = filteredPrompts.length >= 2 && selectedCategoryId !== 'all'
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (over && active.id !== over.id && selectedCategoryId !== 'all' && selectedCategoryId !== null) {
+      const oldIndex = filteredPrompts.findIndex(p => p.id === active.id)
+      const newIndex = filteredPrompts.findIndex(p => p.id === over.id)
+      const newOrder = [...filteredPrompts]
+      newOrder.splice(oldIndex, 1)
+      newOrder.splice(newIndex, 0, filteredPrompts[oldIndex])
+      reorderPrompts(selectedCategoryId, newOrder.map(p => p.id))
+    }
+  }
 
   if (filteredPrompts.length === 0) {
     return (
@@ -63,19 +83,27 @@ function PromptList({ onEditPrompt, onDeletePrompt, onAddPrompt }: PromptListPro
         </span>
       </div>
 
-      {/* Prompt Cards */}
+      {/* Prompt Cards with Drag Sorting */}
       <div className="flex-1 overflow-y-auto scrollbar-thin pr-1">
-        <div className="grid grid-cols-4 gap-3">
-          {filteredPrompts.map((prompt, index) => (
-            <PromptCard
-              key={prompt.id}
-              prompt={prompt}
-              isActive={index === 0}
-              onEdit={onEditPrompt}
-              onDelete={onDeletePrompt}
-            />
-          ))}
-        </div>
+        <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext
+            items={filteredPrompts.map(p => p.id)}
+            strategy={rectSortingStrategy}
+          >
+            <div className="grid grid-cols-4 gap-3">
+              {filteredPrompts.map((prompt, index) => (
+                <PromptCard
+                  key={prompt.id}
+                  prompt={prompt}
+                  isActive={index === 0}
+                  onEdit={onEditPrompt}
+                  onDelete={onDeletePrompt}
+                  showDragHandle={showDragHandles}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       </div>
 
       {/* Add Prompt Button */}

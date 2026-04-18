@@ -8,8 +8,11 @@ import { useRef, useState, useMemo, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { MessageType } from '../../shared/messages'
 import type { Prompt, Category } from '../../shared/types'
-import { truncateText, sortCategoriesByOrder, FALLBACK_CATEGORY_ORDER } from '../../shared/utils'
-import { Sparkles, Palette, Shapes, ArrowUpRight, X, Settings, FolderOpen, Layers, Sparkle, Brush } from 'lucide-react'
+import { truncateText, sortCategoriesByOrder, sortPromptsByOrder, FALLBACK_CATEGORY_ORDER } from '../../shared/utils'
+import { Sparkles, Palette, Shapes, ArrowUpRight, X, Settings, FolderOpen, Layers, Sparkle, Brush, GripVertical } from 'lucide-react'
+import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 interface DropdownContainerProps {
   prompts: Prompt[]
@@ -297,6 +300,32 @@ function getDropdownStyles(): string {
     #${PORTAL_ID} .sidebar-categories::-webkit-scrollbar-thumb:hover {
       background: #ccc;
     }
+
+    #${PORTAL_ID} .dropdown-item-drag-handle {
+      width: 16px;
+      height: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: grab;
+      color: #64748B;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      margin-right: -8px;
+    }
+
+    #${PORTAL_ID} .dropdown-item:hover .dropdown-item-drag-handle {
+      opacity: 1;
+    }
+
+    #${PORTAL_ID} .dropdown-item-drag-handle:active {
+      cursor: grabbing;
+    }
+
+    #${PORTAL_ID} .dropdown-item.dragging {
+      opacity: 0.5;
+      background: #f8f8f8;
+    }
   `
 }
 
@@ -306,6 +335,68 @@ const CATEGORY_ICON_MAP: Record<string, React.ComponentType<{ className?: string
   design: Sparkle,
   style: Brush,
   other: Layers,
+}
+
+// Sortable dropdown item component
+function SortableDropdownItem({
+  prompt,
+  isLast,
+  isSelected,
+  onSelect,
+  showDragHandle,
+}: {
+  prompt: Prompt
+  isLast: boolean
+  isSelected: boolean
+  onSelect: (prompt: Prompt) => void
+  showDragHandle: boolean
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: prompt.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  const IconComponent = ICON_MAP[prompt.categoryId === 'design' ? 'design' : prompt.categoryId === 'style' ? 'style' : 'default']
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`dropdown-item${isSelected ? ' selected' : ''}${isLast ? ' last' : ''}${isDragging ? ' dragging' : ''}`}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={() => onSelect(prompt)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onSelect(prompt)
+        }
+      }}
+    >
+      {showDragHandle && (
+        <div className="dropdown-item-drag-handle" {...attributes} {...listeners}>
+          <GripVertical style={{ width: 12, height: 12 }} />
+        </div>
+      )}
+      <IconComponent className="dropdown-item-icon" />
+      <div className="dropdown-item-text">
+        <span className="dropdown-item-name">{prompt.name}</span>
+        <span className="dropdown-item-preview">{truncateText(prompt.content, 40)}</span>
+      </div>
+      <ArrowUpRight className="dropdown-item-arrow" />
+    </div>
+  )
 }
 
 export function DropdownContainer({
@@ -381,11 +472,54 @@ export function DropdownContainer({
     return cats
   }, [propCategories, prompts])
 
-  // Filter prompts by selected category
+  // Filter prompts by selected category and sort by order
   const filteredPrompts = useMemo(() => {
-    if (selectedCategoryId === 'all') return prompts
-    return prompts.filter((p) => p.categoryId === selectedCategoryId)
+    let result: Prompt[]
+    if (selectedCategoryId === 'all') {
+      result = prompts
+    } else {
+      result = prompts.filter((p) => p.categoryId === selectedCategoryId)
+    }
+    return sortPromptsByOrder(result)
   }, [prompts, selectedCategoryId])
+
+  const showDragHandles = filteredPrompts.length >= 2 && selectedCategoryId !== 'all'
+
+  // Handle drag end for prompt reorder
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+    if (over && active.id !== over.id && selectedCategoryId !== 'all') {
+      const oldIndex = filteredPrompts.findIndex(p => p.id === active.id)
+      const newIndex = filteredPrompts.findIndex(p => p.id === over.id)
+      const newOrder = [...filteredPrompts]
+      newOrder.splice(oldIndex, 1)
+      newOrder.splice(newIndex, 0, filteredPrompts[oldIndex])
+
+      // Update storage via service worker
+      try {
+        const updatedPrompts = prompts.map((prompt) => {
+          if (prompt.categoryId === selectedCategoryId) {
+            return {
+              ...prompt,
+              order: newOrder.map(p => p.id).indexOf(prompt.id)
+            }
+          }
+          return prompt
+        })
+
+        await chrome.runtime.sendMessage({
+          type: MessageType.SET_STORAGE,
+          payload: {
+            prompts: updatedPrompts,
+            categories: propCategories,
+            version: '1.0.0'
+          }
+        })
+      } catch (error) {
+        console.error('[Prompt-Script] Failed to reorder prompts:', error)
+      }
+    }
+  }
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -483,33 +617,23 @@ export function DropdownContainer({
             </div>
           ) : (
             <div className="dropdown-items">
-              {filteredPrompts.map((prompt, index) => {
-                const IconComponent = ICON_MAP[prompt.categoryId === 'design' ? 'design' : prompt.categoryId === 'style' ? 'style' : 'default']
-
-                return (
-                  <div
-                    key={prompt.id}
-                    className={`dropdown-item${selectedPromptId === prompt.id ? ' selected' : ''}${index === filteredPrompts.length - 1 ? ' last' : ''}`}
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => onSelect(prompt)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault()
-                        onSelect(prompt)
-                      }
-                    }}
-                  >
-                    <IconComponent className="dropdown-item-icon" />
-                    <div className="dropdown-item-text">
-                      <span className="dropdown-item-name">{prompt.name}</span>
-                      <span className="dropdown-item-preview">{truncateText(prompt.content, 40)}</span>
-                    </div>
-                    <ArrowUpRight className="dropdown-item-arrow" />
-                  </div>
-                )
-              })}
+              <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext
+                  items={filteredPrompts.map(p => p.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {filteredPrompts.map((prompt, index) => (
+                    <SortableDropdownItem
+                      key={prompt.id}
+                      prompt={prompt}
+                      isLast={index === filteredPrompts.length - 1}
+                      isSelected={selectedPromptId === prompt.id}
+                      onSelect={onSelect}
+                      showDragHandle={showDragHandles}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
             </div>
           )}
         </div>

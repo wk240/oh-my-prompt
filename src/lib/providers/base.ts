@@ -26,9 +26,10 @@ export interface DataSourceProvider {
 
   /**
    * Fetch raw data from network source
+   * @param signal - Optional AbortSignal for timeout/cancellation
    * @returns Raw markdown/string content
    */
-  fetch(): Promise<string>
+  fetch(signal?: AbortSignal): Promise<string>
 
   /**
    * Parse raw data into NetworkPrompt array

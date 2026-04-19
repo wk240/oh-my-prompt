@@ -26,10 +26,10 @@ export class NanoBananaProvider implements DataSourceProvider {
 
   /**
    * Fetch raw markdown from GitHub Raw URL (D-04, D-05, D-07)
-   * Note: Network timeout handled by service worker (Plan 03)
+   * @param signal - AbortSignal for timeout/cancellation (from service worker)
    */
-  async fetch(): Promise<string> {
-    const response = await fetch(this.dataUrl)
+  async fetch(signal?: AbortSignal): Promise<string> {
+    const response = await fetch(this.dataUrl, { signal })
     if (!response.ok) {
       throw new Error(`Fetch failed: ${response.status} ${response.statusText}`)
     }
@@ -67,6 +67,10 @@ export class NanoBananaProvider implements DataSourceProvider {
       const categoryMatch = line.match(categoryRegex)
       if (categoryMatch) {
         const order = parseInt(categoryMatch[1], 10)
+        if (isNaN(order)) {
+          console.warn('[Prompt-Script] Invalid category order:', categoryMatch[1])
+          continue
+        }
         const name = categoryMatch[2].trim()
         currentCategory = {
           id: this.generateCategoryId(name),
@@ -81,6 +85,10 @@ export class NanoBananaProvider implements DataSourceProvider {
       if (promptMatch && currentCategory) {
         const categoryNum = parseInt(promptMatch[1], 10)
         const subNum = parseInt(promptMatch[2], 10)
+        if (isNaN(categoryNum) || isNaN(subNum)) {
+          console.warn('[Prompt-Script] Invalid prompt numbers:', promptMatch[1], promptMatch[2])
+          continue
+        }
         const title = promptMatch[3].trim()
 
         // Look ahead for image, prompt content, source

@@ -66,7 +66,7 @@ chrome.runtime.onMessage.addListener(
         const controller = new AbortController()
         const timeoutId = setTimeout(() => controller.abort(), NETWORK_TIMEOUT)
 
-        nanoBananaProvider.fetch()
+        nanoBananaProvider.fetch(controller.signal)
           .then(rawData => {
             clearTimeout(timeoutId)
             const prompts = nanoBananaProvider.parse(rawData)

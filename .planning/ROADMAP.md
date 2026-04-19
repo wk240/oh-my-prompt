@@ -98,11 +98,11 @@ Plans:
 **Plans:** 5 plans
 
 Plans:
-- [ ] 08-01: Implement search input with debounce
-- [ ] 08-02: Add search filter logic (title + content)
-- [ ] 08-03: Add "收藏" button to NetworkPromptCard
-- [ ] 08-04: Implement category selector dialog for collect
-- [ ] 08-05: Integrate collect with local storage
+- [ ] 08-01-PLAN.md — Implement search input with debounce (D-01-D-04) (Wave 1)
+- [ ] 08-02-PLAN.md — Add search filter logic (title + content, D-05-D-08) (Wave 1)
+- [ ] 08-03-PLAN.md — Activate "收藏" button in PromptPreviewModal (D-09) (Wave 2)
+- [ ] 08-04-PLAN.md — Implement CategorySelectDialog for collect (D-11-D-15) (Wave 2)
+- [ ] 08-05-PLAN.md — Integrate collect with store + Toast feedback (D-16-D-19) (Wave 2)
 
 ---
 
@@ -117,8 +117,8 @@ Plans:
 | 5. Provider Foundation | v1.1.0 | 4/4 | Complete | 2026-04-19 |
 | 6. Network Cache Layer | v1.1.0 | 4/4 | Complete | 2026-04-19 |
 | 7. Dropdown Online Library UI | v1.1.0 | 5/5 | Complete | 2026-04-19 |
-| 8. Search & Collect Features | v1.1.0 | 0/5 | Not started | - |
+| 8. Search & Collect Features | v1.1.0 | 0/5 | Ready for execution | - |
 
 ---
 
-*Roadmap updated: 2026-04-19 — Phase 7 complete (verified)*
+*Roadmap updated: 2026-04-19 — Phase 8 planned*

@@ -78,7 +78,7 @@ Plans:
 **Plans:** 5 plans
 
 Plans:
-- [ ] 07-01-PLAN.md — Add isOnlineLibrary state, "在线库" sidebar entry, network data fetch (Wave 1)
+- [x] 07-01-PLAN.md — Add isOnlineLibrary state, "在线库" sidebar entry, network data fetch (Wave 1) (completed 2026-04-19)
 - [ ] 07-02-PLAN.md — Create NetworkPromptCard component with 2-column grid layout (Wave 2)
 - [ ] 07-03-PLAN.md — Create ProviderCategoryItem + CacheStatusHeader, integrate sidebar (Wave 3)
 - [ ] 07-04-PLAN.md — Create LoadMoreButton with pagination (50/page) (Wave 4)
@@ -116,7 +116,7 @@ Plans:
 | 4. Polish & End-to-End Testing | v1.0 | 6/6 | Complete | 2026-04-16 |
 | 5. Provider Foundation | v1.1.0 | 4/4 | Complete | 2026-04-19 |
 | 6. Network Cache Layer | v1.1.0 | 4/4 | Complete | 2026-04-19 |
-| 7. Dropdown Online Library UI | v1.1.0 | 0/5 | Planning complete | - |
+| 7. Dropdown Online Library UI | v1.1.0 | 1/5 | In progress | 2026-04-19 |
 | 8. Search & Collect Features | v1.1.0 | 0/5 | Not started | - |
 
 ---

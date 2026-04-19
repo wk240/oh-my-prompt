@@ -412,6 +412,24 @@ function getDropdownStyles(): string {
     #${PORTAL_ID} .sidebar-category-item:hover .sidebar-category-icon {
       opacity: 0;
     }
+
+    /* Phase 7: Network Library styles */
+
+    #${PORTAL_ID} .network-prompt-cards-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    #${PORTAL_ID} .network-prompt-card:hover {
+      background: #f8f8f8;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    }
+
+    #${PORTAL_ID} .network-prompt-card:focus {
+      outline: 2px solid #A16207;
+      outline-offset: 2px;
+    }
   `
 }
 

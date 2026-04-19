@@ -59,10 +59,10 @@ Plans:
 **Plans:** 4 plans
 
 Plans:
-- [ ] 06-01: Implement NetworkCacheManager with TTL support
-- [ ] 06-02: Add cache read/write handlers to service worker
-- [ ] 06-03: Add cache invalidation logic (24h TTL)
-- [ ] 06-04: Handle offline scenarios gracefully
+- [ ] 06-01-PLAN.md — Implement NetworkCacheManager singleton with TTL support (Wave 1)
+- [ ] 06-02-PLAN.md — Add GET_NETWORK_CACHE message type and handler (Wave 2)
+- [ ] 06-03-PLAN.md — Extend NetworkDataResponse with cache metadata flags (Wave 2)
+- [ ] 06-04-PLAN.md — Implement network-first with cache fallback strategy (Wave 3)
 
 #### Phase 7: Dropdown Online Library UI
 **Goal**: 用户可浏览和预览网络提示词
@@ -121,4 +121,4 @@ Plans:
 
 ---
 
-*Roadmap updated: 2026-04-19 — Phase 5 complete*
+*Roadmap updated: 2026-04-19 — Phase 6 plans created*

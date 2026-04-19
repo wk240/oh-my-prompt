@@ -10,7 +10,7 @@
   "content_scripts": [
     {
       "js": [
-        "assets/content-script.ts-loader-LItdx4Xn.js"
+        "assets/content-script.ts-loader-Bjl0QPNE.js"
       ],
       "matches": [
         "*://lovart.ai/*",
@@ -39,6 +39,9 @@
     "storage",
     "tabs"
   ],
+  "host_permissions": [
+    "https://raw.githubusercontent.com/*"
+  ],
   "web_accessible_resources": [
     {
       "matches": [
@@ -58,12 +61,12 @@
         "file:///*"
       ],
       "resources": [
-        "assets/messages-B2Ka1gOf.js",
-        "assets/messages-B2Ka1gOf.js.map",
+        "assets/messages-BGsBY0t2.js",
+        "assets/messages-BGsBY0t2.js.map",
         "assets/sortable.esm-qd8fvc0V.js",
         "assets/sortable.esm-qd8fvc0V.js.map",
-        "assets/content-script.ts-C2-PfAZ0.js",
-        "assets/content-script.ts-C2-PfAZ0.js.map"
+        "assets/content-script.ts-DR04Zyb7.js",
+        "assets/content-script.ts-DR04Zyb7.js.map"
       ],
       "use_dynamic_url": false
     }

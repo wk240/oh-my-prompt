@@ -78,11 +78,11 @@ Plans:
 **Plans:** 5 plans
 
 Plans:
-- [ ] 07-01: Add OnlineLibraryTab component to dropdown
-- [ ] 07-02: Create NetworkPromptCard component
-- [ ] 07-03: Implement category filter dropdown
-- [ ] 07-04: Implement pagination (50 per page)
-- [ ] 07-05: Add full preview modal/expand functionality
+- [ ] 07-01-PLAN.md — Add isOnlineLibrary state, "在线库" sidebar entry, network data fetch (Wave 1)
+- [ ] 07-02-PLAN.md — Create NetworkPromptCard component with 2-column grid layout (Wave 2)
+- [ ] 07-03-PLAN.md — Create ProviderCategoryItem + CacheStatusHeader, integrate sidebar (Wave 3)
+- [ ] 07-04-PLAN.md — Create LoadMoreButton with pagination (50/page) (Wave 4)
+- [ ] 07-05-PLAN.md — Create PromptPreviewModal with escape/overlay close (Wave 5)
 
 #### Phase 8: Search & Collect Features
 **Goal**: 用户可搜索并收藏网络提示词到本地
@@ -116,9 +116,9 @@ Plans:
 | 4. Polish & End-to-End Testing | v1.0 | 6/6 | Complete | 2026-04-16 |
 | 5. Provider Foundation | v1.1.0 | 4/4 | Complete | 2026-04-19 |
 | 6. Network Cache Layer | v1.1.0 | 4/4 | Complete | 2026-04-19 |
-| 7. Dropdown Online Library UI | v1.1.0 | 0/5 | Not started | - |
+| 7. Dropdown Online Library UI | v1.1.0 | 0/5 | Planning complete | - |
 | 8. Search & Collect Features | v1.1.0 | 0/5 | Not started | - |
 
 ---
 
-*Roadmap updated: 2026-04-19 — Phase 6 complete*
+*Roadmap updated: 2026-04-19 — Phase 7 plans finalized*

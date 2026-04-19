@@ -6,10 +6,10 @@
 
 import { useRef, useState, useMemo, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { MessageType } from '../../shared/messages'
-import type { Prompt, Category } from '../../shared/types'
+import { MessageType, CacheDataResponse } from '../../shared/messages'
+import type { Prompt, Category, NetworkPrompt, ProviderCategory } from '../../shared/types'
 import { truncateText, sortCategoriesByOrder, sortPromptsByOrder, FALLBACK_CATEGORY_ORDER } from '../../shared/utils'
-import { Sparkles, Palette, Shapes, ArrowUpRight, X, Settings, FolderOpen, Layers, Sparkle, Brush, GripVertical } from 'lucide-react'
+import { Sparkles, Palette, Shapes, ArrowUpRight, X, Settings, FolderOpen, Layers, Sparkle, Brush, GripVertical, Globe } from 'lucide-react'
 import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -559,6 +559,19 @@ export function DropdownContainer({
   const [localPrompts, setLocalPrompts] = useState<Prompt[]>([])
   const [localCategories, setLocalCategories] = useState<Category[]>([])
 
+  // Phase 7: Online library state (D-01, D-02)
+  const [isOnlineLibrary, setIsOnlineLibrary] = useState(false)
+  const [networkPrompts, setNetworkPrompts] = useState<NetworkPrompt[]>([])
+  // @ts-expect-error -- providerCategories set in Task 2, read in plan 07-02 (ProviderCategorySidebar)
+  const [providerCategories, setProviderCategories] = useState<ProviderCategory[]>([])
+  // @ts-expect-error -- cacheMetadata set in Task 2, read in plan 07-02 (CacheStatusHeader)
+  const [cacheMetadata, setCacheMetadata] = useState<{
+    isFromCache?: boolean
+    isExpired?: boolean
+    fetchTimestamp?: string
+  }>({})
+  const [isNetworkLoading, setIsNetworkLoading] = useState(false)
+
   const dropdownGap = 8
   const dropdownMaxHeight = 600
 
@@ -571,6 +584,34 @@ export function DropdownContainer({
   useEffect(() => {
     setLocalCategories(propCategories)
   }, [propCategories])
+
+  // Phase 7: Fetch network data on first online library toggle (D-02)
+  useEffect(() => {
+    if (isOnlineLibrary && networkPrompts.length === 0 && !isNetworkLoading) {
+      setIsNetworkLoading(true)
+      chrome.runtime.sendMessage(
+        { type: MessageType.GET_NETWORK_CACHE },
+        (response) => {
+          if (chrome.runtime?.lastError) {
+            console.log('[Prompt-Script] Network fetch error:', chrome.runtime.lastError.message)
+            setIsNetworkLoading(false)
+            return
+          }
+          if (response?.success && response.data) {
+            const data = response.data as CacheDataResponse
+            setNetworkPrompts(data.prompts)
+            setProviderCategories(data.categories)
+            setCacheMetadata({
+              isFromCache: data.isFromCache,
+              isExpired: data.isExpired,
+              fetchTimestamp: data.fetchTimestamp,
+            })
+          }
+          setIsNetworkLoading(false)
+        }
+      )
+    }
+  }, [isOnlineLibrary, networkPrompts.length, isNetworkLoading])
 
   // Calculate position relative to trigger button with viewport boundary check
   useEffect(() => {
@@ -769,8 +810,11 @@ export function DropdownContainer({
         <div className="sidebar-categories">
           {/* "全部" category - virtual, not sortable */}
           <button
-            className={`sidebar-category-item ${selectedCategoryId === 'all' ? 'selected' : ''}`}
-            onClick={() => setSelectedCategoryId('all')}
+            className={`sidebar-category-item ${selectedCategoryId === 'all' && !isOnlineLibrary ? 'selected' : ''}`}
+            onClick={() => {
+              setSelectedCategoryId('all')
+              setIsOnlineLibrary(false) // D-03: restore local mode
+            }}
             aria-label="全部分类"
           >
             <div className="sidebar-category-icon-wrapper">
@@ -779,7 +823,20 @@ export function DropdownContainer({
             <span>全部分类</span>
           </button>
 
-          {/* Sortable categories */}
+          {/* Phase 7: "在线库" entry (D-01) */}
+          <button
+            className={`sidebar-category-item ${isOnlineLibrary ? 'selected' : ''}`}
+            onClick={() => setIsOnlineLibrary(true)}
+            aria-label="在线库"
+          >
+            <div className="sidebar-category-icon-wrapper">
+              <Globe className="sidebar-category-icon" />
+            </div>
+            <span>在线库</span>
+          </button>
+
+          {/* Sortable local categories (hidden when in online library mode) */}
+          {!isOnlineLibrary && (
           <DndContext collisionDetection={closestCenter} onDragEnd={handleCategoryDragEnd}>
             <SortableContext
               items={sortableCategories.map(c => c.id)}
@@ -792,7 +849,10 @@ export function DropdownContainer({
                     key={category.id}
                     category={category}
                     isSelected={selectedCategoryId === category.id}
-                    onSelect={setSelectedCategoryId}
+                    onSelect={(id) => {
+                      setSelectedCategoryId(id)
+                      setIsOnlineLibrary(false) // D-03: restore local mode on category click
+                    }}
                     showDragHandle={showCategoryDragHandles}
                     IconComponent={IconComponent}
                   />
@@ -800,6 +860,7 @@ export function DropdownContainer({
               })}
             </SortableContext>
           </DndContext>
+          )}
         </div>
       </div>
 

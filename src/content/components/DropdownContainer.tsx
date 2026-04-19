@@ -15,6 +15,7 @@ import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-
 import { CSS } from '@dnd-kit/utilities'
 import { NetworkPromptCard } from './NetworkPromptCard'
 import { ProviderCategoryItem } from './ProviderCategoryItem'
+import { CacheStatusHeader } from './CacheStatusHeader'
 
 interface DropdownContainerProps {
   prompts: Prompt[]
@@ -585,7 +586,6 @@ export function DropdownContainer({
   // providerCategories used in ProviderCategorySidebar (D-13)
   const [providerCategories, setProviderCategories] = useState<ProviderCategory[]>([])
   // cacheMetadata read in CacheStatusHeader (D-16)
-  // @ts-expect-error -- cacheMetadata read in plan 07-03 Task 4 (CacheStatusHeader)
   const [cacheMetadata, setCacheMetadata] = useState<{
     isFromCache?: boolean
     isExpired?: boolean
@@ -595,8 +595,7 @@ export function DropdownContainer({
 
   // Phase 7: Provider category selection and pagination (D-15, D-11)
   const [selectedProviderCategoryId, setSelectedProviderCategoryId] = useState<string>('all')
-  // loadedCount setter used in plan 07-04 (LoadMoreButton) and Task 4 pagination reset
-  // @ts-expect-error -- setLoadedCount used in plan 07-03 Task 4 (pagination reset useEffect)
+  // loadedCount setter used in LoadMoreButton (07-04) and pagination reset useEffect
   const [loadedCount, setLoadedCount] = useState(50) // D-11: 50 prompts per page
 
   const dropdownGap = 8
@@ -728,6 +727,13 @@ export function DropdownContainer({
   const paginatedNetworkPrompts = useMemo(() => {
     return filteredNetworkPrompts.slice(0, loadedCount)
   }, [filteredNetworkPrompts, loadedCount])
+
+  // Phase 7: Reset pagination on ProviderCategory change (D-11)
+  useEffect(() => {
+    if (isOnlineLibrary) {
+      setLoadedCount(50) // Reset to default page size
+    }
+  }, [selectedProviderCategoryId, isOnlineLibrary])
 
   // Handle drag end for prompt reorder
   const handleDragEnd = async (event: DragEndEvent) => {
@@ -931,6 +937,15 @@ export function DropdownContainer({
       </div>
 
       <div className="dropdown-main">
+        {/* Phase 7: Cache status header (D-16) */}
+        {isOnlineLibrary && !isNetworkLoading && (
+          <CacheStatusHeader
+            fetchTimestamp={cacheMetadata.fetchTimestamp}
+            isExpired={cacheMetadata.isExpired}
+            isFromCache={cacheMetadata.isFromCache}
+          />
+        )}
+
         <div className="dropdown-header">
           <span className="dropdown-header-title">
             <img className="dropdown-header-logo" src={chrome.runtime.getURL('assets/icon-128.png')} alt="Prompt Script" />

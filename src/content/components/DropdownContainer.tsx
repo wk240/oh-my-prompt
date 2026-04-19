@@ -13,6 +13,7 @@ import { Sparkles, Palette, Shapes, ArrowUpRight, X, Settings, FolderOpen, Layer
 import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { NetworkPromptCard } from './NetworkPromptCard'
 
 interface DropdownContainerProps {
   prompts: Prompt[]
@@ -590,6 +591,12 @@ export function DropdownContainer({
   }>({})
   const [isNetworkLoading, setIsNetworkLoading] = useState(false)
 
+  // Phase 7: Provider category selection and pagination (D-15, D-11)
+  // @ts-expect-error -- setter used in plan 07-03 (ProviderCategorySidebar)
+  const [selectedProviderCategoryId, setSelectedProviderCategoryId] = useState<string>('all')
+  // @ts-expect-error -- setter used in plan 07-04 (LoadMoreButton)
+  const [loadedCount, setLoadedCount] = useState(50) // D-11: 50 prompts per page
+
   const dropdownGap = 8
   const dropdownMaxHeight = 600
 
@@ -707,6 +714,18 @@ export function DropdownContainer({
   }, [localPrompts, selectedCategoryId])
 
   const showDragHandles = filteredPrompts.length >= 2 && selectedCategoryId !== 'all'
+
+  // Phase 7: Filter and paginate network prompts (D-15, D-11)
+  const filteredNetworkPrompts = useMemo(() => {
+    if (selectedProviderCategoryId === 'all') {
+      return networkPrompts
+    }
+    return networkPrompts.filter(p => p.categoryId === selectedProviderCategoryId || p.sourceCategory === selectedProviderCategoryId)
+  }, [networkPrompts, selectedProviderCategoryId])
+
+  const paginatedNetworkPrompts = useMemo(() => {
+    return filteredNetworkPrompts.slice(0, loadedCount)
+  }, [filteredNetworkPrompts, loadedCount])
 
   // Handle drag end for prompt reorder
   const handleDragEnd = async (event: DragEndEvent) => {
@@ -911,6 +930,32 @@ export function DropdownContainer({
             <div className="empty-state">
               <div className="empty-message">加载中...</div>
             </div>
+          ) : isOnlineLibrary ? (
+            // Phase 7: Network prompt cards grid (D-04)
+            isNetworkLoading ? (
+              <div className="empty-state">
+                <div className="empty-message">加载网络数据...</div>
+              </div>
+            ) : paginatedNetworkPrompts.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-message">
+                  {networkPrompts.length === 0 ? '无法加载网络数据，请检查网络连接' : '该分类暂无提示词'}
+                </div>
+              </div>
+            ) : (
+              <div className="network-prompt-cards-grid">
+                {paginatedNetworkPrompts.map((prompt) => (
+                  <NetworkPromptCard
+                    key={prompt.id}
+                    prompt={prompt}
+                    onClick={() => {
+                      // D-07: Placeholder for Modal trigger (Phase 7-05)
+                      console.log('[Prompt-Script] Card clicked:', prompt.name)
+                    }}
+                  />
+                ))}
+              </div>
+            )
           ) : filteredPrompts.length === 0 ? (
             <div className="empty-state">
               <div className="empty-message">

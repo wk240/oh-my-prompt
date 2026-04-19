@@ -8,12 +8,13 @@ import { useRef, useState, useMemo, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { MessageType, CacheDataResponse } from '../../shared/messages'
 import type { Prompt, Category, NetworkPrompt, ProviderCategory } from '../../shared/types'
-import { truncateText, sortCategoriesByOrder, sortPromptsByOrder, FALLBACK_CATEGORY_ORDER } from '../../shared/utils'
+import { truncateText, sortCategoriesByOrder, sortPromptsByOrder, sortProviderCategoriesByOrder, FALLBACK_CATEGORY_ORDER } from '../../shared/utils'
 import { Sparkles, Palette, Shapes, ArrowUpRight, X, Settings, FolderOpen, Layers, Sparkle, Brush, GripVertical, Globe } from 'lucide-react'
 import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { NetworkPromptCard } from './NetworkPromptCard'
+import { ProviderCategoryItem } from './ProviderCategoryItem'
 
 interface DropdownContainerProps {
   prompts: Prompt[]
@@ -581,9 +582,10 @@ export function DropdownContainer({
   // Phase 7: Online library state (D-01, D-02)
   const [isOnlineLibrary, setIsOnlineLibrary] = useState(false)
   const [networkPrompts, setNetworkPrompts] = useState<NetworkPrompt[]>([])
-  // @ts-expect-error -- providerCategories set in Task 2, read in plan 07-02 (ProviderCategorySidebar)
+  // providerCategories used in ProviderCategorySidebar (D-13)
   const [providerCategories, setProviderCategories] = useState<ProviderCategory[]>([])
-  // @ts-expect-error -- cacheMetadata set in Task 2, read in plan 07-02 (CacheStatusHeader)
+  // cacheMetadata read in CacheStatusHeader (D-16)
+  // @ts-expect-error -- cacheMetadata read in plan 07-03 Task 4 (CacheStatusHeader)
   const [cacheMetadata, setCacheMetadata] = useState<{
     isFromCache?: boolean
     isExpired?: boolean
@@ -592,9 +594,9 @@ export function DropdownContainer({
   const [isNetworkLoading, setIsNetworkLoading] = useState(false)
 
   // Phase 7: Provider category selection and pagination (D-15, D-11)
-  // @ts-expect-error -- setter used in plan 07-03 (ProviderCategorySidebar)
   const [selectedProviderCategoryId, setSelectedProviderCategoryId] = useState<string>('all')
-  // @ts-expect-error -- setter used in plan 07-04 (LoadMoreButton)
+  // loadedCount setter used in plan 07-04 (LoadMoreButton) and Task 4 pagination reset
+  // @ts-expect-error -- setLoadedCount used in plan 07-03 Task 4 (pagination reset useEffect)
   const [loadedCount, setLoadedCount] = useState(50) // D-11: 50 prompts per page
 
   const dropdownGap = 8
@@ -845,58 +847,85 @@ export function DropdownContainer({
     >
       <div className="dropdown-sidebar">
         <div className="sidebar-categories">
-          {/* "全部" category - virtual, not sortable */}
-          <button
-            className={`sidebar-category-item ${selectedCategoryId === 'all' && !isOnlineLibrary ? 'selected' : ''}`}
-            onClick={() => {
-              setSelectedCategoryId('all')
-              setIsOnlineLibrary(false) // D-03: restore local mode
-            }}
-            aria-label="全部分类"
-          >
-            <div className="sidebar-category-icon-wrapper">
-              <FolderOpen className="sidebar-category-icon" />
-            </div>
-            <span>全部分类</span>
-          </button>
+          {/* Phase 7: ProviderCategory sidebar when in online mode (D-13) */}
+          {isOnlineLibrary ? (
+            <>
+              {/* "全部" ProviderCategory entry */}
+              <button
+                className={`sidebar-category-item ${selectedProviderCategoryId === 'all' ? 'selected' : ''}`}
+                onClick={() => setSelectedProviderCategoryId('all')}
+                aria-label="全部网络提示词"
+              >
+                <div className="sidebar-category-icon-wrapper">
+                  <Globe className="sidebar-category-icon" />
+                </div>
+                <span>全部</span>
+                <span style={{ fontSize: '12px', fontWeight: 400, color: '#64748B' }}>
+                  · {networkPrompts.length}条
+                </span>
+              </button>
+              {/* D-13: ProviderCategory list (17 categories) */}
+              {sortProviderCategoriesByOrder(providerCategories).map((category) => (
+                <ProviderCategoryItem
+                  key={category.id}
+                  category={category}
+                  isSelected={selectedProviderCategoryId === category.id}
+                  onSelect={setSelectedProviderCategoryId}
+                />
+              ))}
+            </>
+          ) : (
+            <>
+              {/* "全部" category - virtual, not sortable */}
+              <button
+                className={`sidebar-category-item ${selectedCategoryId === 'all' ? 'selected' : ''}`}
+                onClick={() => {
+                  setSelectedCategoryId('all')
+                }}
+                aria-label="全部分类"
+              >
+                <div className="sidebar-category-icon-wrapper">
+                  <FolderOpen className="sidebar-category-icon" />
+                </div>
+                <span>全部分类</span>
+              </button>
 
-          {/* Phase 7: "在线库" entry (D-01) */}
-          <button
-            className={`sidebar-category-item ${isOnlineLibrary ? 'selected' : ''}`}
-            onClick={() => setIsOnlineLibrary(true)}
-            aria-label="在线库"
-          >
-            <div className="sidebar-category-icon-wrapper">
-              <Globe className="sidebar-category-icon" />
-            </div>
-            <span>在线库</span>
-          </button>
+              {/* "在线库" entry (D-01) */}
+              <button
+                className={`sidebar-category-item ${isOnlineLibrary ? 'selected' : ''}`}
+                onClick={() => setIsOnlineLibrary(true)}
+                aria-label="在线库"
+              >
+                <div className="sidebar-category-icon-wrapper">
+                  <Globe className="sidebar-category-icon" />
+                </div>
+                <span>在线库</span>
+              </button>
 
-          {/* Sortable local categories (hidden when in online library mode) */}
-          {!isOnlineLibrary && (
-          <DndContext collisionDetection={closestCenter} onDragEnd={handleCategoryDragEnd}>
-            <SortableContext
-              items={sortableCategories.map(c => c.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              {sortableCategories.map((category) => {
-                const IconComponent = getCategoryIcon(category.id)
-                return (
-                  <SortableCategoryItem
-                    key={category.id}
-                    category={category}
-                    isSelected={selectedCategoryId === category.id}
-                    onSelect={(id) => {
-                      setSelectedCategoryId(id)
-                      setIsOnlineLibrary(false) // D-03: restore local mode on category click
-                    }}
-                    showDragHandle={showCategoryDragHandles}
-                    IconComponent={IconComponent}
-                  />
-                )
-              })}
-            </SortableContext>
-          </DndContext>
+              {/* Sortable local categories */}
+              <DndContext collisionDetection={closestCenter} onDragEnd={handleCategoryDragEnd}>
+                <SortableContext
+                  items={sortableCategories.map(c => c.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {sortableCategories.map((category) => {
+                    const IconComponent = getCategoryIcon(category.id)
+                    return (
+                      <SortableCategoryItem
+                        key={category.id}
+                        category={category}
+                        isSelected={selectedCategoryId === category.id}
+                        onSelect={(id) => {
+                          setSelectedCategoryId(id)
+                        }}
+                        showDragHandle={showCategoryDragHandles}
+                        IconComponent={IconComponent}
+                      />
+                    )
+                  })}
+                </SortableContext>
+              </DndContext>
+            </>
           )}
         </div>
       </div>

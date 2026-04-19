@@ -2,7 +2,7 @@
  * Shared utility functions for text processing and array operations
  */
 
-import type { Category, Prompt } from './types'
+import type { Category, Prompt, ProviderCategory } from './types'
 
 /**
  * Truncate text to a maximum length with ellipsis suffix
@@ -24,6 +24,14 @@ export function sortCategoriesByOrder(categories: Category[]): Category[] {
  */
 export function sortPromptsByOrder(prompts: Prompt[]): Prompt[] {
   return [...prompts].sort((a, b) => a.order - b.order)
+}
+
+/**
+ * Sort ProviderCategories by their order field (immutable - returns new array)
+ * Phase 7: Used for ProviderCategory sidebar display (D-13)
+ */
+export function sortProviderCategoriesByOrder(categories: ProviderCategory[]): ProviderCategory[] {
+  return [...categories].sort((a, b) => a.order - b.order)
 }
 
 /**

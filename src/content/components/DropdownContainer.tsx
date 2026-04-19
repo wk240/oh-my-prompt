@@ -4,7 +4,7 @@
  * Positioned above the trigger button, right-aligned
  */
 
-import { useRef, useState, useMemo, useEffect } from 'react'
+import { useRef, useState, useMemo, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { MessageType, CacheDataResponse } from '../../shared/messages'
 import type { Prompt, Category, NetworkPrompt, ProviderCategory } from '../../shared/types'
@@ -604,6 +604,54 @@ export function DropdownContainer({
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedNetworkPrompt, setSelectedNetworkPrompt] = useState<NetworkPrompt | null>(null)
 
+  // Phase 8: Search state (D-01, D-05)
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedQuery, setDebouncedQuery] = useState('')
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Phase 8: Search input handler with debounce (D-05: 300ms)
+  const handleSearchChange = useCallback((query: string) => {
+    setSearchQuery(query) // Immediate UI update
+
+    // Clear previous timer
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current)
+    }
+
+    // Set new timer (D-05: 300ms delay)
+    searchDebounceRef.current = setTimeout(() => {
+      setDebouncedQuery(query.toLowerCase()) // D-06: lowercase for comparison
+      searchDebounceRef.current = null
+    }, 300)
+  }, [])
+
+  // Phase 8: Expand search input (D-01)
+  const handleSearchExpand = useCallback(() => {
+    setIsSearchExpanded(true)
+  }, [])
+
+  // Phase 8: Collapse search input and reset (D-04)
+  const handleSearchClose = useCallback(() => {
+    setIsSearchExpanded(false)
+    setSearchQuery('')
+    setDebouncedQuery('')
+    // Clear pending debounce timer
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current)
+      searchDebounceRef.current = null
+    }
+  }, [])
+
+  // Phase 8: Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current)
+      }
+    }
+  }, [])
+
   const dropdownGap = 8
   const dropdownMaxHeight = 600
 
@@ -722,13 +770,24 @@ export function DropdownContainer({
 
   const showDragHandles = filteredPrompts.length >= 2 && selectedCategoryId !== 'all'
 
-  // Phase 7: Filter and paginate network prompts (D-15, D-11)
+  // Phase 7+8: Filter network prompts by category AND search (D-06, D-07, D-08)
   const filteredNetworkPrompts = useMemo(() => {
-    if (selectedProviderCategoryId === 'all') {
-      return networkPrompts
+    // Start with provider category filter
+    let result = selectedProviderCategoryId === 'all'
+      ? networkPrompts
+      : networkPrompts.filter(p => p.categoryId === selectedProviderCategoryId || p.sourceCategory === selectedProviderCategoryId)
+
+    // Apply search filter (D-06: name + content match)
+    if (debouncedQuery) {
+      result = result.filter(p =>
+        p.name.toLowerCase().includes(debouncedQuery) ||
+        p.content.toLowerCase().includes(debouncedQuery)
+      )
     }
-    return networkPrompts.filter(p => p.categoryId === selectedProviderCategoryId || p.sourceCategory === selectedProviderCategoryId)
-  }, [networkPrompts, selectedProviderCategoryId])
+
+    // D-07: empty debouncedQuery shows all (result unchanged)
+    return result
+  }, [networkPrompts, selectedProviderCategoryId, debouncedQuery])
 
   const paginatedNetworkPrompts = useMemo(() => {
     return filteredNetworkPrompts.slice(0, loadedCount)
@@ -944,12 +1003,18 @@ export function DropdownContainer({
       </div>
 
       <div className="dropdown-main">
-        {/* Phase 7: Cache status header (D-16) */}
+        {/* Phase 7+8: Cache status header with search (D-16, D-01) */}
         {isOnlineLibrary && !isNetworkLoading && (
           <CacheStatusHeader
             fetchTimestamp={cacheMetadata.fetchTimestamp}
             isExpired={cacheMetadata.isExpired}
             isFromCache={cacheMetadata.isFromCache}
+            // Phase 8: Search props (D-01)
+            isSearchExpanded={isSearchExpanded}
+            searchQuery={searchQuery}
+            onSearchExpand={handleSearchExpand}
+            onSearchChange={handleSearchChange}
+            onSearchClose={handleSearchClose}
           />
         )}
 
@@ -990,7 +1055,11 @@ export function DropdownContainer({
             ) : paginatedNetworkPrompts.length === 0 ? (
               <div className="empty-state">
                 <div className="empty-message">
-                  {networkPrompts.length === 0 ? '无法加载网络数据，请检查网络连接' : '该分类暂无提示词'}
+                  {networkPrompts.length === 0
+                    ? '无法加载网络数据，请检查网络连接'
+                    : debouncedQuery && filteredNetworkPrompts.length === 0
+                      ? '未找到匹配的提示词' // Phase 8: Search empty state (Claude's Discretion)
+                      : '该分类暂无提示词'}
                 </div>
               </div>
             ) : (

@@ -18,7 +18,6 @@ import { ProviderCategoryItem } from './ProviderCategoryItem'
 import { LoadMoreButton } from './LoadMoreButton'
 import { PromptPreviewModal } from './PromptPreviewModal'
 import { CategorySelectDialog } from './CategorySelectDialog'
-import { BackupSettingsDialog } from './BackupSettingsDialog'
 import { ToastNotification } from './ToastNotification'
 import { Tooltip } from './Tooltip'
 import { usePromptStore } from '../../lib/store'
@@ -639,34 +638,18 @@ export function DropdownContainer({
   // Category select dialog state
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false)
 
-  // Backup settings dialog state
-  const [isBackupDialogOpen, setIsBackupDialogOpen] = useState(false)
-
   // Toast state
   const [toastMessage, setToastMessage] = useState<string | null>(null)
 
   // Refresh state
   const [isRefreshing, setIsRefreshing] = useState(false)
 
-  // Handle refresh with loading state and toast feedback
+  // Handle refresh with loading state
   const handleRefreshClick = useCallback(async () => {
     if (isRefreshing || !onRefresh) return
     setIsRefreshing(true)
     try {
-      const result = await onRefresh()
-      // Check for NO_FOLDER_HANDLE first - open backup dialog
-      if (result.error === 'NO_FOLDER_HANDLE') {
-        setIsBackupDialogOpen(true)
-      } else if (result.backupSuccess) {
-        setToastMessage('刷新成功，数据已备份')
-      } else if (result.success) {
-        setToastMessage('刷新成功')
-      } else {
-        setToastMessage('刷新失败')
-      }
-      if (result.error !== 'NO_FOLDER_HANDLE') {
-        setTimeout(() => setToastMessage(null), 3000)
-      }
+      await onRefresh()
     } finally {
       setIsRefreshing(false)
     }
@@ -1180,16 +1163,6 @@ export function DropdownContainer({
       isOpen={isCategoryDialogOpen}
       onClose={() => setIsCategoryDialogOpen(false)}
       onConfirm={handleConfirmCollect}
-    />
-    {/* Backup settings dialog */}
-    <BackupSettingsDialog
-      isOpen={isBackupDialogOpen}
-      onClose={() => setIsBackupDialogOpen(false)}
-      onBackupSuccess={() => {
-        setIsBackupDialogOpen(false)
-        setToastMessage('备份文件夹已设置')
-        setTimeout(() => setToastMessage(null), 3000)
-      }}
     />
     {/* Toast notification */}
     {toastMessage && (

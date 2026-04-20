@@ -51,6 +51,14 @@ export async function migrate(
   oldData: unknown,
   targetVersion: string
 ): Promise<StorageSchema> {
+  // Guard: Already migrated?
+  if (oldData && typeof oldData === 'object') {
+    const obj = oldData as Record<string, unknown>
+    if (obj._migrationComplete === true) {
+      return oldData as unknown as StorageSchema
+    }
+  }
+
   // Determine start version
   let startVersion = '1.0'
   if (oldData && typeof oldData === 'object') {
@@ -66,11 +74,16 @@ export async function migrate(
     semverCompare(m.version, targetVersion) < 0
   )
 
-  // Execute each step
+  // Execute each step with error handling
   let data = oldData
   for (const step of steps) {
-    console.log(`[Oh My Prompt Script] Executing migration ${step.version}`)
-    data = step.handler(data)
+    try {
+      console.log(`[Oh My Prompt Script] Executing migration ${step.version}`)
+      data = step.handler(data)
+    } catch (error) {
+      console.error(`[Oh My Prompt Script] Migration ${step.version} failed:`, error)
+      throw new Error(`Migration to ${targetVersion} failed at step ${step.version}`)
+    }
   }
 
   // Ensure final structure

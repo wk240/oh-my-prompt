@@ -41,7 +41,7 @@ export function ProviderCategoryItem({ category, isSelected, onSelect }: Provide
       <Database style={{ width: 14, height: 14, color: isSelected ? '#A16207' : '#64748B' }} />
       {/* Name with tooltip */}
       <Tooltip content={category.name}>
-        <span style={{ fontSize: '12px', fontWeight: 500, color: '#171717', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <span style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: '#171717', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {category.name}
         </span>
       </Tooltip>

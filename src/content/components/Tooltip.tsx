@@ -87,7 +87,7 @@ export function Tooltip({
         ref={triggerRef}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        style={{ display: 'inline-block' }}
+        style={{ display: 'block', width: '100%', overflow: 'hidden' }}
       >
         {children}
       </div>

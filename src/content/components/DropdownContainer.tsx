@@ -635,6 +635,8 @@ export function DropdownContainer({
     const categoryName = usePromptStore.getState().categories.find(c => c.id === targetCategoryId)?.name || '未知分类'
     setToastMessage(`已收藏到 ${categoryName}`)
     setIsCategoryDialogOpen(false)
+    setIsModalOpen(false)
+    setSelectedResourcePrompt(null)
   }, [selectedResourcePrompt])
 
   const dropdownGap = 8

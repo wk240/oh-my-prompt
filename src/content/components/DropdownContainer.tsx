@@ -18,6 +18,7 @@ import { ProviderCategoryItem } from './ProviderCategoryItem'
 import { LoadMoreButton } from './LoadMoreButton'
 import { PromptPreviewModal } from './PromptPreviewModal'
 import { CategorySelectDialog } from './CategorySelectDialog'
+import { BackupSettingsDialog } from './BackupSettingsDialog'
 import { ToastNotification } from './ToastNotification'
 import { Tooltip } from './Tooltip'
 import { usePromptStore } from '../../lib/store'
@@ -638,6 +639,9 @@ export function DropdownContainer({
   // Category select dialog state
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false)
 
+  // Backup settings dialog state
+  const [isBackupDialogOpen, setIsBackupDialogOpen] = useState(false)
+
   // Toast state
   const [toastMessage, setToastMessage] = useState<string | null>(null)
 
@@ -657,8 +661,8 @@ export function DropdownContainer({
           setToastMessage('刷新成功，备份失败请检查权限')
         }
       } else if (result.error === 'NO_FOLDER_HANDLE') {
-        // No folder configured - open settings to select folder
-        chrome.runtime.sendMessage({ type: 'OPEN_SETTINGS' })
+        // No folder configured - open backup settings dialog
+        setIsBackupDialogOpen(true)
       } else {
         setToastMessage('刷新失败')
       }
@@ -1170,6 +1174,16 @@ export function DropdownContainer({
       isOpen={isCategoryDialogOpen}
       onClose={() => setIsCategoryDialogOpen(false)}
       onConfirm={handleConfirmCollect}
+    />
+    {/* Backup settings dialog */}
+    <BackupSettingsDialog
+      isOpen={isBackupDialogOpen}
+      onClose={() => setIsBackupDialogOpen(false)}
+      onBackupSuccess={() => {
+        setIsBackupDialogOpen(false)
+        setToastMessage('备份文件夹已设置')
+        setTimeout(() => setToastMessage(null), 3000)
+      }}
     />
     {/* Toast notification */}
     {toastMessage && (

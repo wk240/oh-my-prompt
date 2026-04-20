@@ -1,8 +1,9 @@
 import { MessageType, MessageResponse } from '../shared/messages'
 import type { StorageSchema, SyncSettings } from '../shared/types'
 import { StorageManager } from '../lib/storage'
-import { getFolderHandle } from '../lib/sync/indexeddb'
-import { backupToFolder } from '../lib/sync/file-sync'
+import { getFolderHandle, saveFolderHandle } from '../lib/sync/indexeddb'
+import { backupToFolder, selectSyncFolder } from '../lib/sync/file-sync'
+import { getSyncStatus } from '../lib/sync/sync-manager'
 import '../lib/migrations/v1.0' // Register migrations
 
 console.log('[Oh My Prompt Script] Service Worker started')
@@ -97,6 +98,48 @@ chrome.runtime.onMessage.addListener(
           .then(() => sendResponse({ success: true } as MessageResponse))
           .catch(error => {
             console.error('[Oh My Prompt Script] BACKUP_TO_FOLDER error:', error)
+            sendResponse({ success: false, error: String(error) })
+          })
+        return true // Required for async response
+
+      case MessageType.SELECT_AND_SAVE_FOLDER:
+        // Select folder via File System Access API and save handle to IndexedDB
+        let selectedHandle: FileSystemDirectoryHandle | null = null
+        selectSyncFolder()
+          .then(handle => {
+            if (!handle) {
+              sendResponse({ success: false, error: 'Folder selection cancelled' })
+              return null
+            }
+            selectedHandle = handle
+            return saveFolderHandle(handle).then(() => handle)
+          })
+          .then(handle => {
+            if (!handle) return
+            // Perform initial backup
+            return storageManager.getData().then(data => {
+              console.log('[Oh My Prompt Script] Initial backup to selected folder')
+              return backupToFolder(data.userData, handle)
+            })
+          })
+          .then(() => {
+            if (!selectedHandle) return // skip if handle was null
+            return storageManager.updateSettings({ lastSyncTime: Date.now() })
+          })
+          .then(() => getSyncStatus())
+          .then(status => sendResponse({ success: true, data: status } as MessageResponse))
+          .catch(error => {
+            console.error('[Oh My Prompt Script] SELECT_AND_SAVE_FOLDER error:', error)
+            sendResponse({ success: false, error: String(error) })
+          })
+        return true // Required for async response
+
+      case MessageType.GET_SYNC_STATUS:
+        // Get current sync status for UI display
+        getSyncStatus()
+          .then(status => sendResponse({ success: true, data: status } as MessageResponse))
+          .catch(error => {
+            console.error('[Oh My Prompt Script] GET_SYNC_STATUS error:', error)
             sendResponse({ success: false, error: String(error) })
           })
         return true // Required for async response

@@ -31,7 +31,7 @@ export function TriggerButton({ isOpen, onClick }: TriggerButtonProps) {
       tabIndex={0}
       aria-label="选择预设提示词"
       aria-expanded={isOpen}
-      title="Prompt-Script"
+      title="Oh My Prompt Script"
     >
       <svg
         className="trigger-icon"

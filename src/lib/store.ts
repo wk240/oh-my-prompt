@@ -57,7 +57,7 @@ async function sendStorageMessage(
 
     return response.data
   } catch (error) {
-    console.error('[Prompt-Script] Storage message error:', error)
+    console.error('[Oh My Prompt Script] Storage message error:', error)
     throw error
   }
 }
@@ -107,7 +107,7 @@ function migratePromptOrders(prompts: Prompt[]): Prompt[] {
     })
   })
 
-  console.log('[Prompt-Script] Migrated prompt order field for', migrated.length, 'prompts')
+  console.log('[Oh My Prompt Script] Migrated prompt order field for', migrated.length, 'prompts')
   return migrated
 }
 
@@ -129,7 +129,7 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
       if (data) {
         // Warn for large datasets
         if (data.prompts.length > 500) {
-          console.warn('[Prompt-Script] Large dataset loaded:', data.prompts.length, 'prompts')
+          console.warn('[Oh My Prompt Script] Large dataset loaded:', data.prompts.length, 'prompts')
         }
 
         // Migrate prompts without order field
@@ -160,7 +160,7 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
         return { success: true }
       }
     } catch (error) {
-      console.error('[Prompt-Script] Failed to load storage:', error)
+      console.error('[Oh My Prompt Script] Failed to load storage:', error)
       const defaultState = getDefaultState()
       set({
         prompts: defaultState.prompts,
@@ -182,7 +182,7 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
       })
       return { success: true }
     } catch (error) {
-      console.error('[Prompt-Script] Failed to save storage:', error)
+      console.error('[Oh My Prompt Script] Failed to save storage:', error)
       return { success: false, error: '数据保存失败，请检查存储配额' }
     }
   },

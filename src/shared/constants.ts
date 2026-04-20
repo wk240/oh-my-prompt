@@ -1,5 +1,5 @@
 // Extension metadata
-export const EXTENSION_NAME = 'Prompt-Script'
+export const EXTENSION_NAME = 'Oh My Prompt Script'
 export const EXTENSION_VERSION = '1.0.0'
 
 // Platform domain (D-01)

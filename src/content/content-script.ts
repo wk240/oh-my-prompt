@@ -7,7 +7,7 @@ import { MessageType } from '../shared/messages'
 import { InputDetector } from './input-detector'
 import { UIInjector } from './ui-injector'
 
-console.log('[Prompt-Script] Content script loaded on:', window.location.href)
+console.log('[Oh My Prompt Script] Content script loaded on:', window.location.href)
 
 // Initialize components
 const inputDetector = new InputDetector(handleInputDetected)
@@ -19,9 +19,9 @@ const uiInjector = new UIInjector()
  */
 function handleInputDetected(inputElement: HTMLElement): void {
   if (uiInjector.isInjected()) {
-    console.log('[Prompt-Script] Cleaning up existing UI before re-injection')
+    console.log('[Oh My Prompt Script] Cleaning up existing UI before re-injection')
   }
-  console.log('[Prompt-Script] Injecting UI near input element')
+  console.log('[Oh My Prompt Script] Injecting UI near input element')
   uiInjector.inject(inputElement)
 }
 
@@ -35,10 +35,10 @@ chrome.runtime.sendMessage(
   { type: MessageType.PING },
   (response) => {
     if (chrome.runtime.lastError) {
-      console.error('[Prompt-Script] Ping failed:', chrome.runtime.lastError.message)
+      console.error('[Oh My Prompt Script] Ping failed:', chrome.runtime.lastError.message)
       return
     }
-    console.log('[Prompt-Script] Ping response:', response)
+    console.log('[Oh My Prompt Script] Ping response:', response)
   }
 )
 
@@ -46,7 +46,7 @@ chrome.runtime.sendMessage(
  * Handle messages from Service Worker
  */
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  console.log('[Prompt-Script] Received message:', message.type)
+  console.log('[Oh My Prompt Script] Received message:', message.type)
 
   // Handle storage updates (Phase 3)
   if (message.type === MessageType.GET_STORAGE) {
@@ -63,5 +63,5 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 window.addEventListener('unload', () => {
   inputDetector.stop()
   uiInjector.remove()
-  console.log('[Prompt-Script] Cleanup complete')
+  console.log('[Oh My Prompt Script] Cleanup complete')
 })

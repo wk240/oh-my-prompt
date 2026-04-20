@@ -1,5 +1,5 @@
 ![LOGO](assets/icon-128.png)
-# Prompt-Script
+# Oh My Prompt Script
 
 > 一键插入预设提示词，让 Lovart AI 创作更高效
 
@@ -8,7 +8,7 @@
 
 ## 这是什么？
 
-Prompt-Script 是一个 Chrome 扩展，专为 Lovart AI 设计平台打造。
+Oh My Prompt Script 是一个 Chrome 扩展，专为 Lovart AI 设计平台打造。
 
 **一句话说清楚：** 把常用提示词保存起来，下次创作时一键插入，不再重复输入相同内容。
 
@@ -19,7 +19,7 @@ Prompt-Script 是一个 Chrome 扩展，专为 Lovart AI 设计平台打造。
 - 常用的风格描述：「扁平化设计」「赛博朋克风格」「水彩插画」
 - 技术参数：「高清渲染」「4K分辨率」「光影细腻」
 
-一次输入，下次还得再输。Prompt-Script 解决这个问题。
+一次输入，下次还得再输。Oh My Prompt Script 解决这个问题。
 
 ## 安装
 
@@ -27,7 +27,7 @@ Prompt-Script 是一个 Chrome 扩展，专为 Lovart AI 设计平台打造。
 
 ```bash
 # 克隆项目
-git clone https://github.com/wk240/prompt-script.git
+git clone https://github.com/wk240/oh-my-prompt-script.git
 
 # 在 Chrome 加载扩展
 # 1. 打开 chrome://extensions/

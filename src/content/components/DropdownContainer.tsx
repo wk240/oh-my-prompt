@@ -54,7 +54,7 @@ const DEFAULT_CATEGORIES: Category[] = [
 ]
 
 // Portal container ID
-const PORTAL_ID = 'prompt-script-dropdown-portal'
+const PORTAL_ID = 'oh-my-prompt-script-dropdown-portal'
 
 // Get or create portal container with styles
 function getPortalContainer(): HTMLElement {
@@ -65,7 +65,7 @@ function getPortalContainer(): HTMLElement {
 
     // Inject styles for dropdown (since we're rendering outside Shadow DOM)
     const style = document.createElement('style')
-    style.id = 'prompt-script-dropdown-styles'
+    style.id = 'oh-my-prompt-script-dropdown-styles'
     style.textContent = getDropdownStyles()
     document.head.appendChild(style)
 
@@ -79,7 +79,7 @@ function getDropdownStyles(): string {
   return `
     #${PORTAL_ID} .dropdown-container {
       position: fixed;
-      width: 480px;
+      width: 640px;
       max-height: 600px;
       background: #ffffff;
       border: 1px solid #E5E5E5;
@@ -92,7 +92,7 @@ function getDropdownStyles(): string {
     }
 
     #${PORTAL_ID} .dropdown-sidebar {
-      width: 120px;
+      width: 192px;
       background: #f8f8f8;
       border-right: 1px solid #E5E5E5;
       display: flex;
@@ -618,7 +618,7 @@ export function DropdownContainer({
     }
 
     if (!targetCategoryId) {
-      console.error('[Prompt-Script] No target category for collect')
+      console.error('[Oh My Prompt Script] No target category for collect')
       return
     }
 
@@ -657,7 +657,7 @@ export function DropdownContainer({
     if (!isOpen) return
 
     const calculatePosition = () => {
-      const hostElement = document.querySelector('[data-testid="prompt-script-trigger"]')
+      const hostElement = document.querySelector('[data-testid="oh-my-prompt-script-trigger"]')
       if (!hostElement) return
 
       const rect = hostElement.getBoundingClientRect()
@@ -774,7 +774,7 @@ export function DropdownContainer({
           }
         })
       } catch (error) {
-        console.error('[Prompt-Script] Failed to reorder prompts:', error)
+        console.error('[Oh My Prompt Script] Failed to reorder prompts:', error)
       }
     }
   }
@@ -808,7 +808,7 @@ export function DropdownContainer({
           }
         })
       } catch (error) {
-        console.error('[Prompt-Script] Failed to reorder categories:', error)
+        console.error('[Oh My Prompt Script] Failed to reorder categories:', error)
       }
     }
   }
@@ -825,7 +825,7 @@ export function DropdownContainer({
         return
       }
 
-      const hostElement = document.querySelector('[data-testid="prompt-script-trigger"]')
+      const hostElement = document.querySelector('[data-testid="oh-my-prompt-script-trigger"]')
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node) &&
           hostElement && !hostElement.contains(e.target as Node)) {
         onClose?.()
@@ -957,8 +957,8 @@ export function DropdownContainer({
       <div className="dropdown-main">
         <div className="dropdown-header">
           <span className="dropdown-header-title">
-            <img className="dropdown-header-logo" src={chrome.runtime.getURL('assets/icon-128.png')} alt="Prompt Script" />
-            Prompt Script
+            <img className="dropdown-header-logo" src={chrome.runtime.getURL('assets/icon-128.png')} alt="Oh My Prompt Script" />
+            Oh My Prompt Script
           </span>
           <div className="dropdown-header-actions">
             <button

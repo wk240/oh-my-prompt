@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 <!-- GSD:project-start source:PROJECT.md -->
 ## Project
 
-**Prompt-Script**
+**Oh My Prompt Script**
 
 一个Chrome浏览器插件，用于在Lovart AI设计/绘图平台的输入框中一键插入预设的提示词模板。用户通过输入框旁的下拉菜单选择提示词，提示词按用途分类管理，支持内置编辑和数据导入导出。
 
@@ -141,7 +141,7 @@ Prompt insertion uses `execCommand('insertText')` for React/Lexical compatibilit
 - Call native value setter for form controls (React tracking)
 
 ### Console Logging
-- Prefix all logs: `[Prompt-Script]` for easy filtering
+- Prefix all logs: `[Oh My Prompt Script]` for easy filtering
 
 ### Message Response Pattern
 - Service worker must `return true` for async `sendResponse`

@@ -33,14 +33,14 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.log('[Prompt-Script] Error caught:', error.message)
-    console.log('[Prompt-Script] Component stack:', errorInfo.componentStack)
+    console.log('[Oh My Prompt Script] Error caught:', error.message)
+    console.log('[Oh My Prompt Script] Component stack:', errorInfo.componentStack)
   }
 
   render() {
     if (this.state.hasError) {
       // Silently handle all errors, don't show UI
-      console.log('[Prompt-Script] Component error:', this.state.error?.message)
+      console.log('[Oh My Prompt Script] Component error:', this.state.error?.message)
       return null
     }
 

@@ -3,7 +3,7 @@
  * Handles SPA dynamic rendering with debounce pattern
  */
 
-const LOG_PREFIX = '[Prompt-Script]'
+const LOG_PREFIX = '[Oh My Prompt Script]'
 const DEBOUNCE_MS = 100
 
 /**

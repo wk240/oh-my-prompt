@@ -3,7 +3,7 @@
  * Dispatches events for Lovart recognition
  */
 
-const LOG_PREFIX = '[Prompt-Script]'
+const LOG_PREFIX = '[Oh My Prompt Script]'
 
 /**
  * InsertHandler handles prompt insertion into Lovart input elements

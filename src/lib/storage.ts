@@ -54,7 +54,7 @@ export class StorageManager {
 
       return data
     } catch (error: unknown) {
-      console.error('[Prompt-Script] Failed to get storage data:', error)
+      console.error('[Oh My Prompt Script] Failed to get storage data:', error)
       return this.getDefaultData()
     }
   }
@@ -66,7 +66,7 @@ export class StorageManager {
     try {
       await chrome.storage.local.set({ [STORAGE_KEY]: data })
     } catch (error: unknown) {
-      console.error('[Prompt-Script] Failed to save storage data:', error)
+      console.error('[Oh My Prompt Script] Failed to save storage data:', error)
       throw error
     }
   }
@@ -111,7 +111,7 @@ export async function checkStorageQuota(): Promise<{
 
     // Log warning if usage exceeds 80%
     if (percentage > 80) {
-      console.warn(`[Prompt-Script] Storage usage warning: ${percentage}%`)
+      console.warn(`[Oh My Prompt Script] Storage usage warning: ${percentage}%`)
     }
 
     return {
@@ -120,7 +120,7 @@ export async function checkStorageQuota(): Promise<{
       percentage
     }
   } catch (error: unknown) {
-    console.error('[Prompt-Script] Failed to check storage quota:', error)
+    console.error('[Oh My Prompt Script] Failed to check storage quota:', error)
     return {
       usedBytes: 0,
       quotaBytes: STORAGE_QUOTA_BYTES,

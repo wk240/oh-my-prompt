@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Prompt-Script",
+  "name": "Oh My Prompt Script",
   "version": "1.0.0",
   "description": "一键插入预设提示词，提升创作效率",
   "background": {

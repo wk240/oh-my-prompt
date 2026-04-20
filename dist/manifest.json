@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Prompt-Script",
+  "name": "Oh My Prompt Script",
   "version": "1.0.0",
   "description": "一键插入预设提示词，提升创作效率",
   "background": {
@@ -10,7 +10,7 @@
   "content_scripts": [
     {
       "js": [
-        "assets/content-script.ts-loader-q3YBtQsm.js"
+        "assets/content-script.ts-loader-DpqD6lt2.js"
       ],
       "matches": [
         "*://lovart.ai/*",
@@ -63,10 +63,10 @@
       "resources": [
         "assets/messages-B2Ka1gOf.js",
         "assets/messages-B2Ka1gOf.js.map",
-        "assets/store-BhVtiZbH.js",
-        "assets/store-BhVtiZbH.js.map",
-        "assets/content-script.ts-DH5UhW5h.js",
-        "assets/content-script.ts-DH5UhW5h.js.map"
+        "assets/store-NTrKuNsy.js",
+        "assets/store-NTrKuNsy.js.map",
+        "assets/content-script.ts-BvjT_4qi.js",
+        "assets/content-script.ts-BvjT_4qi.js.map"
       ],
       "use_dynamic_url": false
     }

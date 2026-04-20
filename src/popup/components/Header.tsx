@@ -28,7 +28,7 @@ function Header({ onImport, onExport }: HeaderProps) {
           className="text-[16px] font-semibold text-[#171717] tracking-[1px]"
           style={{ fontFamily: 'Inter, sans-serif' }}
         >
-          Prompt Script
+          Oh My Prompt Script
         </span>
       </div>
 

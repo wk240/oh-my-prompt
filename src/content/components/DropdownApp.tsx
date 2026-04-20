@@ -10,6 +10,7 @@ import type { Prompt } from '../../shared/types'
 import type { ResourcePrompt } from '../../shared/types'
 import { InsertHandler } from '../insert-handler'
 import { usePromptStore } from '../../lib/store'
+import { MessageType } from '../../shared/messages'
 
 interface DropdownAppProps {
   inputElement: HTMLElement
@@ -47,33 +48,11 @@ export function DropdownApp({ inputElement }: DropdownAppProps) {
   }, [inputElement])
 
   const handleRefresh = useCallback(async () => {
-    // Backup via service worker (has access to IndexedDB in extension context)
-    console.log('[Oh My Prompt Script] Refresh clicked, requesting backup via service worker...')
-    let backupSuccess = false
-    let error: string | undefined
-
-    try {
-      const response = await chrome.runtime.sendMessage({ type: 'BACKUP_TO_FOLDER' })
-      if (response?.success) {
-        backupSuccess = true
-        console.log('[Oh My Prompt Script] Backup completed')
-      } else {
-        error = response?.error
-        console.warn('[Oh My Prompt Script] Backup failed:', response?.error)
-      }
-    } catch (err) {
-      error = String(err)
-      console.warn('[Oh My Prompt Script] Backup request failed:', err)
-    }
-
-    await loadFromStorage()
-
-    return {
-      success: true,
-      backupSuccess,
-      error: error === 'No folder handle configured' ? 'NO_FOLDER_HANDLE' : error
-    }
-  }, [loadFromStorage])
+    // Open backup page instead of doing backup in content script
+    console.log('[Oh My Prompt Script] Refresh clicked, opening backup page...')
+    await chrome.runtime.sendMessage({ type: MessageType.OPEN_BACKUP_PAGE })
+    return { success: true, backupSuccess: false }
+  }, [])
 
   // Handle direct injection of resource prompt
   const handleInjectResource = useCallback((resourcePrompt: ResourcePrompt) => {

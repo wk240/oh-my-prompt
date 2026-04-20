@@ -6,6 +6,7 @@
 import { MessageType } from '../shared/messages'
 import { InputDetector } from './input-detector'
 import { UIInjector } from './ui-injector'
+import { usePromptStore } from '../lib/store'
 
 console.log('[Oh My Prompt Script] Content script loaded on:', window.location.href)
 
@@ -52,6 +53,21 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === MessageType.GET_STORAGE) {
     // Phase 3: Refresh prompts from storage
     sendResponse({ success: true })
+  }
+
+  // Handle refresh data from backup page
+  if (message.type === MessageType.REFRESH_DATA) {
+    console.log('[Oh My Prompt Script] Refreshing data from backup...')
+    usePromptStore.getState().loadFromStorage()
+      .then(() => {
+        console.log('[Oh My Prompt Script] Data refreshed successfully')
+        sendResponse({ success: true })
+      })
+      .catch((err) => {
+        console.error('[Oh My Prompt Script] Failed to refresh data:', err)
+        sendResponse({ success: false, error: String(err) })
+      })
+    return true // Required for async sendResponse
   }
 
   return true // Required for async sendResponse

@@ -1,8 +1,7 @@
 import { MessageType, MessageResponse } from '../shared/messages'
 import type { StorageSchema, SyncSettings } from '../shared/types'
 import { StorageManager } from '../lib/storage'
-import { getFolderHandle, saveFolderHandle } from '../lib/sync/indexeddb'
-import { backupToFolder, selectSyncFolder } from '../lib/sync/file-sync'
+import { saveFolderHandle } from '../lib/sync/indexeddb'
 import { getSyncStatus } from '../lib/sync/sync-manager'
 import '../lib/migrations/v1.0' // Register migrations
 
@@ -81,55 +80,29 @@ chrome.runtime.onMessage.addListener(
           })
         return true // Required for async response
 
-      case MessageType.BACKUP_TO_FOLDER:
-        // Backup to local folder - needs to run in extension context for IndexedDB access
-        getFolderHandle()
-          .then(handle => {
-            if (!handle) {
-              sendResponse({ success: false, error: 'No folder handle configured' })
-              return null
-            }
-            return storageManager.getData().then(data => {
-              console.log('[Oh My Prompt Script] Backing up', data.userData.prompts.length, 'prompts')
-              return backupToFolder(data.userData, handle)
-            })
-          })
-          .then(() => storageManager.updateSettings({ lastSyncTime: Date.now() }))
-          .then(() => sendResponse({ success: true } as MessageResponse))
-          .catch(error => {
-            console.error('[Oh My Prompt Script] BACKUP_TO_FOLDER error:', error)
-            sendResponse({ success: false, error: String(error) })
-          })
-        return true // Required for async response
-
-      case MessageType.SELECT_AND_SAVE_FOLDER:
-        // Select folder via File System Access API and save handle to IndexedDB
-        let selectedHandle: FileSystemDirectoryHandle | null = null
-        selectSyncFolder()
-          .then(handle => {
-            if (!handle) {
-              sendResponse({ success: false, error: 'Folder selection cancelled' })
-              return null
-            }
-            selectedHandle = handle
-            return saveFolderHandle(handle).then(() => handle)
-          })
-          .then(handle => {
-            if (!handle) return
-            // Perform initial backup
-            return storageManager.getData().then(data => {
-              console.log('[Oh My Prompt Script] Initial backup to selected folder')
-              return backupToFolder(data.userData, handle)
-            })
-          })
-          .then(() => {
-            if (!selectedHandle) return // skip if handle was null
-            return storageManager.updateSettings({ lastSyncTime: Date.now() })
-          })
+      case MessageType.SAVE_FOLDER_HANDLE:
+        // Save handle from content script (backup already done in content script)
+        const handle = message.payload?.handle as FileSystemDirectoryHandle | undefined
+        const folderName = message.payload?.folderName as string | undefined
+        const lastSyncTime = message.payload?.lastSyncTime as number | undefined
+        if (!handle) {
+          sendResponse({ success: false, error: 'No handle provided' })
+          return true
+        }
+        saveFolderHandle(handle)
+          .then(() => storageManager.updateSettings({
+            lastSyncTime: lastSyncTime || Date.now()
+          }))
           .then(() => getSyncStatus())
-          .then(status => sendResponse({ success: true, data: status } as MessageResponse))
+          .then(status => {
+            // Update status with folder name if provided
+            if (folderName && status) {
+              status.folderName = folderName
+            }
+            sendResponse({ success: true, data: status } as MessageResponse)
+          })
           .catch(error => {
-            console.error('[Oh My Prompt Script] SELECT_AND_SAVE_FOLDER error:', error)
+            console.error('[Oh My Prompt Script] SAVE_FOLDER_HANDLE error:', error)
             sendResponse({ success: false, error: String(error) })
           })
         return true // Required for async response
@@ -143,6 +116,26 @@ chrome.runtime.onMessage.addListener(
             sendResponse({ success: false, error: String(error) })
           })
         return true // Required for async response
+
+      case MessageType.OPEN_BACKUP_PAGE:
+        // Open backup page in a new tab with source tab ID
+        const sourceTabId = _sender.tab?.id
+        const url = sourceTabId
+          ? `src/popup/backup.html?sourceTabId=${sourceTabId}`
+          : 'src/popup/backup.html'
+        chrome.tabs.create({ url: chrome.runtime.getURL(url) })
+          .then(() => sendResponse({ success: true } as MessageResponse))
+          .catch(error => {
+            console.error('[Oh My Prompt Script] OPEN_BACKUP_PAGE error:', error)
+            sendResponse({ success: false, error: 'Failed to open backup page' })
+          })
+        return true // Required for async response
+
+      case MessageType.REFRESH_DATA:
+        // Broadcast refresh to all content scripts (handled by tabs.sendMessage)
+        // This is just a confirmation from backup page
+        sendResponse({ success: true } as MessageResponse)
+        break
 
       default:
         sendResponse({ success: false, error: `Unknown message type: ${message.type}` })

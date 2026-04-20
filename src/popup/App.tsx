@@ -3,13 +3,16 @@ import { usePromptStore } from '../lib/store'
 import { exportData, readImportFile } from '../lib/import-export'
 import type { Prompt, StorageSchema } from '../shared/types'
 import { useToast } from '../hooks/use-toast'
+import { backupToFolder } from '../lib/sync/file-sync'
+import { getFolderHandle } from '../lib/sync/indexeddb'
+import { StorageManager } from '../lib/storage'
 import Header from './components/Header'
 import CategorySidebar from './components/CategorySidebar'
 import PromptList from './components/PromptList'
 import PromptEditDialog from './components/PromptEditDialog'
 import AddCategoryDialog from './components/AddCategoryDialog'
 import DeleteConfirmDialog from './components/DeleteConfirmDialog'
-import SyncSettingsPanel from './components/SyncSettingsPanel'
+import BackupSettingsDialog from './components/BackupSettingsDialog'
 import { Toaster } from './components/ui/toaster'
 
 const ALL_CATEGORY_ID = 'all'
@@ -20,6 +23,7 @@ function App() {
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [addCategoryDialogOpen, setAddCategoryDialogOpen] = useState(false)
+  const [backupDialogOpen, setBackupDialogOpen] = useState(false)
   const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null)
   const [promptToDelete, setPromptToDelete] = useState<{
     id: string
@@ -35,8 +39,29 @@ function App() {
   }, [loadFromStorage])
 
   const handleRefresh = async () => {
-    await loadFromStorage()
-    toast({ title: '刷新成功', description: '数据已从存储重新加载' })
+    // Check if folder handle exists
+    const handle = await getFolderHandle()
+
+    if (handle) {
+      // Backup then refresh
+      try {
+        const storageManager = StorageManager.getInstance()
+        const data = await storageManager.getData()
+        await backupToFolder(data.userData, handle)
+        await storageManager.updateSettings({ lastSyncTime: Date.now() })
+
+        // Now refresh from storage
+        await loadFromStorage()
+        toast({ title: '刷新成功', description: '数据已备份并重新加载' })
+      } catch (error) {
+        // Backup failed, but still refresh
+        await loadFromStorage()
+        toast({ title: '刷新成功', description: '数据已重新加载（备份失败，请检查文件夹权限）', variant: 'destructive' })
+      }
+    } else {
+      // No folder handle - open backup settings dialog
+      setBackupDialogOpen(true)
+    }
   }
 
   const handleImport = async () => {
@@ -160,7 +185,6 @@ function App() {
   return (
     <div className="w-full h-full flex flex-col bg-white overflow-hidden">
       <Header onImport={handleImport} onExport={handleExport} onRefresh={handleRefresh} />
-      <SyncSettingsPanel />
       <div className="flex flex-1 overflow-hidden min-h-0">
         <CategorySidebar
           onDeleteCategory={handleDeleteCategory}
@@ -189,6 +213,10 @@ function App() {
         onConfirm={confirmDelete}
         itemName={promptToDelete?.name || categoryToDelete?.name || ''}
         description={categoryToDelete ? '该分类下的所有提示词将被删除。' : undefined}
+      />
+      <BackupSettingsDialog
+        open={backupDialogOpen}
+        onClose={() => setBackupDialogOpen(false)}
       />
 
       {/* Toast notifications */}

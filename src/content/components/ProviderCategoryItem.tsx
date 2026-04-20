@@ -5,6 +5,7 @@
 
 import type { ResourceCategory } from '../../shared/types'
 import { Database } from 'lucide-react'
+import { Tooltip } from './Tooltip'
 
 interface ProviderCategoryItemProps {
   category: ResourceCategory
@@ -38,10 +39,12 @@ export function ProviderCategoryItem({ category, isSelected, onSelect }: Provide
     >
       {/* Database icon for resource categories */}
       <Database style={{ width: 14, height: 14, color: isSelected ? '#A16207' : '#64748B' }} />
-      {/* Name only */}
-      <span style={{ fontSize: '12px', fontWeight: 500, color: '#171717', flex: 1 }}>
-        {category.name}
-      </span>
+      {/* Name with tooltip */}
+      <Tooltip content={category.name}>
+        <span style={{ fontSize: '12px', fontWeight: 500, color: '#171717', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {category.name}
+        </span>
+      </Tooltip>
     </div>
   )
 }

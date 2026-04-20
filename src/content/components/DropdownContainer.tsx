@@ -19,6 +19,7 @@ import { LoadMoreButton } from './LoadMoreButton'
 import { PromptPreviewModal } from './PromptPreviewModal'
 import { CategorySelectDialog } from './CategorySelectDialog'
 import { ToastNotification } from './ToastNotification'
+import { Tooltip } from './Tooltip'
 import { usePromptStore } from '../../lib/store'
 import { getResourcePrompts, getResourceCategories } from '../../lib/resource-library'
 
@@ -501,7 +502,9 @@ function SortableCategoryItem({
         )}
         <IconComponent className="sidebar-category-icon" />
       </div>
-      <span>{category.name}</span>
+      <Tooltip content={category.name}>
+        <span>{category.name}</span>
+      </Tooltip>
     </div>
   )
 }
@@ -562,8 +565,12 @@ function SortableDropdownItem({
         <IconComponent className="dropdown-item-icon" />
       </div>
       <div className="dropdown-item-text">
-        <span className="dropdown-item-name">{prompt.name}</span>
-        <span className="dropdown-item-preview">{truncateText(prompt.content, 40)}</span>
+        <Tooltip content={prompt.name}>
+          <span className="dropdown-item-name">{prompt.name}</span>
+        </Tooltip>
+        <Tooltip content={prompt.description || prompt.content}>
+          <span className="dropdown-item-preview">{truncateText(prompt.content, 40)}</span>
+        </Tooltip>
       </div>
       <ArrowUpRight className="dropdown-item-arrow" />
     </div>

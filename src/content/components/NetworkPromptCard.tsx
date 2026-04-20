@@ -5,6 +5,7 @@
 
 import type { ResourcePrompt } from '../../shared/types'
 import { truncateText } from '../../shared/utils'
+import { Tooltip } from './Tooltip'
 
 interface NetworkPromptCardProps {
   prompt: ResourcePrompt
@@ -55,25 +56,33 @@ export function NetworkPromptCard({ prompt, onClick }: NetworkPromptCardProps) {
           }}
         />
       )}
-      {/* D-04: Name */}
-      <div style={{ fontSize: '12px', fontWeight: 500, color: '#171717', marginTop: '8px' }}>
-        {truncateText(prompt.name, 30)}
-      </div>
-      {/* D-04: ProviderCategory tag */}
-      <div
-        style={{
-          fontSize: '10px',
-          fontWeight: 500,
-          color: '#64748B',
-          marginTop: '4px',
-          padding: '4px 8px',
-          background: '#f0f0f0',
-          borderRadius: '4px',
-          display: 'inline-block',
-        }}
-      >
-        {prompt.sourceCategory || 'Unknown'}
-      </div>
+      {/* D-04: Name with tooltip */}
+      <Tooltip content={prompt.name}>
+        <div style={{ fontSize: '12px', fontWeight: 500, color: '#171717', marginTop: '8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {truncateText(prompt.name, 30)}
+        </div>
+      </Tooltip>
+      {/* D-04: ProviderCategory tag with tooltip */}
+      <Tooltip content={prompt.description || prompt.content}>
+        <div
+          style={{
+            fontSize: '10px',
+            fontWeight: 500,
+            color: '#64748B',
+            marginTop: '4px',
+            padding: '4px 8px',
+            background: '#f0f0f0',
+            borderRadius: '4px',
+            display: 'inline-block',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            maxWidth: '100%',
+          }}
+        >
+          {prompt.sourceCategory || 'Unknown'}
+        </div>
+      </Tooltip>
     </div>
   )
 }

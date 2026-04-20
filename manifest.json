@@ -31,7 +31,7 @@
     "48": "assets/icon-48.png",
     "128": "assets/icon-128.png"
   },
-  "permissions": ["activeTab", "downloads", "storage", "tabs"],
+  "permissions": ["activeTab", "downloads", "storage", "tabs", "fileSystem.write"],
   "host_permissions": [
     "https://raw.githubusercontent.com/*"
   ],

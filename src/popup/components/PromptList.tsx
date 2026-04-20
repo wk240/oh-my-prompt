@@ -20,6 +20,7 @@ function PromptList({ onEditPrompt, onDeletePrompt, onAddPrompt }: PromptListPro
   const prompts = usePromptStore(state => state.prompts)
   const selectedCategoryId = usePromptStore(state => state.selectedCategoryId)
   const reorderPrompts = usePromptStore(state => state.reorderPrompts)
+  const reorderAllPrompts = usePromptStore(state => state.reorderAllPrompts)
 
   const filteredPrompts = useMemo(() => {
     let categoryPrompts: Prompt[]
@@ -32,17 +33,24 @@ function PromptList({ onEditPrompt, onDeletePrompt, onAddPrompt }: PromptListPro
   }, [prompts, selectedCategoryId])
 
   const hasPromptsElsewhere = prompts.length > 0
-  const showDragHandles = filteredPrompts.length >= 2 && selectedCategoryId !== 'all'
+  const showDragHandles = filteredPrompts.length >= 2
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
-    if (over && active.id !== over.id && selectedCategoryId !== 'all' && selectedCategoryId !== null) {
+    if (over && active.id !== over.id) {
       const oldIndex = filteredPrompts.findIndex(p => p.id === active.id)
       const newIndex = filteredPrompts.findIndex(p => p.id === over.id)
       const newOrder = [...filteredPrompts]
       newOrder.splice(oldIndex, 1)
       newOrder.splice(newIndex, 0, filteredPrompts[oldIndex])
-      reorderPrompts(selectedCategoryId, newOrder.map(p => p.id))
+
+      if (selectedCategoryId === 'all') {
+        // Global sorting: update order for all prompts
+        reorderAllPrompts(newOrder.map(p => p.id))
+      } else if (selectedCategoryId !== null) {
+        // Category-specific sorting
+        reorderPrompts(selectedCategoryId, newOrder.map(p => p.id))
+      }
     }
   }
 

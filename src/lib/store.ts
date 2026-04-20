@@ -33,6 +33,7 @@ interface PromptStore {
   // Reorder
   reorderCategories: (newOrder: string[]) => void
   reorderPrompts: (categoryId: string, newOrder: string[]) => void
+  reorderAllPrompts: (newOrder: string[]) => void
 
   // Computed getters
   getPromptsByCategory: (categoryId: string) => Prompt[]
@@ -285,6 +286,25 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
           return {
             ...prompt,
             order: newOrder.indexOf(prompt.id)
+          }
+        }
+        return prompt
+      })
+      return { prompts: updatedPrompts }
+    })
+    // Immediate save (popup may close before debounced timer fires)
+    get().saveToStorage()
+  },
+
+  // Reorder all prompts globally
+  reorderAllPrompts: (newOrder: string[]) => {
+    set((state) => {
+      const updatedPrompts = state.prompts.map((prompt) => {
+        const newIndex = newOrder.indexOf(prompt.id)
+        if (newIndex !== -1) {
+          return {
+            ...prompt,
+            order: newIndex
           }
         }
         return prompt

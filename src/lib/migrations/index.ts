@@ -22,10 +22,8 @@ function semverCompare(a: string, b: string): number {
   return va.minor - vb.minor
 }
 
-// Migration steps registry
-const migrations: MigrationStep[] = [
-  // 1.0 legacy → new structure (registered in v1.0.ts)
-]
+// Migration steps registry - initialized empty, populated by register.ts
+const migrations: MigrationStep[] = []
 
 /**
  * Register a migration step
@@ -93,6 +91,3 @@ export async function migrate(
 
   return result
 }
-
-// Import and register v1.0 migration
-import './v1.0'

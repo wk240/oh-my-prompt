@@ -9,20 +9,25 @@ export async function syncToLocalFolder(
   userData: UserData,
   handle: FileSystemDirectoryHandle
 ): Promise<void> {
-  const fileHandle = await handle.getFileHandle(SYNC_FILE_NAME, { create: true })
-  const writable = await fileHandle.createWritable()
+  try {
+    const fileHandle = await handle.getFileHandle(SYNC_FILE_NAME, { create: true })
+    const writable = await fileHandle.createWritable()
 
-  const syncFile: LocalSyncFile = {
-    version: 1,
-    prompts: userData.prompts,
-    categories: userData.categories,
-    exportedAt: Date.now()
+    const syncFile: LocalSyncFile = {
+      version: 1,
+      prompts: userData.prompts,
+      categories: userData.categories,
+      exportedAt: Date.now()
+    }
+
+    await writable.write(JSON.stringify(syncFile, null, 2))
+    await writable.close()
+
+    console.log('[Oh My Prompt Script] Synced to local folder:', SYNC_FILE_NAME)
+  } catch (error) {
+    console.error('[Oh My Prompt Script] Failed to sync to local folder:', error)
+    throw error
   }
-
-  await writable.write(JSON.stringify(syncFile, null, 2))
-  await writable.close()
-
-  console.log('[Oh My Prompt Script] Synced to local folder:', SYNC_FILE_NAME)
 }
 
 /**
@@ -36,9 +41,14 @@ export async function readFromLocalFolder(
     const fileHandle = await handle.getFileHandle(SYNC_FILE_NAME)
     const file = await fileHandle.getFile()
     const content = await file.text()
-    const parsed = JSON.parse(content) as LocalSyncFile
+    const parsed = JSON.parse(content)
 
-    // Validate structure
+    // Validate structure and version
+    if (parsed.version !== 1) {
+      console.warn('[Oh My Prompt Script] Unsupported file version:', parsed.version)
+      return null
+    }
+
     if (!Array.isArray(parsed.prompts) || !Array.isArray(parsed.categories)) {
       console.warn('[Oh My Prompt Script] Invalid local file format')
       return null

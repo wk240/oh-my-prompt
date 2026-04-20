@@ -112,9 +112,6 @@ function migratePromptOrders(prompts: Prompt[]): Prompt[] {
   return migrated
 }
 
-// Debounce timer for delayed storage save
-let saveDebounceTimer: ReturnType<typeof setTimeout> | null = null
-
 export const usePromptStore = create<PromptStore>((set, get) => ({
   // Initial state
   prompts: [],
@@ -276,14 +273,8 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
       }))
       return { categories: updatedCategories }
     })
-    // Debounced save
-    if (saveDebounceTimer) {
-      clearTimeout(saveDebounceTimer)
-    }
-    saveDebounceTimer = setTimeout(() => {
-      get().saveToStorage()
-      saveDebounceTimer = null
-    }, 500)
+    // Immediate save (popup may close before debounced timer fires)
+    get().saveToStorage()
   },
 
   // Reorder prompts within a category
@@ -300,14 +291,8 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
       })
       return { prompts: updatedPrompts }
     })
-    // Debounced save
-    if (saveDebounceTimer) {
-      clearTimeout(saveDebounceTimer)
-    }
-    saveDebounceTimer = setTimeout(() => {
-      get().saveToStorage()
-      saveDebounceTimer = null
-    }, 500)
+    // Immediate save (popup may close before debounced timer fires)
+    get().saveToStorage()
   },
 
   // Computed getters

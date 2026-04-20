@@ -813,9 +813,9 @@ export function DropdownContainer({
         await chrome.runtime.sendMessage({
           type: 'SET_STORAGE',
           payload: {
-            prompts: updatedPrompts,
-            categories: localCategories,
-            version: '1.0.0'
+            version: '1.0.0',
+            userData: { prompts: updatedPrompts, categories: localCategories },
+            settings: { showBuiltin: true, syncEnabled: false }
           }
         })
       } catch (error) {
@@ -847,9 +847,9 @@ export function DropdownContainer({
         await chrome.runtime.sendMessage({
           type: 'SET_STORAGE',
           payload: {
-            prompts: localPrompts,
-            categories: updatedCategories,
-            version: '1.0.0'
+            version: '1.0.0',
+            userData: { prompts: localPrompts, categories: updatedCategories },
+            settings: { showBuiltin: true, syncEnabled: false }
           }
         })
       } catch (error) {

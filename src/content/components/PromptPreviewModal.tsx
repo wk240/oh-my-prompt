@@ -94,8 +94,18 @@ export function PromptPreviewModal({ prompt, isOpen, onClose, onCollect, onInjec
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
+          gap: '8px',
         }}>
-          <span style={{ fontSize: '14px', fontWeight: 600, color: '#171717' }}>
+          <span style={{
+            fontSize: '14px',
+            fontWeight: 600,
+            color: '#171717',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            flex: '1',
+            minWidth: '0',
+          }}>
             {prompt.name}
           </span>
           <button

@@ -263,6 +263,9 @@ function getDropdownStyles(): string {
       font-size: 12px;
       font-weight: 500;
       color: #171717;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     #${PORTAL_ID} .dropdown-item-preview {

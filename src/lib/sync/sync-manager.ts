@@ -63,8 +63,12 @@ export async function initialSync(): Promise<void> {
   if (localData && storageData.userData.prompts.length > 0) {
     const settings = await storageManager.getSettings()
     if (settings.syncEnabled) {
-      await syncToLocalFolder(storageData.userData, handle)
-      await storageManager.updateSettings({ lastSyncTime: Date.now() })
+      try {
+        await syncToLocalFolder(storageData.userData, handle)
+        await storageManager.updateSettings({ lastSyncTime: Date.now() })
+      } catch (error) {
+        console.error('[Oh My Prompt Script] Initial sync failed:', error)
+      }
     }
   }
 }
@@ -78,18 +82,25 @@ export async function enableSync(): Promise<{ success: boolean; error?: string }
     return { success: false, error: '请选择一个文件夹' }
   }
 
-  await saveFolderHandle(handle)
+  try {
+    await saveFolderHandle(handle)
 
-  // Sync current data immediately
-  const storageManager = StorageManager.getInstance()
-  const data = await storageManager.getData()
-  await syncToLocalFolder(data.userData, handle)
-  await storageManager.updateSettings({
-    syncEnabled: true,
-    lastSyncTime: Date.now()
-  })
+    // Sync current data immediately
+    const storageManager = StorageManager.getInstance()
+    const data = await storageManager.getData()
+    await syncToLocalFolder(data.userData, handle)
+    await storageManager.updateSettings({
+      syncEnabled: true,
+      lastSyncTime: Date.now()
+    })
 
-  return { success: true }
+    return { success: true }
+  } catch (error) {
+    // Clean up handle on failure
+    await removeFolderHandle()
+    console.error('[Oh My Prompt Script] Enable sync failed:', error)
+    return { success: false, error: '同步失败，请检查文件夹权限' }
+  }
 }
 
 /**

@@ -9,7 +9,7 @@ import { createPortal } from 'react-dom'
 import type { Prompt, Category } from '../../shared/types'
 import type { ResourcePrompt, ResourceCategory } from '../../shared/types'
 import { truncateText, sortCategoriesByOrder, sortPromptsByOrder, sortProviderCategoriesByOrder } from '../../shared/utils'
-import { Sparkles, Palette, Shapes, ArrowUpRight, X, Settings, FolderOpen, Layers, Sparkle, Brush, GripVertical, Database } from 'lucide-react'
+import { Sparkles, Palette, Shapes, ArrowUpRight, X, Settings, FolderOpen, Layers, Sparkle, Brush, GripVertical, Database, ArrowLeft } from 'lucide-react'
 import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -864,6 +864,17 @@ export function DropdownContainer({
         <div className="sidebar-categories">
           {isResourceLibrary ? (
             <>
+              {/* Back to local categories */}
+              <button
+                className="sidebar-category-item"
+                onClick={() => setIsResourceLibrary(false)}
+                aria-label="返回本地分类"
+              >
+                <div className="sidebar-category-icon-wrapper">
+                  <ArrowLeft className="sidebar-category-icon" />
+                </div>
+                <span>返回</span>
+              </button>
               {/* "全部" ResourceCategory entry */}
               <button
                 className={`sidebar-category-item ${selectedResourceCategoryId === 'all' ? 'selected' : ''}`}

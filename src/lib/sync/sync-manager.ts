@@ -1,6 +1,6 @@
 import type { UserData } from '../../shared/types'
 import { StorageManager } from '../storage'
-import { getFolderHandle, saveFolderHandle, removeFolderHandle } from './indexeddb'
+import { getFolderHandle, saveFolderHandle } from './indexeddb'
 import { syncToLocalFolder, readFromLocalFolder, selectSyncFolder } from './file-sync'
 
 export interface SyncStatus {
@@ -74,9 +74,30 @@ export async function initialSync(): Promise<void> {
 }
 
 /**
- * Enable sync and select folder
+ * Enable sync - reuse existing folder if permission valid, otherwise select new
  */
 export async function enableSync(): Promise<{ success: boolean; error?: string }> {
+  // First check if we have a saved handle with valid permission
+  const existingHandle = await getFolderHandle()
+
+  if (existingHandle) {
+    // Reuse existing folder
+    try {
+      const storageManager = StorageManager.getInstance()
+      const data = await storageManager.getData()
+      await syncToLocalFolder(data.userData, existingHandle)
+      await storageManager.updateSettings({
+        syncEnabled: true,
+        lastSyncTime: Date.now()
+      })
+      return { success: true }
+    } catch (error) {
+      console.error('[Oh My Prompt Script] Reuse existing folder failed:', error)
+      return { success: false, error: '同步失败，请检查文件夹权限或更换文件夹' }
+    }
+  }
+
+  // No valid handle - select new folder
   const handle = await selectSyncFolder()
   if (!handle) {
     return { success: false, error: '请选择一个文件夹' }
@@ -96,23 +117,46 @@ export async function enableSync(): Promise<{ success: boolean; error?: string }
 
     return { success: true }
   } catch (error) {
-    // Clean up handle on failure
-    await removeFolderHandle()
     console.error('[Oh My Prompt Script] Enable sync failed:', error)
     return { success: false, error: '同步失败，请检查文件夹权限' }
   }
 }
 
 /**
- * Disable sync and clear handle
+ * Disable sync but keep folder handle for re-enable
  */
 export async function disableSync(): Promise<void> {
-  await removeFolderHandle()
   const storageManager = StorageManager.getInstance()
   await storageManager.updateSettings({
-    syncEnabled: false,
-    lastSyncTime: undefined
+    syncEnabled: false
   })
+}
+
+/**
+ * Change sync folder - select new folder and replace existing
+ */
+export async function changeSyncFolder(): Promise<{ success: boolean; error?: string }> {
+  const handle = await selectSyncFolder()
+  if (!handle) {
+    return { success: false, error: '请选择一个文件夹' }
+  }
+
+  try {
+    await saveFolderHandle(handle)
+
+    // Sync current data to new folder
+    const storageManager = StorageManager.getInstance()
+    const data = await storageManager.getData()
+    await syncToLocalFolder(data.userData, handle)
+    await storageManager.updateSettings({
+      lastSyncTime: Date.now()
+    })
+
+    return { success: true }
+  } catch (error) {
+    console.error('[Oh My Prompt Script] Change folder failed:', error)
+    return { success: false, error: '更换文件夹失败，请检查权限' }
+  }
 }
 
 /**

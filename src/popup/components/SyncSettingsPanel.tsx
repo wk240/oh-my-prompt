@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getSyncStatus, enableSync, disableSync, manualSync } from '../../lib/sync/sync-manager'
+import { getSyncStatus, enableSync, disableSync, manualSync, changeSyncFolder } from '../../lib/sync/sync-manager'
 import type { SyncStatus } from '../../lib/sync/sync-manager'
 import { Button } from './ui/button'
 
@@ -61,6 +61,19 @@ export function SyncSettingsPanel() {
     }
   }
 
+  const handleChangeFolder = async () => {
+    setLoading(true)
+    setError(null)
+    const result = await changeSyncFolder()
+    setLoading(false)
+
+    if (result.success) {
+      await loadStatus()
+    } else {
+      setError(result.error || '更换文件夹失败')
+    }
+  }
+
   if (!status) {
     return (
       <div className="p-4 text-sm text-muted-foreground">
@@ -111,6 +124,14 @@ export function SyncSettingsPanel() {
               <Button
                 variant="ghost"
                 size="sm"
+                onClick={handleChangeFolder}
+                disabled={loading}
+              >
+                更换文件夹
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={handleDisable}
                 disabled={loading}
               >
@@ -121,7 +142,9 @@ export function SyncSettingsPanel() {
         ) : (
           <>
             <p className="text-sm text-muted-foreground">
-              启用自动备份到本地文件夹，数据变更时自动同步。
+              {status.hasFolder
+                ? '同步已禁用，但文件夹已保存。启用后将自动复用之前的文件夹。'
+                : '启用自动备份到本地文件夹，数据变更时自动同步。'}
             </p>
             <Button
               variant="outline"
@@ -129,8 +152,18 @@ export function SyncSettingsPanel() {
               onClick={handleEnable}
               disabled={loading}
             >
-              选择文件夹并启用
+              {status.hasFolder ? '启用同步' : '选择文件夹并启用'}
             </Button>
+            {status.hasFolder && status.folderName && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleChangeFolder}
+                disabled={loading}
+              >
+                更换文件夹
+              </Button>
+            )}
           </>
         )}
 

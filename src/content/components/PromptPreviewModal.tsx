@@ -15,7 +15,7 @@ interface PromptPreviewModalProps {
   onCollect?: () => void
 }
 
-const PORTAL_ID = 'prompt-script-dropdown-portal'
+const PORTAL_ID = 'oh-my-prompt-script-dropdown-portal'
 
 function getPortalContainer(): HTMLElement {
   let container = document.getElementById(PORTAL_ID)

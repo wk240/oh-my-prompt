@@ -1,12 +1,13 @@
 /**
  * Storage Manager
  * Handles all chrome.storage.local operations with proper TypeScript types,
- * error handling, and default data initialization.
+ * error handling, and migration integration.
  */
 
-import type { Prompt, Category, StorageSchema } from '../shared/types'
+import type { StorageSchema, UserData, SyncSettings } from '../shared/types'
 import { STORAGE_KEY } from '../shared/constants'
 import { BUILT_IN_CATEGORIES, BUILT_IN_PROMPTS } from '../data/built-in-data'
+import { migrate, isLegacyFormat } from './migrations/index'
 
 /**
  * StorageManager class for managing extension data persistence
@@ -25,34 +26,104 @@ export class StorageManager {
   }
 
   /**
-   * Returns default data structure for first-time users
+   * Get current extension version from manifest
+   */
+  getCurrentVersion(): string {
+    return chrome.runtime.getManifest().version
+  }
+
+  /**
+   * Returns default user data structure for first-time users
    * Includes built-in prompts and categories for immediate use
    */
-  getDefaultData(): StorageSchema {
+  getDefaultUserData(): UserData {
     return {
-      version: '1.0.0',
-      categories: [...BUILT_IN_CATEGORIES],
       prompts: [...BUILT_IN_PROMPTS],
+      categories: [...BUILT_IN_CATEGORIES]
     }
   }
 
   /**
-   * Retrieves full storage data
-   * Returns default data if storage is empty or on error
+   * Returns default settings structure
+   */
+  getDefaultSettings(): SyncSettings {
+    return {
+      showBuiltin: true,
+      syncEnabled: false
+    }
+  }
+
+  /**
+   * Returns full default storage schema
+   */
+  getDefaultData(): StorageSchema {
+    return {
+      version: this.getCurrentVersion(),
+      userData: this.getDefaultUserData(),
+      settings: this.getDefaultSettings(),
+      _migrationComplete: true
+    }
+  }
+
+  /**
+   * Initialize storage with default data (first install)
+   */
+  async initializeStorage(): Promise<StorageSchema> {
+    const defaultData = this.getDefaultData()
+    await this.saveData(defaultData)
+    console.log('[Oh My Prompt Script] Initialized storage with default data')
+    return defaultData
+  }
+
+  /**
+   * Retrieves full storage data with migration handling
+   * Handles: empty storage, legacy format, version mismatches
    */
   async getData(): Promise<StorageSchema> {
     try {
       const result = await chrome.storage.local.get(STORAGE_KEY)
-      const data = result[STORAGE_KEY] as StorageSchema | undefined
+      const data = result[STORAGE_KEY]
 
+      // Case 1: No data - first install
       if (!data) {
-        // Initialize with default data if storage is empty
-        const defaultData = this.getDefaultData()
-        await this.saveData(defaultData)
-        return defaultData
+        return await this.initializeStorage()
       }
 
-      return data
+      // Case 2: Legacy format - needs migration
+      if (isLegacyFormat(data)) {
+        console.log('[Oh My Prompt Script] Detected legacy format, migrating...')
+        const migrated = await migrate(data, this.getCurrentVersion())
+        await this.saveData(migrated)
+        return migrated
+      }
+
+      // Case 3: Already new format but wrong version
+      const currentVersion = this.getCurrentVersion()
+      const schema = data as StorageSchema
+
+      if (schema.version !== currentVersion && !schema._migrationComplete) {
+        console.log('[Oh My Prompt Script] Version mismatch, running migration...')
+        const migrated = await migrate(schema, currentVersion)
+        await this.saveData(migrated)
+        return migrated
+      }
+
+      // Case 4: Already migrated and up-to-date
+      if (schema._migrationComplete && schema.version === currentVersion) {
+        return schema
+      }
+
+      // Case 5: Has userData but version needs update
+      if (schema.userData && schema.version !== currentVersion) {
+        schema.version = currentVersion
+        schema._migrationComplete = true
+        await this.saveData(schema)
+        return schema
+      }
+
+      // Fallback: malformed data, reinitialize
+      console.warn('[Oh My Prompt Script] Malformed storage data, reinitializing...')
+      return await this.initializeStorage()
     } catch (error: unknown) {
       console.error('[Oh My Prompt Script] Failed to get storage data:', error)
       return this.getDefaultData()
@@ -72,19 +143,37 @@ export class StorageManager {
   }
 
   /**
-   * Retrieves prompts array
+   * Update settings with partial updates
    */
-  async getPrompts(): Promise<Prompt[]> {
+  async updateSettings(updates: Partial<SyncSettings>): Promise<void> {
     const data = await this.getData()
-    return data.prompts
+    data.settings = { ...data.settings, ...updates }
+    await this.saveData(data)
   }
 
   /**
-   * Retrieves categories array
+   * Update full userData (prompts and categories)
    */
-  async getCategories(): Promise<Category[]> {
+  async updateUserData(userData: UserData): Promise<void> {
     const data = await this.getData()
-    return data.categories
+    data.userData = userData
+    await this.saveData(data)
+  }
+
+  /**
+   * Get user data (prompts and categories)
+   */
+  async getUserData(): Promise<UserData> {
+    const data = await this.getData()
+    return data.userData
+  }
+
+  /**
+   * Get settings
+   */
+  async getSettings(): Promise<SyncSettings> {
+    const data = await this.getData()
+    return data.settings
   }
 }
 

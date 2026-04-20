@@ -8,6 +8,7 @@ import { create } from 'zustand'
 import type { Prompt, Category, StorageSchema } from '../shared/types'
 import { MessageType } from '../shared/messages'
 import { sortPromptsByOrder } from '../shared/utils'
+import { triggerSync } from './sync/sync-manager'
 
 interface PromptStore {
   prompts: Prompt[]
@@ -126,30 +127,30 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
     set({ isLoading: true })
     try {
       const data = await sendStorageMessage(MessageType.GET_STORAGE)
-      if (data) {
+      if (data && data.userData) {
         // Warn for large datasets
-        if (data.prompts.length > 500) {
-          console.warn('[Oh My Prompt Script] Large dataset loaded:', data.prompts.length, 'prompts')
+        if (data.userData.prompts.length > 500) {
+          console.warn('[Oh My Prompt Script] Large dataset loaded:', data.userData.prompts.length, 'prompts')
         }
 
         // Migrate prompts without order field
-        const migratedPrompts = migratePromptOrders(data.prompts)
+        const migratedPrompts = migratePromptOrders(data.userData.prompts)
 
         set({
           prompts: migratedPrompts,
-          categories: data.categories,
+          categories: data.userData.categories,
           selectedCategoryId: 'all',
           isLoading: false
         })
 
         // Save migrated data if migration happened
-        if (migratedPrompts !== data.prompts) {
+        if (migratedPrompts !== data.userData.prompts) {
           get().saveToStorage()
         }
 
         return { success: true }
       } else {
-        // Use default state if no data
+        // Use default state if no data or missing userData
         const defaultState = getDefaultState()
         set({
           prompts: defaultState.prompts,
@@ -181,6 +182,12 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
         userData: { prompts, categories },
         settings: { showBuiltin: true, syncEnabled: false }
       })
+
+      // Trigger sync after save (non-blocking)
+      triggerSync({ prompts, categories }).catch(err => {
+        console.warn('[Oh My Prompt Script] Sync trigger failed:', err)
+      })
+
       return { success: true }
     } catch (error) {
       console.error('[Oh My Prompt Script] Failed to save storage:', error)

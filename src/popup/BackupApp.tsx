@@ -54,7 +54,7 @@ function BackupApp() {
     if (result.success) {
       setSuccess('备份已启用')
       await loadStatus()
-      await handleCloseWithRefresh()
+      await handleCloseWithRefreshDelayed()
     } else {
       setError(result.error || '选择文件夹失败')
     }
@@ -71,10 +71,24 @@ function BackupApp() {
     if (result.success) {
       setSuccess('备份成功')
       await loadStatus()
-      await handleCloseWithRefresh()
+      await handleCloseWithRefreshDelayed()
     } else {
       setError(result.error || '备份失败')
     }
+  }
+
+  const handleCloseWithRefreshDelayed = async () => {
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    const sourceTabId = getSourceTabId()
+    if (sourceTabId) {
+      try {
+        await chrome.runtime.sendMessage({ type: 'REFRESH_DATA' })
+        await chrome.tabs.sendMessage(sourceTabId, { type: 'REFRESH_DATA' })
+      } catch (err) {
+        console.warn('[Oh My Prompt Script] Failed to notify source tab:', err)
+      }
+    }
+    window.close()
   }
 
   const handleChangeFolder = async () => {
@@ -97,19 +111,6 @@ function BackupApp() {
     await disableSync()
     setLoading(false)
     await loadStatus()
-  }
-
-  const handleCloseWithRefresh = async () => {
-    const sourceTabId = getSourceTabId()
-    if (sourceTabId) {
-      try {
-        await chrome.runtime.sendMessage({ type: 'REFRESH_DATA' })
-        await chrome.tabs.sendMessage(sourceTabId, { type: 'REFRESH_DATA' })
-      } catch (err) {
-        console.warn('[Oh My Prompt Script] Failed to notify source tab:', err)
-      }
-    }
-    window.close()
   }
 
   if (!status) {

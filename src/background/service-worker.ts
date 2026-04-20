@@ -1,6 +1,7 @@
 import { MessageType, MessageResponse } from '../shared/messages'
-import type { StorageSchema } from '../shared/types'
+import type { StorageSchema, SyncSettings } from '../shared/types'
 import { StorageManager } from '../lib/storage'
+import '../lib/migrations/v1.0' // Register migrations
 
 console.log('[Oh My Prompt Script] Service Worker started')
 
@@ -31,7 +32,26 @@ chrome.runtime.onMessage.addListener(
           sendResponse({ success: false, error: 'No payload provided' })
           return true
         }
-        storageManager.saveData(message.payload as StorageSchema)
+
+        // Merge with existing settings to preserve syncEnabled, etc.
+        storageManager.getData()
+          .then(existingData => {
+            const payload = message.payload as StorageSchema
+            // Preserve existing settings if payload doesn't have full settings
+            const mergedSettings: SyncSettings = {
+              ...existingData.settings,
+              ...payload.settings
+            }
+
+            const mergedData: StorageSchema = {
+              version: payload.version,
+              userData: payload.userData,
+              settings: mergedSettings,
+              _migrationComplete: payload._migrationComplete ?? existingData._migrationComplete
+            }
+
+            return storageManager.saveData(mergedData)
+          })
           .then(() => {
             console.log('[Oh My Prompt Script] SET_STORAGE: Save successful')
             sendResponse({ success: true } as MessageResponse)

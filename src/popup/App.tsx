@@ -52,7 +52,7 @@ function App() {
 
       if (result.valid && result.data) {
         // Save imported data to storage
-        const { prompts, categories } = result.data
+        const { prompts, categories } = result.data.userData
         usePromptStore.setState({
           prompts,
           categories,

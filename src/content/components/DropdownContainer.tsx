@@ -189,34 +189,37 @@ function getDropdownStyles(): string {
 
     #${PORTAL_ID} .dropdown-header-actions {
       display: flex;
+      align-items: center;
       gap: 8px;
+      flex-shrink: 0;
     }
 
-    #${PORTAL_ID} .dropdown-settings,
-    #${PORTAL_ID} .dropdown-close {
+    #${PORTAL_ID} .dropdown-action-btn {
       width: 24px;
       height: 24px;
+      padding: 0;
       display: flex;
       align-items: center;
-      justify: center;
+      justify-content: center;
+      flex-shrink: 0;
       background: #ffffff;
       border: none;
       border-radius: 4px;
       cursor: pointer;
       transition: background 0.15s ease;
       color: #171717;
+      box-sizing: border-box;
     }
 
-    #${PORTAL_ID} .dropdown-settings:hover,
-    #${PORTAL_ID} .dropdown-close:hover {
+    #${PORTAL_ID} .dropdown-action-btn:hover {
       background: #f8f8f8;
     }
 
-    #${PORTAL_ID} .dropdown-settings.refreshing {
+    #${PORTAL_ID} .dropdown-action-btn.refreshing {
       cursor: wait;
     }
 
-    #${PORTAL_ID} .dropdown-settings.refreshing svg {
+    #${PORTAL_ID} .dropdown-action-btn.refreshing svg {
       animation: spin 1s linear infinite;
     }
 
@@ -1047,7 +1050,7 @@ export function DropdownContainer({
           </span>
           <div className="dropdown-header-actions">
             <button
-              className={`dropdown-settings ${isRefreshing ? 'refreshing' : ''}`}
+              className={`dropdown-action-btn ${isRefreshing ? 'refreshing' : ''}`}
               onClick={handleRefreshClick}
               aria-label="刷新数据"
               disabled={isRefreshing}
@@ -1055,14 +1058,14 @@ export function DropdownContainer({
               <RefreshCw style={{ width: 14, height: 14 }} />
             </button>
             <button
-              className="dropdown-settings"
+              className="dropdown-action-btn"
               onClick={handleOpenSettings}
               aria-label="设置"
             >
               <Settings style={{ width: 14, height: 14 }} />
             </button>
             <button
-              className="dropdown-close"
+              className="dropdown-action-btn"
               onClick={onClose}
               aria-label="关闭"
             >

@@ -74,10 +74,11 @@ function App() {
   }
 
   const handleExport = async () => {
+    const version = chrome.runtime.getManifest().version
     const data: StorageSchema = {
-      prompts,
-      categories,
-      version: '1.0.0'
+      version,
+      userData: { prompts, categories },
+      settings: { showBuiltin: true, syncEnabled: false }
     }
     try {
       await exportData(data)

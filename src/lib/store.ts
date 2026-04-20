@@ -175,10 +175,11 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
   saveToStorage: async () => {
     const { prompts, categories } = get()
     try {
+      const version = chrome.runtime.getManifest().version
       await sendStorageMessage(MessageType.SET_STORAGE, {
-        prompts,
-        categories,
-        version: '1.0.0'
+        version,
+        userData: { prompts, categories },
+        settings: { showBuiltin: true, syncEnabled: false }
       })
       return { success: true }
     } catch (error) {

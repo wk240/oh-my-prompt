@@ -43,14 +43,6 @@ export interface LegacyStorageSchema {
   version: string
 }
 
-// Local sync file format
-export interface LocalSyncFile {
-  version: 1 // File format version (not extension version)
-  prompts: Prompt[]
-  categories: Category[]
-  exportedAt: number // Timestamp
-}
-
 // Resource library prompt types (from local JSON data)
 export interface ResourcePrompt extends Prompt {
   sourceCategory?: string // Original category from source

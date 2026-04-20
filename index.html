@@ -132,6 +132,32 @@
             background-size: 30px 30px;
             animation: pulse-dots 7s ease-in-out infinite alternate;
         }
+
+        /* Hero title strikethrough effect */
+        h1 s {
+            position: relative;
+            color: rgba(249, 245, 248, 0.4);
+            text-decoration: none;
+        }
+        h1 s::after {
+            content: '';
+            position: absolute;
+            left: -4px;
+            right: -4px;
+            top: 50%;
+            height: 4px;
+            background: linear-gradient(90deg, transparent 0%, #ff716c 15%, #d7383b 85%, transparent 100%);
+            transform: translateY(-50%) rotate(-3deg);
+            border-radius: 2px;
+        }
+
+        @keyframes strike-wobble {
+            0%, 100% { transform: translateY(-50%) rotate(-3deg); }
+            50% { transform: translateY(-50%) rotate(-2deg); }
+        }
+        h1 s::after {
+            animation: strike-wobble 4s ease-in-out infinite;
+        }
     </style>
 </head>
 <body class="bg-background text-on-background font-body min-h-screen relative overflow-x-hidden antialiased"><div class="fixed inset-0 pointer-events-none z-[-1] bg-dots-cyan opacity-20"></div>
@@ -165,12 +191,14 @@
 <!-- Hero Section -->
 <section class="min-h-[870px] flex flex-col justify-center items-center px-6 lg:px-8 max-w-7xl mx-auto py-24 lg:py-32 relative">
 <div class="text-center max-w-4xl mx-auto mb-16">
-<h1 class="text-5xl md:text-7xl font-headline font-bold tracking-tight mb-8 leading-[1.1] text-transparent bg-clip-text bg-gradient-to-r from-on-background via-on-background to-on-surface-variant">
-                    一键插入预设提示词 <br class="hidden md:block"/>
-                    让 AI 创作更高效
+<h1 class="text-5xl md:text-7xl font-headline font-bold tracking-tight mb-8 leading-[1.2] text-transparent bg-clip-text bg-gradient-to-r from-on-background via-on-background to-on-surface-variant">
+                    告别 <s>复制粘贴</s> <br class="hidden md:block"/>
+                    一键插入你的提示词
                 </h1>
 <p class="text-lg md:text-xl text-on-surface-variant max-w-2xl mx-auto font-body leading-relaxed mb-10">
-                    在 Lovart AI 平台快速插入精心设计的提示词模板，覆盖多种创作场景，提升你的 AI 绘图效率。
+                    还在频繁切换页面找提示词？<br class="hidden md:block"/>
+                    在 Lovart AI 输入框旁直接管理、选择、插入你的专属提示词库。<br class="hidden md:block"/>
+                    无需离开创作界面，一键插入。
                 </p>
 <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
 <a href="https://release-assets.githubusercontent.com/github-production-release-asset/1212380585/8e541969-c102-41a3-b202-1ac2626ba561?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-04-20T04%3A43%3A04Z&rscd=attachment%3B+filename%3Ddist.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-04-20T03%3A42%3A13Z&ske=2026-04-20T04%3A43%3A04Z&sks=b&skv=2018-11-09&sig=ph%2FHb6hGh6R9s0juicYjelQUSq%2FeDYG%2BMozljJt2vZc%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc3NjY1NzM5OSwibmJmIjoxNzc2NjU3MDk5LCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.VCyoiQIeHVAFv1rcTGy2e8-nn18eYUYFWnBaBPb9vlA&response-content-disposition=attachment%3B%20filename%3Ddist.zip&response-content-type=application%2Foctet-stream" class="btn-primary-gradient text-on-primary-fixed px-8 py-3.5 rounded-md text-base font-bold glow-primary transition-all duration-150 w-full sm:w-auto flex items-center justify-center gap-2">
@@ -183,36 +211,9 @@
 </a>
 </div>
 </div>
-<!-- Hero Code Preview Card -->
-<div class="w-full max-w-4xl mx-auto glass-panel rounded-lg ambient-shadow ghost-border relative overflow-hidden group">
-<!-- Terminal Header -->
-<div class="bg-surface-container-highest px-4 py-3 flex items-center justify-between ghost-border-bottom relative z-10">
-<div class="flex items-center gap-3">
-<div class="flex gap-1.5">
-<div class="w-2.5 h-2.5 rounded-full bg-error-dim/80"></div>
-<div class="w-2.5 h-2.5 rounded-full bg-tertiary-dim/80"></div>
-<div class="w-2.5 h-2.5 rounded-full bg-primary/80"></div>
-</div>
-<span class="text-xs font-label text-on-surface-variant ml-2">sys/core_prompt_v3.json</span>
-</div>
-<div class="flex gap-2">
-<span class="bg-secondary-container text-on-secondary-container text-[10px] px-2 py-0.5 rounded-sm uppercase tracking-wider font-label">Active</span>
-</div>
-</div>
-<!-- Editor Body -->
-<div class="p-6 md:p-8 bg-surface-container-low/50 relative">
-<div class="absolute inset-0 bg-gradient-to-b from-transparent to-surface-container-lowest/80 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
-<pre class="font-body text-sm md:text-base text-on-surface-variant overflow-x-auto"><code><span class="text-secondary">const</span> <span class="text-primary-dim">systemDirective</span> = {
-  <span class="text-tertiary-fixed">"role"</span>: <span class="text-[#a8ffc0]">"Expert Architect"</span>,
-  <span class="text-tertiary-fixed">"context"</span>: <span class="text-[#a8ffc0]">"High-contrast terminal UI"</span>,
-  <span class="text-tertiary-fixed">"parameters"</span>: {
-    <span class="text-tertiary-fixed">"temperature"</span>: <span class="text-error-container">0.2</span>,
-    <span class="text-tertiary-fixed">"max_tokens"</span>: <span class="text-error-container">4096</span>,
-    <span class="text-tertiary-fixed">"tools"</span>: [<span class="text-[#a8ffc0]">"search_vault"</span>, <span class="text-[#a8ffc0]">"sync_cloud"</span>]
-  },
-  <span class="text-tertiary-fixed">"instruction"</span>: <span class="text-[#a8ffc0]">"Optimize for token efficiency and semantic density."</span>
-}</code></pre>
-</div>
+<!-- Hero Image Preview -->
+<div class="w-full max-w-4xl mx-auto glass-panel rounded-lg ambient-shadow ghost-border relative overflow-hidden">
+<img src="assets/eg1.png" alt="Oh My Prompt Script Demo" class="w-full h-auto object-cover" />
 </div>
 </section>
 <!-- Core Features Bento Grid -->

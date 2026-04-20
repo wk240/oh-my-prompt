@@ -1,8 +1,17 @@
 import { useState, useEffect } from 'react'
-import { getSyncStatus, enableSync, disableSync, changeSyncFolder, manualSync } from '../lib/sync/sync-manager'
+import { getSyncStatus, enableSync, disableSync, changeSyncFolder, manualSync, getBackupVersions, restoreFromBackup } from '../lib/sync/sync-manager'
 import type { SyncStatus } from '../lib/sync/sync-manager'
+import type { BackupVersion } from '../lib/sync/file-sync'
 import { Button } from './components/ui/button'
-import { Check, FolderOpen, RefreshCw, X } from 'lucide-react'
+import { Check, FolderOpen, RefreshCw, X, History, RotateCcw } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from './components/ui/dialog'
 
 function formatTimestamp(timestamp: number): string {
   const date = new Date(timestamp)
@@ -15,17 +24,16 @@ function formatTimestamp(timestamp: number): string {
   })
 }
 
-function getSourceTabId(): number | null {
-  const params = new URLSearchParams(window.location.search)
-  const tabId = params.get('sourceTabId')
-  return tabId ? parseInt(tabId, 10) : null
-}
-
 function BackupApp() {
   const [status, setStatus] = useState<SyncStatus | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [showHistory, setShowHistory] = useState(false)
+  const [versions, setVersions] = useState<BackupVersion[]>([])
+  const [versionsLoading, setVersionsLoading] = useState(false)
+  const [restoreDialog, setRestoreDialog] = useState<{ open: boolean; version: BackupVersion | null }>({ open: false, version: null })
+  const [backupBeforeRestore, setBackupBeforeRestore] = useState(true)
 
   useEffect(() => {
     loadStatus()
@@ -54,7 +62,11 @@ function BackupApp() {
     if (result.success) {
       setSuccess('备份已启用')
       await loadStatus()
-      await handleCloseWithRefreshDelayed()
+      // Refresh history list if visible
+      if (showHistory) {
+        const versionsResult = await getBackupVersions()
+        setVersions(versionsResult.versions)
+      }
     } else {
       setError(result.error || '选择文件夹失败')
     }
@@ -71,24 +83,14 @@ function BackupApp() {
     if (result.success) {
       setSuccess('备份成功')
       await loadStatus()
-      await handleCloseWithRefreshDelayed()
+      // Refresh history list if visible
+      if (showHistory) {
+        const versionsResult = await getBackupVersions()
+        setVersions(versionsResult.versions)
+      }
     } else {
       setError(result.error || '备份失败')
     }
-  }
-
-  const handleCloseWithRefreshDelayed = async () => {
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    const sourceTabId = getSourceTabId()
-    if (sourceTabId) {
-      try {
-        await chrome.runtime.sendMessage({ type: 'REFRESH_DATA' })
-        await chrome.tabs.sendMessage(sourceTabId, { type: 'REFRESH_DATA' })
-      } catch (err) {
-        console.warn('[Oh My Prompt Script] Failed to notify source tab:', err)
-      }
-    }
-    window.close()
   }
 
   const handleChangeFolder = async () => {
@@ -111,6 +113,53 @@ function BackupApp() {
     await disableSync()
     setLoading(false)
     await loadStatus()
+  }
+
+  const handleShowHistory = async () => {
+    setShowHistory(!showHistory)
+    if (!showHistory) {
+      setVersionsLoading(true)
+      const result = await getBackupVersions()
+      setVersions(result.versions)
+      if (result.error) {
+        setError(result.error)
+      }
+      setVersionsLoading(false)
+    }
+  }
+
+  const handleRestoreClick = (version: BackupVersion) => {
+    setRestoreDialog({ open: true, version })
+    setBackupBeforeRestore(true)
+  }
+
+  const handleRestoreConfirm = async () => {
+    if (!restoreDialog.version) return
+
+    setLoading(true)
+    setError(null)
+    setSuccess(null)
+
+    const result = await restoreFromBackup(restoreDialog.version.filename, backupBeforeRestore)
+    setLoading(false)
+
+    if (result.success) {
+      setSuccess('恢复成功')
+      setRestoreDialog({ open: false, version: null })
+      await loadStatus()
+      // Refresh history list
+      setShowHistory(true)
+      const versionsResult = await getBackupVersions()
+      setVersions(versionsResult.versions)
+      // Notify content script to refresh data
+      try {
+        await chrome.runtime.sendMessage({ type: 'REFRESH_DATA' })
+      } catch (err) {
+        console.warn('[Oh My Prompt Script] Failed to notify refresh:', err)
+      }
+    } else {
+      setError(result.error || '恢复失败')
+    }
   }
 
   if (!status) {
@@ -228,7 +277,109 @@ function BackupApp() {
             提示：扩展卸载后数据仍可从此文件夹恢复
           </p>
         </div>
+
+        {/* History versions section */}
+        {status.hasFolder && status.enabled && (
+          <div className="border-t border-gray-200">
+            <button
+              onClick={handleShowHistory}
+              className="w-full p-3 flex items-center justify-between hover:bg-gray-50"
+            >
+              <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                <History style={{ width: 16, height: 16 }} />
+                查看历史版本
+              </span>
+              <span className="text-xs text-gray-500">
+                {showHistory ? '收起' : '展开'}
+              </span>
+            </button>
+
+            {showHistory && (
+              <div className="p-3 space-y-2 bg-gray-50">
+                {versionsLoading ? (
+                  <span className="text-sm text-gray-500">加载中...</span>
+                ) : versions.length === 0 ? (
+                  <span className="text-sm text-gray-500">暂无历史版本</span>
+                ) : (
+                  versions.map((v) => (
+                    <div
+                      key={v.filename}
+                      className="flex items-center justify-between p-2 bg-white rounded border border-gray-100"
+                    >
+                      <div className="flex-1">
+                        <div className="text-sm text-gray-900">
+                          {v.isLatest ? '最新版本' : formatTimestamp(new Date(v.backupTime).getTime())}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {v.promptCount} 个提示词 · {v.categoryCount} 个分类
+                        </div>
+                      </div>
+                      {!v.isLatest && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleRestoreClick(v)}
+                          disabled={loading}
+                        >
+                          <RotateCcw style={{ width: 14, height: 14 }} />
+                          恢复
+                        </Button>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Restore confirmation dialog */}
+      <Dialog open={restoreDialog.open} onOpenChange={(open) => setRestoreDialog({ open, version: restoreDialog.version })}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>确认恢复</DialogTitle>
+            <DialogDescription>
+              将从以下版本恢复数据：
+            </DialogDescription>
+          </DialogHeader>
+
+          {restoreDialog.version && (
+            <div className="p-3 bg-gray-50 rounded text-sm">
+              <div className="font-medium text-gray-900">
+                {formatTimestamp(new Date(restoreDialog.version.backupTime).getTime())}
+              </div>
+              <div className="text-gray-500 mt-1">
+                {restoreDialog.version.promptCount} 个提示词 · {restoreDialog.version.categoryCount} 个分类
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 p-2 bg-yellow-50 rounded text-sm text-yellow-800">
+            <span>⚠️</span>
+            <span>此操作将完全替换当前数据</span>
+          </div>
+
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={backupBeforeRestore}
+              onChange={(e) => setBackupBeforeRestore(e.target.checked)}
+              className="rounded"
+            />
+            恢复前先备份当前数据
+          </label>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRestoreDialog({ open: false, version: null })}>
+              取消
+            </Button>
+            <Button onClick={handleRestoreConfirm} disabled={loading}>
+              {loading ? '恢复中...' : '确认恢复'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

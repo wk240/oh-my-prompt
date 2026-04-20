@@ -1,7 +1,8 @@
 import type { UserData } from '../../shared/types'
 import { StorageManager } from '../storage'
 import { getFolderHandle, saveFolderHandle } from './indexeddb'
-import { syncToLocalFolder, readFromLocalFolder, selectSyncFolder } from './file-sync'
+import { syncToLocalFolder, readFromLocalFolder, selectSyncFolder, listBackupVersions, readBackupFile } from './file-sync'
+import type { BackupVersion } from './file-sync'
 
 export interface SyncStatus {
   enabled: boolean
@@ -192,5 +193,59 @@ export async function getSyncStatus(): Promise<SyncStatus> {
     hasFolder: handle !== null,
     lastSyncTime: settings.lastSyncTime,
     folderName: handle?.name
+  }
+}
+
+/**
+ * Get backup versions list for UI
+ */
+export async function getBackupVersions(): Promise<{ versions: BackupVersion[]; error?: string }> {
+  const handle = await getFolderHandle()
+  if (!handle) {
+    return { versions: [], error: '文件夹权限已失效，请重新选择' }
+  }
+
+  try {
+    const versions = await listBackupVersions(handle)
+    return { versions }
+  } catch (error) {
+    return { versions: [], error: '读取版本列表失败' }
+  }
+}
+
+/**
+ * Restore data from specific backup version
+ */
+export async function restoreFromBackup(
+  filename: string,
+  backupFirst: boolean = true
+): Promise<{ success: boolean; error?: string }> {
+  const handle = await getFolderHandle()
+  if (!handle) {
+    return { success: false, error: '文件夹权限已失效，请重新选择' }
+  }
+
+  try {
+    const userData = await readBackupFile(handle, filename)
+    if (!userData) {
+      return { success: false, error: '备份文件无效或已损坏' }
+    }
+
+    // Optionally backup current data before restoring
+    if (backupFirst) {
+      const storageManager = StorageManager.getInstance()
+      const currentData = await storageManager.getUserData()
+      await syncToLocalFolder(currentData, handle)
+    }
+
+    // Restore backup data
+    const storageManager = StorageManager.getInstance()
+    await storageManager.updateUserData(userData)
+    await storageManager.updateSettings({ lastSyncTime: Date.now() })
+
+    return { success: true }
+  } catch (error) {
+    console.error('[Oh My Prompt Script] Restore failed:', error)
+    return { success: false, error: '恢复失败，请检查文件权限' }
   }
 }

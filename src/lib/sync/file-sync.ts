@@ -1,5 +1,13 @@
 import type { Prompt, Category, UserData } from '../../shared/types'
-import { BACKUP_FILE_NAME } from '../../shared/constants'
+import { BACKUP_FILE_NAME, BACKUP_HISTORY_PREFIX, BACKUP_HISTORY_PATTERN, MAX_BACKUP_HISTORY } from '../../shared/constants'
+
+export interface BackupVersion {
+  filename: string
+  backupTime: string
+  promptCount: number
+  categoryCount: number
+  isLatest: boolean
+}
 
 /**
  * Backup user data to local folder with fixed filename
@@ -34,6 +42,7 @@ export async function backupToFolder(
 
 /**
  * Sync user data to local folder (uses same file as backup)
+ * Also creates history backup and cleans up old versions
  */
 export async function syncToLocalFolder(
   userData: UserData,
@@ -56,6 +65,10 @@ export async function syncToLocalFolder(
     await writable.close()
 
     console.log('[Oh My Prompt Script] Synced to local folder:', BACKUP_FILE_NAME)
+
+    // Create history backup and cleanup old versions
+    await createHistoryBackup(handle)
+    await cleanupOldBackups(handle)
   } catch (error) {
     console.error('[Oh My Prompt Script] Failed to sync to local folder:', error)
     throw error
@@ -126,6 +139,176 @@ export async function selectSyncFolder(): Promise<FileSystemDirectoryHandle | nu
   } catch (error) {
     // User cancelled or picker failed
     console.log('[Oh My Prompt Script] Folder selection cancelled:', error)
+    return null
+  }
+}
+
+/**
+ * Create a history backup copy with timestamp
+ */
+async function createHistoryBackup(handle: FileSystemDirectoryHandle): Promise<void> {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  const hour = String(now.getHours()).padStart(2, '0')
+  const minute = String(now.getMinutes()).padStart(2, '0')
+  const second = String(now.getSeconds()).padStart(2, '0')
+  const historyFilename = `${BACKUP_HISTORY_PREFIX}${year}${month}${day}-${hour}${minute}${second}.json`
+
+  try {
+    // Read latest backup
+    const latestHandle = await handle.getFileHandle(BACKUP_FILE_NAME)
+    const latestFile = await latestHandle.getFile()
+    const content = await latestFile.text()
+
+    // Write to history file
+    const historyHandle = await handle.getFileHandle(historyFilename, { create: true })
+    const writable = await historyHandle.createWritable()
+    await writable.write(content)
+    await writable.close()
+
+    console.log('[Oh My Prompt Script] History backup created:', historyFilename)
+  } catch (error) {
+    console.warn('[Oh My Prompt Script] Failed to create history backup:', error)
+  }
+}
+
+/**
+ * Cleanup old backups exceeding MAX_BACKUP_HISTORY limit
+ */
+async function cleanupOldBackups(handle: FileSystemDirectoryHandle): Promise<void> {
+  try {
+    const historyFiles: { name: string; time: number }[] = []
+
+    // TypeScript lacks proper types for directory iterator, use assertion
+    const dirHandle = handle as FileSystemDirectoryHandle & {
+      keys: () => AsyncIterableIterator<string>
+    }
+    for await (const name of dirHandle.keys()) {
+      if (BACKUP_HISTORY_PATTERN.test(name)) {
+        // Extract timestamp from filename: backup-20260421143052.json
+        const timestampStr = name.match(/\d{8}\d{6}/)?.[0]
+        if (timestampStr) {
+          historyFiles.push({
+            name: name,
+            time: parseInt(timestampStr, 10)
+          })
+        }
+      }
+    }
+
+    // Sort by time (newest first)
+    historyFiles.sort((a, b) => b.time - a.time)
+
+    // Remove files beyond limit
+    if (historyFiles.length > MAX_BACKUP_HISTORY) {
+      const toRemove = historyFiles.slice(MAX_BACKUP_HISTORY)
+      for (const file of toRemove) {
+        await handle.removeEntry(file.name)
+        console.log('[Oh My Prompt Script] Removed old backup:', file.name)
+      }
+    }
+  } catch (error) {
+    console.warn('[Oh My Prompt Script] Failed to cleanup old backups:', error)
+  }
+}
+
+/**
+ * List all backup versions in folder
+ */
+export async function listBackupVersions(handle: FileSystemDirectoryHandle): Promise<BackupVersion[]> {
+  const versions: BackupVersion[] = []
+
+  try {
+    // Check latest.json
+    try {
+      const latestHandle = await handle.getFileHandle(BACKUP_FILE_NAME)
+      const latestFile = await latestHandle.getFile()
+      const content = await latestFile.text()
+      const parsed = JSON.parse(content)
+
+      versions.push({
+        filename: BACKUP_FILE_NAME,
+        backupTime: parsed.backupTime || '',
+        promptCount: parsed.userData?.prompts?.length || 0,
+        categoryCount: parsed.userData?.categories?.length || 0,
+        isLatest: true
+      })
+    } catch {
+      // latest.json not found
+    }
+
+    // Check history files
+    const dirHandle = handle as FileSystemDirectoryHandle & {
+      keys: () => AsyncIterableIterator<string>
+    }
+    for await (const name of dirHandle.keys()) {
+      if (BACKUP_HISTORY_PATTERN.test(name)) {
+        try {
+          const fileHandle = await handle.getFileHandle(name)
+          const file = await fileHandle.getFile()
+          const content = await file.text()
+          const parsed = JSON.parse(content)
+
+          versions.push({
+            filename: name,
+            backupTime: parsed.backupTime || '',
+            promptCount: parsed.userData?.prompts?.length || 0,
+            categoryCount: parsed.userData?.categories?.length || 0,
+            isLatest: false
+          })
+        } catch {
+          // Skip unreadable files
+        }
+      }
+    }
+
+    // Sort by backupTime (newest first)
+    versions.sort((a, b) => new Date(b.backupTime).getTime() - new Date(a.backupTime).getTime())
+  } catch (error) {
+    console.warn('[Oh My Prompt Script] Failed to list backup versions:', error)
+  }
+
+  return versions
+}
+
+/**
+ * Read specific backup file and return UserData
+ */
+export async function readBackupFile(
+  handle: FileSystemDirectoryHandle,
+  filename: string
+): Promise<UserData | null> {
+  try {
+    const fileHandle = await handle.getFileHandle(filename)
+    const file = await fileHandle.getFile()
+    const content = await file.text()
+    const parsed = JSON.parse(content)
+
+    // Validate structure
+    if (parsed.userData && typeof parsed.userData === 'object') {
+      const userData = parsed.userData as { prompts: unknown; categories: unknown }
+      if (!Array.isArray(userData.prompts) || !Array.isArray(userData.categories)) {
+        return null
+      }
+      return {
+        prompts: userData.prompts as Prompt[],
+        categories: userData.categories as Category[]
+      }
+    }
+
+    // Legacy format
+    if (!Array.isArray(parsed.prompts) || !Array.isArray(parsed.categories)) {
+      return null
+    }
+
+    return {
+      prompts: parsed.prompts as Prompt[],
+      categories: parsed.categories as Category[]
+    }
+  } catch (error) {
+    console.warn('[Oh My Prompt Script] Failed to read backup file:', error)
     return null
   }
 }

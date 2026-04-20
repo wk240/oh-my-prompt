@@ -17,5 +17,10 @@ export const SYNC_DB_NAME = 'oh-my-prompt-script-sync'
 export const SYNC_STORE_NAME = 'handles'
 export const SYNC_HANDLE_KEY = 'syncFolderHandle'
 
-// Backup file name for local folder sync
-export const BACKUP_FILE_NAME = 'oh-my-prompt-script-backup.json'
+// Backup file name for local folder sync (latest version)
+export const BACKUP_FILE_NAME = 'latest.json'
+
+// Backup history file prefix and limits
+export const BACKUP_HISTORY_PREFIX = 'backup-'
+export const BACKUP_HISTORY_PATTERN = /^backup-\d{8}-\d{6}\.json$/
+export const MAX_BACKUP_HISTORY = 10

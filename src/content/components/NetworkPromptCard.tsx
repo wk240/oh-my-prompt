@@ -96,7 +96,7 @@ export function NetworkPromptCard({ prompt, onClick, onInject, onCollect, isColl
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: isCollected ? '#1890ff' : '#ffffff',
+            background: isCollected ? '#171717' : '#ffffff',
             border: '1px solid #E5E5E5',
             borderRadius: '4px',
             cursor: 'pointer',
@@ -104,7 +104,7 @@ export function NetworkPromptCard({ prompt, onClick, onInject, onCollect, isColl
             zIndex: 10,
           }}
         >
-          <Bookmark style={{ width: 12, height: 12, color: isCollected ? '#ffffff' : '#171717', fill: isCollected ? '#1890ff' : 'none' }} />
+          <Bookmark style={{ width: 12, height: 12, color: isCollected ? '#ffffff' : '#171717', fill: isCollected ? '#171717' : 'none' }} />
         </button>
       </Tooltip>
 

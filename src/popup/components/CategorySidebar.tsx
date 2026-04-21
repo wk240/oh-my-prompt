@@ -1,6 +1,6 @@
 import { usePromptStore } from '../../lib/store'
 import { cn } from '../../lib/utils'
-import { Trash2 } from 'lucide-react'
+import { Trash2, Pencil } from 'lucide-react'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core'
 import { SortableItem } from './SortableItem'
@@ -10,10 +10,11 @@ const ALL_CATEGORY_ID = 'all'
 
 interface CategorySidebarProps {
   onDeleteCategory: (categoryId: string, categoryName: string) => void
+  onEditCategory: (categoryId: string, categoryName: string) => void
   onAddCategory: () => void
 }
 
-function CategorySidebar({ onDeleteCategory, onAddCategory }: CategorySidebarProps) {
+function CategorySidebar({ onDeleteCategory, onEditCategory, onAddCategory }: CategorySidebarProps) {
   const { categories, selectedCategoryId, setSelectedCategory, prompts, reorderCategories } = usePromptStore()
 
   // Sort categories by order
@@ -99,7 +100,13 @@ function CategorySidebar({ onDeleteCategory, onAddCategory }: CategorySidebarPro
                     </span>
                   </button>
 
-                  {/* Delete button for categories */}
+                  {/* Edit and Delete buttons for categories */}
+                  <button
+                    onClick={() => onEditCategory(category.id, category.name)}
+                    className="absolute right-7 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1.5 hover:bg-gray-100 rounded transition-opacity"
+                  >
+                    <Pencil className="w-3.5 h-3.5 text-[#64748B] hover:text-blue-500" />
+                  </button>
                   <button
                     onClick={() => onDeleteCategory(category.id, category.name)}
                     className="absolute right-0 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1.5 hover:bg-gray-100 rounded transition-opacity"

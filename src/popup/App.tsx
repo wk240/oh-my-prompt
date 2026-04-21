@@ -10,6 +10,7 @@ import CategorySidebar from './components/CategorySidebar'
 import PromptList from './components/PromptList'
 import PromptEditDialog from './components/PromptEditDialog'
 import AddCategoryDialog from './components/AddCategoryDialog'
+import EditCategoryDialog from './components/EditCategoryDialog'
 import DeleteConfirmDialog from './components/DeleteConfirmDialog'
 import UpdateGuideDialog from './components/UpdateGuideDialog'
 import { Toaster } from './components/ui/toaster'
@@ -22,7 +23,12 @@ function App() {
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [addCategoryDialogOpen, setAddCategoryDialogOpen] = useState(false)
+  const [editCategoryDialogOpen, setEditCategoryDialogOpen] = useState(false)
   const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null)
+  const [categoryToEdit, setCategoryToEdit] = useState<{
+    id: string
+    name: string
+  } | null>(null)
   const [promptToDelete, setPromptToDelete] = useState<{
     id: string
     name: string
@@ -163,6 +169,16 @@ function App() {
     setAddCategoryDialogOpen(true)
   }
 
+  const handleEditCategory = (id: string, name: string) => {
+    setCategoryToEdit({ id, name })
+    setEditCategoryDialogOpen(true)
+  }
+
+  const handleEditCategoryDialogClose = () => {
+    setEditCategoryDialogOpen(false)
+    setCategoryToEdit(null)
+  }
+
   const handleAddPrompt = () => {
     setEditingPrompt(null)
     setEditDialogOpen(true)
@@ -212,6 +228,7 @@ function App() {
       <div className="flex flex-1 overflow-hidden min-h-0">
         <CategorySidebar
           onDeleteCategory={handleDeleteCategory}
+          onEditCategory={handleEditCategory}
           onAddCategory={handleAddCategory}
         />
         <PromptList
@@ -231,6 +248,14 @@ function App() {
         open={addCategoryDialogOpen}
         onClose={() => setAddCategoryDialogOpen(false)}
       />
+      {categoryToEdit && (
+        <EditCategoryDialog
+          open={editCategoryDialogOpen}
+          onClose={handleEditCategoryDialogClose}
+          categoryId={categoryToEdit.id}
+          currentName={categoryToEdit.name}
+        />
+      )}
       <DeleteConfirmDialog
         open={deleteDialogOpen}
         onClose={handleDeleteDialogClose}

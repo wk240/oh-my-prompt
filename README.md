@@ -1,12 +1,13 @@
 <div align="center">
   <img src="assets/logo-readme.png" alt="LOGO" style="max-width: 750px; width: 100%;">
   <h3>告别复制粘贴，一键插入你的提示词</h3>
+  <h3>无需离开创作界面</h3>
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Chrome Extension](https://img.shields.io/badge/Chrome-Manifest%20V3-green.svg)]()
 [![Version](https://img.shields.io/badge/Version-1.1.0-orange.svg)]()
 
-🌐 **官方网站**: [https://wk240.github.io/oh-my-prompt-script](https://wk240.github.io/oh-my-prompt-script)
+🌐 [官方网站](https://wk240.github.io/oh-my-prompt-script)
 </div>
 
 ## 这是什么？
@@ -121,6 +122,10 @@ A: 更新步骤如下：
 1. 扩展会自动检测新版本并提示，或点击管理界面的「检查更新」按钮
 2. 点击提示，前往 Releases 页面下载新版本 `dist.zip`
 3. 解压后，在 `chrome://extensions/` 点击扩展的「重新加载」按钮
+
+## 作者
+
+wk240 - Lovart AI 用户，为提升创作效率而开发。[GitHub](https://github.com/wk240)
 
 ## 许可证
 

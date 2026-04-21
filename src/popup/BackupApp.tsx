@@ -20,7 +20,8 @@ function formatTimestamp(timestamp: number): string {
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
+    second: '2-digit'
   })
 }
 
@@ -29,7 +30,7 @@ function BackupApp() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
-  const [showHistory, setShowHistory] = useState(false)
+  const [showHistory, setShowHistory] = useState(true)
   const [versions, setVersions] = useState<BackupVersion[]>([])
   const [versionsLoading, setVersionsLoading] = useState(false)
   const [restoreDialog, setRestoreDialog] = useState<{ open: boolean; version: BackupVersion | null }>({ open: false, version: null })
@@ -38,6 +39,20 @@ function BackupApp() {
   useEffect(() => {
     loadStatus()
   }, [])
+
+  // Load versions when status is ready and history is shown
+  useEffect(() => {
+    if (status?.hasFolder && status?.enabled && showHistory && versions.length === 0) {
+      setVersionsLoading(true)
+      getBackupVersions().then((result) => {
+        setVersions(result.versions)
+        if (result.error) {
+          setError(result.error)
+        }
+        setVersionsLoading(false)
+      })
+    }
+  }, [status, showHistory])
 
   const loadStatus = async () => {
     setLoading(true)
@@ -311,7 +326,7 @@ function BackupApp() {
             </button>
 
             {showHistory && (
-              <div className="p-3 space-y-2 bg-gray-50">
+              <div className="p-3 bg-gray-50 max-h-[260px] overflow-y-auto">
                 {versionsLoading ? (
                   <span className="text-sm text-gray-500">加载中...</span>
                 ) : versions.length === 0 ? (
@@ -320,7 +335,7 @@ function BackupApp() {
                   versions.map((v) => (
                     <div
                       key={v.filename}
-                      className="flex items-center justify-between p-2 bg-white rounded border border-gray-100"
+                      className="flex items-center justify-between p-2 bg-white rounded border border-gray-100 mb-2 last:mb-0"
                     >
                       <div className="flex-1">
                         <div className="text-sm text-gray-900">

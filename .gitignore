@@ -1,3 +1,5 @@
 node_modules
 .planning/debug/
 dist/
+dist.zip
+tests/

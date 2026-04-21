@@ -107,13 +107,12 @@ export async function enableSync(): Promise<{ success: boolean; error?: string }
   try {
     await saveFolderHandle(handle)
 
-    // Sync current data immediately
+    // Only save folder handle and enable sync, no auto-backup on first selection
+    // User can manually trigger backup via "立即备份" button
     const storageManager = StorageManager.getInstance()
-    const data = await storageManager.getData()
-    await syncToLocalFolder(data.userData, handle)
     await storageManager.updateSettings({
-      syncEnabled: true,
-      lastSyncTime: Date.now()
+      syncEnabled: true
+      // No lastSyncTime - backup hasn happened yet
     })
 
     return { success: true }

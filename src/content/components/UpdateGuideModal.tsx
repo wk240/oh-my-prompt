@@ -6,7 +6,7 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { UpdateStatus } from '../../shared/types'
-import { Download, FolderOpen, RefreshCw, Check, ExternalLink, ChevronRight, ChevronLeft, X } from 'lucide-react'
+import { Download, RefreshCw, Check, ExternalLink, ChevronRight, ChevronLeft, X, FileDown, FileUp } from 'lucide-react'
 
 interface UpdateGuideModalProps {
   status: UpdateStatus | null
@@ -17,21 +17,27 @@ interface UpdateGuideModalProps {
 const STEPS = [
   {
     id: 1,
+    title: '导出数据备份',
+    description: '更新前先导出当前提示词数据，防止数据丢失',
+    icon: FileDown,
+  },
+  {
+    id: 2,
     title: '下载新版本',
     description: '从 GitHub Releases 页面下载最新的插件文件',
     icon: Download,
   },
   {
-    id: 2,
-    title: '解压文件',
-    description: '如果下载的是 .zip 文件，解压到本地文件夹',
-    icon: FolderOpen,
+    id: 3,
+    title: '解压并更新',
+    description: '解压文件后在浏览器扩展管理页面重新加载插件',
+    icon: RefreshCw,
   },
   {
-    id: 3,
-    title: '更新插件',
-    description: '在浏览器扩展管理页面重新加载插件',
-    icon: RefreshCw,
+    id: 4,
+    title: '导入数据恢复',
+    description: '更新完成后导入之前备份的提示词数据',
+    icon: FileUp,
   },
 ]
 
@@ -454,6 +460,13 @@ export function UpdateGuideModal({ status, isOpen, onClose }: UpdateGuideModalPr
             <div className="step-actions">
               {currentStep === 0 && (
                 <>
+                  <p className="step-text">点击插件图标打开管理界面，在"数据管理"选项卡中点击"导出数据"按钮，将提示词保存为 JSON 文件。</p>
+                  <p className="step-note">建议将备份文件保存到易于查找的位置，更新完成后需要导入恢复。</p>
+                </>
+              )}
+
+              {currentStep === 1 && (
+                <>
                   <p className="step-text">点击下方按钮打开 GitHub Releases 页面，下载最新的 .zip 文件</p>
                   <button className="step-btn" onClick={handleDownload}>
                     <ExternalLink style={{ width: 12, height: 12 }} />
@@ -462,20 +475,21 @@ export function UpdateGuideModal({ status, isOpen, onClose }: UpdateGuideModalPr
                 </>
               )}
 
-              {currentStep === 1 && (
-                <>
-                  <p className="step-text">下载完成后，找到下载的 .zip 文件，右键选择"解压到当前文件夹"或使用解压软件解压</p>
-                </>
-              )}
-
               {currentStep === 2 && (
                 <>
-                  <p className="step-text">打开浏览器扩展管理页面，找到本插件，点击"重新加载"按钮（刷新图标）</p>
+                  <p className="step-text">1. 解压下载的 .zip 文件到本地文件夹</p>
+                  <p className="step-text">2. 打开浏览器扩展管理页面，找到本插件，点击"重新加载"按钮</p>
                   <button className="step-btn step-btn-outline" onClick={handleOpenExtensions}>
                     <ExternalLink style={{ width: 12, height: 12 }} />
                     打开扩展管理
                   </button>
-                  <p className="step-note">如果是开发者模式加载的解压扩展，点击"重新加载"即可</p>
+                </>
+              )}
+
+              {currentStep === 3 && (
+                <>
+                  <p className="step-text">更新完成后，打开插件管理界面，在"数据管理"选项卡中点击"导入数据"按钮，选择之前导出的 JSON 备份文件。</p>
+                  <p className="step-note">导入时会自动合并数据，已有的提示词会保留，新增的会添加进来。</p>
                 </>
               )}
             </div>

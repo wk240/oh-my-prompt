@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Oh My Prompt Script - Architect the Future of Prompts</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;family=Space+Grotesk:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-primary-fixed": "#003840",
+                      "on-primary-container": "#004d57",
+                      "secondary": "#ac89ff",
+                      "on-primary": "#005762",
+                      "on-secondary-container": "#f8f1ff",
+                      "secondary-dim": "#874cff",
+                      "surface": "#0e0e10",
+                      "on-tertiary-container": "#001d3f",
+                      "primary-container": "#00e3fd",
+                      "on-error": "#490006",
+                      "inverse-on-surface": "#565557",
+                      "tertiary": "#70aaff",
+                      "outline": "#767577",
+                      "surface-container-lowest": "#000000",
+                      "on-surface": "#f9f5f8",
+                      "surface-container-highest": "#262528",
+                      "on-background": "#f9f5f8",
+                      "surface-dim": "#0e0e10",
+                      "error-container": "#9f0519",
+                      "on-tertiary-fixed-variant": "#003971",
+                      "outline-variant": "#48474a",
+                      "error-dim": "#d7383b",
+                      "tertiary-dim": "#5c9ffc",
+                      "primary-fixed-dim": "#00d4ec",
+                      "surface-container": "#19191c",
+                      "primary-fixed": "#00e3fd",
+                      "secondary-fixed": "#dac9ff",
+                      "on-tertiary": "#002a55",
+                      "on-secondary-fixed-variant": "#6300e2",
+                      "secondary-fixed-dim": "#ceb9ff",
+                      "inverse-primary": "#006976",
+                      "tertiary-fixed-dim": "#65a4ff",
+                      "surface-tint": "#81ecff",
+                      "primary-dim": "#00d4ec",
+                      "primary": "#81ecff",
+                      "surface-bright": "#2c2c2f",
+                      "on-primary-fixed-variant": "#005762",
+                      "surface-container-high": "#1f1f22",
+                      "secondary-container": "#7000ff",
+                      "error": "#ff716c",
+                      "on-secondary-fixed": "#41009a",
+                      "tertiary-fixed": "#80b2ff",
+                      "on-tertiary-fixed": "#001835",
+                      "background": "#0e0e10",
+                      "on-error-container": "#ffa8a3",
+                      "surface-container-low": "#131315",
+                      "tertiary-container": "#599cf9",
+                      "on-secondary": "#290067",
+                      "on-surface-variant": "#adaaad",
+                      "inverse-surface": "#fcf8fb",
+                      "surface-variant": "#262528"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {},
+              "fontFamily": {
+                      "headline": [
+                              "Space Grotesk", "sans-serif"
+                      ],
+                      "body": [
+                              "Inter", "sans-serif"
+                      ],
+                      "label": [
+                              "Inter", "sans-serif"
+                      ]
+              },
+              "backgroundImage": {
+                  'grid-pattern': 'radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px)'
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        /* Cyber-Minimalist Specific Utilities */
+        .glass-panel {
+            background-color: rgba(38, 37, 40, 0.6); /* surface-variant at ~60% */
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .bg-grid-cyber {
+            background-size: 24px 24px;
+            background-image: radial-gradient(circle, rgba(249, 245, 248, 0.1) 1.2px, transparent 1.2px);
+        }
+        .glow-primary {
+            box-shadow: 0 0 10px 0 rgba(129, 236, 255, 0.3);
+        }
+        .btn-primary-gradient {
+            background: linear-gradient(135deg, #81ecff 0%, #00e3fd 100%);
+        }
+        .btn-primary-gradient:hover {
+            background: linear-gradient(135deg, #00d4ec 0%, #00e3fd 100%); /* slightly more saturated on hover */
+        }
+        .ambient-shadow {
+            box-shadow: 0 0 40px -10px rgba(249, 245, 248, 0.08);
+        }
+        .ghost-border {
+            border: 1px solid rgba(72, 71, 74, 0.2); /* outline-variant at 20% */
+        }
+        .ghost-border-bottom {
+            border-bottom: 1px solid rgba(72, 71, 74, 0.2);
+        }
+
+        @keyframes pulse-dots {
+            0%, 100% { opacity: 0.25; transform: scale(1); }
+            50% { opacity: 0.45; transform: scale(1.1); }
+        }
+        .bg-dots-cyan {
+            background-image: radial-gradient(#00E5FF 0.8px, transparent 0.8px);
+            background-size: 30px 30px;
+            animation: pulse-dots 7s ease-in-out infinite alternate;
+        }
+
+        /* Hero title strikethrough effect */
+        h1 s {
+            position: relative;
+            color: rgba(249, 245, 248, 0.4);
+            text-decoration: none;
+        }
+        h1 s::after {
+            content: '';
+            position: absolute;
+            left: -4px;
+            right: -4px;
+            top: 50%;
+            height: 4px;
+            background: linear-gradient(90deg, transparent 0%, #ff716c 15%, #d7383b 85%, transparent 100%);
+            transform: translateY(-50%) rotate(-3deg);
+            border-radius: 2px;
+        }
+
+        @keyframes strike-wobble {
+            0%, 100% { transform: translateY(-50%) rotate(-3deg); }
+            50% { transform: translateY(-50%) rotate(-2deg); }
+        }
+        h1 s::after {
+            animation: strike-wobble 4s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body min-h-screen relative overflow-x-hidden antialiased"><div class="fixed inset-0 pointer-events-none z-[-1] bg-dots-cyan opacity-20"></div>
+<!-- Atmospheric Background Glows & Grid -->
+<div class="fixed inset-0 pointer-events-none z-0">
+<div class="absolute inset-0 bg-grid-cyber"></div>
+<div class="absolute top-0 left-0 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px] opacity-50 mix-blend-screen"></div>
+<div class="absolute bottom-0 right-0 w-[600px] h-[600px] bg-secondary/10 rounded-full blur-[150px] opacity-40 mix-blend-screen"></div>
+</div>
+<!-- TopAppBar from JSON -->
+<header class="bg-[#0e0e10] dark:bg-[#0e0e10] w-full top-0 sticky z-50 border-b border-outline-variant/20 glass-panel">
+<div class="flex justify-between items-center px-8 py-4 max-w-7xl mx-auto">
+<div class="flex items-center gap-12">
+<div class="text-2xl font-black font-space-grotesk tracking-tighter text-white font-headline">Oh My Prompt Script</div>
+<nav class="hidden md:flex gap-8">
+</nav>
+</div>
+<div class="flex items-center gap-4 hidden md:flex">
+<a href="https://github.com/wk240/oh-my-prompt-script" target="_blank" class="ghost-border text-secondary hover:text-secondary-fixed-dim px-4 py-2 rounded-md text-sm font-medium transition-colors duration-150 flex items-center gap-2">
+<span class="text-sm"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg></span>
+                 GitHub
+             </a>
+<a href="https://release-assets.githubusercontent.com/github-production-release-asset/1212380585/8e541969-c102-41a3-b202-1ac2626ba561?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-04-20T04%3A43%3A04Z&rscd=attachment%3B+filename%3Ddist.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-04-20T03%3A42%3A13Z&ske=2026-04-20T04%3A43%3A04Z&sks=b&skv=2018-11-09&sig=ph%2FHb6hGh6R9s0juicYjelQUSq%2FeDYG%2BMozljJt2vZc%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc3NjY1NzM5OSwibmJmIjoxNzc2NjU3MDk5LCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.VCyoiQIeHVAFv1rcTGy2e8-nn18eYUYFWnBaBPb9vlA&response-content-disposition=attachment%3B%20filename%3Ddist.zip&response-content-type=application%2Foctet-stream" class="btn-primary-gradient text-on-primary-fixed px-5 py-2 rounded-md text-sm font-bold glow-primary transition-all duration-150 flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">extension</span>
+                 下载插件
+             </a>
+</div>
+</div>
+</header>
+<main class="relative z-10">
+<!-- Hero Section -->
+<section class="min-h-[870px] flex flex-col justify-center items-center px-6 lg:px-8 max-w-7xl mx-auto py-24 lg:py-32 relative">
+<div class="text-center max-w-4xl mx-auto mb-16">
+<h1 class="text-5xl md:text-7xl font-headline font-bold tracking-tight mb-8 leading-[1.2] text-transparent bg-clip-text bg-gradient-to-r from-on-background via-on-background to-on-surface-variant">
+                    告别 <s>复制粘贴</s> <br class="hidden md:block"/>
+                    一键插入你的提示词
+                </h1>
+<p class="text-lg md:text-xl text-on-surface-variant max-w-2xl mx-auto font-body leading-relaxed mb-10">
+                    还在频繁切换页面找提示词？<br class="hidden md:block"/>
+                    在 Lovart AI 输入框旁直接管理、选择、插入你的专属提示词库。<br class="hidden md:block"/>
+                    无需离开创作界面，一键插入。
+                </p>
+<div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+<a href="https://release-assets.githubusercontent.com/github-production-release-asset/1212380585/8e541969-c102-41a3-b202-1ac2626ba561?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-04-20T04%3A43%3A04Z&rscd=attachment%3B+filename%3Ddist.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-04-20T03%3A42%3A13Z&ske=2026-04-20T04%3A43%3A04Z&sks=b&skv=2018-11-09&sig=ph%2FHb6hGh6R9s0juicYjelQUSq%2FeDYG%2BMozljJt2vZc%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc3NjY1NzM5OSwibmJmIjoxNzc2NjU3MDk5LCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.VCyoiQIeHVAFv1rcTGy2e8-nn18eYUYFWnBaBPb9vlA&response-content-disposition=attachment%3B%20filename%3Ddist.zip&response-content-type=application%2Foctet-stream" class="btn-primary-gradient text-on-primary-fixed px-8 py-3.5 rounded-md text-base font-bold glow-primary transition-all duration-150 w-full sm:w-auto flex items-center justify-center gap-2">
+                        下载插件
+                        <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</a>
+<a href="https://github.com/wk240/oh-my-prompt-script" target="_blank" class="ghost-border text-secondary bg-transparent hover:bg-surface-container-lowest px-8 py-3.5 rounded-md text-base font-medium transition-colors duration-150 w-full sm:w-auto flex items-center justify-center gap-2">
+                        Star on GitHub
+                        <span class="text-sm"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg></span>
+</a>
+</div>
+</div>
+<!-- Hero Image Preview -->
+<div class="w-full max-w-4xl mx-auto glass-panel rounded-lg ambient-shadow ghost-border relative overflow-hidden">
+<img src="assets/eg1.png" alt="Oh My Prompt Script Demo" class="w-full h-auto object-cover" />
+</div>
+</section>
+<!-- Core Features Bento Grid -->
+<section class="py-24 px-6 lg:px-8 max-w-7xl mx-auto relative">
+<div class="mb-16">
+<h2 class="text-3xl md:text-4xl font-headline font-bold text-on-background mb-4">核心特性</h2>
+<p class="text-on-surface-variant font-body max-w-2xl">专为 Lovart AI 设计，让提示词管理更简单、更高效。</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Feature 1: 一键插入 (Large) -->
+<div class="md:col-span-2 bg-surface-container-low rounded-lg p-8 ghost-border relative overflow-hidden group hover:bg-surface-bright transition-colors duration-300">
+<div class="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-[80px] -mr-10 -mt-10 group-hover:bg-primary/10 transition-colors duration-300 pointer-events-none"></div>
+<div class="w-12 h-12 rounded-md bg-surface-container-highest ghost-border flex items-center justify-center mb-8 relative z-10">
+<span class="material-symbols-outlined text-primary text-2xl" style="font-variation-settings: 'FILL' 1;">bolt</span>
+</div>
+<h3 class="text-xl font-headline font-bold text-on-background mb-3 relative z-10">一键插入</h3>
+<p class="text-on-surface-variant font-body text-sm leading-relaxed mb-6 max-w-md relative z-10">在 Lovart AI 输入框旁直接显示下拉菜单，点击即可插入预设提示词。无需复制粘贴，创作流程无缝衔接。</p>
+<!-- Decorative UI Element -->
+<div class="mt-auto pt-6 ghost-border-bottom relative z-10">
+<div class="flex items-center gap-3 bg-surface-container-highest rounded-md p-3 ghost-border">
+<span class="material-symbols-outlined text-primary text-sm">expand_circle_down</span>
+<span class="text-on-surface text-xs font-body">选择提示词</span>
+<span class="text-on-surface-variant text-xs">→</span>
+<span class="material-symbols-outlined text-secondary text-sm">auto_fix_high</span>
+<span class="text-on-surface text-xs font-body">自动插入</span>
+</div>
+</div>
+</div>
+<!-- Feature 2: 导入导出 -->
+<div class="bg-surface-container-low rounded-lg p-8 ghost-border relative overflow-hidden group hover:bg-surface-bright transition-colors duration-300 flex flex-col">
+<div class="w-12 h-12 rounded-md bg-surface-container-highest ghost-border flex items-center justify-center mb-8 relative z-10">
+<span class="material-symbols-outlined text-secondary text-2xl" style="font-variation-settings: 'FILL' 1;">swap_horiz</span>
+</div>
+<h3 class="text-xl font-headline font-bold text-on-background mb-3 relative z-10">导入导出</h3>
+<p class="text-on-surface-variant font-body text-sm leading-relaxed mb-6 relative z-10">支持 JSON 格式的数据导入导出，轻松备份和迁移你的提示词库。</p>
+<div class="mt-auto relative z-10">
+<div class="bg-surface-container-highest rounded-md p-3 ghost-border space-y-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant text-sm">upload</span>
+<span class="text-on-surface text-xs font-body">导出 JSON</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant text-sm">download</span>
+<span class="text-on-surface text-xs font-body">导入 JSON</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Feature 3: 分类管理 (Full width on mobile, spanning bottom on md) -->
+<div class="md:col-span-3 bg-surface-container-low rounded-lg p-8 ghost-border relative overflow-hidden group hover:bg-surface-bright transition-colors duration-300 flex flex-col md:flex-row md:items-center justify-between gap-8">
+<div class="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-tertiary/5 to-transparent pointer-events-none"></div>
+<div class="max-w-xl relative z-10">
+<div class="w-12 h-12 rounded-md bg-surface-container-highest ghost-border flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-tertiary text-2xl" style="font-variation-settings: 'FILL' 1;">folder_copy</span>
+</div>
+<h3 class="text-xl font-headline font-bold text-on-background mb-3">分类管理</h3>
+<p class="text-on-surface-variant font-body text-sm leading-relaxed">按用途分类整理提示词，支持角色、风格、场景等多种维度，快速定位所需内容。本地存储，数据安全可控。</p>
+</div>
+<!-- Decorative Category UI -->
+<div class="relative z-10 flex-shrink-0 bg-surface-container-highest p-4 rounded-md ghost-border min-w-[240px]">
+<div class="flex items-center justify-between mb-4">
+<span class="text-xs font-label text-on-surface-variant uppercase tracking-wider">分类列表</span>
+<span class="flex h-2 w-2 relative">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-tertiary opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-tertiary"></span>
+</span>
+</div>
+<div class="space-y-3">
+<div class="flex items-center gap-3 px-3 py-2 bg-surface-container-low rounded-md ghost-border">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="text-on-surface text-xs font-body">角色设定</span>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 bg-surface-container-low rounded-md ghost-border">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="text-on-surface text-xs font-body">艺术风格</span>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 bg-surface-container-low rounded-md ghost-border">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+<span class="text-on-surface text-xs font-body">场景描述</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer from JSON -->
+<footer class="bg-[#0e0e10] dark:bg-[#0e0e10] full-width py-12 max-w-7xl mx-auto px-8 grid grid-cols-1 md:grid-cols-2 gap-8 tonal shift bg-[#131315] flat no shadows relative z-10 border-t border-outline-variant/10 mt-24">
+<div>
+<div class="text-lg font-bold font-space-grotesk text-white mb-2 font-headline">Oh My Prompt Script</div>
+<p class="text-slate-500 text-sm font-body">&copy; 2026 Oh My Prompt Script.</p>
+</div>
+<div class="flex flex-wrap gap-x-8 gap-y-4 md:justify-end items-start">
+	</div>
+</footer>
+</body></html>

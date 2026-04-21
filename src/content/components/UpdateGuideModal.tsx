@@ -454,7 +454,7 @@ export function UpdateGuideModal({ status, isOpen, onClose }: UpdateGuideModalPr
             <div className="step-actions">
               {currentStep === 0 && (
                 <>
-                  <p className="step-text">点击下方按钮打开 GitHub Releases 页面，下载最新的 .crx 或 .zip 文件</p>
+                  <p className="step-text">点击下方按钮打开 GitHub Releases 页面，下载最新的 .zip 文件</p>
                   <button className="step-btn" onClick={handleDownload}>
                     <ExternalLink style={{ width: 12, height: 12 }} />
                     打开下载页面
@@ -465,7 +465,6 @@ export function UpdateGuideModal({ status, isOpen, onClose }: UpdateGuideModalPr
               {currentStep === 1 && (
                 <>
                   <p className="step-text">下载完成后，找到下载的 .zip 文件，右键选择"解压到当前文件夹"或使用解压软件解压</p>
-                  <p className="step-note">如果下载的是 .crx 文件，可以直接跳到下一步</p>
                 </>
               )}
 

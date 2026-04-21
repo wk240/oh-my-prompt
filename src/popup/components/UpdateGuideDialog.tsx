@@ -155,7 +155,7 @@ function UpdateGuideDialog({ status, open, onClose }: UpdateGuideDialogProps) {
           {currentStep === 0 && (
             <div className="mt-3 pl-13">
               <p className="text-sm text-gray-600 mb-2">
-                点击下方按钮打开 GitHub Releases 页面，下载最新的 .crx 或 .zip 文件
+                点击下方按钮打开 GitHub Releases 页面，下载最新的 .zip 文件
               </p>
               <Button onClick={handleDownload} className="flex items-center gap-2">
                 <ExternalLink className="w-4 h-4" />
@@ -168,9 +168,6 @@ function UpdateGuideDialog({ status, open, onClose }: UpdateGuideDialogProps) {
             <div className="mt-3 pl-13">
               <p className="text-sm text-gray-600 mb-2">
                 下载完成后，找到下载的 .zip 文件，右键选择"解压到当前文件夹"或使用解压软件解压
-              </p>
-              <p className="text-sm text-gray-500">
-                如果下载的是 .crx 文件，可以直接跳到下一步
               </p>
             </div>
           )}

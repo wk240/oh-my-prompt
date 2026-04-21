@@ -20,6 +20,7 @@ import { PromptPreviewModal } from './PromptPreviewModal'
 import { CategorySelectDialog } from './CategorySelectDialog'
 import { ToastNotification } from './ToastNotification'
 import { Tooltip } from './Tooltip'
+import { UpdateGuideModal } from './UpdateGuideModal'
 import { usePromptStore } from '../../lib/store'
 import { getResourcePrompts, getResourceCategories } from '../../lib/resource-library'
 import { MessageType } from '../../shared/messages'
@@ -712,6 +713,7 @@ export function DropdownContainer({
   // Update notification state
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus | null>(null)
   const [showLatestTip, setShowLatestTip] = useState(false)
+  const [isUpdateGuideOpen, setIsUpdateGuideOpen] = useState(false)
 
   // Fetch update status when dropdown opens
   useEffect(() => {
@@ -1141,8 +1143,8 @@ export function DropdownContainer({
               <button
                 className="dropdown-action-btn"
                 style={updateStatus?.hasUpdate ? { color: '#FF5722' } : {}}
-                onClick={updateStatus?.hasUpdate ? () => window.open(updateStatus.downloadUrl, '_blank') : handleCheckUpdate}
-                aria-label={updateStatus?.hasUpdate ? '下载新版本' : '检查更新'}
+                onClick={updateStatus?.hasUpdate ? () => setIsUpdateGuideOpen(true) : handleCheckUpdate}
+                aria-label={updateStatus?.hasUpdate ? '查看更新引导' : '检查更新'}
               >
                 <ArrowUpCircle style={{ width: 14, height: 14 }} />
               </button>
@@ -1191,9 +1193,9 @@ export function DropdownContainer({
             <span className="update-banner-text">新版本 {updateStatus.latestVersion} 可用</span>
             <span
               className="update-banner-link"
-              onClick={() => window.open(updateStatus.downloadUrl, '_blank')}
+              onClick={() => setIsUpdateGuideOpen(true)}
             >
-              立即下载
+              查看更新引导
             </span>
             <span className="update-banner-close" onClick={handleDismissUpdate}>×</span>
           </div>
@@ -1303,6 +1305,12 @@ export function DropdownContainer({
         onClose={() => setToastMessage(null)}
       />
     )}
+    {/* Update guide modal */}
+    <UpdateGuideModal
+      status={updateStatus}
+      isOpen={isUpdateGuideOpen}
+      onClose={() => setIsUpdateGuideOpen(false)}
+    />
   </>,
     getPortalContainer()
   )

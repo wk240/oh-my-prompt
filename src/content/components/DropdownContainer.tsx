@@ -6,10 +6,10 @@
 
 import { useRef, useState, useMemo, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import type { Prompt, Category } from '../../shared/types'
+import type { Prompt, Category, StorageSchema } from '../../shared/types'
 import type { ResourcePrompt, ResourceCategory, UpdateStatus } from '../../shared/types'
 import { truncateText, sortCategoriesByOrder, sortPromptsByOrder, sortProviderCategoriesByOrder } from '../../shared/utils'
-import { Sparkles, Palette, Shapes, ArrowUpRight, X, Settings, FolderOpen, Layers, Sparkle, Brush, GripVertical, Database, ArrowLeft, Sun, Frame, Paintbrush, Image, RefreshCw, ArrowUpCircle, Plus, Pencil, Trash2 } from 'lucide-react'
+import { Sparkles, Palette, Shapes, ArrowUpRight, X, FolderOpen, Layers, Sparkle, Brush, GripVertical, Database, ArrowLeft, Sun, Frame, Paintbrush, Image, RefreshCw, ArrowUpCircle, Plus, Pencil, Trash2, Download, Upload } from 'lucide-react'
 import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -27,6 +27,7 @@ import { PromptEditModal } from './PromptEditModal'
 import { usePromptStore } from '../../lib/store'
 import { getResourcePrompts, getResourceCategories } from '../../lib/resource-library'
 import { MessageType } from '../../shared/messages'
+import { exportData, readImportFile, mergeImportData } from '../../lib/import-export'
 
 interface DropdownContainerProps {
   prompts: Prompt[]

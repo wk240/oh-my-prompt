@@ -27,7 +27,7 @@ import { PromptEditModal } from './PromptEditModal'
 import { usePromptStore } from '../../lib/store'
 import { getResourcePrompts, getResourceCategories } from '../../lib/resource-library'
 import { MessageType } from '../../shared/messages'
-import { exportData, readImportFile, mergeImportData } from '../../lib/import-export'
+import { readImportFile, mergeImportData } from '../../lib/import-export'
 
 interface DropdownContainerProps {
   prompts: Prompt[]
@@ -1260,7 +1260,7 @@ export function DropdownContainer({
     setTimeout(() => setToastMessage(null), 2000)
   }, [deletingPrompt])
 
-  // Export handler
+  // Export handler - send message to background worker (chrome.downloads only works in background)
   const handleExport = useCallback(async () => {
     const version = chrome.runtime.getManifest().version
     const data: StorageSchema = {
@@ -1269,8 +1269,12 @@ export function DropdownContainer({
       settings: { showBuiltin: true, syncEnabled: false }
     }
     try {
-      await exportData(data)
-      setToastMessage('导出成功')
+      const response = await chrome.runtime.sendMessage({ type: MessageType.EXPORT_DATA, payload: data })
+      if (response?.success) {
+        setToastMessage('导出成功')
+      } else {
+        setToastMessage(response?.error || '导出失败')
+      }
       setTimeout(() => setToastMessage(null), 2000)
     } catch (error) {
       setToastMessage('导出失败')

@@ -71,16 +71,6 @@ chrome.runtime.onMessage.addListener(
         sendResponse({ success: true, data: message.payload } as MessageResponse)
         break
 
-      case MessageType.OPEN_SETTINGS:
-        // Open settings page in a new tab (bypasses ad blockers)
-        chrome.tabs.create({ url: chrome.runtime.getURL('src/popup/settings.html') })
-          .then(() => sendResponse({ success: true } as MessageResponse))
-          .catch(error => {
-            console.error('[Oh My Prompt Script] OPEN_SETTINGS error:', error)
-            sendResponse({ success: false, error: 'Failed to open settings' })
-          })
-        return true // Required for async response
-
       case MessageType.SAVE_FOLDER_HANDLE:
         // Save handle from content script (backup already done in content script)
         const handle = message.payload?.handle as FileSystemDirectoryHandle | undefined
@@ -177,6 +167,29 @@ chrome.runtime.onMessage.addListener(
           .catch(error => {
             console.error('[Oh My Prompt Script] OPEN_EXTENSIONS error:', error)
             sendResponse({ success: false, error: 'Failed to open extensions page' })
+          })
+        return true // Required for async response
+
+      case MessageType.EXPORT_DATA:
+        // Export data as JSON file download (chrome.downloads only works in background)
+        const exportPayload = message.payload as { version: string; userData: { prompts: unknown[]; categories: unknown[] }; settings: unknown }
+        const exportFilename = `lovart-prompts-${new Date().toISOString().slice(0, 10)}.json`
+        const exportJson = JSON.stringify(exportPayload, null, 2)
+        const exportBlob = new Blob([exportJson], { type: 'application/json' })
+        const exportUrl = URL.createObjectURL(exportBlob)
+        chrome.downloads.download({
+          url: exportUrl,
+          filename: exportFilename,
+          saveAs: true
+        })
+          .then(() => {
+            URL.revokeObjectURL(exportUrl)
+            sendResponse({ success: true } as MessageResponse)
+          })
+          .catch(error => {
+            URL.revokeObjectURL(exportUrl)
+            console.error('[Oh My Prompt Script] EXPORT_DATA error:', error)
+            sendResponse({ success: false, error: 'Failed to download file' })
           })
         return true // Required for async response
 

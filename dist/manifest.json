@@ -10,7 +10,7 @@
   "content_scripts": [
     {
       "js": [
-        "assets/content-script.ts-loader-CVqvCTZm.js"
+        "assets/content-script.ts-loader-B3z8f3bP.js"
       ],
       "matches": [
         "*://lovart.ai/*",
@@ -65,16 +65,14 @@
       "resources": [
         "assets/messages-DVtmLRnp.js",
         "assets/messages-DVtmLRnp.js.map",
-        "assets/index-CxKT9Azf.js",
-        "assets/index-CxKT9Azf.js.map",
-        "assets/store-CAC7gpsU.js",
-        "assets/store-CAC7gpsU.js.map",
-        "assets/folder-open-wBVGl--b.js",
-        "assets/folder-open-wBVGl--b.js.map",
+        "assets/index-hhJvOnZM.js",
+        "assets/index-hhJvOnZM.js.map",
+        "assets/store-bsXFdGI7.js",
+        "assets/store-bsXFdGI7.js.map",
         "assets/sync-manager-cWCTAi8e.js",
         "assets/sync-manager-cWCTAi8e.js.map",
-        "assets/content-script.ts-DEqSRNn4.js",
-        "assets/content-script.ts-DEqSRNn4.js.map"
+        "assets/content-script.ts-B2Akou8k.js",
+        "assets/content-script.ts-B2Akou8k.js.map"
       ],
       "use_dynamic_url": false
     }

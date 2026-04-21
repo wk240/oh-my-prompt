@@ -3,7 +3,7 @@
  * Provides JSON file download and validation for StorageSchema data.
  */
 
-import type { StorageSchema } from '../shared/types'
+import type { StorageSchema, Prompt, Category } from '../shared/types'
 
 interface ValidationResult {
   valid: boolean
@@ -157,5 +157,63 @@ export async function readImportFile(file: File): Promise<ValidationResult> {
       return { valid: false, error: 'JSON解析失败' }
     }
     return { valid: false, error: '文件读取失败' }
+  }
+}
+
+/**
+ * Merge imported data with existing data
+ * Strategy: Keep existing, add new items with unique IDs
+ * - Categories: If ID exists, keep existing; otherwise add new
+ * - Prompts: If ID exists, keep existing; otherwise add new
+ */
+export function mergeImportData(
+  existing: { prompts: Prompt[]; categories: Category[] },
+  imported: { prompts: Prompt[]; categories: Category[] }
+): { prompts: Prompt[]; categories: Category[]; addedCount: number; skippedCount: number } {
+  const existingCategoryIds = new Set(existing.categories.map(c => c.id))
+  const existingPromptIds = new Set(existing.prompts.map(p => p.id))
+
+  // Merge categories: keep existing + add new with unique IDs
+  const mergedCategories: Category[] = [...existing.categories]
+  const newCategoryMap = new Map<string, string>() // oldId -> newId mapping
+
+  for (const category of imported.categories) {
+    if (existingCategoryIds.has(category.id)) {
+      // Category exists, keep existing - but record mapping for prompts
+      newCategoryMap.set(category.id, category.id)
+    } else {
+      // New category, add it
+      const newId = crypto.randomUUID()
+      mergedCategories.push({ ...category, id: newId })
+      newCategoryMap.set(category.id, newId)
+    }
+  }
+
+  // Merge prompts: keep existing + add new with unique IDs and mapped categoryIds
+  const mergedPrompts: Prompt[] = [...existing.prompts]
+  let addedCount = 0
+  let skippedCount = 0
+
+  for (const prompt of imported.prompts) {
+    if (existingPromptIds.has(prompt.id)) {
+      // Prompt exists, keep existing
+      skippedCount++
+    } else {
+      // New prompt, add with new ID and mapped categoryId
+      const mappedCategoryId = newCategoryMap.get(prompt.categoryId) || prompt.categoryId
+      mergedPrompts.push({
+        ...prompt,
+        id: crypto.randomUUID(),
+        categoryId: mappedCategoryId
+      })
+      addedCount++
+    }
+  }
+
+  return {
+    prompts: mergedPrompts,
+    categories: mergedCategories,
+    addedCount,
+    skippedCount
   }
 }

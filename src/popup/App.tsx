@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { usePromptStore } from '../lib/store'
-import { exportData, readImportFile } from '../lib/import-export'
+import { exportData, readImportFile, mergeImportData } from '../lib/import-export'
 import type { Prompt, StorageSchema } from '../shared/types'
 import type { UpdateStatus } from '../lib/version-checker'
 import { useToast } from '../hooks/use-toast'
@@ -66,16 +66,25 @@ function App() {
       const result = await readImportFile(file)
 
       if (result.valid && result.data) {
-        // Save imported data to storage
-        const { prompts, categories } = result.data.userData
+        // Merge imported data with existing data
+        const { prompts: existingPrompts, categories: existingCategories } = usePromptStore.getState()
+        const merged = mergeImportData(
+          { prompts: existingPrompts, categories: existingCategories },
+          result.data.userData
+        )
+
         usePromptStore.setState({
-          prompts,
-          categories,
+          prompts: merged.prompts,
+          categories: merged.categories,
           selectedCategoryId: 'all'
         })
         // Persist to chrome.storage
         await usePromptStore.getState().saveToStorage()
-        toast({ title: '导入成功', description: '提示词数据已恢复' })
+
+        toast({
+          title: '导入成功',
+          description: `新增 ${merged.addedCount} 条提示词，跳过 ${merged.skippedCount} 条重复项`
+        })
       } else {
         toast({
           title: '导入失败',

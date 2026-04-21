@@ -173,7 +173,7 @@ chrome.runtime.onMessage.addListener(
       case MessageType.EXPORT_DATA:
         // Export data as JSON file download using data URL (service worker doesn't support blob URLs)
         const exportPayload = message.payload as { version: string; userData: { prompts: unknown[]; categories: unknown[] }; settings: unknown }
-        const exportFilename = `lovart-prompts-${new Date().toISOString().slice(0, 10)}.json`
+        const exportFilename = 'oh-my-prompt-script.json'
         const exportJson = JSON.stringify(exportPayload, null, 2)
         const exportDataUrl = `data:application/json;charset=utf-8,${encodeURIComponent(exportJson)}`
         chrome.downloads.download({

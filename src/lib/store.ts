@@ -28,6 +28,7 @@ interface PromptStore {
 
   // Category CRUD
   addCategory: (name: string) => void
+  updateCategory: (id: string, name: string) => void
   deleteCategory: (id: string) => void
 
   // Reorder
@@ -243,6 +244,15 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
     }
     set((state) => ({
       categories: [...state.categories, newCategory]
+    }))
+    get().saveToStorage()
+  },
+
+  updateCategory: (id: string, name: string) => {
+    set((state) => ({
+      categories: state.categories.map((cat) =>
+        cat.id === id ? { ...cat, name } : cat
+      )
     }))
     get().saveToStorage()
   },

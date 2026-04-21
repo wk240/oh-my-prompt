@@ -8,7 +8,7 @@
         "description": "提升整体画质和分辨率",
         "id": "q1",
         "name": "通用高质量",
-        "order": 1
+        "order": 0
       },
       {
         "categoryId": "cat-quality",
@@ -16,7 +16,7 @@
         "description": "增强细节纹理和清晰度",
         "id": "q2",
         "name": "精细细节",
-        "order": 8
+        "order": 1
       },
       {
         "categoryId": "cat-quality",
@@ -24,7 +24,7 @@
         "description": "专业摄影级别效果",
         "id": "q3",
         "name": "专业摄影",
-        "order": 15
+        "order": 2
       },
       {
         "categoryId": "cat-quality",
@@ -32,7 +32,7 @@
         "description": "清晰锐利无模糊",
         "id": "q4",
         "name": "清晰锐利",
-        "order": 22
+        "order": 3
       },
       {
         "categoryId": "cat-style",
@@ -40,7 +40,7 @@
         "description": "未来科幻霓虹美学",
         "id": "s1",
         "name": "赛博朋克",
-        "order": 2
+        "order": 0
       },
       {
         "categoryId": "cat-style",
@@ -48,7 +48,7 @@
         "description": "日式动漫风格效果",
         "id": "s2",
         "name": "动漫风格",
-        "order": 9
+        "order": 1
       },
       {
         "categoryId": "cat-style",
@@ -56,7 +56,7 @@
         "description": "古典油画艺术效果",
         "id": "s3",
         "name": "油画风格",
-        "order": 16
+        "order": 2
       },
       {
         "categoryId": "cat-style",
@@ -64,7 +64,7 @@
         "description": "柔和流动水彩效果",
         "id": "s4",
         "name": "水彩风格",
-        "order": 23
+        "order": 3
       },
       {
         "categoryId": "cat-style",
@@ -72,7 +72,7 @@
         "description": "铅笔素描手绘效果",
         "id": "s5",
         "name": "素描风格",
-        "order": 29
+        "order": 4
       },
       {
         "categoryId": "cat-style",
@@ -80,7 +80,7 @@
         "description": "复古像素游戏风格",
         "id": "s6",
         "name": "像素艺术",
-        "order": 35
+        "order": 5
       },
       {
         "categoryId": "cat-style",
@@ -88,7 +88,7 @@
         "description": "简洁现代极简主义",
         "id": "s7",
         "name": "极简风格",
-        "order": 0
+        "order": 6
       },
       {
         "categoryId": "cat-style",
@@ -96,7 +96,7 @@
         "description": "几何抽象艺术效果",
         "id": "s8",
         "name": "抽象艺术",
-        "order": 43
+        "order": 7
       },
       {
         "categoryId": "cat-style",
@@ -104,7 +104,7 @@
         "description": "大胆色彩波普风格",
         "id": "s9",
         "name": "波普艺术",
-        "order": 45
+        "order": 8
       },
       {
         "categoryId": "cat-style",
@@ -112,7 +112,7 @@
         "description": "维多利亚机械美学",
         "id": "s10",
         "name": "蒸汽朋克",
-        "order": 46
+        "order": 9
       },
       {
         "categoryId": "cat-lighting",
@@ -120,7 +120,7 @@
         "description": "温暖柔和光照效果",
         "id": "l1",
         "name": "柔和光照",
-        "order": 3
+        "order": 0
       },
       {
         "categoryId": "cat-lighting",
@@ -128,7 +128,7 @@
         "description": "强烈对比戏剧光影",
         "id": "l2",
         "name": "戏剧光影",
-        "order": 10
+        "order": 1
       },
       {
         "categoryId": "cat-lighting",
@@ -136,7 +136,7 @@
         "description": "黄金时刻自然阳光",
         "id": "l3",
         "name": "自然阳光",
-        "order": 17
+        "order": 2
       },
       {
         "categoryId": "cat-lighting",
@@ -144,7 +144,7 @@
         "description": "城市霓虹发光效果",
         "id": "l4",
         "name": "霓虹灯光",
-        "order": 24
+        "order": 3
       },
       {
         "categoryId": "cat-lighting",
@@ -152,7 +152,7 @@
         "description": "电影体积光效果",
         "id": "l5",
         "name": "电影质感",
-        "order": 30
+        "order": 4
       },
       {
         "categoryId": "cat-lighting",
@@ -160,7 +160,7 @@
         "description": "逆光剪影轮廓光",
         "id": "l6",
         "name": "背面光照",
-        "order": 36
+        "order": 5
       },
       {
         "categoryId": "cat-composition",
@@ -168,7 +168,7 @@
         "description": "全景广角远景构图",
         "id": "c1",
         "name": "广角远景",
-        "order": 4
+        "order": 0
       },
       {
         "categoryId": "cat-composition",
@@ -176,7 +176,7 @@
         "description": "近距离细节特写",
         "id": "c2",
         "name": "近距离特写",
-        "order": 11
+        "order": 1
       },
       {
         "categoryId": "cat-composition",
@@ -184,7 +184,7 @@
         "description": "鸟瞰俯视高空视角",
         "id": "c3",
         "name": "俯视视角",
-        "order": 18
+        "order": 2
       },
       {
         "categoryId": "cat-composition",
@@ -192,7 +192,7 @@
         "description": "仰视英雄戏剧视角",
         "id": "c4",
         "name": "仰视视角",
-        "order": 25
+        "order": 3
       },
       {
         "categoryId": "cat-composition",
@@ -200,7 +200,7 @@
         "description": "侧面轮廓侧视图",
         "id": "c5",
         "name": "侧视图",
-        "order": 31
+        "order": 4
       },
       {
         "categoryId": "cat-composition",
@@ -208,7 +208,7 @@
         "description": "对称中心平衡构图",
         "id": "c6",
         "name": "中心构图",
-        "order": 37
+        "order": 5
       },
       {
         "categoryId": "cat-color",
@@ -216,7 +216,7 @@
         "description": "金黄橙暖色调",
         "id": "cl1",
         "name": "温暖色调",
-        "order": 5
+        "order": 0
       },
       {
         "categoryId": "cat-color",
@@ -224,7 +224,7 @@
         "description": "蓝青冷色调效果",
         "id": "cl2",
         "name": "冷色调",
-        "order": 12
+        "order": 1
       },
       {
         "categoryId": "cat-color",
@@ -232,7 +232,7 @@
         "description": "强烈色彩对比度",
         "id": "cl3",
         "name": "高对比度",
-        "order": 19
+        "order": 2
       },
       {
         "categoryId": "cat-color",
@@ -240,7 +240,7 @@
         "description": "柔和淡雅配色",
         "id": "cl4",
         "name": "柔和配色",
-        "order": 26
+        "order": 3
       },
       {
         "categoryId": "cat-color",
@@ -248,7 +248,7 @@
         "description": "单色渐变配色",
         "id": "cl5",
         "name": "单色配色",
-        "order": 32
+        "order": 4
       },
       {
         "categoryId": "cat-color",
@@ -256,7 +256,7 @@
         "description": "鲜艳饱和明亮色",
         "id": "cl6",
         "name": "鲜艳明亮",
-        "order": 38
+        "order": 5
       },
       {
         "categoryId": "cat-color",
@@ -264,7 +264,7 @@
         "description": "黑白灰度风格",
         "id": "cl7",
         "name": "黑白风格",
-        "order": 41
+        "order": 6
       },
       {
         "categoryId": "cat-theme",
@@ -272,7 +272,7 @@
         "description": "山川河流自然风光",
         "id": "t1",
         "name": "自然风景",
-        "order": 6
+        "order": 0
       },
       {
         "categoryId": "cat-theme",
@@ -280,7 +280,7 @@
         "description": "都市夜景城市灯光",
         "id": "t2",
         "name": "城市夜景",
-        "order": 13
+        "order": 1
       },
       {
         "categoryId": "cat-theme",
@@ -288,7 +288,7 @@
         "description": "神秘古老迷雾森林",
         "id": "t3",
         "name": "森林秘境",
-        "order": 20
+        "order": 2
       },
       {
         "categoryId": "cat-theme",
@@ -296,7 +296,7 @@
         "description": "深海珊瑚海洋场景",
         "id": "t4",
         "name": "海洋场景",
-        "order": 27
+        "order": 3
       },
       {
         "categoryId": "cat-theme",
@@ -304,7 +304,7 @@
         "description": "日落云彩天空景象",
         "id": "t5",
         "name": "天空云景",
-        "order": 33
+        "order": 4
       },
       {
         "categoryId": "cat-theme",
@@ -312,7 +312,7 @@
         "description": "室内家居环境场景",
         "id": "t6",
         "name": "室内场景",
-        "order": 39
+        "order": 5
       },
       {
         "categoryId": "cat-theme",
@@ -320,7 +320,7 @@
         "description": "宇宙星系科幻太空",
         "id": "t7",
         "name": "科幻太空",
-        "order": 42
+        "order": 6
       },
       {
         "categoryId": "cat-theme",
@@ -328,7 +328,7 @@
         "description": "历史古迹古典建筑",
         "id": "t8",
         "name": "古典建筑",
-        "order": 44
+        "order": 7
       },
       {
         "categoryId": "cat-medium",
@@ -336,7 +336,7 @@
         "description": "数字CG电脑绘画",
         "id": "m1",
         "name": "数字绘画",
-        "order": 7
+        "order": 0
       },
       {
         "categoryId": "cat-medium",
@@ -344,7 +344,7 @@
         "description": "传统手绘插画风格",
         "id": "m2",
         "name": "传统插画",
-        "order": 14
+        "order": 1
       },
       {
         "categoryId": "cat-medium",
@@ -352,7 +352,7 @@
         "description": "高质量3D渲染",
         "id": "m3",
         "name": "3D渲染",
-        "order": 21
+        "order": 2
       },
       {
         "categoryId": "cat-medium",
@@ -360,7 +360,7 @@
         "description": "视觉概念设计稿",
         "id": "m4",
         "name": "概念设计",
-        "order": 28
+        "order": 3
       },
       {
         "categoryId": "cat-medium",
@@ -368,7 +368,7 @@
         "description": "创意艺术插画设计",
         "id": "m5",
         "name": "插画设计",
-        "order": 34
+        "order": 4
       },
       {
         "categoryId": "cat-medium",
@@ -376,7 +376,21 @@
         "description": "逼真写实照片效果",
         "id": "m6",
         "name": "写实照片",
-        "order": 40
+        "order": 5
+      },
+      {
+        "categoryId": "cat-quality",
+        "content": "{Brand Name}\n\n--- Prompt ---\n\n3D chibi-style miniature concept store of {Brand Name}, creatively designed with an exterior inspired by the brand's most iconic product or packaging (such as a giant {brand's core product, e.g., chicken bucket/hamburger/donut/roast duck}). The store features two floors with large glass windows clearly showcasing the cozy and finely decorated interior: {brand's primary color}-themed decor, warm lighting, and busy staff dressed in outfits matching the brand. Adorable tiny figures stroll or sit along the street, surrounded by benches, street lamps, and potted plants, creating a charming urban scene. Rendered in a miniature cityscape style using Cinema 4D, with a blind-box toy aesthetic, rich in details and realism, and bathed in soft lighting that evokes a relaxing afternoon atmosphere. --ar 2:3\n\nBrand name: Starbucks",
+        "id": "6be24a00-48d1-4e4b-880e-7778ccfefebd",
+        "name": "3D Render: Whimsical Miniature Starbucks Coffee Shop Scene",
+        "order": 22
+      },
+      {
+        "categoryId": "cat-quality",
+        "content": "{Brand Name}\n\n--- Prompt ---\n\n3D chibi-style miniature concept store of {Brand Name}, creatively designed with an exterior inspired by the brand's most iconic product or packaging (such as a giant {brand's core product, e.g., chicken bucket/hamburger/donut/roast duck}). The store features two floors with large glass windows clearly showcasing the cozy and finely decorated interior: {brand's primary color}-themed decor, warm lighting, and busy staff dressed in outfits matching the brand. Adorable tiny figures stroll or sit along the street, surrounded by benches, street lamps, and potted plants, creating a charming urban scene. Rendered in a miniature cityscape style using Cinema 4D, with a blind-box toy aesthetic, rich in details and realism, and bathed in soft lighting that evokes a relaxing afternoon atmosphere. --ar 2:3\n\nBrand name: Starbucks",
+        "id": "c5df2541-c9dd-45eb-8157-46e64448ed12",
+        "name": "3D Render: Whimsical Miniature Starbucks Coffee Shop Scene",
+        "order": 23
       }
     ],
     "categories": [
@@ -417,5 +431,5 @@
       }
     ]
   },
-  "backupTime": "2026-04-21T04:59:33.134Z"
+  "backupTime": "2026-04-21T03:41:47.033Z"
 }

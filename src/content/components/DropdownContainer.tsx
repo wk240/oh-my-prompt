@@ -9,7 +9,7 @@ import { createPortal } from 'react-dom'
 import type { Prompt, Category } from '../../shared/types'
 import type { ResourcePrompt, ResourceCategory, UpdateStatus } from '../../shared/types'
 import { truncateText, sortCategoriesByOrder, sortPromptsByOrder, sortProviderCategoriesByOrder } from '../../shared/utils'
-import { Sparkles, Palette, Shapes, ArrowUpRight, X, Settings, FolderOpen, Layers, Sparkle, Brush, GripVertical, Database, ArrowLeft, Sun, Frame, Paintbrush, Image, RefreshCw, ArrowUpCircle } from 'lucide-react'
+import { Sparkles, Palette, Shapes, ArrowUpRight, X, Settings, FolderOpen, Layers, Sparkle, Brush, GripVertical, Database, ArrowLeft, Sun, Frame, Paintbrush, Image, RefreshCw, ArrowUpCircle, Plus, Pencil, Trash2 } from 'lucide-react'
 import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -21,6 +21,9 @@ import { CategorySelectDialog } from './CategorySelectDialog'
 import { ToastNotification } from './ToastNotification'
 import { Tooltip } from './Tooltip'
 import { UpdateGuideModal } from './UpdateGuideModal'
+import { CategoryEditModal } from './CategoryEditModal'
+import { DeleteConfirmModal } from './DeleteConfirmModal'
+import { PromptEditModal } from './PromptEditModal'
 import { usePromptStore } from '../../lib/store'
 import { getResourcePrompts, getResourceCategories } from '../../lib/resource-library'
 import { MessageType } from '../../shared/messages'
@@ -526,6 +529,138 @@ function getDropdownStyles(): string {
       white-space: nowrap;
       z-index: 10;
     }
+
+    /* CRUD action buttons */
+    #${PORTAL_ID} .sidebar-add-category-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      text-align: left;
+      font-size: 12px;
+      font-weight: 500;
+      color: #A16207;
+      cursor: pointer;
+      transition: background 0.15s ease;
+      width: 100%;
+    }
+
+    #${PORTAL_ID} .sidebar-add-category-btn:hover {
+      background: #f0f0f0;
+    }
+
+    #${PORTAL_ID} .category-action-buttons {
+      position: absolute;
+      top: 50%;
+      right: 8px;
+      transform: translateY(-50%);
+      display: flex;
+      gap: 4px;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.15s ease, visibility 0.15s ease;
+      z-index: 100;
+    }
+
+    #${PORTAL_ID} .sidebar-category-item:hover .category-action-buttons {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    #${PORTAL_ID} .category-action-btn {
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #ffffff;
+      border: 1px solid #E5E5E5;
+      border-radius: 4px;
+      cursor: pointer;
+      color: #64748B;
+    }
+
+    #${PORTAL_ID} .category-action-btn:hover {
+      background: #f8f8f8;
+      color: #171717;
+    }
+
+    #${PORTAL_ID} .category-action-btn.delete:hover {
+      color: #dc2626;
+      border-color: #fecaca;
+    }
+
+    #${PORTAL_ID} .prompt-action-buttons {
+      position: absolute;
+      top: 50%;
+      right: 0;
+      transform: translateY(-50%);
+      display: flex;
+      gap: 4px;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.15s ease, visibility 0.15s ease;
+      z-index: 100;
+      background: #ffffff;
+      padding: 4px 8px;
+      borderRadius: 4px;
+      boxShadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    #${PORTAL_ID} .dropdown-item:hover .prompt-action-buttons {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    #${PORTAL_ID} .prompt-action-btn {
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      color: #64748B;
+    }
+
+    #${PORTAL_ID} .prompt-action-btn:hover {
+      background: #f8f8f8;
+      color: #171717;
+    }
+
+    #${PORTAL_ID} .prompt-action-btn.delete:hover {
+      color: #dc2626;
+    }
+
+    /* FAB add prompt button */
+    #${PORTAL_ID} .fab-add-prompt {
+      position: absolute;
+      bottom: 16px;
+      right: 16px;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #171717;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      transition: background 0.15s ease, transform 0.15s ease;
+      z-index: 50;
+    }
+
+    #${PORTAL_ID} .fab-add-prompt:hover {
+      background: #404040;
+      transform: scale(1.05);
+    }
   `
 }
 
@@ -553,12 +688,16 @@ function SortableCategoryItem({
   onSelect,
   showDragHandle,
   IconComponent,
+  onEdit,
+  onDelete,
 }: {
   category: Category
   isSelected: boolean
   onSelect: (categoryId: string) => void
   showDragHandle: boolean
   IconComponent: React.ComponentType<{ className?: string }>
+  onEdit: (category: Category) => void
+  onDelete: (category: Category) => void
 }) {
   const {
     attributes,
@@ -573,6 +712,7 @@ function SortableCategoryItem({
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+    position: 'relative' as const,
   }
 
   return (
@@ -601,6 +741,29 @@ function SortableCategoryItem({
       <Tooltip content={category.name}>
         <span>{category.name}</span>
       </Tooltip>
+      {/* Edit/Delete buttons */}
+      <div className="category-action-buttons">
+        <button
+          className="category-action-btn"
+          onClick={(e) => {
+            e.stopPropagation()
+            onEdit(category)
+          }}
+          aria-label="编辑分类"
+        >
+          <Pencil style={{ width: 12, height: 12 }} />
+        </button>
+        <button
+          className="category-action-btn delete"
+          onClick={(e) => {
+            e.stopPropagation()
+            onDelete(category)
+          }}
+          aria-label="删除分类"
+        >
+          <Trash2 style={{ width: 12, height: 12 }} />
+        </button>
+      </div>
     </div>
   )
 }
@@ -612,12 +775,16 @@ function SortableDropdownItem({
   isSelected,
   onSelect,
   showDragHandle,
+  onEdit,
+  onDelete,
 }: {
   prompt: Prompt
   isLast: boolean
   isSelected: boolean
   onSelect: (prompt: Prompt) => void
   showDragHandle: boolean
+  onEdit: (prompt: Prompt) => void
+  onDelete: (prompt: Prompt) => void
 }) {
   const {
     attributes,
@@ -632,6 +799,7 @@ function SortableDropdownItem({
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+    position: 'relative' as const,
   }
 
   const IconComponent = ICON_MAP[prompt.categoryId === 'design' ? 'design' : prompt.categoryId === 'style' ? 'style' : 'default']
@@ -669,6 +837,29 @@ function SortableDropdownItem({
         </Tooltip>
       </div>
       <ArrowUpRight className="dropdown-item-arrow" />
+      {/* Edit/Delete buttons */}
+      <div className="prompt-action-buttons">
+        <button
+          className="prompt-action-btn"
+          onClick={(e) => {
+            e.stopPropagation()
+            onEdit(prompt)
+          }}
+          aria-label="编辑提示词"
+        >
+          <Pencil style={{ width: 14, height: 14 }} />
+        </button>
+        <button
+          className="prompt-action-btn delete"
+          onClick={(e) => {
+            e.stopPropagation()
+            onDelete(prompt)
+          }}
+          aria-label="删除提示词"
+        >
+          <Trash2 style={{ width: 14, height: 14 }} />
+        </button>
+      </div>
     </div>
   )
 }
@@ -714,6 +905,19 @@ export function DropdownContainer({
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus | null>(null)
   const [showLatestTip, setShowLatestTip] = useState(false)
   const [isUpdateGuideOpen, setIsUpdateGuideOpen] = useState(false)
+
+  // CRUD modal states
+  const [isCategoryAddModalOpen, setIsCategoryAddModalOpen] = useState(false)
+  const [isCategoryEditModalOpen, setIsCategoryEditModalOpen] = useState(false)
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null)
+  const [isDeleteCategoryModalOpen, setIsDeleteCategoryModalOpen] = useState(false)
+  const [deletingCategory, setDeletingCategory] = useState<Category | null>(null)
+
+  const [isPromptAddModalOpen, setIsPromptAddModalOpen] = useState(false)
+  const [isPromptEditModalOpen, setIsPromptEditModalOpen] = useState(false)
+  const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null)
+  const [isDeletePromptModalOpen, setIsDeletePromptModalOpen] = useState(false)
+  const [deletingPrompt, setDeletingPrompt] = useState<Prompt | null>(null)
 
   // Fetch update status when dropdown opens
   useEffect(() => {
@@ -987,8 +1191,72 @@ export function DropdownContainer({
       } catch (error) {
         console.error('[Oh My Prompt Script] Failed to reorder categories:', error)
       }
-    }
   }
+
+  // CRUD handlers for categories
+  const handleAddCategory = useCallback((name: string) => {
+    usePromptStore.getState().addCategory(name)
+    setToastMessage('分类已添加')
+    setTimeout(() => setToastMessage(null), 2000)
+  }, [])
+
+  const handleUpdateCategory = useCallback((name: string) => {
+    if (!editingCategory) return
+    usePromptStore.getState().updateCategory(editingCategory.id, name)
+    setEditingCategory(null)
+    setToastMessage('分类已更新')
+    setTimeout(() => setToastMessage(null), 2000)
+  }, [editingCategory])
+
+  const handleDeleteCategory = useCallback(() => {
+    if (!deletingCategory) return
+    usePromptStore.getState().deleteCategory(deletingCategory.id)
+    // Update local state
+    setLocalCategories(prev => prev.filter(c => c.id !== deletingCategory.id))
+    setLocalPrompts(prev => prev.filter(p => p.categoryId !== deletingCategory.id))
+    // If deleted category was selected, switch to 'all'
+    if (selectedCategoryId === deletingCategory.id) {
+      setSelectedCategoryId('all')
+    }
+    setDeletingCategory(null)
+    setToastMessage('分类已删除')
+    setTimeout(() => setToastMessage(null), 2000)
+  }, [deletingCategory, selectedCategoryId])
+
+  // CRUD handlers for prompts
+  const handleAddPrompt = useCallback((data: { name: string; description?: string; content: string; categoryId: string }) => {
+    usePromptStore.getState().addPrompt({
+      name: data.name,
+      description: data.description,
+      content: data.content,
+      categoryId: data.categoryId,
+      order: localPrompts.filter(p => p.categoryId === data.categoryId).length,
+    })
+    setToastMessage('提示词已添加')
+    setTimeout(() => setToastMessage(null), 2000)
+  }, [localPrompts])
+
+  const handleUpdatePrompt = useCallback((data: { name: string; description?: string; content: string; categoryId: string }) => {
+    if (!editingPrompt) return
+    usePromptStore.getState().updatePrompt(editingPrompt.id, {
+      name: data.name,
+      description: data.description,
+      content: data.content,
+      categoryId: data.categoryId,
+    })
+    setEditingPrompt(null)
+    setToastMessage('提示词已更新')
+    setTimeout(() => setToastMessage(null), 2000)
+  }, [editingPrompt])
+
+  const handleDeletePrompt = useCallback(() => {
+    if (!deletingPrompt) return
+    usePromptStore.getState().deletePrompt(deletingPrompt.id)
+    setLocalPrompts(prev => prev.filter(p => p.id !== deletingPrompt.id))
+    setDeletingPrompt(null)
+    setToastMessage('提示词已删除')
+    setTimeout(() => setToastMessage(null), 2000)
+  }, [deletingPrompt])
 
   // Close dropdown when clicking outside
   // IMPORTANT: Portal container contains dropdown + modals/dialogs - all should skip detection
@@ -1121,11 +1389,28 @@ export function DropdownContainer({
                         }}
                         showDragHandle={showCategoryDragHandles}
                         IconComponent={IconComponent}
+                        onEdit={(cat) => {
+                          setEditingCategory(cat)
+                          setIsCategoryEditModalOpen(true)
+                        }}
+                        onDelete={(cat) => {
+                          setDeletingCategory(cat)
+                          setIsDeleteCategoryModalOpen(true)
+                        }}
                       />
                     )
                   })}
                 </SortableContext>
               </DndContext>
+              {/* Add category button */}
+              <button
+                className="sidebar-add-category-btn"
+                onClick={() => setIsCategoryAddModalOpen(true)}
+                aria-label="添加分类"
+              >
+                <Plus style={{ width: 14, height: 14 }} />
+                <span>添加分类</span>
+              </button>
             </>
           )}
         </div>
@@ -1245,7 +1530,7 @@ export function DropdownContainer({
           ) : filteredPrompts.length === 0 ? (
             <div className="empty-state">
               <div className="empty-message">
-                {selectedCategoryId === 'all' ? '暂无提示词，请点击设置添加' : '该分类暂无提示词'}
+                {selectedCategoryId === 'all' ? '暂无提示词，点击下方按钮添加' : '该分类暂无提示词'}
               </div>
             </div>
           ) : (
@@ -1263,6 +1548,14 @@ export function DropdownContainer({
                       isSelected={selectedPromptId === prompt.id}
                       onSelect={onSelect}
                       showDragHandle={showDragHandles}
+                      onEdit={(p) => {
+                        setEditingPrompt(p)
+                        setIsPromptEditModalOpen(true)
+                      }}
+                      onDelete={(p) => {
+                        setDeletingPrompt(p)
+                        setIsDeletePromptModalOpen(true)
+                      }}
                     />
                   ))}
                 </SortableContext>
@@ -1270,6 +1563,16 @@ export function DropdownContainer({
             </div>
           )}
         </div>
+        {/* FAB add prompt button */}
+        {!isResourceLibrary && (
+          <button
+            className="fab-add-prompt"
+            onClick={() => setIsPromptAddModalOpen(true)}
+            aria-label="添加提示词"
+          >
+            <Plus style={{ width: 18, height: 18 }} />
+          </button>
+        )}
       </div>
     </div>
     {/* Prompt preview modal with collect */}
@@ -1310,6 +1613,63 @@ export function DropdownContainer({
       status={updateStatus}
       isOpen={isUpdateGuideOpen}
       onClose={() => setIsUpdateGuideOpen(false)}
+    />
+    {/* Category CRUD modals */}
+    <CategoryEditModal
+      isOpen={isCategoryAddModalOpen}
+      onClose={() => setIsCategoryAddModalOpen(false)}
+      mode="add"
+      onConfirm={handleAddCategory}
+    />
+    <CategoryEditModal
+      isOpen={isCategoryEditModalOpen}
+      onClose={() => {
+        setIsCategoryEditModalOpen(false)
+        setEditingCategory(null)
+      }}
+      mode="edit"
+      initialName={editingCategory?.name || ''}
+      onConfirm={handleUpdateCategory}
+    />
+    <DeleteConfirmModal
+      isOpen={isDeleteCategoryModalOpen}
+      onClose={() => {
+        setIsDeleteCategoryModalOpen(false)
+        setDeletingCategory(null)
+      }}
+      itemName={deletingCategory?.name || ''}
+      itemType="category"
+      onConfirm={handleDeleteCategory}
+    />
+    {/* Prompt CRUD modals */}
+    <PromptEditModal
+      isOpen={isPromptAddModalOpen}
+      onClose={() => setIsPromptAddModalOpen(false)}
+      mode="add"
+      categories={sortableCategories}
+      defaultCategoryId={selectedCategoryId !== 'all' ? selectedCategoryId : undefined}
+      onConfirm={handleAddPrompt}
+    />
+    <PromptEditModal
+      isOpen={isPromptEditModalOpen}
+      onClose={() => {
+        setIsPromptEditModalOpen(false)
+        setEditingPrompt(null)
+      }}
+      mode="edit"
+      prompt={editingPrompt}
+      categories={sortableCategories}
+      onConfirm={handleUpdatePrompt}
+    />
+    <DeleteConfirmModal
+      isOpen={isDeletePromptModalOpen}
+      onClose={() => {
+        setIsDeletePromptModalOpen(false)
+        setDeletingPrompt(null)
+      }}
+      itemName={deletingPrompt?.name || ''}
+      itemType="prompt"
+      onConfirm={handleDeletePrompt}
     />
   </>,
     getPortalContainer()

@@ -10,7 +10,7 @@
   "content_scripts": [
     {
       "js": [
-        "assets/content-script.ts-loader-BhljUT1_.js"
+        "assets/content-script.ts-loader-DEz90b20.js"
       ],
       "matches": [
         "*://lovart.ai/*",
@@ -37,10 +37,12 @@
     "activeTab",
     "downloads",
     "storage",
-    "tabs"
+    "tabs",
+    "alarms"
   ],
   "host_permissions": [
-    "https://raw.githubusercontent.com/*"
+    "https://raw.githubusercontent.com/*",
+    "https://api.github.com/*"
   ],
   "web_accessible_resources": [
     {
@@ -61,18 +63,18 @@
         "file:///*"
       ],
       "resources": [
-        "assets/messages-ATzc5Kiq.js",
-        "assets/messages-ATzc5Kiq.js.map",
+        "assets/messages-DVtmLRnp.js",
+        "assets/messages-DVtmLRnp.js.map",
         "assets/index-CxKT9Azf.js",
         "assets/index-CxKT9Azf.js.map",
-        "assets/store-DUqwFAUr.js",
-        "assets/store-DUqwFAUr.js.map",
+        "assets/store-CAC7gpsU.js",
+        "assets/store-CAC7gpsU.js.map",
         "assets/folder-open-wBVGl--b.js",
         "assets/folder-open-wBVGl--b.js.map",
         "assets/sync-manager-cWCTAi8e.js",
         "assets/sync-manager-cWCTAi8e.js.map",
-        "assets/content-script.ts-D-hP5NVn.js",
-        "assets/content-script.ts-D-hP5NVn.js.map"
+        "assets/content-script.ts-h7cq9ly4.js",
+        "assets/content-script.ts-h7cq9ly4.js.map"
       ],
       "use_dynamic_url": false
     }

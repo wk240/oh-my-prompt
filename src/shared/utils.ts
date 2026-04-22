@@ -2,7 +2,7 @@
  * Shared utility functions for text processing and array operations
  */
 
-import type { Category, Prompt, ResourceCategory } from './types'
+import type { Category, Prompt, ResourceCategory, ResourcePrompt } from './types'
 
 /**
  * Truncate text to a maximum length with ellipsis suffix
@@ -31,6 +31,36 @@ export function sortPromptsByOrder(prompts: Prompt[]): Prompt[] {
  */
 export function sortProviderCategoriesByOrder(categories: ResourceCategory[]): ResourceCategory[] {
   return [...categories].sort((a, b) => a.order - b.order)
+}
+
+/**
+ * Sort ResourcePrompts by category order first, then by prompt order within category
+ * Used for "全部" view to show prompts grouped by category order
+ */
+export function sortResourcePromptsByCategoryOrder(
+  prompts: ResourcePrompt[],
+  categories: ResourceCategory[]
+): ResourcePrompt[] {
+  // Build category order map
+  const categoryOrderMap = new Map<string, number>()
+  categories.forEach(cat => {
+    categoryOrderMap.set(cat.id, cat.order)
+    // Also map sourceCategory name to order for fallback matching
+    categoryOrderMap.set(cat.name, cat.order)
+  })
+
+  return [...prompts].sort((a, b) => {
+    const aCategoryOrder = categoryOrderMap.get(a.categoryId) ?? categoryOrderMap.get(a.sourceCategory ?? '') ?? FALLBACK_CATEGORY_ORDER
+    const bCategoryOrder = categoryOrderMap.get(b.categoryId) ?? categoryOrderMap.get(b.sourceCategory ?? '') ?? FALLBACK_CATEGORY_ORDER
+
+    // First sort by category order
+    if (aCategoryOrder !== bCategoryOrder) {
+      return aCategoryOrder - bCategoryOrder
+    }
+
+    // Then sort by prompt order within same category
+    return a.order - b.order
+  })
 }
 
 /**

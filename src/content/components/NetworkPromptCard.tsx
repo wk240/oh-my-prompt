@@ -1,7 +1,7 @@
 /**
  * NetworkPromptCard - Card component for displaying resource library prompts
  * 2-column grid layout with previewImage thumbnail
- * Features: inject button (right), collect button (left)
+ * Features: collect button (bottom-right), inject button (bottom-right corner)
  */
 
 import { ArrowUpRight, Bookmark } from 'lucide-react'
@@ -56,14 +56,40 @@ export function NetworkPromptCard({ prompt, onClick, onInject, onCollect, isColl
         position: 'relative', // For absolute positioned buttons
       }}
     >
-      {/* Inject button - right corner */}
+      {/* Collect button - bottom right, left of inject */}
+      <Tooltip content={isCollected ? '已收藏' : '收藏'}>
+        <button
+          onClick={handleCollectClick}
+          aria-label={isCollected ? '已收藏' : '收藏'}
+          style={{
+            position: 'absolute',
+            bottom: '8px',
+            right: '40px',
+            width: '24px',
+            height: '24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: isCollected ? '#171717' : '#ffffff',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            zIndex: 10,
+          }}
+        >
+          <Bookmark style={{ width: 12, height: 12, color: isCollected ? '#ffffff' : '#171717', fill: isCollected ? '#171717' : 'none' }} />
+        </button>
+      </Tooltip>
+
+      {/* Inject button - bottom right corner */}
       <Tooltip content="一键注入">
         <button
           onClick={handleInjectClick}
           aria-label="一键注入"
           style={{
             position: 'absolute',
-            top: '8px',
+            bottom: '8px',
             right: '8px',
             width: '24px',
             height: '24px',
@@ -79,32 +105,6 @@ export function NetworkPromptCard({ prompt, onClick, onInject, onCollect, isColl
           }}
         >
           <ArrowUpRight style={{ width: 12, height: 12, color: '#171717' }} />
-        </button>
-      </Tooltip>
-
-      {/* Collect button - left corner */}
-      <Tooltip content={isCollected ? '已收藏' : '收藏'}>
-        <button
-          onClick={handleCollectClick}
-          aria-label={isCollected ? '已收藏' : '收藏'}
-          style={{
-            position: 'absolute',
-            top: '8px',
-            left: '8px',
-            width: '24px',
-            height: '24px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: isCollected ? '#171717' : '#ffffff',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-            zIndex: 10,
-          }}
-        >
-          <Bookmark style={{ width: 12, height: 12, color: isCollected ? '#ffffff' : '#171717', fill: isCollected ? '#171717' : 'none' }} />
         </button>
       </Tooltip>
 

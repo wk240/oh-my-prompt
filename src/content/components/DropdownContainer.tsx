@@ -8,7 +8,7 @@ import { useRef, useState, useMemo, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import type { Prompt, Category, StorageSchema } from '../../shared/types'
 import type { ResourcePrompt, ResourceCategory, UpdateStatus } from '../../shared/types'
-import { truncateText, sortCategoriesByOrder, sortPromptsByOrder, sortProviderCategoriesByOrder } from '../../shared/utils'
+import { truncateText, sortCategoriesByOrder, sortPromptsByOrder, sortProviderCategoriesByOrder, sortResourcePromptsByCategoryOrder } from '../../shared/utils'
 import { Sparkles, Palette, Shapes, ArrowUpRight, FolderOpen, Layers, Sparkle, Brush, GripVertical, Database, ArrowLeft, Sun, Frame, Paintbrush, Image, RefreshCw, ArrowUpCircle, Plus, Pencil, Trash2, Download, Upload, ExternalLink } from 'lucide-react'
 import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
@@ -1107,10 +1107,15 @@ export function DropdownContainer({
 
   // Filter resource prompts by category
   const filteredResourcePrompts = useMemo(() => {
-    return selectedResourceCategoryId === 'all'
+    const prompts = selectedResourceCategoryId === 'all'
       ? resourcePrompts
       : resourcePrompts.filter(p => p.categoryId === selectedResourceCategoryId || p.sourceCategory === selectedResourceCategoryId)
-  }, [resourcePrompts, selectedResourceCategoryId])
+
+    // Sort by category order in "全部" view, otherwise keep original order
+    return selectedResourceCategoryId === 'all'
+      ? sortResourcePromptsByCategoryOrder(prompts, resourceCategories)
+      : prompts
+  }, [resourcePrompts, selectedResourceCategoryId, resourceCategories])
 
   const paginatedResourcePrompts = useMemo(() => {
     return filteredResourcePrompts.slice(0, loadedCount)

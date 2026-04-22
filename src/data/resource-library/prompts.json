@@ -4450,111 +4450,111 @@
   ],
   "categories": [
     {
+      "id": "nano-banana",
+      "name": "Nano Banana",
+      "order": 1
+    },
+    {
       "id": "3d-miniatures-dioramas",
       "name": "3D微缩模型",
-      "order": 1,
+      "order": 2,
       "count": 9
     },
     {
       "id": "product-photography",
       "name": "产品摄影",
-      "order": 2,
+      "order": 3,
       "count": 14
     },
     {
       "id": "character-design",
       "name": "角色设计",
-      "order": 3,
+      "order": 4,
       "count": 10
     },
     {
       "id": "food-culinary",
       "name": "美食烹饪",
-      "order": 4,
+      "order": 5,
       "count": 10
     },
     {
       "id": "fantasy-scifi",
       "name": "奇幻科幻",
-      "order": 5,
+      "order": 6,
       "count": 10
     },
     {
       "id": "sports-action",
       "name": "运动动感",
-      "order": 6,
+      "order": 7,
       "count": 15
     },
     {
       "id": "urban-cityscapes",
       "name": "城市街景",
-      "order": 7,
+      "order": 8,
       "count": 10
     },
     {
       "id": "architecture-interiors",
       "name": "建筑室内",
-      "order": 8,
+      "order": 9,
       "count": 10
     },
     {
       "id": "nature-landscapes",
       "name": "自然风景",
-      "order": 9,
+      "order": 10,
       "count": 10
     },
     {
       "id": "logo-branding",
       "name": "标志品牌",
-      "order": 10,
+      "order": 11,
       "count": 10
     },
     {
       "id": "vintage-retro",
       "name": "复古怀旧",
-      "order": 11,
+      "order": 12,
       "count": 10
     },
     {
       "id": "cinematic-posters",
       "name": "电影海报",
-      "order": 12,
+      "order": 13,
       "count": 10
     },
     {
       "id": "anime-manga",
       "name": "动漫漫画",
-      "order": 13,
+      "order": 14,
       "count": 9
     },
     {
       "id": "minimalist-icons",
       "name": "极简图标",
-      "order": 14,
+      "order": 15,
       "count": 7
     },
     {
       "id": "misc",
       "name": "其他杂项",
-      "order": 15,
+      "order": 16,
       "count": 4
     },
     {
       "id": "portrait-photography",
       "name": "肖像摄影",
-      "order": 16,
+      "order": 17,
       "count": 50
     },
     {
       "id": "fashion-photography",
       "name": "时尚摄影",
-      "order": 17,
+      "order": 18,
       "count": 51
-    },
-    {
-      "id": "nano-banana",
-      "name": "Nano Banana",
-      "order": 18
     }
   ]
 }

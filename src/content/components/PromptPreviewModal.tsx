@@ -148,6 +148,27 @@ export function PromptPreviewModal({ prompt, isOpen, onClose, onCollect, onInjec
             </a>
           )}
         </div>
+        {/* Preview Image */}
+        {prompt.previewImage && (
+          <div style={{
+            padding: '16px',
+            borderBottom: '1px solid #E5E5E5',
+          }}>
+            <img
+              src={prompt.previewImage}
+              alt={prompt.name}
+              style={{
+                width: '100%',
+                maxHeight: '200px',
+                objectFit: 'cover',
+                borderRadius: '8px',
+              }}
+              onError={(e) => {
+                e.currentTarget.style.display = 'none'
+              }}
+            />
+          </div>
+        )}
         {/* Content */}
         <div style={{
           padding: '16px',

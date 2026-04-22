@@ -7,7 +7,7 @@
 [![Chrome Extension](https://img.shields.io/badge/Chrome-Manifest%20V3-green.svg)]()
 [![Version](https://img.shields.io/badge/Version-1.1.2-orange.svg)]()
 
-🌐 [官方网站](https://wk240.github.io/oh-my-prompt-script)
+🌐 [官方网站](https://oh-my-prompt.com/)
 </div>
 
 ## 这是什么？

@@ -3,6 +3,7 @@
   "name": "Oh My Prompt Script",
   "version": "1.1.2",
   "description": "一键插入预设提示词，提升创作效率",
+  "homepage_url": "https://oh-my-prompt.com/",
   "background": {
     "service_worker": "src/background/service-worker.ts",
     "type": "module"

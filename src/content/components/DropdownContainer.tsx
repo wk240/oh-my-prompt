@@ -9,7 +9,7 @@ import { createPortal } from 'react-dom'
 import type { Prompt, Category, StorageSchema } from '../../shared/types'
 import type { ResourcePrompt, ResourceCategory, UpdateStatus } from '../../shared/types'
 import { truncateText, sortCategoriesByOrder, sortPromptsByOrder, sortProviderCategoriesByOrder } from '../../shared/utils'
-import { Sparkles, Palette, Shapes, ArrowUpRight, X, FolderOpen, Layers, Sparkle, Brush, GripVertical, Database, ArrowLeft, Sun, Frame, Paintbrush, Image, RefreshCw, ArrowUpCircle, Plus, Pencil, Trash2, Download, Upload } from 'lucide-react'
+import { Sparkles, Palette, Shapes, ArrowUpRight, FolderOpen, Layers, Sparkle, Brush, GripVertical, Database, ArrowLeft, Sun, Frame, Paintbrush, Image, RefreshCw, ArrowUpCircle, Plus, Pencil, Trash2, Download, Upload, ExternalLink } from 'lucide-react'
 import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -1527,14 +1527,16 @@ export function DropdownContainer({
                 <Download style={{ width: 14, height: 14 }} />
               </button>
             </Tooltip>
-            <Tooltip content="关闭" placement="bottom">
-              <button
+            <Tooltip content="访问官网" placement="bottom">
+              <a
                 className="dropdown-action-btn"
-                onClick={onClose}
-                aria-label="关闭"
+                href="https://oh-my-prompt.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="访问官网"
               >
-                <X style={{ width: 14, height: 14 }} />
-              </button>
+                <ExternalLink style={{ width: 14, height: 14 }} />
+              </a>
             </Tooltip>
           </div>
         </div>

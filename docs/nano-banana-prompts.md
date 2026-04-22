@@ -3,7 +3,7 @@
 ### 效果展示
 
 
-  ![案例1效果图](images/案例01.jpg)
+  ![案例1效果图](images/nano-banana-demo-1.jpg)
 
 
 ### 提示词 1
@@ -39,7 +39,7 @@ photography, sharp focus
 ### 效果展示
 
 
-  ![案例2效果图](images/案例02.jpg)
+  ![案例2效果图](images/nano-banana-demo-2.jpg)
 
 
 ### 中文提示词
@@ -65,7 +65,7 @@ photoreal, warm sepia grading. Aspect ratio [3:4].
 ### 效果展示
 
 
-  ![案例3效果图](images/案例03.jpg)
+  ![案例3效果图](images/nano-banana-demo-3.jpg)
 
 
 ### 中文提示词
@@ -101,7 +101,7 @@ clean, modern, vector-friendly, and clearly pill-shaped.
 ### 效果展示
 
 
-  ![案例4效果图](images/案例04.jpg)
+  ![案例4效果图](images/nano-banana-demo-4.jpg)
 
 
 ### 中文提示词
@@ -139,7 +139,7 @@ contrasts. Target premium animation studio aesthetics.
 ### 效果展示
 
 
-  ![案例5效果图](images/案例05.jpg)
+  ![案例5效果图](images/nano-banana-demo-5.jpg)
 
 
 ### 中文提示词
@@ -172,7 +172,7 @@ harmony.
 ### 效果展示
 
 
-  ![案例6效果图](images/案例06.jpg)
+  ![案例6效果图](images/nano-banana-demo-6.jpg)
 
 
 ### 中文提示词
@@ -212,7 +212,7 @@ a cozy room inside, tagline: “Feel at home, anywhere.”
 ### 效果展示
 
 
-  ![案例9效果图](images/案例08.jpg)
+  ![案例9效果图](images/nano-banana-demo-8.jpg)
 
 
 ### 中文提示词
@@ -236,7 +236,7 @@ on top of the box, write 'LIONEL MESSI and underneath it,
 ### 效果展示
 
 
-  ![案例10效果图](images/案例09.jpg)
+  ![案例10效果图](images/nano-banana-demo-9.jpg)
 
 ### 中文提示词
 
@@ -259,7 +259,7 @@ friendly, no text, no details outside the frame, size is 1024x1024.
 ### 效果展示
 
 
-  ![案例11效果图](images/案例10.jpg)
+  ![案例11效果图](images/nano-banana-demo-10.jpg)
 
 ### 中文提示词
 
@@ -283,7 +283,7 @@ minimal shadows. Toy product design for keychain format.
 ### 效果展示
 
 
-  ![案例12效果图](images/案例11.jpg)
+  ![案例12效果图](images/nano-banana-demo-11.jpg)
 
 
 ### 中文提示词
@@ -308,7 +308,7 @@ with a slightly isometric perspective.
 ### 效果展示
 
 
-  ![案例12效果图](images/案例12.jpg)
+  ![案例12效果图](images/nano-banana-demo-12.jpg)
 
 
 ### 中文提示词
@@ -418,7 +418,7 @@ create image:
 ### 效果展示
 
 
-  ![案例14效果图](images/案例13.jpg)
+  ![案例14效果图](images/nano-banana-demo-13.jpg)
 
 ### 中文提示词
 
@@ -441,7 +441,7 @@ beautiful, editorial
 ### 效果展示
 
 
-  ![案例14效果图](images/案例14.jpg)
+  ![案例14效果图](images/nano-banana-demo-14.jpg)
 
 
 ### 中文提示词
@@ -527,7 +527,7 @@ create comic style illustration:
 ### 效果展示
 
 
-  ![案例15效果图](images/案例15.jpg)
+  ![案例15效果图](images/nano-banana-demo-15.jpg)
 
 
 ### 中文提示词
@@ -570,7 +570,7 @@ tastefully
 ### 效果展示
 
 
-  ![案例17效果图](images/案例16.jpg)
+  ![案例17效果图](images/nano-banana-demo-16.jpg)
 
 ### 中文提示词
 
@@ -594,7 +594,7 @@ shadow effects, black ink drawing,  dynamic pose
 ### 效果展示
 
 
-  ![案例18效果图](images/案例17.jpg)
+  ![案例18效果图](images/nano-banana-demo-17.jpg)
 
 
 ### 中文提示词
@@ -618,7 +618,7 @@ reimagining the scene in a stylized, dreamy, retro-futuristic way.
 ### 效果展示
 
 
-  ![案例18效果图](images/案例18.jpg)
+  ![案例18效果图](images/nano-banana-demo-18.jpg)
 
 
 ### 中文提示词
@@ -650,7 +650,7 @@ effects, 1080x1080 square format
 ### 效果展示
 
 
-  ![案例19效果图](images/案例19.jpg)
+  ![案例19效果图](images/nano-banana-demo-19.jpg)
 
 
 ### 中文提示词
@@ -685,7 +685,7 @@ composition.
 ### 效果展示
 
 
-  ![案例20效果图](images/案例20.jpg)
+  ![案例20效果图](images/nano-banana-demo-20.jpg)
 
 
 ### 中文提示词
@@ -714,7 +714,7 @@ ratio.
 ### 效果展示
 
 
-  ![案例21效果图](images/案例21.jpg)
+  ![案例21效果图](images/nano-banana-demo-21.jpg)
 
 
 ### 中文提示词
@@ -742,7 +742,7 @@ Cinematic, high-resolution, vertical format 9:16. 1
 ### 效果展示
 
 
-  ![案例22效果图](images/案例22.jpg)
+  ![案例22效果图](images/nano-banana-demo-22.jpg)
 
 
 ### 中文提示词
@@ -768,7 +768,7 @@ shot at eye level with a shallow depth of field, ultra-detailed, 8k
 ### 效果展示
 
 
-  ![案例24效果图](images/案例23.jpg)
+  ![案例24效果图](images/nano-banana-demo-23.jpg)
 
 ### 中文提示词
 
@@ -795,7 +795,7 @@ realism, Vogue-style photography.
 ### 效果展示
 
 
-  ![案例25效果图](images/案例24.jpg)
+  ![案例25效果图](images/nano-banana-demo-24.jpg)
 
 ### 中文提示词
 
@@ -825,7 +825,7 @@ smooth background, photorealistic product photography, 4K, no text or logos.
 ### 效果展示
 
 
-  ![案例26效果图](images/案例25.jpg)
+  ![案例26效果图](images/nano-banana-demo-25.jpg)
 
 ### 中文提示词
 
@@ -849,7 +849,7 @@ for a harmonious and natural aesthetic. Avoid altering or adding new elements.
 ### 效果展示
 
 
-  ![案例27效果图](images/案例26.jpg)
+  ![案例27效果图](images/nano-banana-demo-26.jpg)
 
 ### 中文提示词
 
@@ -877,7 +877,7 @@ with a rebellious, animated tone, dark stylish tone, full of attitude.
 ### 效果展示
 
 
-  ![案例28效果图](images/案例27.jpg)
+  ![案例28效果图](images/nano-banana-demo-27.jpg)
 
 ### 中文提示词
 
@@ -901,7 +901,7 @@ aesthetics, horizontal layout
 ### 效果展示
 
 
-  ![案例29效果图](images/案例28.jpg)
+  ![案例29效果图](images/nano-banana-demo-28.jpg)
 
 ### 中文提示词
 
@@ -925,7 +925,7 @@ slightly eerie. Add handwritten calligraphy-style captions and riddles.
 ### 效果展示
 
 
-  ![案例30效果图](images/案例29.jpg)
+  ![案例30效果图](images/nano-banana-demo-29.jpg)
 
 ### 中文提示词
 
@@ -949,7 +949,7 @@ Add hand-lettered sound effects and quirky dialogue signs.
 ### 效果展示
 
 
-  ![案例31效果图](images/案例30.jpg)
+  ![案例31效果图](images/nano-banana-demo-30.jpg)
 
 ### 中文提示词
 
@@ -971,7 +971,7 @@ Add bold location labels and promotional slogans.
 ### 效果展示
 
 
-  ![案例31效果图](images/案例31.jpg)
+  ![案例31效果图](images/nano-banana-demo-31.jpg)
 
 
 ### 中文提示词
@@ -1047,7 +1047,7 @@ realism.",
 ### 效果展示
 
 
-  ![案例32效果图](images/案例32.jpg)
+  ![案例32效果图](images/nano-banana-demo-32.jpg)
 
 
 ### 中文提示词
@@ -1173,7 +1173,7 @@ detail",
 ### 效果展示
 
 
-  ![案例33效果图](images/案例33.jpg)
+  ![案例33效果图](images/nano-banana-demo-33.jpg)
 
 
 ### 中文提示词
@@ -1202,7 +1202,7 @@ installations. Square format, 1080x1080 pixels.
 ### 效果展示
 
 
-  ![案例34效果图](images/案例34.jpg)
+  ![案例34效果图](images/nano-banana-demo-34.jpg)
 
 
 ### 中文提示词
@@ -1306,7 +1306,7 @@ objects",
 ### 效果展示
 
 
-  ![案例35效果图](images/案例35.jpg)
+  ![案例35效果图](images/nano-banana-demo-35.jpg)
 
 
 ### 中文提示词
@@ -1335,7 +1335,7 @@ keychain.
 ### 效果展示
 
 
-  ![案例36效果图](images/案例36.jpg)
+  ![案例36效果图](images/nano-banana-demo-36.jpg)
 
 
 ### 中文提示词
@@ -1372,7 +1372,7 @@ surreal whimsy—think serene, slightly uncanny atmosphere.
 ### 效果展示
 
 
-  ![案例37效果图](images/案例37.jpg)
+  ![案例37效果图](images/nano-banana-demo-37.jpg)
 
 
 ### 中文提示词
@@ -1404,7 +1404,7 @@ product photography, 4K, no text or logos.
 ### 效果展示
 
 
-  ![案例38效果图](images/案例38.jpg)
+  ![案例38效果图](images/nano-banana-demo-38.jpg)
 
 
 ### 中文提示词
@@ -1430,7 +1430,7 @@ commercial photography style, 85mm lens depth of field.
 ### 效果展示
 
 
-  ![案例40效果图](images/案例39.jpg)
+  ![案例40效果图](images/nano-banana-demo-39.jpg)
 
 ### 中文提示词
 
@@ -1448,7 +1448,7 @@ Image of a billboard with the text: “Image of a billboard with the text:”
 ### 效果展示
 
 
-  ![案例41效果图](images/案例40.jpg)
+  ![案例41效果图](images/nano-banana-demo-40.jpg)
 
 ### 中文提示词
 
@@ -1472,7 +1472,7 @@ shadow effects, black ink drawing,  dynamic pose
 ### 效果展示
 
 
-  ![案例41效果图](images/案例41.jpg)
+  ![案例41效果图](images/nano-banana-demo-41.jpg)
 
 
 ### 中文提示词
@@ -1498,7 +1498,7 @@ morning cartoon.
 ### 效果展示
 
 
-  ![案例43效果图](images/案例42.jpg)
+  ![案例43效果图](images/nano-banana-demo-42.jpg)
 
 
 ### 中文提示词
@@ -1554,7 +1554,7 @@ cute, simple, and modern piece of digital art.
 ### 效果展示
 
 
-  ![案例44效果图](images/案例44.jpg)
+  ![案例44效果图](images/nano-banana-demo-44.jpg)
 
 
 ### 中文提示词
@@ -1579,7 +1579,7 @@ for a harmonious and natural aesthetic. Avoid altering or adding new elements.
 ### 效果展示
 
 
-  ![案例45效果图](images/案例45.jpg)
+  ![案例45效果图](images/nano-banana-demo-45.jpg)
 
 
 ### 中文提示词
@@ -1606,7 +1606,7 @@ both the character and background for a colorful, soft look. Square format. 1
 ### 效果展示
 
 
-  ![案例46效果图](images/案例46.jpg)
+  ![案例46效果图](images/nano-banana-demo-46.jpg)
 
 
 ### 中文提示词
@@ -1723,7 +1723,7 @@ positive vibe, perfect for WhatsApp app use.
 ### 效果展示
 
 
-  ![案例48效果图](images/案例48.jpg)
+  ![案例48效果图](images/nano-banana-demo-48.jpg)
 
 
 ### 中文提示词
@@ -1751,7 +1751,7 @@ matches the iconic colors of the [BRAND] logo. Output dimension: 1080x1080.
 ### 效果展示
 
 
-  ![案例49效果图](images/案例49.jpg)
+  ![案例49效果图](images/nano-banana-demo-49.jpg)
 
 
 ### 中文提示词
@@ -1777,7 +1777,7 @@ dreamy atmosphere, ocean waves in the background.
 ### 效果展示
 
 
-  ![案例51效果图](images/案例50.jpg)
+  ![案例51效果图](images/nano-banana-demo-50.jpg)
 
 ### 中文提示词
 
@@ -1802,7 +1802,7 @@ depth of field, 1:1 format.
 ### 效果展示
 
 
-  ![案例52效果图](images/案例51.jpg)
+  ![案例52效果图](images/nano-banana-demo-51.jpg)
 
 ### 中文提示词
 
@@ -1823,7 +1823,7 @@ angle lens, f2.0 bokeh, shallow depth of field.
 ### 效果展示
 
 
-  ![案例53效果图](images/案例52.jpg)
+  ![案例53效果图](images/nano-banana-demo-52.jpg)
 
 ### 中文提示词
 
@@ -1850,7 +1850,7 @@ in a stylish font. 1080x1080 dimension.
 ### 效果展示
 
 
-  ![案例53效果图](images/案例53.jpg)
+  ![案例53效果图](images/nano-banana-demo-53.jpg)
 
 
 ### 中文提示词
@@ -1876,7 +1876,7 @@ clever and mindful.
 ### 效果展示
 
 
-  ![案例55效果图](images/案例54.jpg)
+  ![案例55效果图](images/nano-banana-demo-54.jpg)
 
 ### 中文提示词
 
@@ -1900,7 +1900,7 @@ and intense lighting for dramatic effect.
 ### 效果展示
 
 
-  ![案例56效果图](images/案例55.jpg)
+  ![案例56效果图](images/nano-banana-demo-55.jpg)
 
 
 ### 中文提示词
@@ -1933,7 +1933,7 @@ cinematic lighting, fantasy atmosphere, hyper-detailed concept art
 ### 效果展示
 
 
-  ![案例57效果图](images/案例56.jpg)
+  ![案例57效果图](images/nano-banana-demo-56.jpg)
 
 
 ### 中文提示词
@@ -1958,7 +1958,7 @@ background, DSLR photo realism.
 ### 效果展示
 
 
-  ![案例57效果图](images/案例57.jpg)
+  ![案例57效果图](images/nano-banana-demo-57.jpg)
 
 
 ### 中文提示词
@@ -2048,7 +2048,7 @@ photograph with impeccable realism.
 ### 效果展示
 
 
-  ![案例60效果图](images/案例60.jpg)
+  ![案例60效果图](images/nano-banana-demo-60.jpg)
 
 
 ### 中文提示词
@@ -2076,7 +2076,7 @@ emotion.
 ### 效果展示
 
 
-  ![案例61效果图](images/案例61.jpg)
+  ![案例61效果图](images/nano-banana-demo-61.jpg)
 
 
 ### 中文提示词
@@ -2154,7 +2154,7 @@ photograph with impeccable realism.
 ### 效果展示
 
 
-  ![案例64效果图](images/案例64.jpg)
+  ![案例64效果图](images/nano-banana-demo-64.jpg)
 
 
 ### 中文提示词
@@ -2254,7 +2254,7 @@ blocks"
 ### 效果展示
 
 
-  ![案例66效果图](images/案例65.jpg)
+  ![案例66效果图](images/nano-banana-demo-65.jpg)
 
 ### 中文提示词
 
@@ -2277,7 +2277,7 @@ lighting, hyperrealistic materials, octane render, modern digital sculpture
 ### 效果展示
 
 
-  ![案例66效果图](images/案例66.jpg)
+  ![案例66效果图](images/nano-banana-demo-66.jpg)
 
 
 ### 中文提示词
@@ -2405,7 +2405,7 @@ realism with luxury design."
 ### 效果展示
 
 
-  ![案例67效果图](images/案例67.jpg)
+  ![案例67效果图](images/nano-banana-demo-67.jpg)
 
 
 ### 中文提示词
@@ -2538,7 +2538,7 @@ sparkle"
 ### 效果展示
 
 
-  ![案例68效果图](images/案例68.jpg)
+  ![案例68效果图](images/nano-banana-demo-68.jpg)
 
 
 ### 中文提示词
@@ -2566,7 +2566,7 @@ composition.
 ### 效果展示
 
 
-  ![案例69效果图](images/案例69.jpg)
+  ![案例69效果图](images/nano-banana-demo-69.jpg)
 
 
 ### 中文提示词
@@ -2653,7 +2653,7 @@ cartoon — playful, graphic, and highly stylized.
 ### 效果展示
 
 
-  ![案例73效果图](images/案例72.jpg)
+  ![案例73效果图](images/nano-banana-demo-72.jpg)
 
 
 ### 中文提示词
@@ -2676,7 +2676,7 @@ trailing POV
 ### 效果展示
 
 
-  ![案例74效果图](images/案例73.jpg)
+  ![案例74效果图](images/nano-banana-demo-73.jpg)
 
 
 ### 中文提示词
@@ -2704,7 +2704,7 @@ with a rebellious, animated tone, dark stylish tone, full of attitude.
 ### 效果展示
 
 
-  ![案例75效果图](images/案例74.jpg)
+  ![案例75效果图](images/nano-banana-demo-74.jpg)
 
 ### 中文提示词
 
@@ -2724,7 +2724,7 @@ with visible crumbs and soft shadows, highlighting texture and detail
 ### 效果展示
 
 
-  ![案例76效果图](images/案例75.jpg)
+  ![案例76效果图](images/nano-banana-demo-75.jpg)
 
 ### 中文提示词
 
@@ -2752,7 +2752,7 @@ quality.
 ### 效果展示
 
 
-  ![案例77效果图](images/案例76.jpg)
+  ![案例77效果图](images/nano-banana-demo-76.jpg)
 
 ### 中文提示词
 
@@ -2782,7 +2782,7 @@ photorealistic, macro details, dreamy glow, premium product photography.
 ### 效果展示
 
 
-  ![案例78效果图](images/案例77.jpg)
+  ![案例78效果图](images/nano-banana-demo-77.jpg)
 
 ### 中文提示词
 
@@ -2811,7 +2811,7 @@ moody, futuristic vibe.
 ### 效果展示
 
 
-  ![案例79效果图](images/案例78.jpg)
+  ![案例79效果图](images/nano-banana-demo-78.jpg)
 
 ### 中文提示词
 
@@ -2833,7 +2833,7 @@ professional studio lighting.
 ### 效果展示
 
 
-  ![案例79效果图](images/案例79.jpg)
+  ![案例79效果图](images/nano-banana-demo-79.jpg)
 
 
 ### 中文提示词
@@ -2872,7 +2872,7 @@ table, soda splash, cookie tray).
 ### 效果展示
 
 
-  ![案例81效果图](images/案例80.jpg)
+  ![案例81效果图](images/nano-banana-demo-80.jpg)
 
 ### 中文提示词
 
@@ -2897,7 +2897,7 @@ photography style, ultra-detailed textures, vibrant and glossy finish
 ### 效果展示
 
 
-  ![案例81效果图](images/案例81.jpg)
+  ![案例81效果图](images/nano-banana-demo-81.jpg)
 
 
 ### 中文提示词
@@ -2923,7 +2923,7 @@ premium product campaigns.
 ### 效果展示
 
 
-  ![案例82效果图](images/案例82.jpg)
+  ![案例82效果图](images/nano-banana-demo-82.jpg)
 
 
 ### 中文提示词
@@ -2958,7 +2958,7 @@ Style: studio-grade lighting, high contrast, photorealistic textures.
 ### 效果展示
 
 
-  ![案例83效果图](images/案例83.jpg)
+  ![案例83效果图](images/nano-banana-demo-83.jpg)
 
 
 ### 中文提示词
@@ -2992,7 +2992,7 @@ sharp detail. Format 1:1.
 ### 效果展示
 
 
-  ![案例84效果图](images/案例84.jpg)
+  ![案例84效果图](images/nano-banana-demo-84.jpg)
 
 
 ### 中文提示词
@@ -3018,7 +3018,7 @@ high-tech atmosphere
 ### 效果展示
 
 
-  ![案例85效果图](images/案例85.jpg)
+  ![案例85效果图](images/nano-banana-demo-85.jpg)
 
 
 ### 中文提示词
@@ -3048,7 +3048,7 @@ maximum visual impact.
 ### 效果展示
 
 
-  ![案例86效果图](images/案例86.jpg)
+  ![案例86效果图](images/nano-banana-demo-86.jpg)
 
 
 ### 中文提示词
@@ -3073,7 +3073,7 @@ elegant, and modern.
 ### 效果展示
 
 
-  ![案例87效果图](images/案例87.jpg)
+  ![案例87效果图](images/nano-banana-demo-87.jpg)
 
 
 ### 中文提示词

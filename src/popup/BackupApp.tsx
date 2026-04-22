@@ -363,6 +363,7 @@ function BackupApp() {
             )}
           </div>
         )}
+
       </div>
 
       {/* Restore confirmation dialog */}

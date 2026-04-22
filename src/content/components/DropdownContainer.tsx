@@ -15,7 +15,6 @@ import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-
 import { CSS } from '@dnd-kit/utilities'
 import { NetworkPromptCard } from './NetworkPromptCard'
 import { ProviderCategoryItem } from './ProviderCategoryItem'
-import { LoadMoreButton } from './LoadMoreButton'
 import { PromptPreviewModal } from './PromptPreviewModal'
 import { CategorySelectDialog } from './CategorySelectDialog'
 import { ToastNotification } from './ToastNotification'
@@ -877,6 +876,7 @@ export function DropdownContainer({
   isLoading = false,
 }: DropdownContainerProps) {
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [position, setPosition] = useState<DropdownPosition>({ top: 0, right: 0, isStickyTop: false })
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all')
   const [localPrompts, setLocalPrompts] = useState<Prompt[]>([])
@@ -1127,6 +1127,24 @@ export function DropdownContainer({
       setLoadedCount(50)
     }
   }, [selectedResourceCategoryId, isResourceLibrary])
+
+  // Infinite scroll handler - load more when scrolling near bottom
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    if (!isResourceLibrary) return
+
+    const target = e.currentTarget
+    const scrollTop = target.scrollTop
+    const scrollHeight = target.scrollHeight
+    const clientHeight = target.clientHeight
+
+    // Load more when within 100px of bottom
+    const threshold = 100
+    const isNearBottom = scrollHeight - scrollTop - clientHeight < threshold
+
+    if (isNearBottom && loadedCount < filteredResourcePrompts.length) {
+      setLoadedCount(prev => Math.min(prev + 50, filteredResourcePrompts.length))
+    }
+  }, [isResourceLibrary, loadedCount, filteredResourcePrompts.length])
 
   // Handle drag end for prompt reorder (supports global sorting in 'all' category)
   const handleDragEnd = async (event: DragEndEvent) => {
@@ -1561,7 +1579,7 @@ export function DropdownContainer({
           </div>
         )}
 
-        <div className="dropdown-content">
+        <div className="dropdown-content" ref={scrollContainerRef} onScroll={handleScroll}>
           {isLoading ? (
             <div className="empty-state">
               <div className="empty-message">加载中...</div>
@@ -1576,31 +1594,21 @@ export function DropdownContainer({
                 </div>
               </div>
             ) : (
-              <>
-                <div className="network-prompt-cards-grid">
-                  {paginatedResourcePrompts.map((prompt) => (
-                    <NetworkPromptCard
-                      key={prompt.id}
-                      prompt={prompt}
-                      onClick={() => {
-                        setSelectedResourcePrompt(prompt)
-                        setIsModalOpen(true)
-                      }}
-                      onInject={() => handleInjectFromCard(prompt)}
-                      onCollect={() => handleQuickCollect(prompt)}
-                      isCollected={isPromptCollected(prompt)}
-                    />
-                  ))}
-                </div>
-                {filteredResourcePrompts.length > 50 && (
-                  <LoadMoreButton
-                    loadedCount={loadedCount}
-                    totalCount={filteredResourcePrompts.length}
-                    onLoadMore={() => setLoadedCount(prev => prev + 50)}
-                    isLoading={false}
+              <div className="network-prompt-cards-grid">
+                {paginatedResourcePrompts.map((prompt) => (
+                  <NetworkPromptCard
+                    key={prompt.id}
+                    prompt={prompt}
+                    onClick={() => {
+                      setSelectedResourcePrompt(prompt)
+                      setIsModalOpen(true)
+                    }}
+                    onInject={() => handleInjectFromCard(prompt)}
+                    onCollect={() => handleQuickCollect(prompt)}
+                    isCollected={isPromptCollected(prompt)}
                   />
-                )}
-              </>
+                ))}
+              </div>
             )
           ) : filteredPrompts.length === 0 ? (
             <div className="empty-state">

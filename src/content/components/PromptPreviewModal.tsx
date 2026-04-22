@@ -2,10 +2,11 @@
  * PromptPreviewModal - Modal overlay for full prompt content display
  * Portal-rendered modal with escape/overlay close
  * Footer: left 1/3 collect button, right 2/3 inject button
+ * Image hover preview: shows full image after 500ms delay
  */
 
 import { createPortal } from 'react-dom'
-import { useEffect, useCallback } from 'react'
+import { useEffect, useCallback, useState, useRef } from 'react'
 import { X, Bookmark, ArrowUpRight } from 'lucide-react'
 import type { ResourcePrompt } from '../../shared/types'
 
@@ -19,6 +20,15 @@ interface PromptPreviewModalProps {
 
 const PORTAL_ID = 'oh-my-prompt-script-dropdown-portal'
 
+// Hover preview delay and dimensions (1.5x larger for better visibility)
+const HOVER_PREVIEW_DELAY = 500
+const PREVIEW_OFFSET = 16
+const PREVIEW_MAX_WIDTH = 720
+const PREVIEW_MAX_HEIGHT = 480
+
+// Fallback placeholder SVG
+const FALLBACK_IMAGE_SVG = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="120" height="80" viewBox="0 0 120 80"%3E%3Crect fill="%23f0f0f0" width="120" height="80"/%3E%3Ctext fill="%23999" font-family="sans-serif" font-size="10" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3ENo Image%3C/text%3E%3C/svg%3E'
+
 function getPortalContainer(): HTMLElement {
   let container = document.getElementById(PORTAL_ID)
   if (!container) {
@@ -30,6 +40,11 @@ function getPortalContainer(): HTMLElement {
 }
 
 export function PromptPreviewModal({ prompt, isOpen, onClose, onCollect, onInject }: PromptPreviewModalProps) {
+  // Hover preview state
+  const [showPreview, setShowPreview] = useState(false)
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   // Escape key closes modal
   useEffect(() => {
     if (!isOpen) return
@@ -39,6 +54,15 @@ export function PromptPreviewModal({ prompt, isOpen, onClose, onCollect, onInjec
     document.addEventListener('keydown', handleEscape)
     return () => document.removeEventListener('keydown', handleEscape)
   }, [isOpen, onClose])
+
+  // Cleanup timer on close
+  useEffect(() => {
+    if (!isOpen && hoverTimerRef.current) {
+      clearTimeout(hoverTimerRef.current)
+      hoverTimerRef.current = null
+      setShowPreview(false)
+    }
+  }, [isOpen])
 
   // Click overlay closes modal - stop propagation to prevent dropdown close
   const handleOverlayClick = useCallback((e: React.MouseEvent) => {
@@ -52,11 +76,79 @@ export function PromptPreviewModal({ prompt, isOpen, onClose, onCollect, onInjec
     onClose()
   }, [onInject, onClose])
 
+  // Handle image mouse enter - start 500ms timer
+  const handleImageMouseEnter = () => {
+    if (prompt.previewImage) {
+      hoverTimerRef.current = setTimeout(() => {
+        setShowPreview(true)
+      }, HOVER_PREVIEW_DELAY)
+    }
+  }
+
+  // Handle image mouse move - track position
+  const handleImageMouseMove = (e: React.MouseEvent) => {
+    setMousePos({ x: e.clientX, y: e.clientY })
+  }
+
+  // Handle image mouse leave - cancel timer and hide preview
+  const handleImageMouseLeave = () => {
+    if (hoverTimerRef.current) {
+      clearTimeout(hoverTimerRef.current)
+      hoverTimerRef.current = null
+    }
+    setShowPreview(false)
+  }
+
   if (!isOpen) return null
+
+  // Preview element - rendered directly to body (outside portal container)
+  // Auto-stick to top if preview would exceed viewport top boundary
+  const previewHeight = PREVIEW_MAX_HEIGHT + 32 + 16 // max height + padding + extra
+  const previewTopPosition = mousePos.y - PREVIEW_OFFSET - previewHeight
+  const shouldStickToTop = previewTopPosition < 0
+
+  const previewElement = showPreview && prompt.previewImage ? (
+    <div
+      style={{
+        position: 'fixed',
+        left: mousePos.x - PREVIEW_OFFSET,
+        top: shouldStickToTop ? PREVIEW_OFFSET : mousePos.y - PREVIEW_OFFSET,
+        transform: shouldStickToTop ? 'translateX(-100%)' : 'translate(-100%, -100%)',
+        zIndex: 2147483647,
+        background: '#ffffff',
+        borderRadius: '12px',
+        boxShadow: '0 12px 48px rgba(0,0,0,0.25)',
+        padding: '16px',
+        maxWidth: `${PREVIEW_MAX_WIDTH + 32}px`,
+        maxHeight: `${PREVIEW_MAX_HEIGHT + 32}px`,
+        overflow: 'hidden',
+        pointerEvents: 'none',
+      }}
+    >
+      <img
+        src={prompt.previewImage}
+        alt={prompt.name}
+        style={{
+          maxWidth: `${PREVIEW_MAX_WIDTH}px`,
+          maxHeight: `${PREVIEW_MAX_HEIGHT}px`,
+          width: 'auto',
+          height: 'auto',
+          borderRadius: '8px',
+          display: 'block',
+          objectFit: 'contain',
+        }}
+        onError={(e) => {
+          e.currentTarget.src = FALLBACK_IMAGE_SVG
+        }}
+      />
+    </div>
+  ) : null
 
   // Render to same Portal container as dropdown
   return createPortal(
     <>
+      {/* Preview rendered directly to body */}
+      {previewElement && createPortal(previewElement, document.body)}
       {/* Overlay */}
       <div
         className="modal-overlay"
@@ -148,7 +240,7 @@ export function PromptPreviewModal({ prompt, isOpen, onClose, onCollect, onInjec
             </a>
           )}
         </div>
-        {/* Preview Image */}
+        {/* Preview Image - with hover preview */}
         {prompt.previewImage && (
           <div style={{
             padding: '16px',
@@ -157,11 +249,15 @@ export function PromptPreviewModal({ prompt, isOpen, onClose, onCollect, onInjec
             <img
               src={prompt.previewImage}
               alt={prompt.name}
+              onMouseEnter={handleImageMouseEnter}
+              onMouseMove={handleImageMouseMove}
+              onMouseLeave={handleImageMouseLeave}
               style={{
                 width: '100%',
                 maxHeight: '200px',
                 objectFit: 'cover',
                 borderRadius: '8px',
+                cursor: 'pointer',
               }}
               onError={(e) => {
                 e.currentTarget.style.display = 'none'

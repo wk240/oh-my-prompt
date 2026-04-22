@@ -33,6 +33,11 @@ npm run preview
 
 # TypeScript check (no emit)
 npx tsc --noEmit
+
+# E2E tests (Playwright)
+npm run test           # Run all tests
+npm run test:ui        # Interactive test UI
+npm run test:headed    # Run with visible browser
 ```
 
 After running `npm run dev`, load the extension from `dist/` folder in Chrome via `chrome://extensions` (enable Developer Mode).
@@ -76,14 +81,22 @@ src/
 │   └── service-worker.ts    # Message routing, storage ops
 │
 ├── popup/             # Extension popup (React + Tailwind)
-│   ├── App.tsx              # Main management UI
-│   ├── components/          # Category list, prompt editor, dialogs
+│   ├── backup.html           # Backup management popup (default action)
+│   ├── backup.tsx            # BackupApp component
+│   ├── App.tsx               # Main management UI (unused in current build)
+│   ├── components/           # Category list, prompt editor, dialogs
 │   └── components/ui/       # Radix UI primitives (button, dialog, etc.)
 │
 ├── lib/               # Shared utilities
 │   ├── store.ts             # Zustand store (CRUD + storage sync)
 │   ├── storage.ts           # StorageManager singleton
 │   ├── import-export.ts     # JSON download/upload
+│   ├── version-checker.ts   # GitHub release version check
+│   ├── resource-library.ts  # Resource prompt data loading
+│   └── sync/                # Local folder backup sync
+│       ├── sync-manager.ts  # Sync orchestration
+│       ├── file-sync.ts     # File System Access API operations
+│       └── indexeddb.ts     # Folder handle persistence
 │
 ├── shared/            # Cross-context shared
 │   ├── types.ts             # Prompt, Category, StorageSchema
@@ -106,8 +119,8 @@ src/
 ### Data Flow
 
 1. **Storage-First:** All state derives from `chrome.storage.local` via `StorageSchema`
-2. **Message Types:** `GET_STORAGE`, `SET_STORAGE`, `PING`, `INSERT_PROMPT`, `OPEN_SETTINGS`
-3. **Zustand Sync:** Popup store calls `saveToStorage()` after each CRUD operation
+2. **Message Types:** `GET_STORAGE`, `SET_STORAGE`, `PING`, `INSERT_PROMPT`, `BACKUP_TO_FOLDER`, `SAVE_FOLDER_HANDLE`, `GET_SYNC_STATUS`, `OPEN_BACKUP_PAGE`, `REFRESH_DATA`, `CHECK_UPDATE`, `GET_UPDATE_STATUS`, `CLEAR_UPDATE_STATUS`, `OPEN_EXTENSIONS`, `EXPORT_DATA`
+3. **Zustand Sync:** Popup store calls `saveToStorage()` after each CRUD operation, which triggers auto-sync if enabled
 
 ### Lovart Platform Integration
 
@@ -117,6 +130,15 @@ Content script detects Lovart's Lexical editor input element:
 - UI injection target: `[data-testid="agent-input-bottom-more-button"]`
 
 Prompt insertion uses `execCommand('insertText')` for React/Lexical compatibility, followed by input/change event dispatch.
+
+### Local Folder Sync
+
+Uses File System Access API for automatic backup to user-selected folder:
+- Folder handle persisted in IndexedDB (survives browser restart)
+- Backup files named: `omps-backup-{timestamp}.json` + `omps-latest.json`
+- `triggerSync()` called after each `saveToStorage()` when sync enabled
+- Version history available via `listBackupVersions()`
+- Restore from any backup version via `restoreFromBackup()`
 <!-- GSD:architecture-end -->
 
 <!-- GSD:conventions-start source:CONVENTIONS.md -->
@@ -146,6 +168,14 @@ Prompt insertion uses `execCommand('insertText')` for React/Lexical compatibilit
 ### Message Response Pattern
 - Service worker must `return true` for async `sendResponse`
 - Response format: `{ success: boolean, data?: T, error?: string }`
+
+### ID Generation
+- Use `crypto.randomUUID()` for all new IDs (Prompts, Categories)
+
+### Prompt Order Field
+- Prompts have `order` field for sorting within category
+- Migration: `migratePromptOrders()` assigns order if missing
+- Max order calculation: `Math.max(...categoryPrompts.map(p => p.order))`
 <!-- GSD:conventions-end -->
 
 <!-- GSD:skills-start source:skills/ -->

@@ -512,6 +512,50 @@ function getDropdownStyles(): string {
       color: #533b04;
     }
 
+    /* Backup reminder banner styles */
+    #${PORTAL_ID} .backup-reminder-banner {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: #e8f4f8;
+      border-bottom: 1px solid #3b82f6;
+    }
+
+    #${PORTAL_ID} .backup-reminder-text {
+      font-size: 11px;
+      color: #1e40af;
+      flex: 1;
+    }
+
+    #${PORTAL_ID} .backup-reminder-link {
+      font-size: 11px;
+      color: #2563eb;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    #${PORTAL_ID} .backup-reminder-link:hover {
+      color: #1d4ed8;
+    }
+
+    #${PORTAL_ID} .backup-reminder-close {
+      width: 16px;
+      height: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #1e40af;
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+    }
+
+    #${PORTAL_ID} .backup-reminder-close:hover {
+      color: #1e3a8a;
+    }
+
     #${PORTAL_ID} .version-badge {
       font-size: 10px;
       color: #64748B;
@@ -897,6 +941,9 @@ export function DropdownContainer({
   const [showLatestTip, setShowLatestTip] = useState(false)
   const [isUpdateGuideOpen, setIsUpdateGuideOpen] = useState(false)
 
+  // Backup reminder state - shows after sorting changes
+  const [showBackupReminder, setShowBackupReminder] = useState(false)
+
   // CRUD modal states
   const [isCategoryAddModalOpen, setIsCategoryAddModalOpen] = useState(false)
   const [isCategoryEditModalOpen, setIsCategoryEditModalOpen] = useState(false)
@@ -910,12 +957,18 @@ export function DropdownContainer({
   const [isDeletePromptModalOpen, setIsDeletePromptModalOpen] = useState(false)
   const [deletingPrompt, setDeletingPrompt] = useState<Prompt | null>(null)
 
-  // Fetch update status when dropdown opens
+  // Fetch update status and sync status when dropdown opens
   useEffect(() => {
     if (!isOpen) return
     chrome.runtime.sendMessage({ type: MessageType.GET_UPDATE_STATUS }, (response) => {
       if (response?.success && response.data) {
         setUpdateStatus(response.data)
+      }
+    })
+    // Check for unsynced changes to show backup reminder
+    chrome.runtime.sendMessage({ type: MessageType.GET_SYNC_STATUS }, (response) => {
+      if (response?.success && response.data?.hasUnsyncedChanges) {
+        setShowBackupReminder(true)
       }
     })
   }, [isOpen])
@@ -1181,10 +1234,12 @@ export function DropdownContainer({
           type: 'SET_STORAGE',
           payload: {
             version: '1.0.0',
-            userData: { prompts: updatedPrompts, categories: localCategories },
-            settings: { showBuiltin: true, syncEnabled: false }
+            userData: { prompts: updatedPrompts, categories: localCategories }
           }
         })
+        // Set unsynced flag and show backup reminder after reorder
+        chrome.runtime.sendMessage({ type: MessageType.SET_UNSYNCED_FLAG })
+        setShowBackupReminder(true)
       } catch (error) {
         console.error('[Oh My Prompt Script] Failed to reorder prompts:', error)
       }
@@ -1215,10 +1270,12 @@ export function DropdownContainer({
           type: 'SET_STORAGE',
           payload: {
             version: '1.0.0',
-            userData: { prompts: localPrompts, categories: updatedCategories },
-            settings: { showBuiltin: true, syncEnabled: false }
+            userData: { prompts: localPrompts, categories: updatedCategories }
           }
         })
+        // Set unsynced flag and show backup reminder after reorder
+        chrome.runtime.sendMessage({ type: MessageType.SET_UNSYNCED_FLAG })
+        setShowBackupReminder(true)
       } catch (error) {
         console.error('[Oh My Prompt Script] Failed to reorder categories:', error)
       }
@@ -1582,6 +1639,24 @@ export function DropdownContainer({
               查看更新引导
             </span>
             <span className="update-banner-close" onClick={handleDismissUpdate}>×</span>
+          </div>
+        )}
+
+        {/* Backup reminder banner - shows after sorting changes */}
+        {showBackupReminder && (
+          <div className="backup-reminder-banner">
+            <RefreshCw style={{ width: 14, height: 14, color: '#1e40af' }} />
+            <span className="backup-reminder-text">本次改动尚未备份</span>
+            <span
+              className="backup-reminder-link"
+              onClick={() => {
+                setShowBackupReminder(false)
+                handleRefreshClick()
+              }}
+            >
+              立即备份
+            </span>
+            <span className="backup-reminder-close" onClick={() => setShowBackupReminder(false)}>×</span>
           </div>
         )}
 

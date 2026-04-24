@@ -108,6 +108,16 @@ chrome.runtime.onMessage.addListener(
           })
         return true // Required for async response
 
+      case MessageType.SET_UNSYNCED_FLAG:
+        // Set hasUnsyncedChanges flag after reorder operations
+        storageManager.updateSettings({ hasUnsyncedChanges: true })
+          .then(() => sendResponse({ success: true } as MessageResponse))
+          .catch(error => {
+            console.error('[Oh My Prompt Script] SET_UNSYNCED_FLAG error:', error)
+            sendResponse({ success: false, error: String(error) })
+          })
+        return true // Required for async response
+
       case MessageType.OPEN_BACKUP_PAGE:
         // Open backup page in a new tab with source tab ID
         const sourceTabId = _sender.tab?.id

@@ -4,3 +4,6 @@ dist/
 dist.zip
 oh-my-prompt-v*.zip
 tests/
+assets/.DS_Store
+.gitignore
+.DS_Store

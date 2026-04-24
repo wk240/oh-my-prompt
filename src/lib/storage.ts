@@ -73,7 +73,7 @@ export class StorageManager {
   async initializeStorage(): Promise<StorageSchema> {
     const defaultData = this.getDefaultData()
     await this.saveData(defaultData)
-    console.log('[Oh My Prompt Script] Initialized storage with default data')
+    console.log('[Oh My Prompt] Initialized storage with default data')
     return defaultData
   }
 
@@ -98,7 +98,7 @@ export class StorageManager {
 
       // Case 2: Legacy format - needs migration
       if (isLegacyFormat(data)) {
-        console.log('[Oh My Prompt Script] Detected legacy format, migrating...')
+        console.log('[Oh My Prompt] Detected legacy format, migrating...')
         const migrated = await migrate(data, this.getCurrentVersion())
         await this.saveData(migrated)
         return migrated
@@ -110,13 +110,13 @@ export class StorageManager {
 
       // Validate that schema has required fields
       if (!schema.userData || !schema.settings) {
-        console.warn('[Oh My Prompt Script] Malformed storage data (missing fields), reinitializing...')
+        console.warn('[Oh My Prompt] Malformed storage data (missing fields), reinitializing...')
         return await this.initializeStorage()
       }
 
       // Update version if mismatch (no full migration needed for new format)
       if (schema.version !== currentVersion) {
-        console.log('[Oh My Prompt Script] Version mismatch, updating version...')
+        console.log('[Oh My Prompt] Version mismatch, updating version...')
         schema.version = currentVersion
         schema._migrationComplete = true
         await this.saveData(schema)
@@ -124,11 +124,11 @@ export class StorageManager {
 
       return schema
     } catch (error: unknown) {
-      console.error('[Oh My Prompt Script] Failed to get storage data:', error)
+      console.error('[Oh My Prompt] Failed to get storage data:', error)
       // CRITICAL: Return defaults WITHOUT persisting - data loss risk on transient error
       // This fallback ensures UI can render, but user's data may be lost
       // If error persists, user should check storage or reinstall extension
-      console.warn('[Oh My Prompt Script] Returning default data without persisting - potential data loss')
+      console.warn('[Oh My Prompt] Returning default data without persisting - potential data loss')
       return this.getDefaultData()
     }
   }
@@ -140,7 +140,7 @@ export class StorageManager {
     try {
       await chrome.storage.local.set({ [STORAGE_KEY]: data })
     } catch (error: unknown) {
-      console.error('[Oh My Prompt Script] Failed to save storage data:', error)
+      console.error('[Oh My Prompt] Failed to save storage data:', error)
       throw error
     }
   }
@@ -203,7 +203,7 @@ export async function checkStorageQuota(): Promise<{
 
     // Log warning if usage exceeds 80%
     if (percentage > 80) {
-      console.warn(`[Oh My Prompt Script] Storage usage warning: ${percentage}%`)
+      console.warn(`[Oh My Prompt] Storage usage warning: ${percentage}%`)
     }
 
     return {
@@ -212,7 +212,7 @@ export async function checkStorageQuota(): Promise<{
       percentage
     }
   } catch (error: unknown) {
-    console.error('[Oh My Prompt Script] Failed to check storage quota:', error)
+    console.error('[Oh My Prompt] Failed to check storage quota:', error)
     return {
       usedBytes: 0,
       quotaBytes: STORAGE_QUOTA_BYTES,

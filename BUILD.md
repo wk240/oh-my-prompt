@@ -34,7 +34,7 @@ dist/
 4. Select the `dist/` directory from the project
 
 The extension should appear with:
-- Name: "Oh My Prompt Script"
+- Name: "Oh My Prompt"
 - Version: "1.0.0"
 - Icon: Lightning bolt icon
 

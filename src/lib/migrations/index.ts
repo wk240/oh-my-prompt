@@ -76,10 +76,10 @@ export async function migrate(
   let data = oldData
   for (const step of steps) {
     try {
-      console.log(`[Oh My Prompt Script] Executing migration ${step.version}`)
+      console.log(`[Oh My Prompt] Executing migration ${step.version}`)
       data = step.handler(data)
     } catch (error) {
-      console.error(`[Oh My Prompt Script] Migration ${step.version} failed:`, error)
+      console.error(`[Oh My Prompt] Migration ${step.version} failed:`, error)
       throw new Error(`Migration to ${targetVersion} failed at step ${step.version}`)
     }
   }

@@ -186,7 +186,7 @@ function BackupApp() {
       try {
         await chrome.runtime.sendMessage({ type: 'REFRESH_DATA' })
       } catch (err) {
-        console.warn('[Oh My Prompt Script] Failed to notify refresh:', err)
+        console.warn('[Oh My Prompt] Failed to notify refresh:', err)
       }
     } else {
       setError(result.error || '恢复失败')

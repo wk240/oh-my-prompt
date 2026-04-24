@@ -64,7 +64,7 @@ const DEFAULT_CATEGORIES: Category[] = [
 ]
 
 // Portal container ID
-const PORTAL_ID = 'oh-my-prompt-script-dropdown-portal'
+const PORTAL_ID = 'oh-my-prompt-dropdown-portal'
 
 // Get or create portal container with styles
 function getPortalContainer(): HTMLElement {
@@ -75,7 +75,7 @@ function getPortalContainer(): HTMLElement {
 
     // Inject styles for dropdown (since we're rendering outside Shadow DOM)
     const style = document.createElement('style')
-    style.id = 'oh-my-prompt-script-dropdown-styles'
+    style.id = 'oh-my-prompt-dropdown-styles'
     style.textContent = getDropdownStyles()
     document.head.appendChild(style)
 
@@ -1041,7 +1041,7 @@ export function DropdownContainer({
     }
 
     if (!targetCategoryId) {
-      console.error('[Oh My Prompt Script] No target category for collect')
+      console.error('[Oh My Prompt] No target category for collect')
       return
     }
 
@@ -1081,7 +1081,7 @@ export function DropdownContainer({
     if (!isOpen) return
 
     const calculatePosition = () => {
-      const hostElement = document.querySelector('[data-testid="oh-my-prompt-script-trigger"]')
+      const hostElement = document.querySelector('[data-testid="oh-my-prompt-trigger"]')
       if (!hostElement) return
 
       const rect = hostElement.getBoundingClientRect()
@@ -1241,7 +1241,7 @@ export function DropdownContainer({
         chrome.runtime.sendMessage({ type: MessageType.SET_UNSYNCED_FLAG })
         setShowBackupReminder(true)
       } catch (error) {
-        console.error('[Oh My Prompt Script] Failed to reorder prompts:', error)
+        console.error('[Oh My Prompt] Failed to reorder prompts:', error)
       }
     }
   }
@@ -1277,7 +1277,7 @@ export function DropdownContainer({
         chrome.runtime.sendMessage({ type: MessageType.SET_UNSYNCED_FLAG })
         setShowBackupReminder(true)
       } catch (error) {
-        console.error('[Oh My Prompt Script] Failed to reorder categories:', error)
+        console.error('[Oh My Prompt] Failed to reorder categories:', error)
       }
     }
   }
@@ -1434,7 +1434,7 @@ export function DropdownContainer({
         return
       }
 
-      const hostElement = document.querySelector('[data-testid="oh-my-prompt-script-trigger"]')
+      const hostElement = document.querySelector('[data-testid="oh-my-prompt-trigger"]')
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node) &&
           hostElement && !hostElement.contains(e.target as Node)) {
         onClose?.()
@@ -1581,8 +1581,8 @@ export function DropdownContainer({
       <div className="dropdown-main">
         <div className="dropdown-header">
           <span className="dropdown-header-title">
-            <img className="dropdown-header-logo" src={chrome.runtime.getURL('assets/icon-128.png')} alt="Oh My Prompt Script" />
-            Oh My Prompt Script
+            <img className="dropdown-header-logo" src={chrome.runtime.getURL('assets/icon-128.png')} alt="Oh My Prompt" />
+            Oh My Prompt
             <span className="version-badge">v{chrome.runtime.getManifest().version}</span>
           </span>
           <div className="dropdown-header-actions">

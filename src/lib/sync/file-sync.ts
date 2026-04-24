@@ -33,9 +33,9 @@ export async function backupToFolder(
     await writable.write(JSON.stringify(backupFile, null, 2))
     await writable.close()
 
-    console.log('[Oh My Prompt Script] Backup saved:', BACKUP_FILE_NAME)
+    console.log('[Oh My Prompt] Backup saved:', BACKUP_FILE_NAME)
   } catch (error) {
-    console.error('[Oh My Prompt Script] Failed to backup:', error)
+    console.error('[Oh My Prompt] Failed to backup:', error)
     throw error
   }
 }
@@ -64,13 +64,13 @@ export async function syncToLocalFolder(
     await writable.write(JSON.stringify(backupFile, null, 2))
     await writable.close()
 
-    console.log('[Oh My Prompt Script] Synced to local folder:', BACKUP_FILE_NAME)
+    console.log('[Oh My Prompt] Synced to local folder:', BACKUP_FILE_NAME)
 
     // Create history backup and cleanup old versions
     await createHistoryBackup(handle)
     await cleanupOldBackups(handle)
   } catch (error) {
-    console.error('[Oh My Prompt Script] Failed to sync to local folder:', error)
+    console.error('[Oh My Prompt] Failed to sync to local folder:', error)
     throw error
   }
 }
@@ -92,7 +92,7 @@ export async function readFromLocalFolder(
     if (parsed.userData && typeof parsed.userData === 'object') {
       const userData = parsed.userData as { prompts: unknown; categories: unknown }
       if (!Array.isArray(userData.prompts) || !Array.isArray(userData.categories)) {
-        console.warn('[Oh My Prompt Script] Invalid userData format')
+        console.warn('[Oh My Prompt] Invalid userData format')
         return null
       }
       return {
@@ -103,7 +103,7 @@ export async function readFromLocalFolder(
 
     // Legacy format: prompts/categories directly on object
     if (!Array.isArray(parsed.prompts) || !Array.isArray(parsed.categories)) {
-      console.warn('[Oh My Prompt Script] Invalid local file format')
+      console.warn('[Oh My Prompt] Invalid local file format')
       return null
     }
 
@@ -112,7 +112,7 @@ export async function readFromLocalFolder(
       categories: parsed.categories as Category[]
     }
   } catch (error) {
-    console.warn('[Oh My Prompt Script] Failed to read local file:', error)
+    console.warn('[Oh My Prompt] Failed to read local file:', error)
     return null
   }
 }
@@ -131,14 +131,14 @@ export async function selectSyncFolder(): Promise<FileSystemDirectoryHandle | nu
     // Verify permission
     const permission = await handle.requestPermission({ mode: 'readwrite' })
     if (permission !== 'granted') {
-      console.warn('[Oh My Prompt Script] Folder permission denied')
+      console.warn('[Oh My Prompt] Folder permission denied')
       return null
     }
 
     return handle
   } catch (error) {
     // User cancelled or picker failed
-    console.log('[Oh My Prompt Script] Folder selection cancelled:', error)
+    console.log('[Oh My Prompt] Folder selection cancelled:', error)
     return null
   }
 }
@@ -168,9 +168,9 @@ async function createHistoryBackup(handle: FileSystemDirectoryHandle): Promise<v
     await writable.write(content)
     await writable.close()
 
-    console.log('[Oh My Prompt Script] History backup created:', historyFilename)
+    console.log('[Oh My Prompt] History backup created:', historyFilename)
   } catch (error) {
-    console.warn('[Oh My Prompt Script] Failed to create history backup:', error)
+    console.warn('[Oh My Prompt] Failed to create history backup:', error)
   }
 }
 
@@ -206,11 +206,11 @@ async function cleanupOldBackups(handle: FileSystemDirectoryHandle): Promise<voi
       const toRemove = historyFiles.slice(MAX_BACKUP_HISTORY)
       for (const file of toRemove) {
         await handle.removeEntry(file.name)
-        console.log('[Oh My Prompt Script] Removed old backup:', file.name)
+        console.log('[Oh My Prompt] Removed old backup:', file.name)
       }
     }
   } catch (error) {
-    console.warn('[Oh My Prompt Script] Failed to cleanup old backups:', error)
+    console.warn('[Oh My Prompt] Failed to cleanup old backups:', error)
   }
 }
 
@@ -267,7 +267,7 @@ export async function listBackupVersions(handle: FileSystemDirectoryHandle): Pro
     // Sort by backupTime (newest first)
     versions.sort((a, b) => new Date(b.backupTime).getTime() - new Date(a.backupTime).getTime())
   } catch (error) {
-    console.warn('[Oh My Prompt Script] Failed to list backup versions:', error)
+    console.warn('[Oh My Prompt] Failed to list backup versions:', error)
   }
 
   return versions
@@ -308,7 +308,7 @@ export async function readBackupFile(
       categories: parsed.categories as Category[]
     }
   } catch (error) {
-    console.warn('[Oh My Prompt Script] Failed to read backup file:', error)
+    console.warn('[Oh My Prompt] Failed to read backup file:', error)
     return null
   }
 }

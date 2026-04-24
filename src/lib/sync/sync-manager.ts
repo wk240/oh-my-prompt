@@ -29,16 +29,16 @@ export async function triggerSync(userData: UserData): Promise<void> {
   if (!handle) {
     // Folder handle lost - disable sync
     await storageManager.updateSettings({ syncEnabled: false })
-    console.warn('[Oh My Prompt Script] Sync folder handle lost, disabled sync')
+    console.warn('[Oh My Prompt] Sync folder handle lost, disabled sync')
     return
   }
 
   try {
     await syncToLocalFolder(userData, handle)
     await storageManager.updateSettings({ lastSyncTime: Date.now(), hasUnsyncedChanges: false })
-    console.log('[Oh My Prompt Script] Auto-sync completed')
+    console.log('[Oh My Prompt] Auto-sync completed')
   } catch (error) {
-    console.error('[Oh My Prompt Script] Auto-sync failed:', error)
+    console.error('[Oh My Prompt] Auto-sync failed:', error)
     // Keep syncEnabled - user can see error in settings
   }
 }
@@ -57,7 +57,7 @@ export async function initialSync(): Promise<void> {
   // Case: chrome.storage empty, local has data -> restore
   if (localData && storageData.userData.prompts.length === 0) {
     await storageManager.updateUserData(localData)
-    console.log('[Oh My Prompt Script] Restored from local folder backup')
+    console.log('[Oh My Prompt] Restored from local folder backup')
     return
   }
 
@@ -69,7 +69,7 @@ export async function initialSync(): Promise<void> {
         await syncToLocalFolder(storageData.userData, handle)
         await storageManager.updateSettings({ lastSyncTime: Date.now() })
       } catch (error) {
-        console.error('[Oh My Prompt Script] Initial sync failed:', error)
+        console.error('[Oh My Prompt] Initial sync failed:', error)
       }
     }
   }
@@ -94,7 +94,7 @@ export async function enableSync(): Promise<{ success: boolean; error?: string }
       })
       return { success: true }
     } catch (error) {
-      console.error('[Oh My Prompt Script] Reuse existing folder failed:', error)
+      console.error('[Oh My Prompt] Reuse existing folder failed:', error)
       return { success: false, error: '同步失败，请检查文件夹权限或更换文件夹' }
     }
   }
@@ -118,7 +118,7 @@ export async function enableSync(): Promise<{ success: boolean; error?: string }
 
     return { success: true }
   } catch (error) {
-    console.error('[Oh My Prompt Script] Enable sync failed:', error)
+    console.error('[Oh My Prompt] Enable sync failed:', error)
     return { success: false, error: '同步失败，请检查文件夹权限' }
   }
 }
@@ -155,7 +155,7 @@ export async function changeSyncFolder(): Promise<{ success: boolean; error?: st
 
     return { success: true }
   } catch (error) {
-    console.error('[Oh My Prompt Script] Change folder failed:', error)
+    console.error('[Oh My Prompt] Change folder failed:', error)
     return { success: false, error: '更换文件夹失败，请检查权限' }
   }
 }
@@ -246,7 +246,7 @@ export async function restoreFromBackup(
 
     return { success: true }
   } catch (error) {
-    console.error('[Oh My Prompt Script] Restore failed:', error)
+    console.error('[Oh My Prompt] Restore failed:', error)
     return { success: false, error: '恢复失败，请检查文件权限' }
   }
 }

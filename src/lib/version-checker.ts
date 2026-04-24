@@ -6,7 +6,7 @@
 import type { UpdateStatus } from '../shared/types'
 
 const REPO_OWNER = 'wk240'
-const REPO_NAME = 'oh-my-prompt-script'
+const REPO_NAME = 'oh-my-prompt'
 const API_URL = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/latest`
 
 const UPDATE_STATUS_KEY = 'omps_update_status'
@@ -48,10 +48,10 @@ async function fetchLatestRelease(): Promise<{
 
     if (!response.ok) {
       if (response.status === 404) {
-        console.log('[Oh My Prompt Script] No releases found in repository')
+        console.log('[Oh My Prompt] No releases found in repository')
         return null
       }
-      console.error('[Oh My Prompt Script] GitHub API error:', response.status)
+      console.error('[Oh My Prompt] GitHub API error:', response.status)
       return null
     }
 
@@ -68,7 +68,7 @@ async function fetchLatestRelease(): Promise<{
       releaseNotes: data.body
     }
   } catch (error) {
-    console.error('[Oh My Prompt Script] Failed to fetch release:', error)
+    console.error('[Oh My Prompt] Failed to fetch release:', error)
     return null
   }
 }
@@ -98,7 +98,7 @@ export async function checkForUpdate(): Promise<UpdateStatus> {
   // Store status in chrome.storage.local
   await chrome.storage.local.set({ [UPDATE_STATUS_KEY]: status })
 
-  console.log('[Oh My Prompt Script] Update check result:', status)
+  console.log('[Oh My Prompt] Update check result:', status)
   return status
 }
 
@@ -110,7 +110,7 @@ export async function getUpdateStatus(): Promise<UpdateStatus | null> {
     const result = await chrome.storage.local.get(UPDATE_STATUS_KEY)
     return result[UPDATE_STATUS_KEY] || null
   } catch (error) {
-    console.error('[Oh My Prompt Script] Failed to get update status:', error)
+    console.error('[Oh My Prompt] Failed to get update status:', error)
     return null
   }
 }
@@ -120,5 +120,5 @@ export async function getUpdateStatus(): Promise<UpdateStatus | null> {
  */
 export async function clearUpdateStatus(): Promise<void> {
   await chrome.storage.local.remove(UPDATE_STATUS_KEY)
-  console.log('[Oh My Prompt Script] Update status cleared')
+  console.log('[Oh My Prompt] Update status cleared')
 }

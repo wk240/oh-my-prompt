@@ -2,5 +2,5 @@ node_modules
 .planning/debug/
 dist/
 dist.zip
-oh-my-prompt-script-v*.zip
+oh-my-prompt-v*.zip
 tests/

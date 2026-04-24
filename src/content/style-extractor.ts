@@ -3,7 +3,7 @@
  * Captures Lovart button/card styles to replicate in Shadow DOM
  */
 
-const LOG_PREFIX = '[Oh My Prompt Script]'
+const LOG_PREFIX = '[Oh My Prompt]'
 
 /**
  * Lovart CSS property configuration

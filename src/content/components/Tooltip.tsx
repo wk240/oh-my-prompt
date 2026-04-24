@@ -14,7 +14,7 @@ interface TooltipProps {
   maxWidth?: number
 }
 
-const TOOLTIP_ID = 'oh-my-prompt-script-tooltip-container'
+const TOOLTIP_ID = 'oh-my-prompt-tooltip-container'
 
 // Get or create tooltip portal container
 function getTooltipContainer(): HTMLElement {

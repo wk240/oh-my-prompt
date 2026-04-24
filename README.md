@@ -1,8 +1,8 @@
 <div align="center">
   <img src="assets/logo-readme.png" alt="Oh My Prompt - Lovart AI 提示词管理工具" style="max-width: 750px; width: 100%;">
   <h1>Oh My Prompt</h1>
-  <h3>Lovart AI 提示词管理工具 | Prompt Manager for Lovart AI</h3>
-  <p><strong>告别复制粘贴，一键插入你的提示词</strong></p>
+  <h3>AI 提示词管理工具 | Prompt Manager for AI</h3>
+  <p><strong>告别复制粘贴，一键插入你的提示词，无需离开创造界面</strong></p>
   
   [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
   [![Chrome Extension](https://img.shields.io/badge/Chrome-Manifest%20V3-green.svg)]()
@@ -18,7 +18,7 @@
 
 ## ✨ 核心功能 | Features
 
-**Oh My Prompt** 是一款专为 **Lovart AI** 设计平台打造的 Chrome 浏览器扩展，帮助你高效管理和使用提示词。
+**Oh My Prompt** 是一款专为 AI 设计平台打造的 Chrome 浏览器扩展，帮助你高效管理和使用提示词。
 
 | 功能 | 说明 |
 |------|------|

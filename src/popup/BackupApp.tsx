@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getSyncStatus, enableSync, disableSync, changeSyncFolder, manualSync, getBackupVersions, restoreFromBackup } from '../lib/sync/sync-manager'
-import type { SyncStatus } from '../lib/sync/sync-manager'
+import type { SyncStatus, ExistingBackupInfo } from '../lib/sync/sync-manager'
 import type { BackupVersion } from '../lib/sync/file-sync'
 import { Button } from './components/ui/button'
 import { Check, FolderOpen, RefreshCw, X, History, RotateCcw } from 'lucide-react'
@@ -35,6 +35,7 @@ function BackupApp() {
   const [versionsLoading, setVersionsLoading] = useState(false)
   const [restoreDialog, setRestoreDialog] = useState<{ open: boolean; version: BackupVersion | null }>({ open: false, version: null })
   const [backupBeforeRestore, setBackupBeforeRestore] = useState(true)
+  const [loadBackupDialog, setLoadBackupDialog] = useState<{ open: boolean; info: ExistingBackupInfo | null }>({ open: false, info: null })
 
   useEffect(() => {
     loadStatus()
@@ -42,7 +43,7 @@ function BackupApp() {
 
   // Load versions when status is ready and history is shown
   useEffect(() => {
-    if (status?.hasFolder && status?.enabled && showHistory && versions.length === 0) {
+    if (status?.hasFolder && showHistory && versions.length === 0) {
       setVersionsLoading(true)
       getBackupVersions().then((result) => {
         setVersions(result.versions)
@@ -75,12 +76,18 @@ function BackupApp() {
     setLoading(false)
 
     if (result.success) {
-      setSuccess('备份已启用')
-      await loadStatus()
-      // Refresh history list if visible
-      if (showHistory) {
-        const versionsResult = await getBackupVersions()
-        setVersions(versionsResult.versions)
+      // Check if there's an existing backup to load
+      if (result.existingBackup?.hasBackup) {
+        setLoadBackupDialog({ open: true, info: result.existingBackup })
+        await loadStatus()
+      } else {
+        setSuccess('备份已启用')
+        await loadStatus()
+        // Refresh history list if visible
+        if (showHistory) {
+          const versionsResult = await getBackupVersions()
+          setVersions(versionsResult.versions)
+        }
       }
     } else {
       // Permission error on existing folder - auto trigger new folder selection
@@ -95,6 +102,46 @@ function BackupApp() {
       } else {
         setError(result.error || '选择文件夹失败')
       }
+    }
+  }
+
+  const handleLoadBackupConfirm = async () => {
+    if (!loadBackupDialog.info) return
+
+    setLoading(true)
+    setError(null)
+    setSuccess(null)
+
+    // Load from the latest backup file (omps-latest.json)
+    const result = await restoreFromBackup('omps-latest.json', false)
+    setLoading(false)
+
+    if (result.success) {
+      setSuccess('已加载备份文件')
+      setLoadBackupDialog({ open: false, info: null })
+      await loadStatus()
+      // Refresh history list
+      setShowHistory(true)
+      const versionsResult = await getBackupVersions()
+      setVersions(versionsResult.versions)
+      // Notify content script to refresh data
+      try {
+        await chrome.runtime.sendMessage({ type: 'REFRESH_DATA' })
+      } catch (err) {
+        console.warn('[Oh My Prompt] Failed to notify refresh:', err)
+      }
+    } else {
+      setError(result.error || '加载备份失败')
+    }
+  }
+
+  const handleSkipLoadBackup = async () => {
+    setLoadBackupDialog({ open: false, info: null })
+    setSuccess('备份已启用')
+    // Refresh history list if visible
+    if (showHistory) {
+      const versionsResult = await getBackupVersions()
+      setVersions(versionsResult.versions)
     }
   }
 
@@ -132,8 +179,24 @@ function BackupApp() {
     setLoading(false)
 
     if (result.success) {
-      setSuccess('文件夹已更换')
-      await loadStatus()
+      // Check if there's an existing backup to load
+      if (result.existingBackup?.hasBackup) {
+        setLoadBackupDialog({ open: true, info: result.existingBackup })
+        await loadStatus()
+        // Refresh history list with new folder's backups
+        if (showHistory) {
+          const versionsResult = await getBackupVersions()
+          setVersions(versionsResult.versions)
+        }
+      } else {
+        setSuccess('文件夹已更换')
+        await loadStatus()
+        // Refresh history list with new folder's backups
+        if (showHistory) {
+          const versionsResult = await getBackupVersions()
+          setVersions(versionsResult.versions)
+        }
+      }
     } else {
       setError(result.error || '更换文件夹失败')
     }
@@ -186,7 +249,7 @@ function BackupApp() {
       try {
         await chrome.runtime.sendMessage({ type: 'REFRESH_DATA' })
       } catch (err) {
-        console.warn('[Oh My Prompt Script] Failed to notify refresh:', err)
+        console.warn('[Oh My Prompt] Failed to notify refresh:', err)
       }
     } else {
       setError(result.error || '恢复失败')
@@ -224,13 +287,13 @@ function BackupApp() {
 
         {/* Content */}
         <div className="p-4 space-y-3">
-          {/* Status row */}
-          {status.hasFolder && (
+          {/* Status row - only show when enabled */}
+          {status.enabled && (
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-gray-700">状态</span>
-              <span className={`text-sm flex items-center gap-1 ${status.enabled ? 'text-green-600' : 'text-gray-500'}`}>
-                {status.enabled && <Check style={{ width: 14, height: 14 }} />}
-                {status.enabled ? '已启用' : '同步已禁用'}
+              <span className="text-sm flex items-center gap-1 text-green-600">
+                <Check style={{ width: 14, height: 14 }} />
+                已启用
               </span>
             </div>
           )}
@@ -246,20 +309,13 @@ function BackupApp() {
           )}
 
           {/* Last sync time */}
-          {status.enabled && status.lastSyncTime && (
+          {status.lastSyncTime && (
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-gray-700">上次备份</span>
               <span className="text-sm text-gray-500">
                 {formatTimestamp(status.lastSyncTime)}
               </span>
             </div>
-          )}
-
-          {/* Description for disabled state */}
-          {status.hasFolder && !status.enabled && (
-            <p className="text-sm text-gray-500">
-              文件夹已保存，启用后将自动复用之前的文件夹。
-            </p>
           )}
 
           {/* Error message */}
@@ -277,17 +333,8 @@ function BackupApp() {
             {!status.hasFolder ? (
               <Button onClick={handleSelectFolder} disabled={loading}>
                 <FolderOpen style={{ width: 16, height: 16 }} />
-                {loading ? '处理中...' : '选择文件夹并启用'}
+                {loading ? '处理中...' : '选择文件夹'}
               </Button>
-            ) : !status.enabled ? (
-              <>
-                <Button onClick={handleSelectFolder} disabled={loading}>
-                  {loading ? '处理中...' : '启用备份'}
-                </Button>
-                <Button variant="outline" onClick={handleChangeFolder} disabled={loading}>
-                  更换文件夹
-                </Button>
-              </>
             ) : (
               <>
                 <Button onClick={handleBackupNow} disabled={loading}>
@@ -297,9 +344,11 @@ function BackupApp() {
                 <Button variant="outline" onClick={handleChangeFolder} disabled={loading}>
                   更换文件夹
                 </Button>
-                <Button variant="ghost" onClick={handleDisable} disabled={loading}>
-                  禁用
-                </Button>
+                {status.enabled && (
+                  <Button variant="ghost" onClick={handleDisable} disabled={loading}>
+                    禁用
+                  </Button>
+                )}
               </>
             )}
           </div>
@@ -310,7 +359,7 @@ function BackupApp() {
         </div>
 
         {/* History versions section */}
-        {status.hasFolder && status.enabled && (
+        {status.hasFolder && (
           <div className="border-t border-gray-200">
             <button
               onClick={handleShowHistory}
@@ -408,6 +457,45 @@ function BackupApp() {
             </Button>
             <Button onClick={handleRestoreConfirm} disabled={loading}>
               {loading ? '恢复中...' : '确认恢复'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Load existing backup dialog */}
+      <Dialog open={loadBackupDialog.open} onOpenChange={(open) => setLoadBackupDialog({ open, info: loadBackupDialog.info })}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>发现备份文件</DialogTitle>
+            <DialogDescription>
+              该文件夹中已有备份文件，是否加载？
+            </DialogDescription>
+          </DialogHeader>
+
+          {loadBackupDialog.info && (
+            <div className="p-3 bg-gray-50 rounded text-sm">
+              <div className="font-medium text-gray-900">
+                {loadBackupDialog.info.promptCount} 个提示词 · {loadBackupDialog.info.categoryCount} 个分类
+              </div>
+              {loadBackupDialog.info.backupTime && (
+                <div className="text-gray-500 mt-1">
+                  备份时间：{formatTimestamp(new Date(loadBackupDialog.info.backupTime).getTime())}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 p-2 bg-blue-50 rounded text-sm text-blue-800">
+            <span>💡</span>
+            <span>加载后将替换当前数据</span>
+          </div>
+
+          <DialogFooter className="pt-2">
+            <Button variant="outline" onClick={handleSkipLoadBackup}>
+              跳过
+            </Button>
+            <Button onClick={handleLoadBackupConfirm} disabled={loading}>
+              {loading ? '加载中...' : '加载备份'}
             </Button>
           </DialogFooter>
         </DialogContent>

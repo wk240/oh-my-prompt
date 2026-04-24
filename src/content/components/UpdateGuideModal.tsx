@@ -42,12 +42,12 @@ const STEPS = [
   },
 ]
 
-const MODAL_ID = 'oh-my-prompt-script-update-guide-modal'
+const MODAL_ID = 'oh-my-prompt-update-guide-modal'
 
 // Get portal container from dropdown (render inside to avoid click-outside detection)
 function getModalContainer(): HTMLElement {
   // Render inside dropdown portal to avoid triggering click-outside
-  const dropdownPortal = document.getElementById('oh-my-prompt-script-dropdown-portal')
+  const dropdownPortal = document.getElementById('oh-my-prompt-dropdown-portal')
   if (dropdownPortal) {
     let container = dropdownPortal.querySelector(`#${MODAL_ID}`) as HTMLElement
     if (!container) {
@@ -353,7 +353,7 @@ let stylesInjected = false
 function injectStyles() {
   if (!stylesInjected) {
     const style = document.createElement('style')
-    style.id = 'oh-my-prompt-script-update-guide-styles'
+    style.id = 'oh-my-prompt-update-guide-styles'
     style.textContent = modalStyles
     document.head.appendChild(style)
     stylesInjected = true

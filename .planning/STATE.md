@@ -4,7 +4,7 @@ milestone: v1.1.3
 milestone_name: Resource Library Enhancement & Documentation
 status: shipped
 last_updated: "2026-04-22T19:00:00.000Z"
-last_activity: "2026-04-22 — v1.1.3 shipped: release published to GitHub"
+last_activity: "2026-04-25 — Quick task: 添加备份警告提示对话框"
 progress:
   total_phases: 4
   completed_phases: 4
@@ -51,6 +51,14 @@ See: .planning/PROJECT.md (updated 2026-04-19)
 | Hover preview | Preview images on hover |
 | UI improvements | Better sorting, polish |
 | Website link | https://oh-my-prompt.com/ added |
+
+---
+
+## Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 20260425 | 备份警告提示对话框 | 2026-04-25 | 4931151 | [20260425-backup-warning](./quick/20260425-backup-warning/) |
 
 ---
 

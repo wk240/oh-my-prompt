@@ -1,4 +1,5 @@
 import type { UserData } from '../../shared/types'
+import { BACKUP_FILE_NAME } from '../../shared/constants'
 import { StorageManager } from '../storage'
 import { getFolderHandle, saveFolderHandle } from './indexeddb'
 import { syncToLocalFolder, readFromLocalFolder, selectSyncFolder, listBackupVersions, readBackupFile } from './file-sync'
@@ -10,6 +11,7 @@ export interface SyncStatus {
   lastSyncTime?: number
   folderName?: string
   hasUnsyncedChanges?: boolean
+  dismissedBackupWarning?: boolean
 }
 
 /**
@@ -29,16 +31,16 @@ export async function triggerSync(userData: UserData): Promise<void> {
   if (!handle) {
     // Folder handle lost - disable sync
     await storageManager.updateSettings({ syncEnabled: false })
-    console.warn('[Oh My Prompt Script] Sync folder handle lost, disabled sync')
+    console.warn('[Oh My Prompt] Sync folder handle lost, disabled sync')
     return
   }
 
   try {
     await syncToLocalFolder(userData, handle)
     await storageManager.updateSettings({ lastSyncTime: Date.now(), hasUnsyncedChanges: false })
-    console.log('[Oh My Prompt Script] Auto-sync completed')
+    console.log('[Oh My Prompt] Auto-sync completed')
   } catch (error) {
-    console.error('[Oh My Prompt Script] Auto-sync failed:', error)
+    console.error('[Oh My Prompt] Auto-sync failed:', error)
     // Keep syncEnabled - user can see error in settings
   }
 }
@@ -57,7 +59,7 @@ export async function initialSync(): Promise<void> {
   // Case: chrome.storage empty, local has data -> restore
   if (localData && storageData.userData.prompts.length === 0) {
     await storageManager.updateUserData(localData)
-    console.log('[Oh My Prompt Script] Restored from local folder backup')
+    console.log('[Oh My Prompt] Restored from local folder backup')
     return
   }
 
@@ -69,16 +71,29 @@ export async function initialSync(): Promise<void> {
         await syncToLocalFolder(storageData.userData, handle)
         await storageManager.updateSettings({ lastSyncTime: Date.now() })
       } catch (error) {
-        console.error('[Oh My Prompt Script] Initial sync failed:', error)
+        console.error('[Oh My Prompt] Initial sync failed:', error)
       }
     }
   }
 }
 
+export interface ExistingBackupInfo {
+  hasBackup: boolean
+  promptCount?: number
+  categoryCount?: number
+  backupTime?: string
+}
+
+export interface EnableSyncResult {
+  success: boolean
+  error?: string
+  existingBackup?: ExistingBackupInfo
+}
+
 /**
  * Enable sync - reuse existing folder if permission valid, otherwise select new
  */
-export async function enableSync(): Promise<{ success: boolean; error?: string }> {
+export async function enableSync(): Promise<EnableSyncResult> {
   // First check if we have a saved handle with valid permission
   const existingHandle = await getFolderHandle()
 
@@ -94,7 +109,7 @@ export async function enableSync(): Promise<{ success: boolean; error?: string }
       })
       return { success: true }
     } catch (error) {
-      console.error('[Oh My Prompt Script] Reuse existing folder failed:', error)
+      console.error('[Oh My Prompt] Reuse existing folder failed:', error)
       return { success: false, error: '同步失败，请检查文件夹权限或更换文件夹' }
     }
   }
@@ -108,17 +123,40 @@ export async function enableSync(): Promise<{ success: boolean; error?: string }
   try {
     await saveFolderHandle(handle)
 
+    // Check for existing backup in the selected folder
+    const existingBackupInfo: ExistingBackupInfo = { hasBackup: false }
+    try {
+      const existingData = await readFromLocalFolder(handle)
+      if (existingData && existingData.prompts.length > 0) {
+        // Read backup time from latest file
+        try {
+          const fileHandle = await handle.getFileHandle(BACKUP_FILE_NAME)
+          const file = await fileHandle.getFile()
+          const content = await file.text()
+          const parsed = JSON.parse(content)
+          existingBackupInfo.hasBackup = true
+          existingBackupInfo.promptCount = existingData.prompts.length
+          existingBackupInfo.categoryCount = existingData.categories.length
+          existingBackupInfo.backupTime = parsed.backupTime
+        } catch {
+          existingBackupInfo.hasBackup = true
+          existingBackupInfo.promptCount = existingData.prompts.length
+          existingBackupInfo.categoryCount = existingData.categories.length
+        }
+      }
+    } catch {
+      // No existing backup or read error - ignore
+    }
+
     // Only save folder handle and enable sync, no auto-backup on first selection
-    // User can manually trigger backup via "立即备份" button
     const storageManager = StorageManager.getInstance()
     await storageManager.updateSettings({
       syncEnabled: true
-      // No lastSyncTime - backup hasn happened yet
     })
 
-    return { success: true }
+    return { success: true, existingBackup: existingBackupInfo }
   } catch (error) {
-    console.error('[Oh My Prompt Script] Enable sync failed:', error)
+    console.error('[Oh My Prompt] Enable sync failed:', error)
     return { success: false, error: '同步失败，请检查文件夹权限' }
   }
 }
@@ -135,8 +173,9 @@ export async function disableSync(): Promise<void> {
 
 /**
  * Change sync folder - select new folder and replace existing
+ * Returns existingBackup info if new folder has backup files
  */
-export async function changeSyncFolder(): Promise<{ success: boolean; error?: string }> {
+export async function changeSyncFolder(): Promise<{ success: boolean; error?: string; existingBackup?: ExistingBackupInfo }> {
   const handle = await selectSyncFolder()
   if (!handle) {
     return { success: false, error: '请选择一个文件夹' }
@@ -145,17 +184,40 @@ export async function changeSyncFolder(): Promise<{ success: boolean; error?: st
   try {
     await saveFolderHandle(handle)
 
-    // Sync current data to new folder
+    // Check for existing backup in the new folder
+    const existingBackupInfo: ExistingBackupInfo = { hasBackup: false }
+    try {
+      const existingData = await readFromLocalFolder(handle)
+      if (existingData && existingData.prompts.length > 0) {
+        // Read backup time from latest file
+        try {
+          const fileHandle = await handle.getFileHandle(BACKUP_FILE_NAME)
+          const file = await fileHandle.getFile()
+          const content = await file.text()
+          const parsed = JSON.parse(content)
+          existingBackupInfo.hasBackup = true
+          existingBackupInfo.promptCount = existingData.prompts.length
+          existingBackupInfo.categoryCount = existingData.categories.length
+          existingBackupInfo.backupTime = parsed.backupTime
+        } catch {
+          existingBackupInfo.hasBackup = true
+          existingBackupInfo.promptCount = existingData.prompts.length
+          existingBackupInfo.categoryCount = existingData.categories.length
+        }
+      }
+    } catch {
+      // No existing backup or read error - ignore
+    }
+
     const storageManager = StorageManager.getInstance()
-    const data = await storageManager.getData()
-    await syncToLocalFolder(data.userData, handle)
     await storageManager.updateSettings({
+      syncEnabled: true,
       lastSyncTime: Date.now()
     })
 
-    return { success: true }
+    return { success: true, existingBackup: existingBackupInfo }
   } catch (error) {
-    console.error('[Oh My Prompt Script] Change folder failed:', error)
+    console.error('[Oh My Prompt] Change folder failed:', error)
     return { success: false, error: '更换文件夹失败，请检查权限' }
   }
 }
@@ -193,7 +255,8 @@ export async function getSyncStatus(): Promise<SyncStatus> {
     hasFolder: handle !== null,
     lastSyncTime: settings.lastSyncTime,
     folderName: handle?.name,
-    hasUnsyncedChanges: settings.hasUnsyncedChanges
+    hasUnsyncedChanges: settings.hasUnsyncedChanges,
+    dismissedBackupWarning: settings.dismissedBackupWarning
   }
 }
 
@@ -246,7 +309,7 @@ export async function restoreFromBackup(
 
     return { success: true }
   } catch (error) {
-    console.error('[Oh My Prompt Script] Restore failed:', error)
+    console.error('[Oh My Prompt] Restore failed:', error)
     return { success: false, error: '恢复失败，请检查文件权限' }
   }
 }

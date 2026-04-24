@@ -1,5 +1,5 @@
 // Extension metadata
-export const EXTENSION_NAME = 'Oh My Prompt Script'
+export const EXTENSION_NAME = 'Oh My Prompt'
 
 // Version is now read dynamically from manifest via chrome.runtime.getManifest().version
 
@@ -13,7 +13,7 @@ export const STORAGE_KEY = 'prompt_script_data'
 export const DEFAULT_CATEGORY_NAME = '默认分类'
 
 // IndexedDB for sync folder handle storage
-export const SYNC_DB_NAME = 'oh-my-prompt-script-sync'
+export const SYNC_DB_NAME = 'oh-my-prompt-sync'
 export const SYNC_STORE_NAME = 'handles'
 export const SYNC_HANDLE_KEY = 'syncFolderHandle'
 
@@ -23,4 +23,4 @@ export const BACKUP_FILE_NAME = 'omps-latest.json'
 // Backup history file prefix and limits
 export const BACKUP_HISTORY_PREFIX = 'omps-backup-'
 export const BACKUP_HISTORY_PATTERN = /^omps-backup-\d{8}-\d{6}\.json$/
-export const MAX_BACKUP_HISTORY = 10
+export const MAX_BACKUP_HISTORY = 100

@@ -9,7 +9,7 @@ import { isLegacyFormat } from './index'
 export function migrateFromLegacy(oldData: unknown): StorageSchema {
   // Validate legacy format before casting
   if (!isLegacyFormat(oldData)) {
-    console.warn('[Oh My Prompt Script] Data is not in legacy format, returning empty structure')
+    console.warn('[Oh My Prompt] Data is not in legacy format, returning empty structure')
     return {
       version: '1.0.0',
       userData: { prompts: [], categories: [] },

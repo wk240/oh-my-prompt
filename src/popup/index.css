@@ -76,14 +76,14 @@
     padding: 0;
     /* Popup default size - will be overridden in tab mode */
     width: 720px;
-    height: 540px;
+    height: 600px;
     overflow: hidden;
   }
 
   html {
     /* Popup default size - will be overridden in tab mode */
     width: 720px;
-    height: 540px;
+    height: 600px;
   }
 
   /* Tab mode: fullscreen adaptive */

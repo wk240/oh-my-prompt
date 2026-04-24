@@ -6,13 +6,13 @@ import { getSyncStatus } from '../lib/sync/sync-manager'
 import { checkForUpdate, getUpdateStatus, clearUpdateStatus, type UpdateStatus } from '../lib/version-checker'
 import '../lib/migrations/v1.0' // Register migrations
 
-console.log('[Oh My Prompt Script] Service Worker started')
+console.log('[Oh My Prompt] Service Worker started')
 
 const storageManager = StorageManager.getInstance()
 
 chrome.runtime.onMessage.addListener(
   (message, _sender, sendResponse) => {
-    console.log('[Oh My Prompt Script] Received message:', message.type)
+    console.log('[Oh My Prompt] Received message:', message.type)
 
     switch (message.type) {
       case MessageType.PING:
@@ -23,15 +23,15 @@ chrome.runtime.onMessage.addListener(
         storageManager.getData()
           .then(data => sendResponse({ success: true, data } as MessageResponse<StorageSchema>))
           .catch(error => {
-            console.error('[Oh My Prompt Script] GET_STORAGE error:', error)
+            console.error('[Oh My Prompt] GET_STORAGE error:', error)
             sendResponse({ success: false, error: 'Storage retrieval failed' })
           })
         return true // Required for async response
 
       case MessageType.SET_STORAGE:
-        console.log('[Oh My Prompt Script] SET_STORAGE payload:', message.payload)
+        console.log('[Oh My Prompt] SET_STORAGE payload:', message.payload)
         if (!message.payload) {
-          console.error('[Oh My Prompt Script] SET_STORAGE: No payload provided')
+          console.error('[Oh My Prompt] SET_STORAGE: No payload provided')
           sendResponse({ success: false, error: 'No payload provided' })
           return true
         }
@@ -56,11 +56,11 @@ chrome.runtime.onMessage.addListener(
             return storageManager.saveData(mergedData)
           })
           .then(() => {
-            console.log('[Oh My Prompt Script] SET_STORAGE: Save successful')
+            console.log('[Oh My Prompt] SET_STORAGE: Save successful')
             sendResponse({ success: true } as MessageResponse)
           })
           .catch(error => {
-            console.error('[Oh My Prompt Script] SET_STORAGE error:', error)
+            console.error('[Oh My Prompt] SET_STORAGE error:', error)
             sendResponse({ success: false, error: 'Storage save failed' })
           })
         return true // Required for async response
@@ -93,7 +93,7 @@ chrome.runtime.onMessage.addListener(
             sendResponse({ success: true, data: status } as MessageResponse)
           })
           .catch(error => {
-            console.error('[Oh My Prompt Script] SAVE_FOLDER_HANDLE error:', error)
+            console.error('[Oh My Prompt] SAVE_FOLDER_HANDLE error:', error)
             sendResponse({ success: false, error: String(error) })
           })
         return true // Required for async response
@@ -103,7 +103,7 @@ chrome.runtime.onMessage.addListener(
         getSyncStatus()
           .then(status => sendResponse({ success: true, data: status } as MessageResponse))
           .catch(error => {
-            console.error('[Oh My Prompt Script] GET_SYNC_STATUS error:', error)
+            console.error('[Oh My Prompt] GET_SYNC_STATUS error:', error)
             sendResponse({ success: false, error: String(error) })
           })
         return true // Required for async response
@@ -113,7 +113,7 @@ chrome.runtime.onMessage.addListener(
         storageManager.updateSettings({ hasUnsyncedChanges: true })
           .then(() => sendResponse({ success: true } as MessageResponse))
           .catch(error => {
-            console.error('[Oh My Prompt Script] SET_UNSYNCED_FLAG error:', error)
+            console.error('[Oh My Prompt] SET_UNSYNCED_FLAG error:', error)
             sendResponse({ success: false, error: String(error) })
           })
         return true // Required for async response
@@ -127,7 +127,7 @@ chrome.runtime.onMessage.addListener(
         chrome.tabs.create({ url: chrome.runtime.getURL(url) })
           .then(() => sendResponse({ success: true } as MessageResponse))
           .catch(error => {
-            console.error('[Oh My Prompt Script] OPEN_BACKUP_PAGE error:', error)
+            console.error('[Oh My Prompt] OPEN_BACKUP_PAGE error:', error)
             sendResponse({ success: false, error: 'Failed to open backup page' })
           })
         return true // Required for async response
@@ -145,7 +145,7 @@ chrome.runtime.onMessage.addListener(
             sendResponse({ success: true, data: status } as MessageResponse<UpdateStatus>)
           })
           .catch(error => {
-            console.error('[Oh My Prompt Script] CHECK_UPDATE error:', error)
+            console.error('[Oh My Prompt] CHECK_UPDATE error:', error)
             sendResponse({ success: false, error: 'Failed to check for updates' })
           })
         return true // Required for async response
@@ -155,7 +155,7 @@ chrome.runtime.onMessage.addListener(
         getUpdateStatus()
           .then(status => sendResponse({ success: true, data: status } as MessageResponse<UpdateStatus | null>))
           .catch(error => {
-            console.error('[Oh My Prompt Script] GET_UPDATE_STATUS error:', error)
+            console.error('[Oh My Prompt] GET_UPDATE_STATUS error:', error)
             sendResponse({ success: false, error: 'Failed to get update status' })
           })
         return true // Required for async response
@@ -165,7 +165,7 @@ chrome.runtime.onMessage.addListener(
         clearUpdateStatus()
           .then(() => sendResponse({ success: true } as MessageResponse))
           .catch(error => {
-            console.error('[Oh My Prompt Script] CLEAR_UPDATE_STATUS error:', error)
+            console.error('[Oh My Prompt] CLEAR_UPDATE_STATUS error:', error)
             sendResponse({ success: false, error: 'Failed to clear update status' })
           })
         return true // Required for async response
@@ -175,7 +175,7 @@ chrome.runtime.onMessage.addListener(
         chrome.tabs.create({ url: 'chrome://extensions' })
           .then(() => sendResponse({ success: true } as MessageResponse))
           .catch(error => {
-            console.error('[Oh My Prompt Script] OPEN_EXTENSIONS error:', error)
+            console.error('[Oh My Prompt] OPEN_EXTENSIONS error:', error)
             sendResponse({ success: false, error: 'Failed to open extensions page' })
           })
         return true // Required for async response
@@ -183,7 +183,7 @@ chrome.runtime.onMessage.addListener(
       case MessageType.EXPORT_DATA:
         // Export data as JSON file download using data URL (service worker doesn't support blob URLs)
         const exportPayload = message.payload as { version: string; userData: { prompts: unknown[]; categories: unknown[] }; settings: unknown }
-        const exportFilename = 'oh-my-prompt-script.json'
+        const exportFilename = 'oh-my-prompt.json'
         const exportJson = JSON.stringify(exportPayload, null, 2)
         const exportDataUrl = `data:application/json;charset=utf-8,${encodeURIComponent(exportJson)}`
         chrome.downloads.download({
@@ -195,8 +195,18 @@ chrome.runtime.onMessage.addListener(
             sendResponse({ success: true } as MessageResponse)
           })
           .catch(error => {
-            console.error('[Oh My Prompt Script] EXPORT_DATA error:', error)
+            console.error('[Oh My Prompt] EXPORT_DATA error:', error)
             sendResponse({ success: false, error: 'Failed to download file' })
+          })
+        return true // Required for async response
+
+      case MessageType.DISMISS_BACKUP_WARNING:
+        // User dismissed backup warning - save preference
+        storageManager.updateSettings({ dismissedBackupWarning: true })
+          .then(() => sendResponse({ success: true } as MessageResponse))
+          .catch(error => {
+            console.error('[Oh My Prompt] DISMISS_BACKUP_WARNING error:', error)
+            sendResponse({ success: false, error: String(error) })
           })
         return true // Required for async response
 

@@ -7,7 +7,7 @@ import { createPortal } from 'react-dom'
 import { useEffect, useCallback } from 'react'
 import { X } from 'lucide-react'
 
-const PORTAL_ID = 'oh-my-prompt-script-dropdown-portal'
+const PORTAL_ID = 'oh-my-prompt-dropdown-portal'
 
 function getPortalContainer(): HTMLElement {
   let container = document.getElementById(PORTAL_ID)

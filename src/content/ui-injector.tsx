@@ -7,12 +7,12 @@ import { createRoot, type Root } from 'react-dom/client'
 import { DropdownApp } from './components/DropdownApp'
 import { ErrorBoundary } from './components/ErrorBoundary'
 
-const LOG_PREFIX = '[Oh My Prompt Script]'
+const LOG_PREFIX = '[Oh My Prompt]'
 
 /**
  * Host element ID for Shadow DOM container
  */
-const HOST_ID = 'oh-my-prompt-script-host'
+const HOST_ID = 'oh-my-prompt-host'
 
 /**
  * Target selector for insertion point (before the "more" button)
@@ -46,7 +46,7 @@ export class UIInjector {
     // Create host element (span to match sibling elements)
     this.hostElement = document.createElement('span')
     this.hostElement.id = HOST_ID
-    this.hostElement.setAttribute('data-testid', 'oh-my-prompt-script-trigger')
+    this.hostElement.setAttribute('data-testid', 'oh-my-prompt-trigger')
 
     // Attach Shadow DOM for style isolation
     this.shadowRoot = this.hostElement.attachShadow({ mode: 'open' })

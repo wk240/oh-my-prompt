@@ -18,7 +18,7 @@ interface PromptPreviewModalProps {
   onInject?: () => void // Inject callback
 }
 
-const PORTAL_ID = 'oh-my-prompt-script-dropdown-portal'
+const PORTAL_ID = 'oh-my-prompt-dropdown-portal'
 
 // Hover preview delay and dimensions (1.5x larger for better visibility)
 const HOVER_PREVIEW_DELAY = 500

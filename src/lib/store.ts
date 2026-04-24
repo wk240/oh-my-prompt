@@ -60,7 +60,7 @@ async function sendStorageMessage(
 
     return response.data
   } catch (error) {
-    console.error('[Oh My Prompt Script] Storage message error:', error)
+    console.error('[Oh My Prompt] Storage message error:', error)
     throw error
   }
 }
@@ -110,7 +110,7 @@ function migratePromptOrders(prompts: Prompt[]): Prompt[] {
     })
   })
 
-  console.log('[Oh My Prompt Script] Migrated prompt order field for', migrated.length, 'prompts')
+  console.log('[Oh My Prompt] Migrated prompt order field for', migrated.length, 'prompts')
   return migrated
 }
 
@@ -129,7 +129,7 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
       if (data && data.userData) {
         // Warn for large datasets
         if (data.userData.prompts.length > 500) {
-          console.warn('[Oh My Prompt Script] Large dataset loaded:', data.userData.prompts.length, 'prompts')
+          console.warn('[Oh My Prompt] Large dataset loaded:', data.userData.prompts.length, 'prompts')
         }
 
         // Migrate prompts without order field
@@ -160,7 +160,7 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
         return { success: true }
       }
     } catch (error) {
-      console.error('[Oh My Prompt Script] Failed to load storage:', error)
+      console.error('[Oh My Prompt] Failed to load storage:', error)
       const defaultState = getDefaultState()
       set({
         prompts: defaultState.prompts,
@@ -176,20 +176,20 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
     const { prompts, categories } = get()
     try {
       const version = chrome.runtime.getManifest().version
+      // Only send version and userData - service-worker merges with existing settings
       await sendStorageMessage(MessageType.SET_STORAGE, {
         version,
-        userData: { prompts, categories },
-        settings: { showBuiltin: true, syncEnabled: false }
-      })
+        userData: { prompts, categories }
+      } as StorageSchema)
 
       // Trigger sync after save (non-blocking)
       triggerSync({ prompts, categories }).catch(err => {
-        console.warn('[Oh My Prompt Script] Sync trigger failed:', err)
+        console.warn('[Oh My Prompt] Sync trigger failed:', err)
       })
 
       return { success: true }
     } catch (error) {
-      console.error('[Oh My Prompt Script] Failed to save storage:', error)
+      console.error('[Oh My Prompt] Failed to save storage:', error)
       return { success: false, error: '数据保存失败，请检查存储配额' }
     }
   },

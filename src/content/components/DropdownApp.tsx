@@ -49,7 +49,7 @@ export function DropdownApp({ inputElement }: DropdownAppProps) {
 
   const handleRefresh = useCallback(async () => {
     // Open backup page instead of doing backup in content script
-    console.log('[Oh My Prompt Script] Refresh clicked, opening backup page...')
+    console.log('[Oh My Prompt] Refresh clicked, opening backup page...')
     await chrome.runtime.sendMessage({ type: MessageType.OPEN_BACKUP_PAGE })
     return { success: true, backupSuccess: false }
   }, [])

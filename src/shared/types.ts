@@ -27,6 +27,7 @@ export interface SyncSettings {
   syncEnabled: boolean // Auto-sync to local folder enabled
   lastSyncTime?: number // Timestamp of last successful sync
   hasUnsyncedChanges?: boolean // Flag to show backup reminder after reorder
+  dismissedBackupWarning?: boolean // User dismissed the backup warning dialog
 }
 
 // New storage schema with nested structure

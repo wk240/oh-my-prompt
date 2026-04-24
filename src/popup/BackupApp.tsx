@@ -181,6 +181,11 @@ function BackupApp() {
     if (result.success) {
       setSuccess('文件夹已更换')
       await loadStatus()
+      // Refresh history list with new folder's backups
+      if (showHistory) {
+        const versionsResult = await getBackupVersions()
+        setVersions(versionsResult.versions)
+      }
     } else {
       setError(result.error || '更换文件夹失败')
     }

@@ -42,7 +42,7 @@ function BackupApp() {
 
   // Load versions when status is ready and history is shown
   useEffect(() => {
-    if (status?.hasFolder && status?.enabled && showHistory && versions.length === 0) {
+    if (status?.hasFolder && showHistory && versions.length === 0) {
       setVersionsLoading(true)
       getBackupVersions().then((result) => {
         setVersions(result.versions)
@@ -224,13 +224,13 @@ function BackupApp() {
 
         {/* Content */}
         <div className="p-4 space-y-3">
-          {/* Status row */}
-          {status.hasFolder && (
+          {/* Status row - only show when enabled */}
+          {status.enabled && (
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-gray-700">状态</span>
-              <span className={`text-sm flex items-center gap-1 ${status.enabled ? 'text-green-600' : 'text-gray-500'}`}>
-                {status.enabled && <Check style={{ width: 14, height: 14 }} />}
-                {status.enabled ? '已启用' : '同步已禁用'}
+              <span className="text-sm flex items-center gap-1 text-green-600">
+                <Check style={{ width: 14, height: 14 }} />
+                已启用
               </span>
             </div>
           )}
@@ -246,7 +246,7 @@ function BackupApp() {
           )}
 
           {/* Last sync time */}
-          {status.enabled && status.lastSyncTime && (
+          {status.lastSyncTime && (
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-gray-700">上次备份</span>
               <span className="text-sm text-gray-500">
@@ -255,13 +255,7 @@ function BackupApp() {
             </div>
           )}
 
-          {/* Description for disabled state */}
-          {status.hasFolder && !status.enabled && (
-            <p className="text-sm text-gray-500">
-              文件夹已保存，启用后将自动复用之前的文件夹。
-            </p>
-          )}
-
+          
           {/* Error message */}
           {error && (
             <p className="text-sm text-red-500">{error}</p>
@@ -277,17 +271,8 @@ function BackupApp() {
             {!status.hasFolder ? (
               <Button onClick={handleSelectFolder} disabled={loading}>
                 <FolderOpen style={{ width: 16, height: 16 }} />
-                {loading ? '处理中...' : '选择文件夹并启用'}
+                {loading ? '处理中...' : '选择文件夹'}
               </Button>
-            ) : !status.enabled ? (
-              <>
-                <Button onClick={handleSelectFolder} disabled={loading}>
-                  {loading ? '处理中...' : '启用备份'}
-                </Button>
-                <Button variant="outline" onClick={handleChangeFolder} disabled={loading}>
-                  更换文件夹
-                </Button>
-              </>
             ) : (
               <>
                 <Button onClick={handleBackupNow} disabled={loading}>
@@ -297,9 +282,11 @@ function BackupApp() {
                 <Button variant="outline" onClick={handleChangeFolder} disabled={loading}>
                   更换文件夹
                 </Button>
-                <Button variant="ghost" onClick={handleDisable} disabled={loading}>
-                  禁用
-                </Button>
+                {status.enabled && (
+                  <Button variant="ghost" onClick={handleDisable} disabled={loading}>
+                    禁用
+                  </Button>
+                )}
               </>
             )}
           </div>
@@ -310,7 +297,7 @@ function BackupApp() {
         </div>
 
         {/* History versions section */}
-        {status.hasFolder && status.enabled && (
+        {status.hasFolder && (
           <div className="border-t border-gray-200">
             <button
               onClick={handleShowHistory}

@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 <!-- GSD:project-start source:PROJECT.md -->
 ## Project
 
-**Oh My Prompt Script**
+**Oh My Prompt**
 
 一个Chrome浏览器插件，用于在Lovart AI设计/绘图平台的输入框中一键插入预设的提示词模板。用户通过输入框旁的下拉菜单选择提示词，提示词按用途分类管理，支持内置编辑和数据导入导出。
 
@@ -14,7 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Constraints
 
 - **Tech stack:** Chrome Extension (Manifest V3) — 现代Chrome插件标准
-- **平台依赖:** 需适配目标平台的页面结构和输入框元素
+- **平台依赖:** 仅在 lovart.ai 页面激活，需适配目标平台的 Lexical 编辑器输入框
 - **数据存储:** chrome.storage.local 本地存储，容量有限制
 - **浏览器支持:** Chrome/Edge/Brave等Chromium系浏览器
 <!-- GSD:project-end -->
@@ -119,7 +119,7 @@ src/
 ### Data Flow
 
 1. **Storage-First:** All state derives from `chrome.storage.local` via `StorageSchema`
-2. **Message Types:** `GET_STORAGE`, `SET_STORAGE`, `PING`, `INSERT_PROMPT`, `BACKUP_TO_FOLDER`, `SAVE_FOLDER_HANDLE`, `GET_SYNC_STATUS`, `OPEN_BACKUP_PAGE`, `REFRESH_DATA`, `CHECK_UPDATE`, `GET_UPDATE_STATUS`, `CLEAR_UPDATE_STATUS`, `OPEN_EXTENSIONS`, `EXPORT_DATA`
+2. **Message Types:** `GET_STORAGE`, `SET_STORAGE`, `PING`, `INSERT_PROMPT`, `BACKUP_TO_FOLDER`, `SAVE_FOLDER_HANDLE`, `GET_SYNC_STATUS`, `SET_UNSYNCED_FLAG`, `OPEN_BACKUP_PAGE`, `REFRESH_DATA`, `CHECK_UPDATE`, `GET_UPDATE_STATUS`, `CLEAR_UPDATE_STATUS`, `OPEN_EXTENSIONS`, `EXPORT_DATA`, `DISMISS_BACKUP_WARNING`
 3. **Zustand Sync:** Popup store calls `saveToStorage()` after each CRUD operation, which triggers auto-sync if enabled
 
 ### Lovart Platform Integration
@@ -163,7 +163,7 @@ Uses File System Access API for automatic backup to user-selected folder:
 - Call native value setter for form controls (React tracking)
 
 ### Console Logging
-- Prefix all logs: `[Oh My Prompt Script]` for easy filtering
+- Prefix all logs: `[Oh My Prompt]` for easy filtering
 
 ### Message Response Pattern
 - Service worker must `return true` for async `sendResponse`

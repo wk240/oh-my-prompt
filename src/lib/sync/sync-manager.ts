@@ -1,4 +1,5 @@
 import type { UserData } from '../../shared/types'
+import { BACKUP_FILE_NAME } from '../../shared/constants'
 import { StorageManager } from '../storage'
 import { getFolderHandle, saveFolderHandle } from './indexeddb'
 import { syncToLocalFolder, readFromLocalFolder, selectSyncFolder, listBackupVersions, readBackupFile } from './file-sync'
@@ -75,10 +76,23 @@ export async function initialSync(): Promise<void> {
   }
 }
 
+export interface ExistingBackupInfo {
+  hasBackup: boolean
+  promptCount?: number
+  categoryCount?: number
+  backupTime?: string
+}
+
+export interface EnableSyncResult {
+  success: boolean
+  error?: string
+  existingBackup?: ExistingBackupInfo
+}
+
 /**
  * Enable sync - reuse existing folder if permission valid, otherwise select new
  */
-export async function enableSync(): Promise<{ success: boolean; error?: string }> {
+export async function enableSync(): Promise<EnableSyncResult> {
   // First check if we have a saved handle with valid permission
   const existingHandle = await getFolderHandle()
 
@@ -108,15 +122,38 @@ export async function enableSync(): Promise<{ success: boolean; error?: string }
   try {
     await saveFolderHandle(handle)
 
+    // Check for existing backup in the selected folder
+    const existingBackupInfo: ExistingBackupInfo = { hasBackup: false }
+    try {
+      const existingData = await readFromLocalFolder(handle)
+      if (existingData && existingData.prompts.length > 0) {
+        // Read backup time from latest file
+        try {
+          const fileHandle = await handle.getFileHandle(BACKUP_FILE_NAME)
+          const file = await fileHandle.getFile()
+          const content = await file.text()
+          const parsed = JSON.parse(content)
+          existingBackupInfo.hasBackup = true
+          existingBackupInfo.promptCount = existingData.prompts.length
+          existingBackupInfo.categoryCount = existingData.categories.length
+          existingBackupInfo.backupTime = parsed.backupTime
+        } catch {
+          existingBackupInfo.hasBackup = true
+          existingBackupInfo.promptCount = existingData.prompts.length
+          existingBackupInfo.categoryCount = existingData.categories.length
+        }
+      }
+    } catch {
+      // No existing backup or read error - ignore
+    }
+
     // Only save folder handle and enable sync, no auto-backup on first selection
-    // User can manually trigger backup via "立即备份" button
     const storageManager = StorageManager.getInstance()
     await storageManager.updateSettings({
       syncEnabled: true
-      // No lastSyncTime - backup hasn happened yet
     })
 
-    return { success: true }
+    return { success: true, existingBackup: existingBackupInfo }
   } catch (error) {
     console.error('[Oh My Prompt] Enable sync failed:', error)
     return { success: false, error: '同步失败，请检查文件夹权限' }

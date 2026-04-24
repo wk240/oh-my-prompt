@@ -200,6 +200,16 @@ chrome.runtime.onMessage.addListener(
           })
         return true // Required for async response
 
+      case MessageType.DISMISS_BACKUP_WARNING:
+        // User dismissed backup warning - save preference
+        storageManager.updateSettings({ dismissedBackupWarning: true })
+          .then(() => sendResponse({ success: true } as MessageResponse))
+          .catch(error => {
+            console.error('[Oh My Prompt] DISMISS_BACKUP_WARNING error:', error)
+            sendResponse({ success: false, error: String(error) })
+          })
+        return true // Required for async response
+
       default:
         sendResponse({ success: false, error: `Unknown message type: ${message.type}` })
     }

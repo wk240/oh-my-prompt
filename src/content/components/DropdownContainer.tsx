@@ -9,7 +9,7 @@ import { createPortal } from 'react-dom'
 import type { Prompt, Category, StorageSchema } from '../../shared/types'
 import type { ResourcePrompt, ResourceCategory, UpdateStatus } from '../../shared/types'
 import { truncateText, sortCategoriesByOrder, sortPromptsByOrder, sortProviderCategoriesByOrder, sortResourcePromptsByCategoryOrder } from '../../shared/utils'
-import { Sparkles, Palette, Shapes, ArrowUpRight, FolderOpen, Layers, Sparkle, Brush, GripVertical, Database, ArrowLeft, Sun, Frame, Paintbrush, Image, RefreshCw, ArrowUpCircle, Plus, Pencil, Trash2, Download, Upload, ExternalLink } from 'lucide-react'
+import { Sparkles, Palette, Shapes, ArrowUpRight, FolderOpen, Layers, Sparkle, Brush, GripVertical, Database, ArrowLeft, Sun, Frame, Paintbrush, Image, RefreshCw, ArrowUpCircle, Plus, Pencil, Trash2, Download, Upload, ExternalLink, AlertTriangle } from 'lucide-react'
 import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -556,6 +556,82 @@ function getDropdownStyles(): string {
       color: #1e3a8a;
     }
 
+    /* First-time backup warning banner styles - orange warning color */
+    #${PORTAL_ID} .first-backup-warning-banner {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 12px 16px;
+      background: #fff7ed;
+      border-bottom: 2px solid #f97316;
+    }
+
+    #${PORTAL_ID} .first-backup-warning-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #${PORTAL_ID} .first-backup-warning-icon {
+      width: 16px;
+      height: 16px;
+      color: #ea580c;
+    }
+
+    #${PORTAL_ID} .first-backup-warning-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #c2410c;
+    }
+
+    #${PORTAL_ID} .first-backup-warning-text {
+      font-size: 11px;
+      color: #9a3412;
+    }
+
+    #${PORTAL_ID} .first-backup-warning-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    #${PORTAL_ID} .first-backup-warning-btn {
+      padding: 6px 12px;
+      background: #f97316;
+      border: none;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 500;
+      color: #ffffff;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    #${PORTAL_ID} .first-backup-warning-btn:hover {
+      background: #ea580c;
+    }
+
+    #${PORTAL_ID} .first-backup-warning-skip {
+      font-size: 11px;
+      color: #9a3412;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    #${PORTAL_ID} .first-backup-warning-skip:hover {
+      color: #7c2d12;
+    }
+
+    #${PORTAL_ID} .first-backup-warning-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: #9a3412;
+      margin-left: auto;
+    }
+
     #${PORTAL_ID} .version-badge {
       font-size: 10px;
       color: #64748B;
@@ -944,6 +1020,11 @@ export function DropdownContainer({
   // Backup reminder state - shows after sorting changes
   const [showBackupReminder, setShowBackupReminder] = useState(false)
 
+  // First-time backup warning state - shows on first open if no backup set
+  const [showFirstBackupWarning, setShowFirstBackupWarning] = useState(false)
+  const [backupWarningPromptCount, setBackupWarningPromptCount] = useState(0)
+  const [dontShowBackupWarning, setDontShowBackupWarning] = useState(false)
+
   // CRUD modal states
   const [isCategoryAddModalOpen, setIsCategoryAddModalOpen] = useState(false)
   const [isCategoryEditModalOpen, setIsCategoryEditModalOpen] = useState(false)
@@ -967,11 +1048,23 @@ export function DropdownContainer({
     })
     // Check for unsynced changes to show backup reminder
     chrome.runtime.sendMessage({ type: MessageType.GET_SYNC_STATUS }, (response) => {
-      if (response?.success && response.data?.hasUnsyncedChanges) {
-        setShowBackupReminder(true)
+      if (response?.success && response.data) {
+        const syncStatus = response.data
+        if (syncStatus.hasUnsyncedChanges) {
+          setShowBackupReminder(true)
+        }
+        // Check for first-time backup warning
+        if (!syncStatus.hasFolder && !syncStatus.dismissedBackupWarning) {
+          // Get prompt count to assess data loss risk
+          const promptCount = localPrompts.length
+          if (promptCount > 0) {
+            setBackupWarningPromptCount(promptCount)
+            setShowFirstBackupWarning(true)
+          }
+        }
       }
     })
-  }, [isOpen])
+  }, [isOpen, localPrompts.length])
 
   // Manual update check handler
   const handleCheckUpdate = useCallback(() => {
@@ -1422,6 +1515,23 @@ export function DropdownContainer({
     input.click()
   }, [localPrompts, localCategories])
 
+  // Handle first-time backup warning actions
+  const handleBackupWarningSelectFolder = useCallback(async () => {
+    setShowFirstBackupWarning(false)
+    if (dontShowBackupWarning) {
+      chrome.runtime.sendMessage({ type: MessageType.DISMISS_BACKUP_WARNING })
+    }
+    // Open backup page for folder selection
+    await chrome.runtime.sendMessage({ type: MessageType.OPEN_BACKUP_PAGE })
+  }, [dontShowBackupWarning])
+
+  const handleBackupWarningSkip = useCallback(() => {
+    setShowFirstBackupWarning(false)
+    if (dontShowBackupWarning) {
+      chrome.runtime.sendMessage({ type: MessageType.DISMISS_BACKUP_WARNING })
+    }
+  }, [dontShowBackupWarning])
+
   // Close dropdown when clicking outside
   // IMPORTANT: Portal container contains dropdown + modals/dialogs - all should skip detection
   useEffect(() => {
@@ -1669,6 +1779,42 @@ export function DropdownContainer({
               立即备份
             </span>
             <span className="backup-reminder-close" onClick={() => setShowBackupReminder(false)}>×</span>
+          </div>
+        )}
+
+        {/* First-time backup warning banner - shows on first open if no backup */}
+        {showFirstBackupWarning && (
+          <div className="first-backup-warning-banner">
+            <div className="first-backup-warning-header">
+              <AlertTriangle className="first-backup-warning-icon" />
+              <span className="first-backup-warning-title">数据安全提醒</span>
+            </div>
+            <div className="first-backup-warning-text">
+              当前有 {backupWarningPromptCount} 个提示词，尚未设置备份。浏览器扩展卸载后数据将无法恢复。
+            </div>
+            <div className="first-backup-warning-actions">
+              <button
+                className="first-backup-warning-btn"
+                onClick={handleBackupWarningSelectFolder}
+              >
+                设置备份
+              </button>
+              <span
+                className="first-backup-warning-skip"
+                onClick={handleBackupWarningSkip}
+              >
+                稍后
+              </span>
+              <label className="first-backup-warning-checkbox">
+                <input
+                  type="checkbox"
+                  checked={dontShowBackupWarning}
+                  onChange={(e) => setDontShowBackupWarning(e.target.checked)}
+                  style={{ width: 12, height: 12 }}
+                />
+                不再提醒
+              </label>
+            </div>
           </div>
         )}
 

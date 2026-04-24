@@ -2,9 +2,8 @@ import { useState, useEffect } from 'react'
 import { getSyncStatus, enableSync, disableSync, changeSyncFolder, manualSync, getBackupVersions, restoreFromBackup } from '../lib/sync/sync-manager'
 import type { SyncStatus, ExistingBackupInfo } from '../lib/sync/sync-manager'
 import type { BackupVersion } from '../lib/sync/file-sync'
-import { StorageManager } from '../lib/storage'
 import { Button } from './components/ui/button'
-import { Check, FolderOpen, RefreshCw, X, History, RotateCcw, AlertTriangle } from 'lucide-react'
+import { Check, FolderOpen, RefreshCw, X, History, RotateCcw } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -37,9 +36,6 @@ function BackupApp() {
   const [restoreDialog, setRestoreDialog] = useState<{ open: boolean; version: BackupVersion | null }>({ open: false, version: null })
   const [backupBeforeRestore, setBackupBeforeRestore] = useState(true)
   const [loadBackupDialog, setLoadBackupDialog] = useState<{ open: boolean; info: ExistingBackupInfo | null }>({ open: false, info: null })
-  const [showBackupWarning, setShowBackupWarning] = useState(false)
-  const [dontShowAgain, setDontShowAgain] = useState(false)
-  const [promptCount, setPromptCount] = useState(0)
 
   useEffect(() => {
     loadStatus()
@@ -65,20 +61,6 @@ function BackupApp() {
       const currentStatus = await getSyncStatus()
       setStatus(currentStatus)
       setError(null)
-
-      // Check if we should show backup warning
-      if (!currentStatus.hasFolder) {
-        // Get prompt count to assess data loss risk
-        const storageManager = StorageManager.getInstance()
-        const data = await storageManager.getData()
-        const count = data.userData.prompts.length
-        setPromptCount(count)
-
-        // Show warning if user has data and hasn't dismissed it
-        if (count > 0 && !data.settings.dismissedBackupWarning) {
-          setShowBackupWarning(true)
-        }
-      }
     } catch (err) {
       setError('获取状态失败')
     } finally {
@@ -227,23 +209,6 @@ function BackupApp() {
     await loadStatus()
   }
 
-  const handleBackupWarningSelectFolder = async () => {
-    setShowBackupWarning(false)
-    if (dontShowAgain) {
-      const storageManager = StorageManager.getInstance()
-      await storageManager.updateSettings({ dismissedBackupWarning: true })
-    }
-    await handleSelectFolder()
-  }
-
-  const handleBackupWarningSkip = async () => {
-    setShowBackupWarning(false)
-    if (dontShowAgain) {
-      const storageManager = StorageManager.getInstance()
-      await storageManager.updateSettings({ dismissedBackupWarning: true })
-    }
-  }
-
   const handleShowHistory = async () => {
     setShowHistory(!showHistory)
     if (!showHistory) {
@@ -353,7 +318,6 @@ function BackupApp() {
             </div>
           )}
 
-          
           {/* Error message */}
           {error && (
             <p className="text-sm text-red-500">{error}</p>
@@ -532,50 +496,6 @@ function BackupApp() {
             </Button>
             <Button onClick={handleLoadBackupConfirm} disabled={loading}>
               {loading ? '加载中...' : '加载备份'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Backup warning dialog */}
-      <Dialog open={showBackupWarning} onOpenChange={(open) => setShowBackupWarning(open)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-orange-600">
-              <AlertTriangle style={{ width: 20, height: 20 }} />
-              数据安全提醒
-            </DialogTitle>
-            <DialogDescription>
-              您的提示词数据尚未设置备份
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="p-3 bg-orange-50 rounded text-sm">
-            <div className="font-medium text-orange-800">
-              当前有 {promptCount} 个提示词
-            </div>
-            <div className="text-orange-700 mt-2">
-              ⚠️ 浏览器扩展卸载后，数据将无法恢复。建议选择一个备份文件夹，数据变更时自动同步。
-            </div>
-          </div>
-
-          <label className="flex items-center gap-2 text-sm text-gray-600">
-            <input
-              type="checkbox"
-              checked={dontShowAgain}
-              onChange={(e) => setDontShowAgain(e.target.checked)}
-              className="rounded"
-            />
-            不再提醒
-          </label>
-
-          <DialogFooter className="pt-2">
-            <Button variant="outline" onClick={handleBackupWarningSkip}>
-              稍后
-            </Button>
-            <Button onClick={handleBackupWarningSelectFolder} disabled={loading}>
-              <FolderOpen style={{ width: 16, height: 16 }} />
-              选择备份文件夹
             </Button>
           </DialogFooter>
         </DialogContent>

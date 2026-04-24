@@ -11,6 +11,7 @@ export interface SyncStatus {
   lastSyncTime?: number
   folderName?: string
   hasUnsyncedChanges?: boolean
+  dismissedBackupWarning?: boolean
 }
 
 /**
@@ -254,7 +255,8 @@ export async function getSyncStatus(): Promise<SyncStatus> {
     hasFolder: handle !== null,
     lastSyncTime: settings.lastSyncTime,
     folderName: handle?.name,
-    hasUnsyncedChanges: settings.hasUnsyncedChanges
+    hasUnsyncedChanges: settings.hasUnsyncedChanges,
+    dismissedBackupWarning: settings.dismissedBackupWarning
   }
 }
 

@@ -26,6 +26,7 @@ export interface SyncSettings {
   showBuiltin: boolean // Show resource library reference in UI
   syncEnabled: boolean // Auto-sync to local folder enabled
   lastSyncTime?: number // Timestamp of last successful sync
+  hasUnsyncedChanges?: boolean // Flag to show backup reminder after reorder
 }
 
 // New storage schema with nested structure

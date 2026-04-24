@@ -9,6 +9,7 @@ export interface SyncStatus {
   hasFolder: boolean
   lastSyncTime?: number
   folderName?: string
+  hasUnsyncedChanges?: boolean
 }
 
 /**
@@ -34,7 +35,7 @@ export async function triggerSync(userData: UserData): Promise<void> {
 
   try {
     await syncToLocalFolder(userData, handle)
-    await storageManager.updateSettings({ lastSyncTime: Date.now() })
+    await storageManager.updateSettings({ lastSyncTime: Date.now(), hasUnsyncedChanges: false })
     console.log('[Oh My Prompt Script] Auto-sync completed')
   } catch (error) {
     console.error('[Oh My Prompt Script] Auto-sync failed:', error)
@@ -172,7 +173,7 @@ export async function manualSync(): Promise<{ success: boolean; error?: string }
     const storageManager = StorageManager.getInstance()
     const data = await storageManager.getData()
     await syncToLocalFolder(data.userData, handle)
-    await storageManager.updateSettings({ lastSyncTime: Date.now() })
+    await storageManager.updateSettings({ lastSyncTime: Date.now(), hasUnsyncedChanges: false })
     return { success: true }
   } catch (error) {
     return { success: false, error: '同步失败，请检查文件夹权限' }
@@ -191,7 +192,8 @@ export async function getSyncStatus(): Promise<SyncStatus> {
     enabled: settings.syncEnabled,
     hasFolder: handle !== null,
     lastSyncTime: settings.lastSyncTime,
-    folderName: handle?.name
+    folderName: handle?.name,
+    hasUnsyncedChanges: settings.hasUnsyncedChanges
   }
 }
 

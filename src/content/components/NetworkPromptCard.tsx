@@ -86,20 +86,33 @@ export function NetworkPromptCard({ prompt, onClick, onInject, onCollect, isColl
   // Preview portal element - render to body to escape Shadow DOM/container constraints
   // Position: left-top of mouse cursor with offset gap
   // Auto-stick to top if preview would exceed viewport top boundary
+  // Auto-stick to left if preview would exceed viewport left boundary
 
   // Calculate if preview top would exceed viewport
   // Preview height is approximately PREVIEW_MAX_HEIGHT + padding (32px)
   const previewHeight = PREVIEW_MAX_HEIGHT + 32 + 16 // max height + padding + extra
+  const previewWidth = PREVIEW_MAX_WIDTH + 32 + 16 // max width + padding + extra
   const previewTopPosition = mousePos.y - PREVIEW_OFFSET - previewHeight
+  const previewLeftPosition = mousePos.x - PREVIEW_OFFSET - previewWidth
   const shouldStickToTop = previewTopPosition < 0
+  const shouldStickToLeft = previewLeftPosition < 0
 
   const previewElement = showPreview && prompt.previewImage ? (
     <div
       style={{
         position: 'fixed',
-        left: mousePos.x - PREVIEW_OFFSET,
+        // 左侧超出时：吸附到左侧边界；否则显示在鼠标左侧
+        left: shouldStickToLeft ? PREVIEW_OFFSET : mousePos.x - PREVIEW_OFFSET,
+        // 顶部超出时：吸附到顶部边界；否则显示在鼠标上方
         top: shouldStickToTop ? PREVIEW_OFFSET : mousePos.y - PREVIEW_OFFSET,
-        transform: shouldStickToTop ? 'translateX(-100%)' : 'translate(-100%, -100%)',
+        // transform调整：左侧超出时只translateY；顶部超出时只translateX；都超出时不transform
+        transform: shouldStickToLeft && shouldStickToTop
+          ? 'none'
+          : shouldStickToLeft
+            ? 'translateY(-100%)'
+            : shouldStickToTop
+              ? 'translateX(-100%)'
+              : 'translate(-100%, -100%)',
         zIndex: 2147483647, // Maximum z-index to ensure visibility
         background: '#ffffff',
         borderRadius: '12px',

@@ -42,8 +42,10 @@ interface DropdownContainerProps {
 
 interface DropdownPosition {
   top: number
-  right: number
+  right?: number
+  left?: number
   isStickyTop: boolean // 是否吸顶模式
+  isStickyLeft: boolean // 是否吸左模式
 }
 
 // Icon mapping
@@ -510,24 +512,55 @@ function getDropdownStyles(): string {
       color: #533b04;
     }
 
+    /* Backup reminder banner styles */
+    #${PORTAL_ID} .backup-reminder-banner {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: #e8f4f8;
+      border-bottom: 1px solid #3b82f6;
+    }
+
+    #${PORTAL_ID} .backup-reminder-text {
+      font-size: 11px;
+      color: #1e40af;
+      flex: 1;
+    }
+
+    #${PORTAL_ID} .backup-reminder-link {
+      font-size: 11px;
+      color: #2563eb;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    #${PORTAL_ID} .backup-reminder-link:hover {
+      color: #1d4ed8;
+    }
+
+    #${PORTAL_ID} .backup-reminder-close {
+      width: 16px;
+      height: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #1e40af;
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+    }
+
+    #${PORTAL_ID} .backup-reminder-close:hover {
+      color: #1e3a8a;
+    }
+
     #${PORTAL_ID} .version-badge {
       font-size: 10px;
       color: #64748B;
       font-weight: 400;
       margin-left: 4px;
-    }
-
-    #${PORTAL_ID} .update-latest-tip {
-      position: absolute;
-      top: 100%;
-      right: 0;
-      margin-top: 4px;
-      background: #f0fdf4;
-      border: 1px solid #86efac;
-      border-radius: 4px;
-      padding: 4px 8px;
-      white-space: nowrap;
-      z-index: 10;
     }
 
     /* CRUD action buttons */
@@ -877,7 +910,8 @@ export function DropdownContainer({
 }: DropdownContainerProps) {
   const dropdownRef = useRef<HTMLDivElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
-  const [position, setPosition] = useState<DropdownPosition>({ top: 0, right: 0, isStickyTop: false })
+  const updateButtonRef = useRef<HTMLButtonElement>(null)
+  const [position, setPosition] = useState<DropdownPosition>({ top: 0, right: 0, isStickyTop: false, isStickyLeft: false })
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all')
   const [localPrompts, setLocalPrompts] = useState<Prompt[]>([])
   const [localCategories, setLocalCategories] = useState<Category[]>([])
@@ -907,6 +941,9 @@ export function DropdownContainer({
   const [showLatestTip, setShowLatestTip] = useState(false)
   const [isUpdateGuideOpen, setIsUpdateGuideOpen] = useState(false)
 
+  // Backup reminder state - shows after sorting changes
+  const [showBackupReminder, setShowBackupReminder] = useState(false)
+
   // CRUD modal states
   const [isCategoryAddModalOpen, setIsCategoryAddModalOpen] = useState(false)
   const [isCategoryEditModalOpen, setIsCategoryEditModalOpen] = useState(false)
@@ -920,12 +957,18 @@ export function DropdownContainer({
   const [isDeletePromptModalOpen, setIsDeletePromptModalOpen] = useState(false)
   const [deletingPrompt, setDeletingPrompt] = useState<Prompt | null>(null)
 
-  // Fetch update status when dropdown opens
+  // Fetch update status and sync status when dropdown opens
   useEffect(() => {
     if (!isOpen) return
     chrome.runtime.sendMessage({ type: MessageType.GET_UPDATE_STATUS }, (response) => {
       if (response?.success && response.data) {
         setUpdateStatus(response.data)
+      }
+    })
+    // Check for unsynced changes to show backup reminder
+    chrome.runtime.sendMessage({ type: MessageType.GET_SYNC_STATUS }, (response) => {
+      if (response?.success && response.data?.hasUnsyncedChanges) {
+        setShowBackupReminder(true)
       }
     })
   }, [isOpen])
@@ -1021,6 +1064,7 @@ export function DropdownContainer({
 
   const dropdownGap = 8
   const dropdownMaxHeight = 600
+  const dropdownWidth = 640
 
   // Sync local prompts with props
   useEffect(() => {
@@ -1043,19 +1087,35 @@ export function DropdownContainer({
       const rect = hostElement.getBoundingClientRect()
       const viewportWidth = window.innerWidth
 
-      const rightPos = viewportWidth - rect.left
+      // 计算下拉框左边缘位置（默认右对齐触发按钮）
+      const dropdownLeftEdge = rect.left - dropdownWidth
+
+      // 检测左侧是否超出viewport
+      const isStickyLeft = dropdownLeftEdge < 0
+
+      // 垂直位置计算
       const preferredTopPos = rect.top - dropdownGap
-
-      const dropdownBottom = preferredTopPos
-      const dropdownTop = dropdownBottom - dropdownMaxHeight
-
+      const dropdownTop = preferredTopPos - dropdownMaxHeight
       const isStickyTop = dropdownTop < 0
 
-      setPosition({
-        top: isStickyTop ? 0 : preferredTopPos,
-        right: rightPos,
-        isStickyTop
-      })
+      if (isStickyLeft) {
+        // 左侧超出：改为左对齐（left: 0）
+        setPosition({
+          top: isStickyTop ? 0 : preferredTopPos,
+          left: 0,
+          isStickyTop,
+          isStickyLeft
+        })
+      } else {
+        // 正常情况：右对齐触发按钮
+        const rightPos = viewportWidth - rect.left
+        setPosition({
+          top: isStickyTop ? 0 : preferredTopPos,
+          right: rightPos,
+          isStickyTop,
+          isStickyLeft
+        })
+      }
     }
 
     calculatePosition()
@@ -1068,7 +1128,7 @@ export function DropdownContainer({
       window.removeEventListener('scroll', handleReposition)
       window.removeEventListener('resize', handleReposition)
     }
-  }, [isOpen, dropdownGap, dropdownMaxHeight])
+  }, [isOpen, dropdownGap, dropdownMaxHeight, dropdownWidth])
 
   // Use passed categories or fallback to default logic
   const categories = useMemo(() => {
@@ -1174,10 +1234,12 @@ export function DropdownContainer({
           type: 'SET_STORAGE',
           payload: {
             version: '1.0.0',
-            userData: { prompts: updatedPrompts, categories: localCategories },
-            settings: { showBuiltin: true, syncEnabled: false }
+            userData: { prompts: updatedPrompts, categories: localCategories }
           }
         })
+        // Set unsynced flag and show backup reminder after reorder
+        chrome.runtime.sendMessage({ type: MessageType.SET_UNSYNCED_FLAG })
+        setShowBackupReminder(true)
       } catch (error) {
         console.error('[Oh My Prompt Script] Failed to reorder prompts:', error)
       }
@@ -1208,10 +1270,12 @@ export function DropdownContainer({
           type: 'SET_STORAGE',
           payload: {
             version: '1.0.0',
-            userData: { prompts: localPrompts, categories: updatedCategories },
-            settings: { showBuiltin: true, syncEnabled: false }
+            userData: { prompts: localPrompts, categories: updatedCategories }
           }
         })
+        // Set unsynced flag and show backup reminder after reorder
+        chrome.runtime.sendMessage({ type: MessageType.SET_UNSYNCED_FLAG })
+        setShowBackupReminder(true)
       } catch (error) {
         console.error('[Oh My Prompt Script] Failed to reorder categories:', error)
       }
@@ -1221,6 +1285,8 @@ export function DropdownContainer({
   // CRUD handlers for categories
   const handleAddCategory = useCallback((name: string) => {
     usePromptStore.getState().addCategory(name)
+    chrome.runtime.sendMessage({ type: MessageType.SET_UNSYNCED_FLAG })
+    setShowBackupReminder(true)
     setToastMessage('分类已添加')
     setTimeout(() => setToastMessage(null), 2000)
   }, [])
@@ -1228,6 +1294,8 @@ export function DropdownContainer({
   const handleUpdateCategory = useCallback((name: string) => {
     if (!editingCategory) return
     usePromptStore.getState().updateCategory(editingCategory.id, name)
+    chrome.runtime.sendMessage({ type: MessageType.SET_UNSYNCED_FLAG })
+    setShowBackupReminder(true)
     setEditingCategory(null)
     setToastMessage('分类已更新')
     setTimeout(() => setToastMessage(null), 2000)
@@ -1236,6 +1304,8 @@ export function DropdownContainer({
   const handleDeleteCategory = useCallback(() => {
     if (!deletingCategory) return
     usePromptStore.getState().deleteCategory(deletingCategory.id)
+    chrome.runtime.sendMessage({ type: MessageType.SET_UNSYNCED_FLAG })
+    setShowBackupReminder(true)
     // Update local state
     setLocalCategories(prev => prev.filter(c => c.id !== deletingCategory.id))
     setLocalPrompts(prev => prev.filter(p => p.categoryId !== deletingCategory.id))
@@ -1257,6 +1327,8 @@ export function DropdownContainer({
       categoryId: data.categoryId,
       order: localPrompts.filter(p => p.categoryId === data.categoryId).length,
     })
+    chrome.runtime.sendMessage({ type: MessageType.SET_UNSYNCED_FLAG })
+    setShowBackupReminder(true)
     setToastMessage('提示词已添加')
     setTimeout(() => setToastMessage(null), 2000)
   }, [localPrompts])
@@ -1269,6 +1341,8 @@ export function DropdownContainer({
       content: data.content,
       categoryId: data.categoryId,
     })
+    chrome.runtime.sendMessage({ type: MessageType.SET_UNSYNCED_FLAG })
+    setShowBackupReminder(true)
     setEditingPrompt(null)
     setToastMessage('提示词已更新')
     setTimeout(() => setToastMessage(null), 2000)
@@ -1277,6 +1351,8 @@ export function DropdownContainer({
   const handleDeletePrompt = useCallback(() => {
     if (!deletingPrompt) return
     usePromptStore.getState().deletePrompt(deletingPrompt.id)
+    chrome.runtime.sendMessage({ type: MessageType.SET_UNSYNCED_FLAG })
+    setShowBackupReminder(true)
     setLocalPrompts(prev => prev.filter(p => p.id !== deletingPrompt.id))
     setDeletingPrompt(null)
     setToastMessage('提示词已删除')
@@ -1373,8 +1449,12 @@ export function DropdownContainer({
 
   const dropdownStyle: React.CSSProperties = {
     top: position.top,
-    right: position.right,
     transform: position.isStickyTop ? 'none' : 'translateY(-100%)',
+    // 左侧超出时用 left: 0，否则右对齐触发按钮
+    ...(position.isStickyLeft
+      ? { left: position.left }
+      : { right: position.right }
+    ),
   }
 
   // Get category icon
@@ -1508,7 +1588,8 @@ export function DropdownContainer({
           <div className="dropdown-header-actions">
             <Tooltip content={updateStatus?.hasUpdate ? `新版本 ${updateStatus.latestVersion} 可用` : '检查更新'} placement="bottom">
               <button
-                className="dropdown-action-btn"
+                ref={updateButtonRef}
+                className={`dropdown-action-btn${showLatestTip ? ' has-tip' : ''}`}
                 style={updateStatus?.hasUpdate ? { color: '#FF5722' } : {}}
                 onClick={updateStatus?.hasUpdate ? () => setIsUpdateGuideOpen(true) : handleCheckUpdate}
                 aria-label={updateStatus?.hasUpdate ? '查看更新引导' : '检查更新'}
@@ -1516,12 +1597,6 @@ export function DropdownContainer({
                 <ArrowUpCircle style={{ width: 14, height: 14 }} />
               </button>
             </Tooltip>
-            {/* "Already latest" tip */}
-            {showLatestTip && (
-              <div className="update-latest-tip">
-                <span style={{ fontSize: 11, color: '#16a34a' }}>已是最新版本</span>
-              </div>
-            )}
             <Tooltip content="备份数据" placement="bottom">
               <button
                 className={`dropdown-action-btn ${isRefreshing ? 'refreshing' : ''}`}
@@ -1576,6 +1651,24 @@ export function DropdownContainer({
               查看更新引导
             </span>
             <span className="update-banner-close" onClick={handleDismissUpdate}>×</span>
+          </div>
+        )}
+
+        {/* Backup reminder banner - shows after sorting changes */}
+        {showBackupReminder && (
+          <div className="backup-reminder-banner">
+            <RefreshCw style={{ width: 14, height: 14, color: '#1e40af' }} />
+            <span className="backup-reminder-text">本次改动尚未备份</span>
+            <span
+              className="backup-reminder-link"
+              onClick={() => {
+                setShowBackupReminder(false)
+                handleRefreshClick()
+              }}
+            >
+              立即备份
+            </span>
+            <span className="backup-reminder-close" onClick={() => setShowBackupReminder(false)}>×</span>
           </div>
         )}
 
@@ -1690,6 +1783,26 @@ export function DropdownContainer({
         message={toastMessage}
         onClose={() => setToastMessage(null)}
       />
+    )}
+    {/* "Already latest" tip - Portal rendered outside dropdown to escape overflow:hidden */}
+    {showLatestTip && updateButtonRef.current && (
+      <div
+        style={{
+          position: 'fixed',
+          top: updateButtonRef.current.getBoundingClientRect().bottom + 4,
+          left: updateButtonRef.current.getBoundingClientRect().left + updateButtonRef.current.offsetWidth / 2,
+          transform: 'translateX(-50%)',
+          background: '#f0fdf4',
+          border: '1px solid #86efac',
+          borderRadius: '4px',
+          padding: '4px 8px',
+          whiteSpace: 'nowrap',
+          zIndex: 2147483647,
+          pointerEvents: 'none',
+        }}
+      >
+        <span style={{ fontSize: 11, color: '#16a34a' }}>已是最新版本</span>
+      </div>
     )}
     {/* Update guide modal */}
     <UpdateGuideModal

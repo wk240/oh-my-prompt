@@ -149,3 +149,36 @@ export async function removeFolderHandle(): Promise<void> {
     transaction.oncomplete = () => db.close()
   })
 }
+
+/**
+ * Check if folder handle has valid permission
+ * Returns 'granted', 'prompt', or 'denied'
+ */
+export async function checkFolderPermission(
+  handle: FileSystemDirectoryHandle,
+  mode: 'read' | 'readwrite' = 'readwrite'
+): Promise<PermissionState> {
+  try {
+    return await handle.queryPermission({ mode })
+  } catch (error) {
+    console.warn('[Oh My Prompt] Permission check failed:', error)
+    return 'denied'
+  }
+}
+
+/**
+ * Request permission restoration for folder handle
+ * Returns 'granted' if successful, otherwise the permission state
+ * Note: If user previously granted permission, this returns 'granted' without prompting
+ */
+export async function requestFolderPermission(
+  handle: FileSystemDirectoryHandle,
+  mode: 'read' | 'readwrite' = 'readwrite'
+): Promise<PermissionState> {
+  try {
+    return await handle.requestPermission({ mode })
+  } catch (error) {
+    console.warn('[Oh My Prompt] Permission request failed:', error)
+    return 'denied'
+  }
+}

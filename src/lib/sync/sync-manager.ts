@@ -1,7 +1,7 @@
 import type { UserData } from '../../shared/types'
 import { BACKUP_FILE_NAME } from '../../shared/constants'
 import { StorageManager } from '../storage'
-import { getFolderHandle, saveFolderHandle } from './indexeddb'
+import { getFolderHandle, saveFolderHandle, checkFolderPermission, requestFolderPermission } from './indexeddb'
 import { syncToLocalFolder, readFromLocalFolder, selectSyncFolder, listBackupVersions, readBackupFile } from './file-sync'
 import type { BackupVersion } from './file-sync'
 
@@ -12,6 +12,7 @@ export interface SyncStatus {
   folderName?: string
   hasUnsyncedChanges?: boolean
   dismissedBackupWarning?: boolean
+  permissionStatus?: 'granted' | 'prompt' | 'denied' // Permission state for restore UI
 }
 
 /**
@@ -252,11 +253,18 @@ export async function manualSync(): Promise<{ success: boolean; error?: string }
 
 /**
  * Get current sync status for UI
+ * Includes permission check for folder handle
  */
 export async function getSyncStatus(): Promise<SyncStatus> {
   const storageManager = StorageManager.getInstance()
   const settings = await storageManager.getSettings()
   const handle = await getFolderHandle()
+
+  // Check permission status if handle exists
+  let permissionStatus: 'granted' | 'prompt' | 'denied' | undefined = undefined
+  if (handle) {
+    permissionStatus = await checkFolderPermission(handle)
+  }
 
   return {
     enabled: settings.syncEnabled,
@@ -264,7 +272,46 @@ export async function getSyncStatus(): Promise<SyncStatus> {
     lastSyncTime: settings.lastSyncTime,
     folderName: handle?.name,
     hasUnsyncedChanges: settings.hasUnsyncedChanges,
-    dismissedBackupWarning: settings.dismissedBackupWarning
+    dismissedBackupWarning: settings.dismissedBackupWarning,
+    permissionStatus
+  }
+}
+
+/**
+ * Restore permission for existing folder handle
+ * Returns success if permission was granted, otherwise error
+ * Note: If user previously granted permission, this returns success without prompting
+ */
+export async function restorePermission(): Promise<{ success: boolean; error?: string }> {
+  const handle = await getFolderHandle()
+  if (!handle) {
+    return { success: false, error: '文件夹信息已丢失，请重新选择' }
+  }
+
+  try {
+    const permission = await requestFolderPermission(handle)
+    if (permission === 'granted') {
+      // Permission restored successfully - sync current data
+      const storageManager = StorageManager.getInstance()
+      const data = await storageManager.getData()
+      await syncToLocalFolder(data.userData, handle)
+      await storageManager.updateSettings({
+        syncEnabled: true,
+        lastSyncTime: Date.now(),
+        hasUnsyncedChanges: false
+      })
+      console.log('[Oh My Prompt] Permission restored and sync completed')
+      return { success: true }
+    } else if (permission === 'prompt') {
+      // User needs to interact - they should click again
+      return { success: false, error: '请在弹出的对话框中授权' }
+    } else {
+      // Permission denied - user needs to select new folder
+      return { success: false, error: '权限被拒绝，请更换文件夹' }
+    }
+  } catch (error) {
+    console.error('[Oh My Prompt] Permission restore failed:', error)
+    return { success: false, error: '恢复权限失败，请重新选择文件夹' }
   }
 }
 

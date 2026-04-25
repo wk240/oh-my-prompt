@@ -15,7 +15,8 @@ export enum MessageType {
   CLEAR_UPDATE_STATUS = 'CLEAR_UPDATE_STATUS',
   OPEN_EXTENSIONS = 'OPEN_EXTENSIONS',
   EXPORT_DATA = 'EXPORT_DATA',
-  DISMISS_BACKUP_WARNING = 'DISMISS_BACKUP_WARNING'
+  DISMISS_BACKUP_WARNING = 'DISMISS_BACKUP_WARNING',
+  RESTORE_PERMISSION = 'RESTORE_PERMISSION'  // Restore folder permission after extension update
 }
 
 export interface Message<T = unknown> {

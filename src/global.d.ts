@@ -6,14 +6,16 @@
  */
 
 declare global {
-  // Extend existing FileSystemDirectoryHandle with requestPermission
+  // Extend existing FileSystemDirectoryHandle with requestPermission and queryPermission
   interface FileSystemDirectoryHandle {
     requestPermission(options?: { mode?: 'read' | 'readwrite' }): Promise<PermissionState>
+    queryPermission(options?: { mode?: 'read' | 'readwrite' }): Promise<PermissionState>
   }
 
-  // Extend existing FileSystemFileHandle with requestPermission
+  // Extend existing FileSystemFileHandle with requestPermission and queryPermission
   interface FileSystemFileHandle {
     requestPermission(options?: { mode?: 'read' | 'readwrite' }): Promise<PermissionState>
+    queryPermission(options?: { mode?: 'read' | 'readwrite' }): Promise<PermissionState>
   }
 
   // Add missing window methods

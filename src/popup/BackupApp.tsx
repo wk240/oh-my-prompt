@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getSyncStatus, enableSync, disableSync, changeSyncFolder, manualSync, getBackupVersions, restoreFromBackup } from '../lib/sync/sync-manager'
+import { getSyncStatus, enableSync, disableSync, changeSyncFolder, manualSync, getBackupVersions, restoreFromBackup, restorePermission } from '../lib/sync/sync-manager'
 import type { SyncStatus, ExistingBackupInfo } from '../lib/sync/sync-manager'
 import type { BackupVersion } from '../lib/sync/file-sync'
 import { Button } from './components/ui/button'
@@ -209,6 +209,32 @@ function BackupApp() {
     await loadStatus()
   }
 
+  const handleRestorePermission = async () => {
+    setLoading(true)
+    setError(null)
+    setSuccess(null)
+
+    const result = await restorePermission()
+    setLoading(false)
+
+    if (result.success) {
+      setSuccess('权限已恢复，备份已同步')
+      await loadStatus()
+      // Refresh history list if visible
+      if (showHistory) {
+        const versionsResult = await getBackupVersions()
+        setVersions(versionsResult.versions)
+      }
+    } else {
+      // If permission denied or other error, show change folder option
+      if (result.error?.includes('拒绝') || result.error?.includes('重新选择')) {
+        setError('权限被拒绝，请更换文件夹')
+      } else {
+        setError(result.error || '恢复权限失败')
+      }
+    }
+  }
+
   const handleShowHistory = async () => {
     setShowHistory(!showHistory)
     if (!showHistory) {
@@ -287,8 +313,42 @@ function BackupApp() {
 
         {/* Content */}
         <div className="p-4 space-y-3">
-          {/* Status row - only show when enabled */}
-          {status.enabled && (
+          {/* Permission restore banner - show when permission needs restoration */}
+          {status.hasFolder && status.permissionStatus === 'prompt' && (
+            <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+              <div className="text-sm text-yellow-800 mb-2">
+                扩展更新后需要重新授权文件夹权限
+              </div>
+              <Button
+                size="sm"
+                onClick={handleRestorePermission}
+                disabled={loading}
+                className="bg-yellow-600 hover:bg-yellow-700 text-white"
+              >
+                {loading ? '处理中...' : '点击恢复权限'}
+              </Button>
+            </div>
+          )}
+
+          {/* Permission denied banner - show when permission is permanently denied */}
+          {status.hasFolder && status.permissionStatus === 'denied' && (
+            <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+              <div className="text-sm text-red-800 mb-2">
+                文件夹权限被拒绝，请更换文件夹
+              </div>
+              <Button
+                size="sm"
+                onClick={handleChangeFolder}
+                disabled={loading}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                更换文件夹
+              </Button>
+            </div>
+          )}
+
+          {/* Status row - only show when enabled and permission granted */}
+          {status.enabled && status.permissionStatus === 'granted' && (
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-gray-700">状态</span>
               <span className="text-sm flex items-center gap-1 text-green-600">
@@ -337,14 +397,17 @@ function BackupApp() {
               </Button>
             ) : (
               <>
-                <Button onClick={handleBackupNow} disabled={loading}>
-                  <RefreshCw style={{ width: 16, height: 16 }} />
-                  {loading ? '备份中...' : '立即备份'}
-                </Button>
+                {/* Only show backup button when permission is granted */}
+                {status.permissionStatus === 'granted' && (
+                  <Button onClick={handleBackupNow} disabled={loading}>
+                    <RefreshCw style={{ width: 16, height: 16 }} />
+                    {loading ? '备份中...' : '立即备份'}
+                  </Button>
+                )}
                 <Button variant="outline" onClick={handleChangeFolder} disabled={loading}>
                   更换文件夹
                 </Button>
-                {status.enabled && (
+                {status.enabled && status.permissionStatus === 'granted' && (
                   <Button variant="ghost" onClick={handleDisable} disabled={loading}>
                     禁用
                   </Button>
@@ -358,8 +421,8 @@ function BackupApp() {
           </p>
         </div>
 
-        {/* History versions section */}
-        {status.hasFolder && (
+        {/* History versions section - only show when permission is granted */}
+        {status.hasFolder && status.permissionStatus === 'granted' && (
           <div className="border-t border-gray-200">
             <button
               onClick={handleShowHistory}

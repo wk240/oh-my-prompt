@@ -2,7 +2,7 @@ import { MessageType, MessageResponse } from '../shared/messages'
 import type { StorageSchema, SyncSettings, UserData } from '../shared/types'
 import { StorageManager } from '../lib/storage'
 import { saveFolderHandle } from '../lib/sync/indexeddb'
-import { getSyncStatus, triggerSync } from '../lib/sync/sync-manager'
+import { getSyncStatus, triggerSync, restorePermission } from '../lib/sync/sync-manager'
 import { checkForUpdate, getUpdateStatus, clearUpdateStatus, type UpdateStatus } from '../lib/version-checker'
 import '../lib/migrations/v1.0' // Register migrations
 
@@ -221,6 +221,16 @@ chrome.runtime.onMessage.addListener(
           .catch(error => {
             console.error('[Oh My Prompt] DISMISS_BACKUP_WARNING error:', error)
             sendResponse({ success: false, error: String(error) })
+          })
+        return true // Required for async response
+
+      case MessageType.RESTORE_PERMISSION:
+        // Restore folder permission after extension update
+        restorePermission()
+          .then(result => sendResponse({ success: result.success, error: result.error } as MessageResponse))
+          .catch(error => {
+            console.error('[Oh My Prompt] RESTORE_PERMISSION error:', error)
+            sendResponse({ success: false, error: 'Failed to restore permission' })
           })
         return true // Required for async response
 

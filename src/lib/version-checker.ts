@@ -57,13 +57,17 @@ async function fetchLatestRelease(): Promise<{
 
     const data = await response.json()
 
+    // Extract version number from tag_name (e.g., "v1.1.4-release" -> "1.1.4")
+    const tagMatch = data.tag_name?.match(/^v?(\d+\.\d+\.\d+)/)
+    const version = tagMatch ? tagMatch[1] : data.name || '0.0.0'
+
     // Find the .crx or .zip asset for download
     const asset = data.assets?.find((a: { name: string }) =>
       a.name.endsWith('.crx') || a.name.endsWith('.zip')
     )
 
     return {
-      version: data.tag_name?.replace(/^v/, '') || data.name || '0.0.0',
+      version,
       downloadUrl: asset?.browser_download_url || data.html_url,
       releaseNotes: data.body
     }

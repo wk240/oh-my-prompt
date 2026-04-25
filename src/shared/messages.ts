@@ -16,7 +16,8 @@ export enum MessageType {
   OPEN_EXTENSIONS = 'OPEN_EXTENSIONS',
   EXPORT_DATA = 'EXPORT_DATA',
   DISMISS_BACKUP_WARNING = 'DISMISS_BACKUP_WARNING',
-  RESTORE_PERMISSION = 'RESTORE_PERMISSION'  // Restore folder permission after extension update
+  RESTORE_PERMISSION = 'RESTORE_PERMISSION',  // Restore folder permission after extension update
+  FETCH_ONLINE_PROMPTS = 'FETCH_ONLINE_PROMPTS'  // Proxy prompts.chat API requests
 }
 
 export interface Message<T = unknown> {
@@ -28,4 +29,13 @@ export interface MessageResponse<T = unknown> {
   success: boolean
   data?: T
   error?: string
+}
+
+export interface FetchOnlinePromptsPayload {
+  endpoint: 'search' | 'category' | 'detail'
+  query?: string
+  categoryId?: string
+  promptId?: string
+  page?: number
+  perPage?: number
 }

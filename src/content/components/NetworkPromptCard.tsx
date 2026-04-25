@@ -2,7 +2,7 @@
  * NetworkPromptCard - Card component for displaying resource library prompts
  * 2-column grid layout with previewImage thumbnail
  * Features: collect button (bottom-right), inject button (bottom-right corner)
- * Hover preview: shows full image immediately on hover, follows mouse cursor
+ * Hover preview: shows full image only when hovering on thumbnail
  */
 
 import { useState, useRef } from 'react'
@@ -43,25 +43,25 @@ export function NetworkPromptCard({
   const displayName = language === 'en' && prompt.nameEn ? prompt.nameEn : prompt.name
   const displayContent = language === 'en' && prompt.contentEn ? prompt.contentEn : prompt.content
 
-  // Hover preview state - show immediately on hover
+  // Hover preview state - show only when hovering on thumbnail
   const [showPreview, setShowPreview] = useState(false)
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
   const cardRef = useRef<HTMLDivElement>(null)
 
-  // Handle mouse enter - show preview immediately
-  const handleMouseEnter = () => {
+  // Handle thumbnail mouse enter - show preview immediately
+  const handleThumbnailMouseEnter = () => {
     if (prompt.previewImage) {
       setShowPreview(true)
     }
   }
 
-  // Handle mouse move - track position for preview positioning
-  const handleMouseMove = (e: React.MouseEvent) => {
+  // Handle thumbnail mouse move - track position for preview positioning
+  const handleThumbnailMouseMove = (e: React.MouseEvent) => {
     setMousePos({ x: e.clientX, y: e.clientY })
   }
 
-  // Handle mouse leave - hide preview
-  const handleMouseLeave = () => {
+  // Handle thumbnail mouse leave - hide preview
+  const handleThumbnailMouseLeave = () => {
     setShowPreview(false)
   }
 
@@ -141,9 +141,6 @@ export function NetworkPromptCard({
       ref={cardRef}
       className="network-prompt-card"
       onClick={onClick}
-      onMouseEnter={handleMouseEnter}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
@@ -218,16 +215,20 @@ export function NetworkPromptCard({
         </button>
       </Tooltip>
 
-      {/* D-04: Thumbnail (120x80px per UI-SPEC) */}
+      {/* D-04: Thumbnail (120x80px per UI-SPEC) - hover to show preview */}
       {prompt.previewImage && (
         <img
           src={prompt.previewImage}
           alt={displayName}
+          onMouseEnter={handleThumbnailMouseEnter}
+          onMouseMove={handleThumbnailMouseMove}
+          onMouseLeave={handleThumbnailMouseLeave}
           style={{
             width: '100%',
             height: '80px',
             objectFit: 'cover',
             borderRadius: '6px',
+            cursor: 'pointer',
           }}
           onError={(e) => {
             // D-06: Fallback placeholder on load error

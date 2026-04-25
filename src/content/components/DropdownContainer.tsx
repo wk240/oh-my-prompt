@@ -9,7 +9,7 @@ import { createPortal } from 'react-dom'
 import type { Prompt, Category, StorageSchema } from '../../shared/types'
 import type { ResourcePrompt, ResourceCategory, UpdateStatus } from '../../shared/types'
 import { truncateText, sortCategoriesByOrder, sortPromptsByOrder, sortProviderCategoriesByOrder, sortResourcePromptsByCategoryOrder } from '../../shared/utils'
-import { Sparkles, Palette, Shapes, ArrowUpRight, FolderOpen, Layers, Sparkle, Brush, GripVertical, Database, ArrowLeft, Sun, Frame, Paintbrush, Image, RefreshCw, ArrowUpCircle, Plus, Pencil, Trash2, Download, Upload, ExternalLink, AlertTriangle } from 'lucide-react'
+import { Sparkles, Palette, Shapes, ArrowUpRight, FolderOpen, Layers, Sparkle, Brush, GripVertical, Database, ArrowLeft, Sun, Frame, Paintbrush, Image, RefreshCw, ArrowUpCircle, Plus, Pencil, Trash2, Download, Upload, ExternalLink, AlertTriangle, Languages } from 'lucide-react'
 import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -1872,22 +1872,6 @@ export function DropdownContainer({
                 <ExternalLink style={{ width: 14, height: 14 }} />
               </a>
             </Tooltip>
-            {/* Language switch button - only visible in resource library mode */}
-            {isResourceLibrary && (
-              <button
-                className="dropdown-language-btn"
-                onClick={() => handleLanguageSwitch(resourceLanguage === 'zh' ? 'en' : 'zh')}
-                aria-label="切换语言"
-                style={{
-                  background: '#3B82F6',
-                  color: '#ffffff',
-                  border: 'none',
-                  minWidth: '40px',
-                }}
-              >
-                <span>{resourceLanguage === 'zh' ? '中文' : 'EN'}</span>
-              </button>
-            )}
           </div>
         </div>
 
@@ -1961,6 +1945,40 @@ export function DropdownContainer({
         )}
 
         <div className="dropdown-content" ref={scrollContainerRef} onScroll={handleScroll}>
+          {/* Language switch button at top - only in resource library mode */}
+          {isResourceLibrary && (
+            <div style={{
+              display: 'flex',
+              justifyContent: 'flex-start',
+              padding: '0 0 12px 0',
+            }}>
+              <Tooltip content={resourceLanguage === 'zh' ? '切换到英文' : '切换到中文'} placement="bottom">
+                <button
+                  onClick={() => handleLanguageSwitch(resourceLanguage === 'zh' ? 'en' : 'zh')}
+                  aria-label={resourceLanguage === 'zh' ? '切换到英文' : '切换到中文'}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    padding: '8px 0',
+                    width: '100px',
+                    background: '#E0F2FE',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    color: '#0369A1',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  <Languages style={{ width: 16, height: 16 }} />
+                  {resourceLanguage === 'zh' ? 'English' : '中文'}
+                </button>
+              </Tooltip>
+            </div>
+          )}
           {isLoading ? (
             <div className="empty-state">
               <div className="empty-message">加载中...</div>

@@ -7,7 +7,7 @@
 
 import { createPortal } from 'react-dom'
 import { useEffect, useCallback, useState, useRef } from 'react'
-import { X, Bookmark, ArrowUpRight } from 'lucide-react'
+import { X, Bookmark, ArrowUpRight, Languages } from 'lucide-react'
 import type { ResourcePrompt } from '../../shared/types'
 
 interface PromptPreviewModalProps {
@@ -191,8 +191,8 @@ export function PromptPreviewModal({
           top: '50%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
-          width: '400px',
-          maxHeight: '480px',
+          width: '560px',
+          maxHeight: '640px',
           background: '#ffffff',
           borderRadius: '12px',
           boxShadow: '0 12px 32px rgba(0,0,0,0.2)',
@@ -290,61 +290,43 @@ export function PromptPreviewModal({
         {/* Content */}
         <div style={{
           padding: '16px',
-          maxHeight: '320px',
+          maxHeight: '400px',
           overflow: 'auto',
-          fontSize: '12px',
+          fontSize: '13px',
           color: '#171717',
-          lineHeight: '1.4',
+          lineHeight: '1.5',
         }}>
           {displayContent}
         </div>
-        {/* Language switch - above footer */}
+        {/* Language switch toggle - aligned left, above footer */}
         <div style={{
           padding: '12px 16px',
           borderTop: '1px solid #E5E5E5',
           display: 'flex',
-          justifyContent: 'center',
-          gap: '8px',
+          justifyContent: 'flex-start',
         }}>
           <button
-            onClick={() => setModalLanguage('zh')}
-            aria-label="中文版本"
+            onClick={() => setModalLanguage(modalLanguage === 'zh' ? 'en' : 'zh')}
+            aria-label={modalLanguage === 'zh' ? '切换到英文' : '切换到中文'}
             style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '4px',
-              padding: '6px 12px',
-              background: modalLanguage === 'zh' ? '#171717' : '#ffffff',
-              border: modalLanguage === 'zh' ? 'none' : '1px solid #E5E5E5',
-              borderRadius: '4px',
-              fontSize: '12px',
+              gap: '6px',
+              padding: '8px 0',
+              width: '100px',
+              background: '#E0F2FE',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '13px',
               fontWeight: 500,
-              color: modalLanguage === 'zh' ? '#fff' : '#171717',
+              color: '#0369A1',
               cursor: 'pointer',
+              transition: 'all 0.15s',
             }}
           >
-            中文版本
-          </button>
-          <button
-            onClick={() => setModalLanguage('en')}
-            aria-label="英文版本"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '4px',
-              padding: '6px 12px',
-              background: modalLanguage === 'en' ? '#171717' : '#ffffff',
-              border: modalLanguage === 'en' ? 'none' : '1px solid #E5E5E5',
-              borderRadius: '4px',
-              fontSize: '12px',
-              fontWeight: 500,
-              color: modalLanguage === 'en' ? '#fff' : '#171717',
-              cursor: 'pointer',
-            }}
-          >
-            英文版本
+            <Languages style={{ width: 16, height: 16 }} />
+            {modalLanguage === 'zh' ? 'English' : '中文'}
           </button>
         </div>
         {/* Footer */}

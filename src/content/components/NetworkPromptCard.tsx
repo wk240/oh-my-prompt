@@ -2,10 +2,10 @@
  * NetworkPromptCard - Card component for displaying resource library prompts
  * 2-column grid layout with previewImage thumbnail
  * Features: collect button (bottom-right), inject button (bottom-right corner)
- * Hover preview: shows full image after 500ms delay, follows mouse cursor
+ * Hover preview: shows full image immediately on hover, follows mouse cursor
  */
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowUpRight, Bookmark } from 'lucide-react'
 import type { ResourcePrompt } from '../../shared/types'
@@ -23,9 +23,6 @@ interface NetworkPromptCardProps {
 // D-06: Fallback placeholder SVG for failed image loads
 const FALLBACK_IMAGE_SVG = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="120" height="80" viewBox="0 0 120 80"%3E%3Crect fill="%23f0f0f0" width="120" height="80"/%3E%3Ctext fill="%23999" font-family="sans-serif" font-size="10" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3ENo Image%3C/text%3E%3C/svg%3E'
 
-// Hover preview delay in milliseconds
-const HOVER_PREVIEW_DELAY = 500
-
 // Preview offset from mouse cursor (left-top direction)
 const PREVIEW_OFFSET = 16
 
@@ -34,18 +31,15 @@ const PREVIEW_MAX_WIDTH = 720
 const PREVIEW_MAX_HEIGHT = 480
 
 export function NetworkPromptCard({ prompt, onClick, onInject, onCollect, isCollected = false }: NetworkPromptCardProps) {
-  // Hover preview state
+  // Hover preview state - show immediately on hover
   const [showPreview, setShowPreview] = useState(false)
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
-  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const cardRef = useRef<HTMLDivElement>(null)
 
-  // Handle mouse enter - start 500ms timer
+  // Handle mouse enter - show preview immediately
   const handleMouseEnter = () => {
     if (prompt.previewImage) {
-      hoverTimerRef.current = setTimeout(() => {
-        setShowPreview(true)
-      }, HOVER_PREVIEW_DELAY)
+      setShowPreview(true)
     }
   }
 
@@ -54,23 +48,10 @@ export function NetworkPromptCard({ prompt, onClick, onInject, onCollect, isColl
     setMousePos({ x: e.clientX, y: e.clientY })
   }
 
-  // Handle mouse leave - cancel timer and hide preview
+  // Handle mouse leave - hide preview
   const handleMouseLeave = () => {
-    if (hoverTimerRef.current) {
-      clearTimeout(hoverTimerRef.current)
-      hoverTimerRef.current = null
-    }
     setShowPreview(false)
   }
-
-  // Cleanup timer on unmount
-  useEffect(() => {
-    return () => {
-      if (hoverTimerRef.current) {
-        clearTimeout(hoverTimerRef.current)
-      }
-    }
-  }, [])
 
   // Handle button clicks - stop propagation to prevent card click
   const handleInjectClick = (e: React.MouseEvent) => {

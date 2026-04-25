@@ -169,7 +169,7 @@ const modalStyles = `
     border-radius: 8px;
     padding: 12px;
     margin-bottom: 16px;
-    max-height: 100px;
+    max-height: 240px;
     overflow-y: auto;
   }
 
@@ -424,8 +424,8 @@ export function UpdateGuideModal({ status, isOpen, onClose }: UpdateGuideModalPr
             <div className="release-notes">
               <div className="release-notes-label">更新说明</div>
               <div className="release-notes-content">
-                {status.releaseNotes.slice(0, 500)}
-                {status.releaseNotes.length > 500 && '...'}
+                {status.releaseNotes.slice(0, 2000)}
+                {status.releaseNotes.length > 2000 && '...'}
               </div>
             </div>
           )}

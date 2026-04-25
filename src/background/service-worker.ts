@@ -1,4 +1,4 @@
-import { MessageType, MessageResponse } from '../shared/messages'
+import { MessageType, MessageResponse, FetchOnlinePromptsPayload } from '../shared/messages'
 import type { StorageSchema, SyncSettings, UserData } from '../shared/types'
 import { StorageManager } from '../lib/storage'
 import { saveFolderHandle } from '../lib/sync/indexeddb'
@@ -7,6 +7,8 @@ import { checkForUpdate, getUpdateStatus, clearUpdateStatus, type UpdateStatus }
 import '../lib/migrations/v1.0' // Register migrations
 
 console.log('[Oh My Prompt] Service Worker started')
+
+const PROMPTS_CHAT_API_BASE = 'https://prompts.chat/api'
 
 const storageManager = StorageManager.getInstance()
 
@@ -233,6 +235,39 @@ chrome.runtime.onMessage.addListener(
             sendResponse({ success: false, error: 'Failed to restore permission' })
           })
         return true // Required for async response
+
+      case MessageType.FETCH_ONLINE_PROMPTS: {
+        const payload = message.payload as FetchOnlinePromptsPayload
+        const { endpoint, query, categoryId, promptId, page = 1, perPage = 20 } = payload
+
+        let url: string
+        if (endpoint === 'search') {
+          url = `${PROMPTS_CHAT_API_BASE}/prompts?q=${encodeURIComponent(query || '')}&page=${page}&perPage=${perPage}`
+        } else if (endpoint === 'category') {
+          url = `${PROMPTS_CHAT_API_BASE}/prompts?category=${categoryId}&page=${page}&perPage=${perPage}`
+        } else if (endpoint === 'detail') {
+          url = `${PROMPTS_CHAT_API_BASE}/prompts/${promptId}`
+        } else {
+          sendResponse({ success: false, error: 'Invalid endpoint' })
+          return true
+        }
+
+        console.log('[Oh My Prompt] FETCH_ONLINE_PROMPTS:', url)
+
+        fetch(url)
+          .then(response => {
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}`)
+            }
+            return response.json()
+          })
+          .then(data => sendResponse({ success: true, data }))
+          .catch(error => {
+            console.error('[Oh My Prompt] FETCH_ONLINE_PROMPTS error:', error)
+            sendResponse({ success: false, error: String(error) })
+          })
+        return true
+      }
 
       default:
         sendResponse({ success: false, error: `Unknown message type: ${message.type}` })

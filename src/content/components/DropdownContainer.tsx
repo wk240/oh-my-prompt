@@ -236,6 +236,31 @@ function getDropdownStyles(): string {
       to { transform: rotate(360deg); }
     }
 
+    #${PORTAL_ID} .dropdown-language-btn {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      padding: 4px 8px;
+      background: #ffffff;
+      border: 1px solid #E5E5E5;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 500;
+      color: #171717;
+      transition: background 0.15s ease;
+    }
+
+    #${PORTAL_ID} .dropdown-language-btn:hover {
+      background: #f8f8f8;
+    }
+
+    #${PORTAL_ID} .dropdown-language-btn.active {
+      background: #171717;
+      color: #ffffff;
+      border-color: #171717;
+    }
+
     #${PORTAL_ID} .dropdown-content {
       flex: 1;
       overflow-y: auto;
@@ -995,10 +1020,33 @@ export function DropdownContainer({
 
   // Resource library state (loaded from local JSON)
   const [isResourceLibrary, setIsResourceLibrary] = useState(false)
-  const [resourcePrompts] = useState<ResourcePrompt[]>(getResourcePrompts())
+  const [resourcePrompts, setResourcePrompts] = useState<ResourcePrompt[]>([])
+  const [rawResourcePrompts] = useState<ResourcePrompt[]>(getResourcePrompts())
   const [resourceCategories] = useState<ResourceCategory[]>(getResourceCategories())
   const [selectedResourceCategoryId, setSelectedResourceCategoryId] = useState<string>('all')
   const [loadedCount, setLoadedCount] = useState(50)
+
+  // Language preference state (for resource library)
+  const [resourceLanguage, setResourceLanguage] = useState<'zh' | 'en'>('zh')
+
+  // Load language preference from storage on dropdown open
+  useEffect(() => {
+    if (!isOpen) return
+    chrome.runtime.sendMessage({ type: MessageType.GET_STORAGE }, (response) => {
+      if (response?.success && response.data?.settings?.resourceLanguage) {
+        setResourceLanguage(response.data.settings.resourceLanguage)
+      }
+    })
+  }, [isOpen])
+
+  // Filter resource prompts by language preference
+  useEffect(() => {
+    setResourcePrompts(rawResourcePrompts.map(p => ({
+      ...p,
+      name: resourceLanguage === 'en' && p.nameEn ? p.nameEn : p.name,
+      content: resourceLanguage === 'en' && p.contentEn ? p.contentEn : p.content,
+    })))
+  }, [rawResourcePrompts, resourceLanguage])
 
   // Modal state for prompt preview
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -1109,6 +1157,25 @@ export function DropdownContainer({
       setIsRefreshing(false)
     }
   }, [isRefreshing, onRefresh])
+
+  // Handle language switch in resource library
+  const handleLanguageSwitch = useCallback((lang: 'zh' | 'en') => {
+    setResourceLanguage(lang)
+    // Save language preference to storage
+    chrome.runtime.sendMessage({ type: MessageType.GET_STORAGE }, (response) => {
+      if (response?.success) {
+        const currentSettings = response.data?.settings || { showBuiltin: true, syncEnabled: false }
+        chrome.runtime.sendMessage({
+          type: MessageType.SET_STORAGE,
+          payload: {
+            version: chrome.runtime.getManifest().version,
+            userData: { prompts: localPrompts, categories: localCategories },
+            settings: { ...currentSettings, resourceLanguage: lang }
+          }
+        })
+      }
+    })
+  }, [localPrompts, localCategories])
 
   // Check if a resource prompt is already collected
   const isPromptCollected = useCallback((resourcePrompt: ResourcePrompt): boolean => {
@@ -1801,6 +1868,18 @@ export function DropdownContainer({
                 <ExternalLink style={{ width: 14, height: 14 }} />
               </a>
             </Tooltip>
+            {/* Language switch button - only visible in resource library mode */}
+            {isResourceLibrary && (
+              <Tooltip content={resourceLanguage === 'zh' ? '切换英文' : '切换中文'} placement="bottom">
+                <button
+                  className="dropdown-language-btn"
+                  onClick={() => handleLanguageSwitch(resourceLanguage === 'zh' ? 'en' : 'zh')}
+                  aria-label="切换语言"
+                >
+                  <span>{resourceLanguage === 'zh' ? '中文' : 'EN'}</span>
+                </button>
+              </Tooltip>
+            )}
           </div>
         </div>
 

@@ -70,3 +70,47 @@ export interface UpdateStatus {
   releaseNotes?: string
   checkedAt: number
 }
+
+// Online search types (prompts.chat API)
+export interface OnlinePrompt {
+  id: string
+  title: string
+  slug: string
+  description: string | null
+  content: string
+  type: 'TEXT' | 'IMAGE'
+  mediaUrl: string | null
+  author: {
+    id: string
+    name: string
+    username: string
+    avatar: string
+    verified: boolean
+  }
+  category: {
+    id: string
+    name: string
+    slug: string
+    description?: string
+  }
+  tags: Array<{ id: string; name: string; color: string }>
+  voteCount: number
+  createdAt: string
+}
+
+export interface OnlineCategory {
+  id: string
+  name: string
+  slug: string
+  description?: string
+  icon?: string
+  order: number
+}
+
+export interface PromptsChatResponse {
+  prompts: OnlinePrompt[]
+  total: number
+  page: number
+  perPage: number
+  totalPages: number
+}

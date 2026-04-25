@@ -1874,15 +1874,19 @@ export function DropdownContainer({
             </Tooltip>
             {/* Language switch button - only visible in resource library mode */}
             {isResourceLibrary && (
-              <Tooltip content={resourceLanguage === 'zh' ? '切换英文' : '切换中文'} placement="bottom">
-                <button
-                  className="dropdown-language-btn"
-                  onClick={() => handleLanguageSwitch(resourceLanguage === 'zh' ? 'en' : 'zh')}
-                  aria-label="切换语言"
-                >
-                  <span>{resourceLanguage === 'zh' ? '中文' : 'EN'}</span>
-                </button>
-              </Tooltip>
+              <button
+                className="dropdown-language-btn"
+                onClick={() => handleLanguageSwitch(resourceLanguage === 'zh' ? 'en' : 'zh')}
+                aria-label="切换语言"
+                style={{
+                  background: '#3B82F6',
+                  color: '#ffffff',
+                  border: 'none',
+                  minWidth: '40px',
+                }}
+              >
+                <span>{resourceLanguage === 'zh' ? '中文' : 'EN'}</span>
+              </button>
             )}
           </div>
         </div>

@@ -1,8 +1,8 @@
 import { MessageType, MessageResponse } from '../shared/messages'
-import type { StorageSchema, SyncSettings } from '../shared/types'
+import type { StorageSchema, SyncSettings, UserData } from '../shared/types'
 import { StorageManager } from '../lib/storage'
 import { saveFolderHandle } from '../lib/sync/indexeddb'
-import { getSyncStatus } from '../lib/sync/sync-manager'
+import { getSyncStatus, triggerSync } from '../lib/sync/sync-manager'
 import { checkForUpdate, getUpdateStatus, clearUpdateStatus, type UpdateStatus } from '../lib/version-checker'
 import '../lib/migrations/v1.0' // Register migrations
 
@@ -53,11 +53,25 @@ chrome.runtime.onMessage.addListener(
               _migrationComplete: payload._migrationComplete ?? existingData._migrationComplete
             }
 
-            return storageManager.saveData(mergedData).then(() => mergedData)
+            return storageManager.saveData(mergedData).then(() => mergedData.userData)
           })
-          .then(() => {
+          .then((userData: UserData) => {
             console.log('[Oh My Prompt] SET_STORAGE: Save successful')
-            sendResponse({ success: true } as MessageResponse)
+            // Trigger sync and wait for completion before responding
+            return triggerSync(userData).then(syncSuccess => {
+              if (!syncSuccess) {
+                console.warn('[Oh My Prompt] Sync failed, notifying UI')
+                chrome.tabs.query({ url: ['*://lovart.ai/*', '*://*.lovart.ai/*'] }, (tabs) => {
+                  tabs.forEach(tab => {
+                    if (tab.id) {
+                      chrome.tabs.sendMessage(tab.id, { type: MessageType.SYNC_FAILED })
+                    }
+                  })
+                })
+              }
+              // Return sync status in response so caller knows the result
+              sendResponse({ success: true, data: { syncSuccess } } as MessageResponse)
+            })
           })
           .catch(error => {
             console.error('[Oh My Prompt] SET_STORAGE error:', error)

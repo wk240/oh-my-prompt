@@ -8,7 +8,6 @@ import { create } from 'zustand'
 import type { Prompt, Category, StorageSchema } from '../shared/types'
 import { MessageType } from '../shared/messages'
 import { sortPromptsByOrder } from '../shared/utils'
-import { triggerSync } from './sync/sync-manager'
 
 interface PromptStore {
   prompts: Prompt[]
@@ -18,11 +17,11 @@ interface PromptStore {
 
   // Actions
   loadFromStorage: () => Promise<{ success: boolean; error?: string }>
-  saveToStorage: () => Promise<{ success: boolean; error?: string }>
+  saveToStorage: () => Promise<{ success: boolean; syncSuccess?: boolean; error?: string }>
   setSelectedCategory: (categoryId: string | null) => void
 
   // Prompt CRUD
-  addPrompt: (prompt: Omit<Prompt, 'id'>) => void
+  addPrompt: (prompt: Omit<Prompt, 'id'>) => Promise<{ syncSuccess?: boolean }>
   updatePrompt: (id: string, updates: Partial<Prompt>) => void
   deletePrompt: (id: string) => void
 
@@ -176,30 +175,21 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
     const { prompts, categories } = get()
     try {
       const version = chrome.runtime.getManifest().version
-      // Only send version and userData - service-worker merges with existing settings
-      await sendStorageMessage(MessageType.SET_STORAGE, {
-        version,
-        userData: { prompts, categories }
-      } as StorageSchema)
-
-      // Trigger sync after save and notify if failed
-      triggerSync({ prompts, categories }).then(success => {
-        if (!success) {
-          console.warn('[Oh My Prompt] Sync failed, notifying UI')
-          // Broadcast to all Lovart tabs to show backup reminder
-          chrome.tabs.query({ url: ['*://lovart.ai/*', '*://*.lovart.ai/*'] }, (tabs) => {
-            tabs.forEach(tab => {
-              if (tab.id) {
-                chrome.tabs.sendMessage(tab.id, { type: MessageType.SYNC_FAILED })
-              }
-            })
-          })
-        }
-      }).catch(err => {
-        console.warn('[Oh My Prompt] Sync trigger failed:', err)
+      // Send data to service worker - sync is handled by service worker
+      const response = await chrome.runtime.sendMessage({
+        type: MessageType.SET_STORAGE,
+        payload: {
+          version,
+          userData: { prompts, categories }
+        } as StorageSchema
       })
 
-      return { success: true }
+      if (!response?.success) {
+        throw new Error(response?.error || 'Storage operation failed')
+      }
+
+      // Return sync status from service worker response
+      return { success: true, syncSuccess: response.data?.syncSuccess }
     } catch (error) {
       console.error('[Oh My Prompt] Failed to save storage:', error)
       return { success: false, error: '数据保存失败，请检查存储配额' }
@@ -211,7 +201,7 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
   },
 
   // Prompt CRUD
-  addPrompt: (prompt: Omit<Prompt, 'id'>) => {
+  addPrompt: async (prompt: Omit<Prompt, 'id'>) => {
     const { prompts } = get()
     // Find max order in the same category
     const categoryPrompts = prompts.filter(p => p.categoryId === prompt.categoryId)
@@ -227,7 +217,9 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
     set((state) => ({
       prompts: [...state.prompts, newPrompt]
     }))
-    get().saveToStorage()
+    // Wait for save to complete and return sync status
+    const result = await get().saveToStorage()
+    return { syncSuccess: result.syncSuccess }
   },
 
   updatePrompt: (id: string, updates: Partial<Prompt>) => {

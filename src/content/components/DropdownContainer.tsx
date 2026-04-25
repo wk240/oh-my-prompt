@@ -4,7 +4,7 @@
  * Positioned above the trigger button, right-aligned
  */
 
-import { useRef, useState, useMemo, useEffect, useCallback } from 'react'
+import { useRef, useState, useMemo, useEffect, useCallback, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
 import type { Prompt, Category, StorageSchema } from '../../shared/types'
 import type { ResourcePrompt, ResourceCategory, UpdateStatus } from '../../shared/types'
@@ -15,14 +15,15 @@ import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-
 import { CSS } from '@dnd-kit/utilities'
 import { NetworkPromptCard } from './NetworkPromptCard'
 import { ProviderCategoryItem } from './ProviderCategoryItem'
-import { PromptPreviewModal } from './PromptPreviewModal'
 import { CategorySelectDialog } from './CategorySelectDialog'
 import { ToastNotification } from './ToastNotification'
 import { Tooltip } from './Tooltip'
-import { UpdateGuideModal } from './UpdateGuideModal'
-import { CategoryEditModal } from './CategoryEditModal'
-import { DeleteConfirmModal } from './DeleteConfirmModal'
-import { PromptEditModal } from './PromptEditModal'
+// Lazy load Modal components - only loaded when user opens them
+const PromptPreviewModal = lazy(() => import('./PromptPreviewModal').then(m => ({ default: m.PromptPreviewModal })))
+const UpdateGuideModal = lazy(() => import('./UpdateGuideModal').then(m => ({ default: m.UpdateGuideModal })))
+const CategoryEditModal = lazy(() => import('./CategoryEditModal').then(m => ({ default: m.CategoryEditModal })))
+const DeleteConfirmModal = lazy(() => import('./DeleteConfirmModal').then(m => ({ default: m.DeleteConfirmModal })))
+const PromptEditModal = lazy(() => import('./PromptEditModal').then(m => ({ default: m.PromptEditModal })))
 import { usePromptStore } from '../../lib/store'
 import { getResourcePrompts, getResourceCategories } from '../../lib/resource-library'
 import { MessageType } from '../../shared/messages'
@@ -1130,7 +1131,7 @@ export function DropdownContainer({
   }, [onInjectResource])
 
   // Handle collect confirmation
-  const handleConfirmCollect = useCallback((categoryId: string, newCategoryName?: string) => {
+  const handleConfirmCollect = useCallback(async (categoryId: string, newCategoryName?: string) => {
     if (!selectedResourcePrompt) return
 
     let targetCategoryId = categoryId
@@ -1157,10 +1158,21 @@ export function DropdownContainer({
       order: 0,
     }
 
-    usePromptStore.getState().addPrompt(localPrompt)
+    // Wait for addPrompt to complete and get sync status
+    const result = await usePromptStore.getState().addPrompt(localPrompt)
 
     const categoryName = usePromptStore.getState().categories.find(c => c.id === targetCategoryId)?.name || '未知分类'
-    setToastMessage(`已收藏到 ${categoryName}`)
+
+    // Show toast based on sync status
+    if (result.syncSuccess === true) {
+      setToastMessage(`已收藏到 ${categoryName}，已自动备份`)
+    } else if (result.syncSuccess === false) {
+      setToastMessage(`已收藏到 ${categoryName}，备份失败，请检查备份设置`)
+    } else {
+      // syncSuccess undefined means sync not enabled or no response
+      setToastMessage(`已收藏到 ${categoryName}`)
+    }
+
     setIsCategoryDialogOpen(false)
     setIsModalOpen(false)
     setSelectedResourcePrompt(null)
@@ -1942,22 +1954,24 @@ export function DropdownContainer({
     </div>
     {/* Prompt preview modal with collect */}
     {selectedResourcePrompt && (
-      <PromptPreviewModal
-        prompt={selectedResourcePrompt}
-        isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false)
-          setSelectedResourcePrompt(null)
-        }}
-        onCollect={() => setIsCategoryDialogOpen(true)}
-        onInject={() => {
-          if (onInjectResource) {
-            onInjectResource(selectedResourcePrompt)
-            setToastMessage('已注入提示词')
-            setTimeout(() => setToastMessage(null), 2000)
-          }
-        }}
-      />
+      <Suspense fallback={null}>
+        <PromptPreviewModal
+          prompt={selectedResourcePrompt}
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false)
+            setSelectedResourcePrompt(null)
+          }}
+          onCollect={() => setIsCategoryDialogOpen(true)}
+          onInject={() => {
+            if (onInjectResource) {
+              onInjectResource(selectedResourcePrompt)
+              setToastMessage('已注入提示词')
+              setTimeout(() => setToastMessage(null), 2000)
+            }
+          }}
+        />
+      </Suspense>
     )}
     {/* Category select dialog */}
     <CategorySelectDialog
@@ -1994,68 +2008,74 @@ export function DropdownContainer({
       </div>
     )}
     {/* Update guide modal */}
-    <UpdateGuideModal
-      status={updateStatus}
-      isOpen={isUpdateGuideOpen}
-      onClose={() => setIsUpdateGuideOpen(false)}
-    />
+    <Suspense fallback={null}>
+      <UpdateGuideModal
+        status={updateStatus}
+        isOpen={isUpdateGuideOpen}
+        onClose={() => setIsUpdateGuideOpen(false)}
+      />
+    </Suspense>
     {/* Category CRUD modals */}
-    <CategoryEditModal
-      isOpen={isCategoryAddModalOpen}
-      onClose={() => setIsCategoryAddModalOpen(false)}
-      mode="add"
-      onConfirm={handleAddCategory}
-    />
-    <CategoryEditModal
-      isOpen={isCategoryEditModalOpen}
-      onClose={() => {
-        setIsCategoryEditModalOpen(false)
-        setEditingCategory(null)
-      }}
-      mode="edit"
-      initialName={editingCategory?.name || ''}
-      onConfirm={handleUpdateCategory}
-    />
-    <DeleteConfirmModal
-      isOpen={isDeleteCategoryModalOpen}
-      onClose={() => {
-        setIsDeleteCategoryModalOpen(false)
-        setDeletingCategory(null)
-      }}
-      itemName={deletingCategory?.name || ''}
-      itemType="category"
-      onConfirm={handleDeleteCategory}
-    />
+    <Suspense fallback={null}>
+      <CategoryEditModal
+        isOpen={isCategoryAddModalOpen}
+        onClose={() => setIsCategoryAddModalOpen(false)}
+        mode="add"
+        onConfirm={handleAddCategory}
+      />
+      <CategoryEditModal
+        isOpen={isCategoryEditModalOpen}
+        onClose={() => {
+          setIsCategoryEditModalOpen(false)
+          setEditingCategory(null)
+        }}
+        mode="edit"
+        initialName={editingCategory?.name || ''}
+        onConfirm={handleUpdateCategory}
+      />
+      <DeleteConfirmModal
+        isOpen={isDeleteCategoryModalOpen}
+        onClose={() => {
+          setIsDeleteCategoryModalOpen(false)
+          setDeletingCategory(null)
+        }}
+        itemName={deletingCategory?.name || ''}
+        itemType="category"
+        onConfirm={handleDeleteCategory}
+      />
+    </Suspense>
     {/* Prompt CRUD modals */}
-    <PromptEditModal
-      isOpen={isPromptAddModalOpen}
-      onClose={() => setIsPromptAddModalOpen(false)}
-      mode="add"
-      categories={sortableCategories}
-      defaultCategoryId={selectedCategoryId !== 'all' ? selectedCategoryId : undefined}
-      onConfirm={handleAddPrompt}
-    />
-    <PromptEditModal
-      isOpen={isPromptEditModalOpen}
-      onClose={() => {
-        setIsPromptEditModalOpen(false)
-        setEditingPrompt(null)
-      }}
-      mode="edit"
-      prompt={editingPrompt ?? undefined}
-      categories={sortableCategories}
-      onConfirm={handleUpdatePrompt}
-    />
-    <DeleteConfirmModal
-      isOpen={isDeletePromptModalOpen}
-      onClose={() => {
-        setIsDeletePromptModalOpen(false)
-        setDeletingPrompt(null)
-      }}
-      itemName={deletingPrompt?.name || ''}
-      itemType="prompt"
-      onConfirm={handleDeletePrompt}
-    />
+    <Suspense fallback={null}>
+      <PromptEditModal
+        isOpen={isPromptAddModalOpen}
+        onClose={() => setIsPromptAddModalOpen(false)}
+        mode="add"
+        categories={sortableCategories}
+        defaultCategoryId={selectedCategoryId !== 'all' ? selectedCategoryId : undefined}
+        onConfirm={handleAddPrompt}
+      />
+      <PromptEditModal
+        isOpen={isPromptEditModalOpen}
+        onClose={() => {
+          setIsPromptEditModalOpen(false)
+          setEditingPrompt(null)
+        }}
+        mode="edit"
+        prompt={editingPrompt ?? undefined}
+        categories={sortableCategories}
+        onConfirm={handleUpdatePrompt}
+      />
+      <DeleteConfirmModal
+        isOpen={isDeletePromptModalOpen}
+        onClose={() => {
+          setIsDeletePromptModalOpen(false)
+          setDeletingPrompt(null)
+        }}
+        itemName={deletingPrompt?.name || ''}
+        itemType="prompt"
+        onConfirm={handleDeletePrompt}
+      />
+    </Suspense>
   </>,
     getPortalContainer()
   )

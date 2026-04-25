@@ -28,6 +28,7 @@ export interface SyncSettings {
   lastSyncTime?: number // Timestamp of last successful sync
   hasUnsyncedChanges?: boolean // Flag to show backup reminder after reorder
   dismissedBackupWarning?: boolean // User dismissed the backup warning dialog
+  resourceLanguage?: 'zh' | 'en' // Language preference for resource library, default 'zh'
 }
 
 // New storage schema with nested structure
@@ -51,6 +52,9 @@ export interface ResourcePrompt extends Prompt {
   previewImage?: string // Preview image URL
   author?: string // Original author name, e.g. "宝玉"
   authorUrl?: string // Author attribution link, e.g. "https://x.com/..."
+  // Bilingual fields (optional, supports progressive translation)
+  nameEn?: string // English name
+  contentEn?: string // English content
 }
 
 // Resource library category metadata

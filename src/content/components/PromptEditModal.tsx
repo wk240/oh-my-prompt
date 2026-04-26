@@ -15,6 +15,7 @@ import {
   getCachedImageUrl,
 } from '../../lib/sync/image-sync'
 import type { ImageSaveResult } from '../../lib/sync/image-sync'
+import { MAX_IMAGE_SIZE, ALLOWED_IMAGE_EXTENSIONS } from '../../shared/constants'
 
 interface PromptEditModalProps {
   isOpen: boolean
@@ -73,9 +74,20 @@ export function PromptEditModal({
   const [showFolderWarning, setShowFolderWarning] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Cleanup blob URLs to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (imagePreviewUrl && imagePreviewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(imagePreviewUrl)
+      }
+    }
+  }, [imagePreviewUrl])
+
   // Reset state when modal opens
   useEffect(() => {
     if (isOpen) {
+      let cancelled = false
+
       if (prompt) {
         setName(prompt.name)
         setDescription(prompt.description || '')
@@ -86,9 +98,17 @@ export function PromptEditModal({
         setRemoteImageUrl(prompt.remoteImageUrl)
         if (prompt.localImage) {
           // Load preview for existing image
-          getCachedImageUrl(prompt.localImage).then((url) => {
-            setImagePreviewUrl(url || undefined)
-          })
+          getCachedImageUrl(prompt.localImage)
+            .then((url) => {
+              if (!cancelled) {
+                setImagePreviewUrl(url || undefined)
+              }
+            })
+            .catch(() => {
+              if (!cancelled) {
+                setImagePreviewUrl(undefined)
+              }
+            })
         } else {
           setImagePreviewUrl(undefined)
         }
@@ -105,6 +125,10 @@ export function PromptEditModal({
       setImageUrlInput('')
       setImageError(undefined)
       setShowFolderWarning(false)
+
+      return () => {
+        cancelled = true
+      }
     }
   }, [isOpen, prompt, defaultCategoryId, categories])
 
@@ -121,15 +145,15 @@ export function PromptEditModal({
       }
 
       // Validate file size
-      if (file.size > 5 * 1024 * 1024) {
-        setImageError('图片太大，请选择小于5MB的图片')
+      if (file.size > MAX_IMAGE_SIZE) {
+        setImageError(`图片太大，请选择小于${MAX_IMAGE_SIZE / 1024 / 1024}MB的图片`)
         return
       }
 
       // Validate file type
       const ext = file.name.split('.').pop()?.toLowerCase()
-      if (!['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext || '')) {
-        setImageError('请选择 jpg、png、webp 或 gif 格式的图片')
+      if (!ALLOWED_IMAGE_EXTENSIONS.includes(ext || '')) {
+        setImageError(`请选择 ${ALLOWED_IMAGE_EXTENSIONS.join('、')} 格式的图片`)
         return
       }
 

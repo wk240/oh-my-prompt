@@ -28,7 +28,7 @@ import { usePromptStore } from '../../lib/store'
 import { getResourcePrompts, getResourceCategories } from '../../lib/resource-library'
 import { MessageType } from '../../shared/messages'
 import { readImportFile, mergeImportData } from '../../lib/import-export'
-import { getCachedImageUrl, clearImageUrlCache } from '../../lib/sync/image-sync'
+import { getCachedImageUrl, clearImageUrlCache, isFolderConfigured, downloadImageFromUrl, saveImage } from '../../lib/sync/image-sync'
 
 interface DropdownContainerProps {
   prompts: Prompt[]
@@ -918,6 +918,7 @@ function SortableDropdownItem({
   onEdit,
   onDelete,
   thumbnailUrl,
+  onThumbnailClick,
 }: {
   prompt: Prompt
   isLast: boolean
@@ -927,6 +928,7 @@ function SortableDropdownItem({
   onEdit: (prompt: Prompt) => void
   onDelete: (prompt: Prompt) => void
   thumbnailUrl?: string | null
+  onThumbnailClick?: (prompt: Prompt) => void  // Click on thumbnail to open preview
 }) {
   const {
     attributes,
@@ -962,9 +964,18 @@ function SortableDropdownItem({
         }
       }}
     >
-      {/* Thumbnail - 60x40 image preview */}
+      {/* Thumbnail - 60x40 image preview, click to open preview modal */}
       {prompt.localImage && (
-        <div className="dropdown-item-thumbnail">
+        <div
+          className="dropdown-item-thumbnail"
+          style={onThumbnailClick && thumbnailUrl ? { cursor: 'pointer' } : {}}
+          onClick={(e) => {
+            if (onThumbnailClick && thumbnailUrl) {
+              e.stopPropagation()
+              onThumbnailClick(prompt)
+            }
+          }}
+        >
           {thumbnailUrl ? (
             <img src={thumbnailUrl} alt={prompt.name} />
           ) : (
@@ -1045,6 +1056,10 @@ export function DropdownContainer({
   // Modal state for prompt preview
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedResourcePrompt, setSelectedResourcePrompt] = useState<ResourcePrompt | null>(null)
+
+  // User prompt preview modal state (triggered by thumbnail click)
+  const [isUserPromptModalOpen, setIsUserPromptModalOpen] = useState(false)
+  const [selectedUserPrompt, setSelectedUserPrompt] = useState<Prompt | null>(null)
 
   // Category select dialog state
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false)
@@ -1175,7 +1190,7 @@ export function DropdownContainer({
     }
   }, [onInjectResource])
 
-  // Handle collect confirmation
+  // Handle collect confirmation - auto-download preview image when available
   const handleConfirmCollect = useCallback(async (categoryId: string, newCategoryName?: string) => {
     if (!selectedResourcePrompt) return
 
@@ -1195,28 +1210,76 @@ export function DropdownContainer({
       return
     }
 
-    const localPrompt: Omit<Prompt, 'id'> = {
-      name: selectedResourcePrompt.name,
-      content: selectedResourcePrompt.content,
-      categoryId: targetCategoryId,
-      description: selectedResourcePrompt.description,
-      order: 0,
+    // Check folder configured for image download
+    const folderConfigured = await isFolderConfigured()
+    let localImage: string | undefined = undefined
+
+    // Auto-download image if folder configured and prompt has preview image
+    if (folderConfigured && selectedResourcePrompt.previewImage) {
+      try {
+        const downloadResult = await downloadImageFromUrl(selectedResourcePrompt.previewImage)
+        if (downloadResult.success && downloadResult.blob) {
+          // Store the blob temporarily
+          const imageBlob = downloadResult.blob
+
+          // Create prompt first to get ID
+          const tempPrompt: Omit<Prompt, 'id'> = {
+            name: selectedResourcePrompt.name,
+            content: selectedResourcePrompt.content,
+            categoryId: targetCategoryId,
+            description: selectedResourcePrompt.description,
+            order: 0,
+            remoteImageUrl: selectedResourcePrompt.previewImage,
+          }
+
+          // Add prompt and get the created prompt with ID
+          await usePromptStore.getState().addPrompt(tempPrompt)
+
+          // Get the newly created prompt ID from store
+          const newPrompt = usePromptStore.getState().prompts.find(p =>
+            p.content === selectedResourcePrompt.content && p.categoryId === targetCategoryId
+          )
+
+          if (newPrompt) {
+            // Save image with the prompt ID
+            const imageResult = await saveImage(newPrompt.id, imageBlob)
+            if (imageResult.success && imageResult.relativePath) {
+              // Update prompt with localImage path
+              usePromptStore.getState().updatePrompt(newPrompt.id, {
+                localImage: imageResult.relativePath
+              })
+              localImage = imageResult.relativePath
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('[Oh My Prompt] Failed to download resource image:', error)
+        // Continue without image - user can add later
+      }
+    } else if (!folderConfigured && selectedResourcePrompt.previewImage) {
+      // Folder not configured - show toast
+      setToastMessage('图片未保存，请先配置备份文件夹')
+      setTimeout(() => setToastMessage(null), 3000)
     }
 
-    // Wait for addPrompt to complete and get sync status
-    const result = await usePromptStore.getState().addPrompt(localPrompt)
+    // If image download failed or no image, create prompt without image
+    if (!localImage) {
+      const localPrompt: Omit<Prompt, 'id'> = {
+        name: selectedResourcePrompt.name,
+        content: selectedResourcePrompt.content,
+        categoryId: targetCategoryId,
+        description: selectedResourcePrompt.description,
+        order: 0,
+        remoteImageUrl: selectedResourcePrompt.previewImage,
+      }
+
+      await usePromptStore.getState().addPrompt(localPrompt)
+    }
 
     const categoryName = usePromptStore.getState().categories.find(c => c.id === targetCategoryId)?.name || '未知分类'
 
-    // Show toast based on sync status
-    if (result.syncSuccess === true) {
-      setToastMessage(`已收藏到 ${categoryName}，已自动备份`)
-    } else if (result.syncSuccess === false) {
-      setToastMessage(`已收藏到 ${categoryName}，备份失败，请检查备份设置`)
-    } else {
-      // syncSuccess undefined means sync not enabled or no response
-      setToastMessage(`已收藏到 ${categoryName}`)
-    }
+    // Show success toast
+    setToastMessage(`已收藏到 ${categoryName}`)
 
     setIsCategoryDialogOpen(false)
     setIsModalOpen(false)
@@ -2001,6 +2064,10 @@ export function DropdownContainer({
                       onSelect={onSelect}
                       showDragHandle={showDragHandles}
                       thumbnailUrl={thumbnailUrls.get(prompt.id)}
+                      onThumbnailClick={(p) => {
+                        setSelectedUserPrompt(p)
+                        setIsUserPromptModalOpen(true)
+                      }}
                       onEdit={(p) => {
                         setEditingPrompt(p)
                         setIsPromptEditModalOpen(true)
@@ -2045,6 +2112,39 @@ export function DropdownContainer({
               setToastMessage('已注入提示词')
               setTimeout(() => setToastMessage(null), 2000)
             }
+          }}
+        />
+      </Suspense>
+    )}
+    {/* User prompt preview modal (triggered by thumbnail click) */}
+    {selectedUserPrompt && (
+      <Suspense fallback={null}>
+        <PromptPreviewModal
+          prompt={selectedUserPrompt}
+          isOpen={isUserPromptModalOpen}
+          onClose={() => {
+            setIsUserPromptModalOpen(false)
+            setSelectedUserPrompt(null)
+          }}
+          isUserPrompt={true}
+          onEdit={() => {
+            setIsUserPromptModalOpen(false)
+            setEditingPrompt(selectedUserPrompt)
+            setIsPromptEditModalOpen(true)
+          }}
+          onInject={(language) => {
+            // For user prompts, inject using onSelect with content
+            const promptToInject = {
+              ...selectedUserPrompt,
+              content: language === 'en' && selectedUserPrompt.contentEn
+                ? selectedUserPrompt.contentEn
+                : selectedUserPrompt.content
+            }
+            onSelect(promptToInject)
+            setIsUserPromptModalOpen(false)
+            setSelectedUserPrompt(null)
+            setToastMessage('已插入提示词')
+            setTimeout(() => setToastMessage(null), 2000)
           }}
         />
       </Suspense>

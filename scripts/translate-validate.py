@@ -10,15 +10,27 @@ import json
 import re
 from pathlib import Path
 
+# Placeholder patterns - only match variable placeholders, not JSON objects
+# Limit to short placeholders (max 30 chars) to avoid matching JSON structures
 PLACEHOLDER_PATTERNS = [
-    r'\{[^}]+\}',    # {Brand Name}, {variable}
-    r'\[[^\]]+\]',   # [CITY], [placeholder]
-    r'<[^>]+>',      # <placeholder>
+    r'\{[a-zA-Z_][a-zA-Z0-9_\s]{0,25}\}',    # {Brand Name}, {variable} - short placeholders
+    r'\[[a-zA-Z_][a-zA-Z0-9_\s]{0,25}\]',    # [CITY], [placeholder] - short placeholders
+    r'<[a-zA-Z_][a-zA-Z0-9_\s]{0,25}>',      # <placeholder> - short placeholders
 ]
 
-def extract_placeholders(text: str) -> list[str]:
-    """Extract all placeholders from text."""
+def is_json_content(text: str) -> bool:
+    """Check if content is a JSON structure (starts with { or [)."""
     if not text:
+        return False
+    text = text.strip()
+    return text.startswith('{') or text.startswith('[')
+
+def extract_placeholders(text: str) -> list[str]:
+    """Extract placeholder variables from text, ignoring JSON structures."""
+    if not text:
+        return []
+    # Skip placeholder extraction for JSON content
+    if is_json_content(text):
         return []
     placeholders = []
     for pattern in PLACEHOLDER_PATTERNS:

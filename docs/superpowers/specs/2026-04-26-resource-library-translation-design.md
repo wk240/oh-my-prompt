@@ -17,13 +17,14 @@
 
 ## 翻译字段映射
 
-| 英文源字段 | 中文目标字段 | 备注 |
-|-----------|-------------|------|
-| `nameEn` | `name` | 名称 |
-| `descriptionEn` | `contentEn` 移动 | 描述（224 个有此字段） |
-| `contentEn` | `content` | 提示词正文 |
+| 字段处理 | 说明 |
+|---------|------|
+| `nameEn` → `name` | 英文名称翻译为中文 |
+| `description` → `descriptionEn` | 现有英文描述移动到新字段 |
+| (翻译) → `description` | 中文描述填入此字段 |
+| `contentEn` → `content` | 英文提示词翻译为中文 |
 
-**注意：** 当前 `description` 字段存的是英文，需要：
+**注意：** 当前 `description` 字段存的是英文，预处理时需要：
 1. 将现有 `description` 内容移动到 `descriptionEn`
 2. 翻译后的中文存入 `description`
 

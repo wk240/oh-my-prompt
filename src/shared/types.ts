@@ -55,6 +55,7 @@ export interface ResourcePrompt extends Prompt {
   // Bilingual fields (optional, supports progressive translation)
   nameEn?: string // English name
   contentEn?: string // English content
+  descriptionEn?: string // English description
 }
 
 // Resource library category metadata

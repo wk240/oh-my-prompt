@@ -18,6 +18,7 @@ export interface ImageSaveResult {
 export interface ImageReadResult {
   success: boolean
   blob?: Blob
+  /** Blob URL created via URL.createObjectURL. WARNING: Caller must revoke via URL.revokeObjectURL() to avoid memory leaks. Prefer getCachedImageUrl() for managed URL lifecycle. */
   url?: string
   error?: 'FOLDER_NOT_CONFIGURED' | 'READ_FAILED' | 'FILE_NOT_FOUND'
 }
@@ -138,7 +139,12 @@ export async function deleteImage(promptId: string): Promise<{ success: boolean;
 }
 
 /**
- * Read image blob from relative path
+ * Read image blob from relative path.
+ *
+ * WARNING: This function returns a blob URL created via URL.createObjectURL().
+ * The caller is responsible for revoking the URL via URL.revokeObjectURL() when
+ * no longer needed to avoid memory leaks. For automatic URL lifecycle management,
+ * prefer getCachedImageUrl() which handles caching and cleanup.
  */
 export async function readImage(relativePath: string): Promise<ImageReadResult> {
   const handle = await getFolderHandle()
@@ -172,7 +178,7 @@ export async function downloadImageFromUrl(url: string): Promise<ImageDownloadRe
 
     const contentType = response.headers.get('content-type') || ''
     if (!contentType.startsWith('image/')) {
-      // Try to proceed anyway - some URLs don't have proper content-type
+      console.warn('[Oh My Prompt] Response content-type is not an image type:', contentType, 'for URL:', url)
     }
 
     const blob = await response.blob()

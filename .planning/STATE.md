@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.2.0
 milestone_name: 在线搜索功能
 status: in_progress
-last_updated: "2026-04-26T00:00:00.000Z"
+last_updated: "2026-04-26T07:32:09.593Z"
 progress:
-  total_phases: 5
-  completed_phases: 0
-  total_plans: 5
-  completed_plans: 0
-  percent: 0
+  total_phases: 4
+  completed_phases: 4
+  total_plans: 18
+  completed_plans: 18
+  percent: 100
 ---
 
 # STATE.md

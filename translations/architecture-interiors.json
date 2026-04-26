@@ -1,0 +1,94 @@
+{
+  "translations": [
+    {
+      "id": "resource-architecture-interiors-0",
+      "name": "纽约市3D渲染 | 等距纽约天际线与天气",
+      "description": "",
+      "content": "提示词",
+      "nameEn": "New York City 3D Render | Isometric NYC Skyline & Weather",
+      "descriptionEn": "",
+      "contentEn": "Prompt"
+    },
+    {
+      "id": "resource-architecture-interiors-1",
+      "name": "AR室内设计：手机上的工业现代风客厅",
+      "description": "",
+      "content": "人们正在发现疯狂的方法来创建3D渲染、不可能的镜头和超写实的AI网红。\n\n10个示例+提示词。收藏这个\n\n1. Nano Banana -> World Labs -> WebAR (threejs)",
+      "nameEn": "AR Interior Design: Industrial Modern Living Room on Phone",
+      "descriptionEn": "",
+      "contentEn": "People are finding insane ways to create 3D renderings, impossible shots, and ultra realistic AI influencers.\n\n10 examples + prompt. Bookmark this \n\n1. Nano banana -> World Labs -> WebAR (threejs)"
+    },
+    {
+      "id": "resource-architecture-interiors-2",
+      "name": "北京7日旅行路线：地标手绘指南",
+      "description": "",
+      "content": "此提示词生成一张充满活力、儿童蜡笔风格的垂直(9:16)旅行日记插画，用于{City Name}之旅，自动创建一条蜿蜒的路线，包含每日推荐的景点、可爱的涂鸦、当地地标、美食和俏皮的手写笔记。整体基调温馨、有趣，充满童真的好奇心。\n\n--- 提示词 ---\n\n请创建一张充满活力、儿童蜡笔风格的垂直(9:16)插画，标题为「{City Name}旅行日记」。\n作品应呈现出一个充满好奇心的孩子用彩色蜡笔绘制的效果，采用柔和、温暖的浅色背景（如淡黄色），结合明亮的红色、蓝色、绿色和其他欢快的色彩，营造舒适、俏皮的旅行氛围。\n\n一、主场景：旅行日记风格路线图\n\n在插画中央，用箭头和虚线绘制一条「蜿蜒曲折的旅行路线」，连接多个地点。\n路线应根据{Number of Days}自动生成推荐景点：\n\n示例结构（自动填充{City Name}相关内容）：\n\n- 「第一站：{景点1 + 简短趣味描述}」\n- 「第二站：{景点2 + 简短趣味描述}」\n- 「第三站：{景点3 + 简短趣味描述}」\n- …\n- 「终点站：{当地特色美食或纪念品 + 温馨结语}」\n\n规则：\n- 如未提供天数，默认生成1日精华行程。\n\n二、周围趣味元素（自动适配城市）\n\n在路线周围添加许多可爱的涂鸦和童趣装饰元素，例如：\n\n1. 可爱的旅行角色\n   - 拿着当地小吃的孩子\n   - 背着背包的小探险家\n\n2. Q版手绘标志性建筑\n   - 「{City Landmark 1}」\n   - 「{City Landmark 2}」\n   - 「{City Landmark 3}」\n\n3. 搞笑告示牌\n   - 「别迷路啦！」\n   - 「前面人好多！」\n   - 「美食在这边！」\n   （根据城市自动调整内容）\n\n4. 贴纸风格的短句\n   - 「{City Name}旅行回忆解锁！」\n   - 「{City Name}美食探险！」\n   - 「下一站去哪？」\n\n5. 当地美食可爱图标\n   - 「{Local Food 1}」\n   - 「{Local Food 2}」\n   - 「{Local Food 3}」\n\n6. 童趣感叹语\n   - 「没想到{City Name}这么好玩！」\n   - 「我想再来一次！」\n\n三、整体艺术风格要求\n\n- 蜡笔/儿童手绘旅行日记风格\n- 明亮、温暖、多彩的配色\n- 构图饱满但温馨活泼\n- 强调探索的乐趣\n- 所有文字使用可爱的手写字体\n- 让整页感觉像是小朋友的趣味旅行日记\n\n---\n\n输入：\n芝加哥7日游，英文",
+      "nameEn": "Beijing 7-Day Travel Itinerary: Illustrated Guide to Landmarks",
+      "descriptionEn": "",
+      "contentEn": "This prompt generates a vibrant, child-like crayon-style vertical (9:16) travel-journal illustration for a {City Name} trip, automatically creating a winding route with daily recommended attractions, cute doodles, local landmarks, foods, and playful handwritten notes. The tone is warm, fun, and full of childlike curiosity.\n\n--- Prompt ---\n\nPlease create a vibrant, child-like crayon-style vertical (9:16) illustration titled \"{City Name} Travel Journal.\"  \nThe artwork should look as if it were drawn by a curious child using colorful crayons, featuring a soft, warm light-toned background (such as pale yellow), combined with bright reds, blues, greens, and other cheerful colors to create a cozy, playful travel atmosphere.\n\nI. Main Scene: Travel-Journal Style Route Map\n\nIn the center of the illustration, draw a \"winding, zigzagging travel route\" with arrows and dotted lines connecting multiple locations.  \nThe route should automatically generate recommended attractions based on {Number of Days}:\n\nExample structure (auto-filled with {City Name}-related content):\n\n- \"Stop 1: {Attraction 1 + short fun description}\"\n- \"Stop 2: {Attraction 2 + short fun description}\"\n- \"Stop 3: {Attraction 3 + short fun description}\"\n- …\n- \"Final Stop: {Local signature food or souvenir + warm closing remark}\"\n\nRules:\n- If no number of days is provided, default to a 1-day highlight itinerary.\n\nII. Surrounding Playful Elements (Auto-adapt to the City)\n\nAdd many cute doodles and child-like decorative elements around the route, such as:\n\n1. Adorable travel characters\n   - A child holding a local snack  \n   - A little adventurer with a backpack\n\n2. Q-style hand-drawn iconic landmarks\n   - \"{City Landmark 1}\"\n   - \"{City Landmark 2}\"\n   - \"{City Landmark 3}\"\n\n3. Funny signboards\n   - \"Don't get lost!\"\n   - \"Crowds ahead!\"\n   - \"Yummy food this way!\"  \n   (Auto-adjust contextually for the city)\n\n4. Sticker-style short phrases\n   - \"{City Name} travel memories unlocked!\"\n   - \"{City Name} food adventure!\"\n   - \"Where to next?\"\n\n5. Cute icons of local foods\n   - \"{Local Food 1}\"\n   - \"{Local Food 2}\"\n   - \"{Local Food 3}\"\n\n6. Childlike exclamations\n   - \"I didn't know {City Name} was so fun!\"\n   - \"I want to come again!\"\n\nIII. Overall Art Style Requirements\n\n- Crayon / children's hand-drawn travel diary style  \n- Bright, warm, colorful palette  \n- Cozy but full and lively composition  \n- Emphasize the joy of exploring  \n- All text should be in a cute handwritten font  \n- Make the entire page feel like a young child's fun travel-journal entry  \n\n---\n\nInput :\nChicago 7-Day Trip, English"
+    },
+    {
+      "id": "resource-architecture-interiors-3",
+      "name": "抽象3D渲染：极简几何建筑图案",
+      "description": "",
+      "content": "专业建筑摄影4x4网格，展示相同房间布局通过16种不同室内设计风格呈现的效果。所有家具摆放、房间几何形状和空间构图必须与提供的深度图参考完全一致。相机：统一的3/4角度、24mm移轴镜头、f/8、三脚架固定。仅材料、颜色、纹理和装饰元素变化——物体位置或比例不变。关键约束：家具摆放、房间尺寸、门窗位置以及所有物体的位置在所有16帧中必须与参考深度图保持像素级精确一致。轮廓和空间排列不可改变。",
+      "nameEn": "Abstract 3D Render: Minimalist Geometric Architectural Pattern",
+      "descriptionEn": "",
+      "contentEn": "Professional architectural photography 4x4 grid showcasing identical room layout transformed through 16 distinct interior design styles. All furniture placement, room geometry, and spatial composition must exactly match the provided depth map reference. Camera: consistent 3/4 angle, 24mm tilt-shift lens, f/8, tripod-mounted. Only materials, colors, textures, and decorative elements change—never position or scale of objects.CRITICAL CONSTRAINT: Furniture placement, room dimensions, window/door positions, and all object locations must remain pixel-perfect identical to the reference depth map across all 16 frames. The silhouette and spatial arrangement cannot change."
+    },
+    {
+      "id": "resource-architecture-interiors-4",
+      "name": "带飘窗与硬木地板的空客厅",
+      "description": "",
+      "content": "展示这个房间摆放家具后的效果",
+      "nameEn": "Empty Living Room with Bay Window & Hardwood Floor",
+      "descriptionEn": "",
+      "contentEn": "Show me how this room would look with furniture in it"
+    },
+    {
+      "id": "resource-architecture-interiors-5",
+      "name": "木质与鱼骨拼地板的豪华家居室内设计",
+      "description": "",
+      "content": "做了一些实验，摸索出了AI设计转换的工作流程：\n\n从一张没有家具的房间基础图片开始。然后在Nano Banana Pro上提示添加你想要的内容（例如一个酷炫的门框、阁楼或泳池）。\n\n将结果作为Veo 3.1的起始和结束帧。\n\n提示词：「延时摄影建造，快动作展示建筑工人将一棵树搬进客厅，然后建造阁楼并添加沙发和灯具。」",
+      "nameEn": "Luxury Home Interior Design with Wood & Herringbone Floor",
+      "descriptionEn": "",
+      "contentEn": "Did some experimenting and figured out the workflow for AI design transformations: \n\nStart with a base image of a room with no furniture. Then prompt on Nano Banana Pro to add what you'd like (e.g. a cool door frame, loft, or pool). \n\nTake to Veo 3.1 as your start and end frames.\n\nPrompt: \"time lapse construction, fast motion as a construction workers bring a tree into the living room and then construct the loft and add the couch and lights.\""
+    },
+    {
+      "id": "resource-architecture-interiors-6",
+      "name": "16种多样客厅室内设计与家居装饰灵感",
+      "description": "",
+      "content": "Nano Banana Pro用于室内设计情绪板。16种风格，相同空间，一个提示词。\n\n提示词（在对话末尾）：https://claude.ai/share/4b94f588-c6ae-47d7-9b42-9d95a4df4fbd…",
+      "nameEn": "16 Diverse Living Room Interior Designs & Home Decor Inspiration",
+      "descriptionEn": "",
+      "contentEn": "nano banana pro for interior design mood boards. 16 styles, same space, one prompt\n\nprompt (at the end of the conversation): https://claude.ai/share/4b94f588-c6ae-47d7-9b42-9d95a4df4fbd…"
+    },
+    {
+      "id": "resource-architecture-interiors-7",
+      "name": "反乌托邦巨头企业摩天大楼：未来主义建筑概念",
+      "description": "",
+      "content": "第2步：将此物体放大5000%。现在它成为野蛮主义混凝土未来中反派巨头企业的总部。分析几何结构以创建可居住的楼层。\n\n第3步输出：2x2网格。\n网格1和2：「物体变塔楼」的蓝图，展示电梯井和高管套房。\n网格3：街景视角仰望混凝土巨型建筑，雨雾中。用小人作为比例参考。外立面附着霓虹赛博朋克招牌。\n网格4：大堂室内镜头，保留原物体的塑料曲线，但以冷峻的混凝土和玻璃呈现。",
+      "nameEn": "Dystopian Mega-Corp Skyscraper: Futuristic Architecture Concept",
+      "descriptionEn": "",
+      "contentEn": "Step 2: Scale this object up by 5000%. It is now the headquarters for a villainous mega-corporation in a Brutalist concrete future. Analyze the geometry to create habitable floors.\"\n\nStep 3 Output: 2x2 Grid.\nGrid 1 & 2: Blueprints of the \"Object turned into Tower\" showing elevator shafts and executive suites.\nGrid 3: Eye-level street view looking up at the concrete mega-structure in rain and fog. Tiny people for scale. Neon cyberpunk signs attached to the exterior.\nGrid 4: Interior shot of the lobby, retaining the plastic curves of the original object but rendered in cold concrete and glass."
+    },
+    {
+      "id": "resource-architecture-interiors-8",
+      "name": "带无限循环与画架的艺术工作室油画",
+      "description": "",
+      "content": "在Nano Banana Pro中创建递归图像的简写提示词是「德罗斯特效应」。\n\n> 无摄影或人物的德罗斯特效应",
+      "nameEn": "Art Studio Oil Painting with Infinite Loop & Easels",
+      "descriptionEn": "",
+      "contentEn": "A shorthand prompt you can use to make recursive images with Nano Banana Pro is \"Droste effect\".\n\n> Droste effect without photography or people"
+    },
+    {
+      "id": "resource-architecture-interiors-9",
+      "name": "泰姬陵建筑与花园：宁静倒影池景观",
+      "description": "",
+      "content": "Nano Banana Pro刚刚以近乎完美的精度测量了泰姬陵的尺寸。\n\n最先进的图像生成技术，能够理解工程图纸、技术规格和现实世界的测量数据。\n\n我在@higgsfield_ai的Nano Banana Pro中构建了一个提示词，可以将任何照片转换为工程级示意图，完全免费。\n\n想要提示词？\n关注、点赞、转发并评论「提示词」。\n.\n.\n.",
+      "nameEn": "Taj Mahal Architecture & Gardens: Serene Reflection Pool View",
+      "descriptionEn": "",
+      "contentEn": "Nano Banana Pro just measured the Taj Mahal's dimensions with near-perfect precision.\n\nSOTA image generation that understands engineering drawings, technical specs, and real-world measurements.\n\nI built a prompt that converts any photo into an engineering-grade schematic inside Nano Banana Pro on @higgsfield_ai for free.\n\nWant the prompt?\nFollow, like, repost, and comment \"Prompt\".\n.\n.\n."
+    }
+  ]
+}

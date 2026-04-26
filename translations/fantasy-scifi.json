@@ -1,0 +1,94 @@
+{
+  "translations": [
+    {
+      "id": "resource-fantasy-scifi-0",
+      "name": "蒙娜丽莎冷切肉拼盘艺术 - 创意美食",
+      "description": "",
+      "content": "输入A：蒙娜丽莎。<instructions> 扮演世界顶级美食专家和艺术家。\n\n输入A：杰作画作（如蒙娜丽莎、星月夜、呐喊）。\n\n分析构图、色彩、氛围、元素。挑选与该地区相关的合适食材用于画作创作。\n\n目标：制作大型冷切肉拼盘，使用腌制肉类、奶酪、水果、坚果及其他与该地区相关的食材，复刻画作。\n规则：决定每个部分使用哪些食材，使拼盘尽可能逼真地呈现画作，但主要由食物组成。\n\n2x2网格：面板1：原画参考；面板2：食材布局图；面板3：俯视制作过程；面板4：最终拼盘配酒推荐。\n输出：1张1:1图像，乡村风格美食摄影。\n\n</instructions>",
+      "nameEn": "Mona Lisa Charcuterie Board Food Art - Creative Culinary",
+      "descriptionEn": "",
+      "contentEn": "Input A:  Mona Lisa . <instructions> Act as a world class food expert and artist. \n\nInput A: Masterpiece painting (e.g., Mona Lisa, Starry Night, The Scream).\n\n Analyze composition, colors, mood, elements. Pick the right food ingredients relevant to the region that can be used in the painting. \n\nGoal: Large charcuterie platter replicating the painting using cured meats, cheeses, fruits, nuts, and other ingredients relevant to that region. \nRules: decide which ingredients should be used for each part, so the painting looks as realistic as possible but is mainly made out of food. \n\n2x2 grid: Panel 1: Original painting reference; Panel 2: Ingredient map; Panel 3: Overhead build; Panel 4: Final board with wine pairing.\nOutput: 1 x 1:1 image, rustic gourmet photography.\n\n</instructions>"
+    },
+    {
+      "id": "resource-fantasy-scifi-1",
+      "name": "概念艺术：小丑存在主义危机标本罐",
+      "description": "",
+      "content": "{\n\"creation_intent\": \"娱乐或玩笑\",\n\"generation_logic\": \"瞬间叙事\",\n\"subject_kit\": {\n\"primary_subject\": \"标本罐\",\n\"secondary_elements\": [\n\"软木塞封\",\n\"浑浊液体\",\n\"手写标签\"\n]\n},\n\"core_tension\": \"角色 vs 原型\",\n\"twist_mechanisms\": [\n\"碎片马赛克\",\n\"服装分解\",\n\"时间断裂\"\n],\n\"stage_context\": \"博物馆修复工作间\",\n\"composition_rule\": \"类型学序列布局\",\n\"lighting_rule\": \"阴天柔光\",\n\"imaging_assumption\": \"极简物体研究\",\n\"deliverable_type\": \"概念帧\",\n\"creative_directive\": \"对荒诞的事物使用过度的正式感\",\n\"oblique_strategy\": \"极简约束：只用3个元素\"\n}\n\n#nanobanana #NanoBananaPro #Prompt #MetaGeny",
+      "nameEn": "Conceptual Art: Jester's Existential Crisis Specimen Jars",
+      "descriptionEn": "",
+      "contentEn": "{\n\"creation_intent\": \"娱乐或玩笑\",\n\"generation_logic\": \"瞬间叙事\",\n\"subject_kit\": {\n\"primary_subject\": \"标本罐\",\n\"secondary_elements\": [\n\"软木塞封\",\n\"浑浊液体\",\n\"手写标签\"\n]\n},\n\"core_tension\": \"角色 vs 原型\",\n\"twist_mechanisms\": [\n\"碎片马赛克\",\n\"服装分解\",\n\"时间断裂\"\n],\n\"stage_context\": \"博物馆修复工作间\",\n\"composition_rule\": \"类型学序列布局\",\n\"lighting_rule\": \"阴天柔光\",\n\"imaging_assumption\": \"极简物体研究\",\n\"deliverable_type\": \"概念帧\",\n\"creative_directive\": \"对荒诞的事物使用过度的正式感\",\n\"oblique_strategy\": \"极简约束：只用3个元素\"\n}\n\n#nanobanana #NanoBananaPro #Prompt #MetaGeny"
+    },
+    {
+      "id": "resource-fantasy-scifi-2",
+      "name": "城市街头使用增强现实音乐播放器的男子",
+      "description": "",
+      "content": "{\n  \"超写实、电影级8K图像，描绘一名男子夜晚站在繁忙的印度街头市场。他身穿灰色T恤、绿色工装裤和白色运动鞋，手持智能手机。场景覆盖着详细的增强现实(AR)可视化：众多悬浮的半透明磨砂玻璃音乐播放器界面卡片（类似Spotify/Apple Music界面）在主体周围3D空间中旋转。卡片展示彩色专辑封面、进度条和播放控制，边缘带有柔和发光的光晕效果。构图使用景深效果，部分卡片在前景虚化，其他靠近主体的卡片清晰。背景呈现地道的印度街头元素：绿黄相间的电动三轮车、印地文招牌和温暖的街灯氛围，与AR界面的冷蓝白色光芒形成对比。\",\n  \"negative_prompt\": \"外套、西装、正装、卡通、插画、低质量、模糊、扭曲、解剖错误、多余肢体、文字水印\",\n  \"subject_attributes\": {\n    \"clothing\": \"灰色T恤、绿色工装裤、白色运动鞋\",\n    \"pose\": \"站立，手持手机\",\n    \"facial_reference\": \"使用上传的面部照片，100%还原\"\n  },\n  \"environment\": {\n    \"location\": \"印度街头市场\",\n    \"time\": \"夜晚\",\n    \"details\": \"电动三轮车、人群、商店灯光\"\n  },\n  \"style\": \"增强现实、赛博朋克、电影感、照片级真实\"\n}",
+      "nameEn": "Man with Augmented Reality Music Players on Urban Street",
+      "descriptionEn": "",
+      "contentEn": "{\n  \"A hyper-realistic, cinematic 8k image of a man standing in a bustling Indian street market at night. He is wearing a plain grey t-shirt, green cargo pants, and white sneakers, holding a smartphone. The scene is overlaid with a detailed Augmented Reality (AR) visualization: numerous floating, translucent frosted-glass music player interface cards (resembling Spotify/Apple Music UI) orbiting the subject in 3D space. The cards feature colorful album artwork, progress bars, and playback controls with a soft, glowing border luminescence (bloom effect). The composition uses depth of field, with some cards blurred in the foreground and others sharp near the subject. The background features authentic Indian street elements: green and yellow auto-rickshaws, shop signs with Hindi text, and warm ambient street lighting contrasting with the cool blue-white glow of the AR interface.\",\n  \"negative_prompt\": \"coat, blazer, suit, formal wear, cartoon, illustration, low quality, blurry, distorted, bad anatomy, extra limbs, text watermark\",\n  \"subject_attributes\": {\n    \"clothing\": \"grey t-shirt, green cargo pants, white sneakers\",\n    \"pose\": \"standing, holding phone\",\n    \"facial_reference\": \"use uploaded face 100% accuracy\"\n  },\n  \"environment\": {\n    \"location\": \"Indian street market\",\n    \"time\": \"night\",\n    \"details\": \"auto-rickshaws, crowds, shop lights\"\n  },\n  \"style\": \"Augmented Reality, Cyberpunk, Cinematic, Photorealistic\"\n}"
+    },
+    {
+      "id": "resource-fantasy-scifi-3",
+      "name": "科幻赛博朋克男性角色肖像 - 霓虹城市之夜",
+      "description": "",
+      "content": "{\n  \"目标\": \"生成一张超写实电影级特写侧面肖像，具有未来赛博朋克氛围、深沉的情感张力和戏剧性灯光。\",\n\n  \"主体\": {\n    \"性别\": \"男性\",\n    \"年龄\": \"青年\",\n    \"外观\": {\n      \"面部结构\": {\n        \"下颌线\": \"锋利、雕刻感、轮廓分明\",\n        \"皮肤\": \"超写实皮肤纹理，可见毛孔，细微瑕疵，自然高光\"\n      },\n      \"表情\": \"专注、强烈、充满情感张力的目光\"\n    }\n  },\n\n  \"灯光\": {\n    \"风格\": \"赛博朋克电影灯光\",\n    \"主光源\": [\n      \"后方霓虹边缘光\",\n      \"面部柔和漫射主光\"\n    ],\n    \"色彩\": [\"电光蓝\", \"霓虹洋红\", \"紫色光晕\"],\n    \"对比度\": \"高对比度，深阴影与发光高光\"\n  },\n\n  \"相机\": {\n    \"镜头类型\": \"特写侧面肖像\",\n    \"镜头\": \"85mm电影人像镜头\",\n    \"景深\": \"浅景深，背景柔和虚化\",\n    \"对焦\": \"眼睛和下颌线锐利聚焦\"\n  },\n\n  \"环境\": {\n    \"背景\": \"抽象未来城市灯光，模糊霓虹招牌，赛博朋克氛围\",\n    \"情绪\": \"黑暗、强烈、未来感、情感张力强大\"\n  },\n\n  \"质量\": {\n    \"分辨率\": \"8K\",\n    \"渲染\": \"超精细、照片级真实、电影级调色\",\n    \"风格\": \"高端电影剧照、赛博朋克黑色电影\"\n  }\n}",
+      "nameEn": "Sci-Fi Cyberpunk Male Character Portrait - Neon City Night",
+      "descriptionEn": "",
+      "contentEn": "{\n  \"Objective\": \"Generate an ultra-realistic cinematic close-up side-profile portrait with a futuristic cyberpunk atmosphere, deep emotional tension, and dramatic lighting.\",\n\n  \"Subject\": {\n    \"Gender\": \"Male\",\n    \"Age_Group\": \"Young adult\",\n    \"Appearance\": {\n      \"Facial_Structure\": {\n        \"Jawline\": \"Sharp, sculpted, highly defined\",\n        \"Skin\": \"Hyper-realistic skin texture with visible pores, subtle imperfections, natural highlights\"\n      },\n      \"Expression\": \"Focused, intense, emotionally charged gaze\"\n    }\n  },\n\n  \"Lighting\": {\n    \"Style\": \"Cyberpunk cinematic lighting\",\n    \"Key_Lights\": [\n      \"Neon rim light from behind\",\n      \"Soft diffused key light on face\"\n    ],\n    \"Colors\": [\"Electric blue\", \"Neon magenta\", \"Purple glow\"],\n    \"Contrast\": \"High contrast with deep shadows and glowing highlights\"\n  },\n\n  \"Camera\": {\n    \"Shot_Type\": \"Extreme close-up side profile\",\n    \"Lens\": \"85mm cinematic portrait lens\",\n    \"Depth_of_Field\": \"Shallow DOF with soft background bokeh\",\n    \"Focus\": \"Eyes and jawline in razor-sharp focus\"\n  },\n\n  \"Environment\": {\n    \"Background\": \"Abstract futuristic city lights, blurred neon signs, cyberpunk ambience\",\n    \"Mood\": \"Dark, intense, futuristic, emotionally powerful\"\n  },\n\n  \"Quality\": {\n    \"Resolution\": \"8K\",\n    \"Rendering\": \"Ultra-detailed, photorealistic, cinematic color grading\",\n    \"Style\": \"High-end movie still, cyberpunk noir\"\n  }\n}"
+    },
+    {
+      "id": "resource-fantasy-scifi-4",
+      "name": "龙猫与人在雨中公交站 - 《龙猫》艺术",
+      "description": "",
+      "content": "{\n  \"图像生成提示词\": {\n    \"完整文本\": \"一张超写实8K UHD照片，拍摄日本乡村公交站的雨夜场景。一个人（根据附照，体型正常）站立，撑着一把红色小伞，身穿红色连体工装、蓝色靴子和黄色T恤，侧脸张望，表情带有忧虑和好奇。在他身旁，一只巨大的写实龙猫生物，毛皮湿润，头顶一片叶子，在雨中等待。场景包括老旧的公交站牌、背景中茂密的湿润森林树木，灯光来自昏暗的路灯和月亮，湿润沥青路面有真实的雨水反射。广角镜头。面部必须清晰且富有表情。\",\n    \"技术规格\": {\n      \"媒介\": \"照片\",\n      \"分辨率\": \"8K UHD\",\n      \"风格\": \"超写实\",\n      \"构图\": \"广角镜头\",\n      \"对焦\": \"清晰且富有表情的面部\"\n    },\n    \"灯光\": {\n      \"光源\": [\"昏暗路灯\", \"月亮\"],\n      \"效果\": [\"湿润沥青路面上真实的雨水反射\"]\n    },\n    \"环境\": {\n      \"地点\": \"日本乡村公交站\",\n      \"天气\": \"雨夜\",\n      \"背景\": \"茂密的湿润森林树木\",\n      \"道具\": [\"老旧公交站牌\"]\n    },\n    \"主体\": [\n      {\n        \"类型\": \"人类\",\n        \"参考来源\": \"附照\",\n        \"体型\": \"正常\",\n        \"穿着\": {\n          \"服装\": \"红色连体工装、黄色T恤\",\n          \"鞋履\": \"蓝色靴子\",\n          \"配饰\": \"红色小伞\"\n        },\n        \"姿势\": \"站立，侧脸张望\",\n        \"表情\": \"忧虑与好奇\"\n      },\n      {\n        \"类型\": \"生物\",\n        \"身份\": \"巨大写实龙猫\",\n        \"细节\": [\"湿润毛皮\", \"头顶叶子\"],\n        \"动作\": \"在雨中等待\"\n      }\n    ]\n  }\n}",
+      "nameEn": "Totoro & Man at Rainy Bus Stop - My Neighbor Totoro Art",
+      "descriptionEn": "",
+      "contentEn": "{\n  \"image_generation_prompt\": {\n    \"full_text\": \"An ultra-realistic 8K UHD photograph of a rainy night scene at a rural Japanese bus stop. A person (based on the attached photos, with a normal build) is standing, holding a small red umbrella, wearing a red jumpsuit, blue boots, and a yellow t-shirt, looking to the side with an expression of apprehension and curiosity. Beside him, a gigantic, realistic Totoro creature, with wet fur and a leaf on its head, waits in the rain. The setting includes an aged bus stop sign, dense wet forest trees in the background, and the lighting comes from a dim lamppost and the moon, with realistic rain reflections on the wet asphalt. Wide shot. The face must be sharp and expressive.\",\n    \"technical_specs\": {\n      \"medium\": \"Photograph\",\n      \"resolution\": \"8K UHD\",\n      \"style\": \"Ultra-realistic\",\n      \"composition\": \"Wide shot\",\n      \"focus\": \"Sharp and expressive face\"\n    },\n    \"lighting\": {\n      \"sources\": [\"Dim lamppost\", \"Moon\"],\n      \"effects\": [\"Realistic rain reflections on wet asphalt\"]\n    },\n    \"environment\": {\n      \"location\": \"Rural Japanese bus stop\",\n      \"weather\": \"Rainy night\",\n      \"background\": \"Dense wet forest trees\",\n      \"props\": [\"Aged bus stop sign\"]\n    },\n    \"subjects\": [\n      {\n        \"type\": \"Human\",\n        \"reference_source\": \"Attached photos\",\n        \"build\": \"Normal\",\n        \"attire\": {\n          \"clothing\": \"Red jumpsuit, yellow t-shirt\",\n          \"footwear\": \"Blue boots\",\n          \"accessories\": \"Small red umbrella\"\n        },\n        \"pose\": \"Standing, looking to the side\",\n        \"expression\": \"Apprehension and curiosity\"\n      },\n      {\n        \"type\": \"Creature\",\n        \"identity\": \"Gigantic realistic Totoro\",\n        \"details\": [\"Wet fur\", \"Leaf on head\"],\n        \"action\": \"Waiting in the rain\"\n      }\n    ]\n  }\n}"
+    },
+    {
+      "id": "resource-fantasy-scifi-5",
+      "name": "艾丽莎·福廷职业生涯幻想地图 - 专业版",
+      "description": "",
+      "content": "提示词技巧：将您的领英个人资料下载为PDF，并附带简单提示词提供给Nano Banana Pro。",
+      "nameEn": "Alisa Fortin Career Journey Fantasy Map - Professional",
+      "descriptionEn": "",
+      "contentEn": "Prompt tip: Download your LinkedIn profile is a PDF and give it to Nano Banana Pro with a simple prompt."
+    },
+    {
+      "id": "resource-fantasy-scifi-6",
+      "name": "超现实香蕉自由女神像 | 黑色星期五特惠",
+      "description": "",
+      "content": "转发并回复\"EXTENDED\"（8小时内）- 私信获取300积分。\n\n这个优惠在GenAI领域前所未有。",
+      "nameEn": "Surreal Banana Statue of Liberty | Black Friday Deal",
+      "descriptionEn": "",
+      "contentEn": "Retweet & reply \"EXTENDED\" in 8h - get 300 credits in DM.\n\nThis deal has never existed in GenAI."
+    },
+    {
+      "id": "resource-fantasy-scifi-7",
+      "name": "快乐儿童在幻想野花草甸中骑巨蜂",
+      "description": "",
+      "content": "1. 高清超写实微距照片，展示一位细小的微型女孩，深色长发，身穿飘逸的棕色亚麻裙，宁静地坐在一只带有黑色斑点的红色大瓢虫背上。瓢虫停驻在一片充满晶莹剔透晨露的鲜艳绿叶上。背景是柔和的奶油色虚化，呈现失焦的绿色枝叶和金色阳光。灯光温暖空灵，捕捉到每一滴露珠和瓢虫壳的纹理细节。\n\n2. 高清微距照片，展示一位细小精致的冒险者骑在一只巨大闪亮的绿色屎壳郎背上。屎壳郎有着闪烁的金属外壳，带有金色和蓝色光泽。冒险者身穿迷你探险装备，跨坐在屎壳郎的胸部。他们正穿过森林地面上的苔藓腐木。背景是梦幻般的虚化，呈现阳光普照的森林，金色光线透过树林洒下。对焦于屎壳郎的纹理细节，电影级灯光，8K分辨率，超写实。\n\n3. 高清电影级幻想镜头，展示一位快乐的小女孩，棕色头发，骑着一只巨大毛茸茸的大黄蜂。她身穿棕色皮革探险服，背着小挎包。他们飞越一片充满超大发光野花的草地，花朵呈现橙色、黄色和紫色。场景沐浴在温暖的金色阳光中，带有柔和的虚化和漂浮在空中的魔法尘埃粒子。大黄蜂毛发和女孩服装的纹理细节丰富，8K分辨率，奇幻冒险氛围。\n\n4. 高清超现实幻想照片，展示一位细小的微型女子，长发飘逸，身穿精致的白色蕾丝裙，优雅地站在一只巨大帝王蝶的背上。帝王蝶全焦展示，翅膀呈现鲜艳的橙黑花纹。他们漂浮在阳光普照的草地上，周围是柔和虚化的野花，色彩为红、蓝、黄。灯光温暖金色（黄金时刻），营造出梦幻般的魔幻氛围，带有柔和的镜头光晕和浅景深。",
+      "nameEn": "Joyful Child Riding Giant Bee in Fantasy Wildflower Meadow",
+      "descriptionEn": "",
+      "contentEn": "1.  high-definition, hyper-realistic macro photograph of a tiny, miniature girl with long dark hair wearing a flowing brown linen dress, sitting peacefully on the back of a large red ladybug with black spots. The ladybug is perched on a vibrant green leaf covered in glistening, translucent morning dew drops. The background is a soft, creamy bokeh of out-of-focus green foliage and golden sunlight. The lighting is warm and ethereal, capturing every detail of the dew drops and the texture of the ladybug's shell. \n2.  A high-definition macro photograph of a tiny, detailed adventurer riding on the back of a giant iridescent green dung beetle. The beetle has a shimmering metallic shell with hints of gold and blue. The rider is wearing rugged, miniature explorer gear and is perched on the beetle's thorax. They are traveling across a mossy, decaying log on a forest floor. The background is a soft, dreamlike bokeh of a sun-drenched forest with golden light filtering through the trees. Sharp focus on the beetle's texture, cinematic lighting, 8k resolution, hyper-realistic.\n\n3.A high-definition, cinematic fantasy shot of a tiny, cheerful young girl with brown hair riding on the back of a giant, fuzzy bumblebee. She is wearing a brown leather explorer's outfit with a small satchel. They are flying through a vibrant meadow filled with oversized, glowing wildflowers in shades of orange, yellow, and purple. The scene is bathed in warm, golden sunlight with soft bokeh and magical dust particles floating in the air. Highly detailed textures on the bee's fur and the girl's clothing, 8k resolution, whimsical and adventurous atmosphere.\n\n4. A high-definition surreal fantasy photograph of a tiny, miniature woman with long flowing hair, wearing a delicate, ethereal white lace dress, standing gracefully on the back of a giant Monarch butterfly. The butterfly is in full focus, showcasing vibrant orange and black wing patterns. They are floating in a sun-drenched meadow filled with soft-focus, bokeh wildflowers in shades of red, blue, and yellow. The lighting is warm and golden (golden hour), creating a magical, dreamlike atmosphere with soft lens flares and a shallow depth of field."
+    },
+    {
+      "id": "resource-fantasy-scifi-8",
+      "name": "Bugdroid内部扫描 | 科幻热成像X光机器人艺术",
+      "description": "",
+      "content": "谷歌安卓机器人，以高对比度科学工作室渲染风格呈现在纯黑背景中。这个紧凑的右侧侧面轮廓具有伪彩色热成像X光美学，透明外壳清晰展示了电池、驱动器和传感器的精细内部结构，使用鲜艳的热成像渐变色彩。颜色从深邃的冷蓝色过渡到强烈的黄色和红色高光，营造出未来感、临床风格，配合正交透视和柔和的霓虹般光晕。",
+      "nameEn": "Bugdroid Internal Scan | Sci-Fi Thermal X-Ray Robot Art",
+      "descriptionEn": "",
+      "contentEn": "The Google Android robot, presented in a high-contrast scientific studio render against a pure black void. This tight right-side profile features a false-color thermal X-ray aesthetic, where the transparent shell reveals a sharply detailed internal architecture of batteries, drivers, and sensors using a vibrant heatmap gradient. The colors shift from deep cool blues to intense yellows and red highlights, creating a futuristic, clinical look with orthographic perspective and a soft, neon-like glow."
+    },
+    {
+      "id": "resource-fantasy-scifi-9",
+      "name": "赛博武士装备、机器人与科幻城市场景",
+      "description": "",
+      "content": "面板8) 凶猛赛博武士战士肖像，居中置于纯白背景。专业产品摄影风格。",
+      "nameEn": "Cybernetic Samurai Gear, Robots & Sci-Fi City Scenes",
+      "descriptionEn": "",
+      "contentEn": "Panel 8) portrait of fierce cyber-samurai warrior centered on pure white background. Professional product photography style."
+    }
+  ]
+}

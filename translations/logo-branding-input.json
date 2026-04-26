@@ -1,0 +1,75 @@
+{
+  "category": "logo-branding",
+  "prompts": [
+    {
+      "id": "resource-logo-branding-0",
+      "categoryId": "logo-branding",
+      "nameEn": "Aerial Suburban Landscape: Houses, Trees & Fields",
+      "descriptionEn": "",
+      "contentEn": "2) Feed to Nano Banana Pro, prompt \"hand-drawn urban planning map\""
+    },
+    {
+      "id": "resource-logo-branding-1",
+      "categoryId": "logo-branding",
+      "nameEn": "Elegant Script Logo Redesigns: Lacoste, Tesla, Ferrari",
+      "descriptionEn": "",
+      "contentEn": "A flat, minimalist vector design featuring a highly stylized single letter monogram with the official brand logo below it, representing [BRAND NAME].\n\n**MAIN ELEMENT (THE MONOGRAM):**\nThe center of the design features ONLY the single first letter of \"[BRAND NAME]\". The style is \"Ornamental Vector Typography\" with high calligraphic artistry, mimicking bespoke luxury monograms. This is not a standard font; it is a Highly customized, artistic glyph with elegant flourishes, exaggerated swashes, or ornamental serifs. The lines are clean, precise, and perfectly smooth vector graphics.\n\n**SECONDARY ELEMENT (BRAND IDENTIFIER):**\nDirectly below the main stylized letter, positioned centrally, include the actual, original official logomark or logotype of \"[BRAND NAME]\". This element must be rendered significantly smaller than the main letter above it.\n\n**FINISH & TEXTURE (STRICT):**\nAbsolutely zero texture, zero embossing, zero shadows, and zero gradients anywhere in the image. It must look like a perfectly flat digital illustration or screen print.\n\n**COLOR PALETTE (AI-DRIVEN & HIGH CONTRAST):**\n1.  **Background:** A single, solid, flat color block chosen by the AI to represent the vibe of [BRAND NAME].\n2.  **Main Monogram Color:** A single, solid, flat color that creates a sharp, high contrast against the background.\n3.  **Secondary Logo Color:** The small official logo below must be monochrome. It must be EITHER solid white OR solid dark gray—chosen automatically based on whichever offers the best readability against the chosen background color."
+    },
+    {
+      "id": "resource-logo-branding-2",
+      "categoryId": "logo-branding",
+      "nameEn": "Corporate Ecosystem Tree: Sansan Business Vision Illustration",
+      "descriptionEn": "",
+      "contentEn": "要怎么prompt才能让AI达到这种水平？"
+    },
+    {
+      "id": "resource-logo-branding-3",
+      "categoryId": "logo-branding",
+      "nameEn": "Playful Banana Google Logo Search Page Design",
+      "descriptionEn": "",
+      "contentEn": "A screenshot of the Google home page with a banana Google doodle, change I'm feeling lucky to be \"Go bananas\". No monkeys."
+    },
+    {
+      "id": "resource-logo-branding-4",
+      "categoryId": "logo-branding",
+      "nameEn": "Meesho IPO Infographic: Decoding DRHP & Financials",
+      "descriptionEn": "",
+      "contentEn": "-> The results: Pick yours"
+    },
+    {
+      "id": "resource-logo-branding-5",
+      "categoryId": "logo-branding",
+      "nameEn": "Brand Logo Wax Seals: ChatGPT, Playboy, Batman, Lacoste",
+      "descriptionEn": "",
+      "contentEn": "Prompt below"
+    },
+    {
+      "id": "resource-logo-branding-6",
+      "categoryId": "logo-branding",
+      "nameEn": "Iconic Celebrity Brand Portraits | Modern Graphic Design",
+      "descriptionEn": "",
+      "contentEn": "Prompt below"
+    },
+    {
+      "id": "resource-logo-branding-7",
+      "categoryId": "logo-branding",
+      "nameEn": "3D Metallic Brand Logos: DC, Under Armour, Kenzo, Mitsubishi",
+      "descriptionEn": "",
+      "contentEn": "Prompt below"
+    },
+    {
+      "id": "resource-logo-branding-8",
+      "categoryId": "logo-branding",
+      "nameEn": "Pringles Monogram Logo - Elegant Brand Design on Red",
+      "descriptionEn": "",
+      "contentEn": "Use it"
+    },
+    {
+      "id": "resource-logo-branding-9",
+      "categoryId": "logo-branding",
+      "nameEn": "3D Glass Logos: Modern Brand Icon Design & Rendering",
+      "descriptionEn": "",
+      "contentEn": "Prompt below"
+    }
+  ]
+}

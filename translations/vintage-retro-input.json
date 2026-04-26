@@ -1,0 +1,75 @@
+{
+  "category": "vintage-retro",
+  "prompts": [
+    {
+      "id": "resource-vintage-retro-0",
+      "categoryId": "vintage-retro",
+      "nameEn": "Awesome Nano Banana Pro: Nano Banana Prompts & Image Generation",
+      "descriptionEn": "",
+      "contentEn": "Go grab it."
+    },
+    {
+      "id": "resource-vintage-retro-1",
+      "categoryId": "vintage-retro",
+      "nameEn": "Apollo 11 Lunar Module LM-5 Eagle Blueprint & Moon Render",
+      "descriptionEn": "",
+      "contentEn": "An expert [DISCIPLINE] designer’s presentation board for [SUBJECT] — [ICONIC FEATURES / ERA], featuring black-and-white 2D technical drawings with annotations and dimensions on the left, an exploded axonometric diagram revealing [KEY INTERNAL COMPONENTS / MATERIALS] in the center, and a photorealistic 3D render of [SUBJECT] in [ICONIC ENVIRONMENT / SCENE] on the right, with [LIGHTING / ATMOSPHERE / MOTION DETAILS]; visual style transitions from [TECHNICAL / ARCHIVAL TONES] to [EMOTIONAL / ATMOSPHERIC COLOR PALETTE], clean grid layout, museum-grade industrial design presentation, ultra-detailed cinematic realism, title block reading “[TITLE] — [YEAR / VARIANT / TAGLINE]”.\n\nSee ALTs for ideas"
+    },
+    {
+      "id": "resource-vintage-retro-2",
+      "categoryId": "vintage-retro",
+      "nameEn": "Photorealistic Detective Board - Vintage Cold Case Mystery",
+      "descriptionEn": "",
+      "contentEn": "A detective's evidence board investigating [SUBJECT/MYSTERY]. Cork surface covered with pinned items: polaroid photographs with handwritten dates, a street map with circled locations, newspaper clippings with highlighted passages, sticky notes with theories and question marks, and printed documents with redacted black bars. Red string connects related evidence across the board, creating a web of connections. Thumbtacks in primary colors. A single bare bulb casts dramatic shadows. Coffee ring stains on some papers. The atmosphere is obsessive, late-night, noir—someone has been piecing this together for months. A few pins have fallen, suggesting frantic recent activity.\n\nCheck ALTs for ideas"
+    },
+    {
+      "id": "resource-vintage-retro-3",
+      "categoryId": "vintage-retro",
+      "nameEn": "Vintage Digital Camera Portrait | Y2K Aesthetic & Nostalgia",
+      "descriptionEn": "",
+      "contentEn": "Close-up, top-down shot of a black early 2000s compact digital camera resting on textured blue denim fabric. The rear LCD screen is illuminated, displaying a lo-fi, grainy, flash-lit selfie of a young woman. Subject on screen has dark wavy hair, heavy Y2K-style pink blush on cheeks and nose, winged eyeliner, and glossy lips, looking over her shoulder with a soft gaze. The camera body has visible buttons and a directional pad. Shallow depth of field with focus sharp on the LCD screen and slightly blurred edges.\n———————————————\nNano Banana Pro is unlimited for a year for everyone joining @higgsfield_ai. Less than a day left, don’t miss it."
+    },
+    {
+      "id": "resource-vintage-retro-4",
+      "categoryId": "vintage-retro",
+      "nameEn": "Vintage Patent: Automatic Hat-Tipping Device Steampunk Art",
+      "descriptionEn": "",
+      "contentEn": "A vintage patent document for [INVENTION], styled after late 1800s United States Patent Office filings. The page features precise technical drawings with numbered callouts (Fig. 1, Fig. 2, Fig. 3) showing front, side, and exploded views. Handwritten annotations in fountain-pen ink describe mechanisms. The paper is aged ivory with foxing stains and soft fold creases. An official embossed seal and red wax stamp appear in the corner. A hand-signed inventor's name and date appear at the bottom. The entire image feels like a recovered archival document—authoritative, historic, and slightly mysterious.\n\nCheck ALTs for ideas"
+    },
+    {
+      "id": "resource-vintage-retro-5",
+      "categoryId": "vintage-retro",
+      "nameEn": "Vintage Tarot Card Deck Collection - Full Set Illustration",
+      "descriptionEn": "",
+      "contentEn": "trying to push nano banana pro to its limits. asked for a complete 78-card tarot deck. one prompt. it delivered"
+    },
+    {
+      "id": "resource-vintage-retro-6",
+      "categoryId": "vintage-retro",
+      "nameEn": "Historic NYC Flatiron Building & 1910s Cars - Woodrow Wilson",
+      "descriptionEn": "",
+      "contentEn": "After seeing folks visualize coordinates, we tried the prompt “Visualize 40.7422° N, 73.9880° W in 1916” and reran it several times, adding a decade with each go. Here’s a GIF compilation:"
+    },
+    {
+      "id": "resource-vintage-retro-7",
+      "categoryId": "vintage-retro",
+      "nameEn": "Vintage Sepia Portrait: Two Women in 1930s Fashion",
+      "descriptionEn": "",
+      "contentEn": "Imagine you are a professional photo restorer. Restore this photo perfectly. Make it sharp and improve resolution. Get rid of scratches. Make it a way it would look if it was taken now. \n\nPhoto of my great-grandmother. I use Nano Banana Pro in Adobe Firefly app."
+    },
+    {
+      "id": "resource-vintage-retro-8",
+      "categoryId": "vintage-retro",
+      "nameEn": "D-Day Landing WWII Soldiers Omaha Beach Black White Photo",
+      "descriptionEn": "",
+      "contentEn": "\"create an image at [COORDINATES], [DATE & TIME].\""
+    },
+    {
+      "id": "resource-vintage-retro-9",
+      "categoryId": "vintage-retro",
+      "nameEn": "Big Lebowski Pixel Art: Dude, Walter, Retro Game Screen",
+      "descriptionEn": "",
+      "contentEn": "Have fun! Share your bests."
+    }
+  ]
+}

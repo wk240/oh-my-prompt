@@ -28,6 +28,7 @@ import { usePromptStore } from '../../lib/store'
 import { getResourcePrompts, getResourceCategories } from '../../lib/resource-library'
 import { MessageType } from '../../shared/messages'
 import { readImportFile, mergeImportData } from '../../lib/import-export'
+import { getCachedImageUrl, clearImageUrlCache, isFolderConfigured, downloadImageFromUrl, saveImage } from '../../lib/sync/image-sync'
 
 interface DropdownContainerProps {
   prompts: Prompt[]
@@ -388,6 +389,35 @@ function getDropdownStyles(): string {
 
     #${PORTAL_ID} .dropdown-item-drag-handle:active {
       cursor: grabbing;
+    }
+
+    #${PORTAL_ID} .dropdown-item-thumbnail {
+      width: 60px;
+      height: 40px;
+      border-radius: 4px;
+      object-fit: cover;
+      background: #f0f0f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    #${PORTAL_ID} .dropdown-item-thumbnail img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    #${PORTAL_ID} .dropdown-item-thumbnail-placeholder {
+      width: 20px;
+      height: 20px;
+      color: #999;
+    }
+
+    #${PORTAL_ID} .dropdown-item-with-thumbnail {
+      gap: 8px;
     }
 
     #${PORTAL_ID} .dropdown-item.dragging {
@@ -908,6 +938,8 @@ function SortableDropdownItem({
   showDragHandle,
   onEdit,
   onDelete,
+  thumbnailUrl,
+  onThumbnailClick,
 }: {
   prompt: Prompt
   isLast: boolean
@@ -916,6 +948,8 @@ function SortableDropdownItem({
   showDragHandle: boolean
   onEdit: (prompt: Prompt) => void
   onDelete: (prompt: Prompt) => void
+  thumbnailUrl?: string | null
+  onThumbnailClick?: (prompt: Prompt) => void  // Click on thumbnail to open preview
 }) {
   const {
     attributes,
@@ -939,7 +973,7 @@ function SortableDropdownItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`dropdown-item${isSelected ? ' selected' : ''}${isLast ? ' last' : ''}${isDragging ? ' dragging' : ''}`}
+      className={`dropdown-item${isSelected ? ' selected' : ''}${isLast ? ' last' : ''}${isDragging ? ' dragging' : ''}${thumbnailUrl ? ' dropdown-item-with-thumbnail' : ''}`}
       onMouseDown={(e) => e.preventDefault()}
       onClick={() => onSelect(prompt)}
       role="button"
@@ -951,6 +985,25 @@ function SortableDropdownItem({
         }
       }}
     >
+      {/* Thumbnail - 60x40 image preview, click to open preview modal */}
+      {prompt.localImage && (
+        <div
+          className="dropdown-item-thumbnail"
+          style={onThumbnailClick && thumbnailUrl ? { cursor: 'pointer' } : {}}
+          onClick={(e) => {
+            if (onThumbnailClick && thumbnailUrl) {
+              e.stopPropagation()
+              onThumbnailClick(prompt)
+            }
+          }}
+        >
+          {thumbnailUrl ? (
+            <img src={thumbnailUrl} alt={prompt.name} />
+          ) : (
+            <Shapes className="dropdown-item-thumbnail-placeholder" style={{ width: 20, height: 20 }} />
+          )}
+        </div>
+      )}
       <div className="dropdown-item-icon-wrapper">
         {showDragHandle && (
           <div className="dropdown-item-drag-handle" {...attributes} {...listeners}>
@@ -1061,6 +1114,10 @@ export function DropdownContainer({
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedResourcePrompt, setSelectedResourcePrompt] = useState<ResourcePrompt | null>(null)
 
+  // User prompt preview modal state (triggered by thumbnail click)
+  const [isUserPromptModalOpen, setIsUserPromptModalOpen] = useState(false)
+  const [selectedUserPrompt, setSelectedUserPrompt] = useState<Prompt | null>(null)
+
   // Category select dialog state
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false)
 
@@ -1095,6 +1152,9 @@ export function DropdownContainer({
   const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null)
   const [isDeletePromptModalOpen, setIsDeletePromptModalOpen] = useState(false)
   const [deletingPrompt, setDeletingPrompt] = useState<Prompt | null>(null)
+
+  // Thumbnail URLs state - cached blob URLs for prompts with images
+  const [thumbnailUrls, setThumbnailUrls] = useState<Map<string, string>>(new Map())
 
   // Fetch update status and sync status when dropdown opens
   useEffect(() => {
@@ -1210,7 +1270,7 @@ export function DropdownContainer({
     }
   }, [onInjectResource, resourceLanguage])
 
-  // Handle collect confirmation
+  // Handle collect confirmation - auto-download preview image when available
   const handleConfirmCollect = useCallback(async (categoryId: string, newCategoryName?: string) => {
     if (!selectedResourcePrompt) return
 
@@ -1230,28 +1290,76 @@ export function DropdownContainer({
       return
     }
 
-    const localPrompt: Omit<Prompt, 'id'> = {
-      name: selectedResourcePrompt.name,
-      content: selectedResourcePrompt.content,
-      categoryId: targetCategoryId,
-      description: selectedResourcePrompt.description,
-      order: 0,
+    // Check folder configured for image download
+    const folderConfigured = await isFolderConfigured()
+    let localImage: string | undefined = undefined
+
+    // Auto-download image if folder configured and prompt has preview image
+    if (folderConfigured && selectedResourcePrompt.previewImage) {
+      try {
+        const downloadResult = await downloadImageFromUrl(selectedResourcePrompt.previewImage)
+        if (downloadResult.success && downloadResult.blob) {
+          // Store the blob temporarily
+          const imageBlob = downloadResult.blob
+
+          // Create prompt first to get ID
+          const tempPrompt: Omit<Prompt, 'id'> = {
+            name: selectedResourcePrompt.name,
+            content: selectedResourcePrompt.content,
+            categoryId: targetCategoryId,
+            description: selectedResourcePrompt.description,
+            order: 0,
+            remoteImageUrl: selectedResourcePrompt.previewImage,
+          }
+
+          // Add prompt and get the created prompt with ID
+          await usePromptStore.getState().addPrompt(tempPrompt)
+
+          // Get the newly created prompt ID from store
+          const newPrompt = usePromptStore.getState().prompts.find(p =>
+            p.content === selectedResourcePrompt.content && p.categoryId === targetCategoryId
+          )
+
+          if (newPrompt) {
+            // Save image with the prompt ID
+            const imageResult = await saveImage(newPrompt.id, imageBlob)
+            if (imageResult.success && imageResult.relativePath) {
+              // Update prompt with localImage path
+              usePromptStore.getState().updatePrompt(newPrompt.id, {
+                localImage: imageResult.relativePath
+              })
+              localImage = imageResult.relativePath
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('[Oh My Prompt] Failed to download resource image:', error)
+        // Continue without image - user can add later
+      }
+    } else if (!folderConfigured && selectedResourcePrompt.previewImage) {
+      // Folder not configured - show toast
+      setToastMessage('图片未保存，请先配置备份文件夹')
+      setTimeout(() => setToastMessage(null), 3000)
     }
 
-    // Wait for addPrompt to complete and get sync status
-    const result = await usePromptStore.getState().addPrompt(localPrompt)
+    // If image download failed or no image, create prompt without image
+    if (!localImage) {
+      const localPrompt: Omit<Prompt, 'id'> = {
+        name: selectedResourcePrompt.name,
+        content: selectedResourcePrompt.content,
+        categoryId: targetCategoryId,
+        description: selectedResourcePrompt.description,
+        order: 0,
+        remoteImageUrl: selectedResourcePrompt.previewImage,
+      }
+
+      await usePromptStore.getState().addPrompt(localPrompt)
+    }
 
     const categoryName = usePromptStore.getState().categories.find(c => c.id === targetCategoryId)?.name || '未知分类'
 
-    // Show toast based on sync status
-    if (result.syncSuccess === true) {
-      setToastMessage(`已收藏到 ${categoryName}，已自动备份`)
-    } else if (result.syncSuccess === false) {
-      setToastMessage(`已收藏到 ${categoryName}，备份失败，请检查备份设置`)
-    } else {
-      // syncSuccess undefined means sync not enabled or no response
-      setToastMessage(`已收藏到 ${categoryName}`)
-    }
+    // Show success toast
+    setToastMessage(`已收藏到 ${categoryName}`)
 
     setIsCategoryDialogOpen(false)
     setIsModalOpen(false)
@@ -1360,6 +1468,36 @@ export function DropdownContainer({
   }, [displayPrompts, selectedCategoryId])
 
   const showDragHandles = filteredPrompts.length >= 2
+
+  // Load thumbnail URLs for prompts with images
+  useEffect(() => {
+    const loadThumbnails = async () => {
+      const newUrls = new Map<string, string>()
+
+      for (const prompt of filteredPrompts) {
+        if (prompt.localImage) {
+          const url = await getCachedImageUrl(prompt.localImage)
+          if (url) {
+            newUrls.set(prompt.id, url)
+          }
+        }
+      }
+
+      setThumbnailUrls(newUrls)
+    }
+
+    if (filteredPrompts.some(p => p.localImage)) {
+      loadThumbnails()
+    }
+  }, [filteredPrompts])
+
+  // Clear image URL cache when dropdown closes
+  useEffect(() => {
+    if (!isOpen) {
+      clearImageUrlCache()
+      setThumbnailUrls(new Map())
+    }
+  }, [isOpen])
 
   // Filter resource prompts by category
   const filteredResourcePrompts = useMemo(() => {
@@ -2016,6 +2154,11 @@ export function DropdownContainer({
                       isSelected={selectedPromptId === prompt.id}
                       onSelect={onSelect}
                       showDragHandle={showDragHandles}
+                      thumbnailUrl={thumbnailUrls.get(prompt.id)}
+                      onThumbnailClick={(p) => {
+                        setSelectedUserPrompt(p)
+                        setIsUserPromptModalOpen(true)
+                      }}
                       onEdit={(p) => {
                         setEditingPrompt(p)
                         setIsPromptEditModalOpen(true)
@@ -2066,6 +2209,39 @@ export function DropdownContainer({
             }
           }}
           globalLanguage={resourceLanguage}
+        />
+      </Suspense>
+    )}
+    {/* User prompt preview modal (triggered by thumbnail click) */}
+    {selectedUserPrompt && (
+      <Suspense fallback={null}>
+        <PromptPreviewModal
+          prompt={selectedUserPrompt}
+          isOpen={isUserPromptModalOpen}
+          onClose={() => {
+            setIsUserPromptModalOpen(false)
+            setSelectedUserPrompt(null)
+          }}
+          isUserPrompt={true}
+          onEdit={() => {
+            setIsUserPromptModalOpen(false)
+            setEditingPrompt(selectedUserPrompt)
+            setIsPromptEditModalOpen(true)
+          }}
+          onInject={(language) => {
+            // For user prompts, inject using onSelect with content
+            const promptToInject = {
+              ...selectedUserPrompt,
+              content: language === 'en' && selectedUserPrompt.contentEn
+                ? selectedUserPrompt.contentEn
+                : selectedUserPrompt.content
+            }
+            onSelect(promptToInject)
+            setIsUserPromptModalOpen(false)
+            setSelectedUserPrompt(null)
+            setToastMessage('已插入提示词')
+            setTimeout(() => setToastMessage(null), 2000)
+          }}
         />
       </Suspense>
     )}

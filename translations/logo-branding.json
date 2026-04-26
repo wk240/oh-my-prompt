@@ -1,0 +1,104 @@
+{
+  "translations": [
+    {
+      "id": "resource-logo-branding-0",
+      "categoryId": "logo-branding",
+      "name": "空中郊区景观：房屋、树木与田野",
+      "description": "",
+      "content": "2) 输入到 Nano Banana Pro，提示词为 \"手绘城市规划图\"",
+      "nameEn": "Aerial Suburban Landscape: Houses, Trees & Fields",
+      "descriptionEn": "",
+      "contentEn": "2) Feed to Nano Banana Pro, prompt \"hand-drawn urban planning map\""
+    },
+    {
+      "id": "resource-logo-branding-1",
+      "categoryId": "logo-branding",
+      "name": "优雅手写体Logo重设计：Lacoste、Tesla、Ferrari",
+      "description": "",
+      "content": "一个扁平、极简主义的矢量设计，以高度风格化的单字母花押字为中心，下方配有品牌的官方Logo，代表 [BRAND NAME]。\n\n**主要元素（花押字）：**\n设计中心仅展示 \"[BRAND NAME]\" 的第一个字母。风格为 \"装饰性矢量字体\"，具有高度的书法艺术性，模仿定制奢侈品牌花押字。这不是标准字体；而是一个高度定制、艺术化的字形，带有优雅的装饰、夸张的回旋或装饰性衬线。线条干净、精确，完美的平滑矢量图形。\n\n**次要元素（品牌标识）：**\n在主风格化字母的正下方居中位置，放置 \"[BRAND NAME]\" 实际的官方Logo标识或字体商标。此元素必须明显小于上方的主字母。\n\n**表面处理与纹理（严格要求）：**\n图像中绝对不允许任何纹理、浮雕、阴影或渐变。必须看起来像一个完美扁平的数字插画或丝网印刷。\n\n**配色方案（AI驱动 & 高对比度）：**\n1.  **背景：** AI自动选择的单一纯色色块，用于代表 [BRAND NAME] 的品牌调性。\n2.  **主花押字颜色：** 单一纯色，与背景形成鲜明的高对比度。\n3.  **次级Logo颜色：** 下方的小型官方Logo必须是单色的。必须是纯白色或纯深灰色之一——根据哪种颜色在所选背景色上具有最佳可读性自动选择。",
+      "nameEn": "Elegant Script Logo Redesigns: Lacoste, Tesla, Ferrari",
+      "descriptionEn": "",
+      "contentEn": "A flat, minimalist vector design featuring a highly stylized single letter monogram with the official brand logo below it, representing [BRAND NAME].\n\n**MAIN ELEMENT (THE MONOGRAM):**\nThe center of the design features ONLY the single first letter of \"[BRAND NAME]\". The style is \"Ornamental Vector Typography\" with high calligraphic artistry, mimicking bespoke luxury monograms. This is not a standard font; it is a Highly customized, artistic glyph with elegant flourishes, exaggerated swashes, or ornamental serifs. The lines are clean, precise, and perfectly smooth vector graphics.\n\n**SECONDARY ELEMENT (BRAND IDENTIFIER):**\nDirectly below the main stylized letter, positioned centrally, include the actual, original official logomark or logotype of \"[BRAND NAME]\". This element must be rendered significantly smaller than the main letter above it.\n\n**FINISH & TEXTURE (STRICT):**\nAbsolutely zero texture, zero embossing, zero shadows, and zero gradients anywhere in the image. It must look like a perfectly flat digital illustration or screen print.\n\n**COLOR PALETTE (AI-DRIVEN & HIGH CONTRAST):**\n1.  **Background:** A single, solid, flat color block chosen by the AI to represent the vibe of [BRAND NAME].\n2.  **Main Monogram Color:** A single, solid, flat color that creates a sharp, high contrast against the background.\n3.  **Secondary Logo Color:** The small official logo below must be monochrome. It must be EITHER solid white OR solid dark gray—chosen automatically based on whichever offers the best readability against the chosen background color."
+    },
+    {
+      "id": "resource-logo-branding-2",
+      "categoryId": "logo-branding",
+      "name": "企业生态树：Sansan商业愿景插画",
+      "description": "",
+      "content": "要怎么prompt才能让AI达到这种水平？",
+      "nameEn": "Corporate Ecosystem Tree: Sansan Business Vision Illustration",
+      "descriptionEn": "",
+      "contentEn": "要怎么prompt才能让AI达到这种水平？"
+    },
+    {
+      "id": "resource-logo-branding-3",
+      "categoryId": "logo-branding",
+      "name": "趣味香蕉Google Logo搜索页设计",
+      "description": "",
+      "content": "Google首页截图，带有香蕉主题的Google涂鸦，将\"手气不错\"按钮改为 \"Go bananas\"。不要出现猴子。",
+      "nameEn": "Playful Banana Google Logo Search Page Design",
+      "descriptionEn": "",
+      "contentEn": "A screenshot of the Google home page with a banana Google doodle, change I'm feeling lucky to be \"Go bananas\". No monkeys."
+    },
+    {
+      "id": "resource-logo-branding-4",
+      "categoryId": "logo-branding",
+      "name": "Meesho IPO信息图：解读DRHP与财务数据",
+      "description": "",
+      "content": "→ 结果：选择你的风格",
+      "nameEn": "Meesho IPO Infographic: Decoding DRHP & Financials",
+      "descriptionEn": "",
+      "contentEn": "-> The results: Pick yours"
+    },
+    {
+      "id": "resource-logo-branding-5",
+      "categoryId": "logo-branding",
+      "name": "品牌Logo蜡封印章：ChatGPT、Playboy、Batman、Lacoste",
+      "description": "",
+      "content": "提示词见下文",
+      "nameEn": "Brand Logo Wax Seals: ChatGPT, Playboy, Batman, Lacoste",
+      "descriptionEn": "",
+      "contentEn": "Prompt below"
+    },
+    {
+      "id": "resource-logo-branding-6",
+      "categoryId": "logo-branding",
+      "name": "标志性名人品牌肖像 | 现代平面设计",
+      "description": "",
+      "content": "提示词见下文",
+      "nameEn": "Iconic Celebrity Brand Portraits | Modern Graphic Design",
+      "descriptionEn": "",
+      "contentEn": "Prompt below"
+    },
+    {
+      "id": "resource-logo-branding-7",
+      "categoryId": "logo-branding",
+      "name": "3D金属质感品牌Logo：DC、Under Armour、Kenzo、Mitsubishi",
+      "description": "",
+      "content": "提示词见下文",
+      "nameEn": "3D Metallic Brand Logos: DC, Under Armour, Kenzo, Mitsubishi",
+      "descriptionEn": "",
+      "contentEn": "Prompt below"
+    },
+    {
+      "id": "resource-logo-branding-8",
+      "categoryId": "logo-branding",
+      "name": "Pringles花押字Logo - 红色背景上的优雅品牌设计",
+      "description": "",
+      "content": "直接使用",
+      "nameEn": "Pringles Monogram Logo - Elegant Brand Design on Red",
+      "descriptionEn": "",
+      "contentEn": "Use it"
+    },
+    {
+      "id": "resource-logo-branding-9",
+      "categoryId": "logo-branding",
+      "name": "3D玻璃质感Logo：现代品牌图标设计与渲染",
+      "description": "",
+      "content": "提示词见下文",
+      "nameEn": "3D Glass Logos: Modern Brand Icon Design & Rendering",
+      "descriptionEn": "",
+      "contentEn": "Prompt below"
+    }
+  ]
+}

@@ -1,0 +1,104 @@
+{
+  "translations": [
+    {
+      "id": "resource-cinematic-posters-0",
+      "categoryId": "cinematic-posters",
+      "name": "90年代抓拍派对照片 | 年轻男子大笑，红眼效果",
+      "description": "",
+      "content": "1998年用一次性相机拍摄的闪光灯快照。一个男子在混乱的家庭派对中。红眼效果、强烈的阴影、动态模糊和胶片颗粒。构图略微倾斜且杂乱。",
+      "nameEn": "Candid 90s Party Photo | Young Man Laughing, Red-Eye",
+      "descriptionEn": "",
+      "contentEn": "A flash photography snapshot taken on a disposable camera in 1998. A man at a chaotic house party. Red-eye effect, harsh shadows, motion blur, and film grain. The composition is slightly tilted and messy."
+    },
+    {
+      "id": "resource-cinematic-posters-1",
+      "categoryId": "cinematic-posters",
+      "name": "浪漫喜剧海报：如何在十天里甩掉一个男生",
+      "description": "",
+      "content": "{\n  \"scene_summary\": \"干净的风格，2000年代初浪漫喜剧工作室海报合成。两个成年人背对背站立，姿态俏皮自信，都侧目相视，带着愉悦的表情。\",\n  \"composition\": \"女性在左侧，双臂交叉，优雅的姿态。男性在右侧，手插口袋，放松的倾斜。全身可见，留有充足的标题负空间。\",\n  \"wardrobe\": \"女性：无袖/抹胸缎面金黄色及地长裙，光泽平滑，简约首饰。男性：深炭色或黑色定制西装，白衬衫，无领带或低调领带。\",\n  \"props\": \"无。\",\n  \"background\": \"温暖淡黄/奶油色天空渐变，底部有极其微妙的城市/公园模糊；干净的工作室剪影感。\",\n  \"lighting\": \"高调工作室灯光配柔光箱主光+柔和轮廓光；边缘清晰，自然的阴影。\",\n  \"typography\": {\n    \"title_text_exact\": \"HOW TO LOSE A GUY IN 10 DAYS\",\n    \"font_vibe\": \"经典浪漫喜剧衬线字体，精致的间距\",\n    \"color_and_harmony\": \"主色调黑色配优雅的红/绿色点缀，与温暖背景协调不冲突\",\n    \"placement\": \"中下方，像经典浪漫喜剧海报一样堆叠排列\"\n  }\n}",
+      "nameEn": "Romantic Comedy Poster: How to Lose a Guy in 10 Days",
+      "descriptionEn": "",
+      "contentEn": "{\n  \"scene_summary\": \"Clean early-2000s rom-com studio poster composite. Two adults stand back-to-back in a playful confident stance, both glancing sideways at each other with amused expressions.\",\n  \"composition\": \"Woman on the left, arms crossed, elegant posture. Man on the right, hands in pockets, relaxed lean. Full-body visible with generous negative space for title.\",\n  \"wardrobe\": \"Woman: sleeveless/strapless satin yellow-gold floor-length gown with smooth sheen, minimal jewelry. Man: dark charcoal or black tailored suit, white shirt, no tie or subtle tie.\",\n  \"props\": \"None.\",\n  \"background\": \"Warm pale yellow/cream sky gradient with extremely subtle city/park blur at the bottom; clean studio cutout feel.\",\n  \"lighting\": \"High-key studio lighting with softbox key + gentle rim light; crisp edges, natural shadows.\",\n  \"typography\": {\n    \"title_text_exact\": \"HOW TO LOSE A GUY IN 10 DAYS\",\n    \"font_vibe\": \"classic rom-com serif with refined spacing\",\n    \"color_and_harmony\": \"primary black with tasteful red/green accents that match the warm background without clashing\",\n    \"placement\": \"center-lower, stacked like a classic rom-com poster\"\n  }\n}"
+    },
+    {
+      "id": "resource-cinematic-posters-2",
+      "categoryId": "cinematic-posters",
+      "name": "雨中浪漫情侣电影海报 - 恋恋笔记本",
+      "description": "",
+      "content": "{\n  \"generation_request\": {\n    \"meta_data\": {\n      \"tool\": \"NanoBanana Pro\",\n      \"task_type\": \"text_to_image_photoreal_movie_poster_notebook_style_title_only\",\n      \"version\": \"v1.0\",\n      \"priority\": \"high\"\n    },\n    \"references\": {\n      \"reference_images\": {\n        \"female_reference\": \"UPLOAD_FEMALE_REFERENCE_IMAGE (REQUIRED)\",\n        \"male_reference\": \"UPLOAD_MALE_REFERENCE_IMAGE (REQUIRED)\",\n        \"layout_reference\": \"UPLOAD_THIS_NOTEBOOK_POSTER_AS_LAYOUT_REFERENCE (RECOMMENDED)\"\n      },\n      \"reference_rules\": {\n        \"exactly_two_references_only\": true,\n        \"preserve_identity_female\": true,\n        \"preserve_identity_male\": true,\n        \"identity_lock_strength_female\": 0.995,\n        \"identity_lock_strength_male\": 0.995,\n        \"face_similarity_priority\": \"MAX\",\n        \"preserve_facial_proportions\": true,\n        \"preserve_eye_shape_nose_lips_jawline\": true,\n        \"no_beautify_no_face_morph\": true,\n        \"keep_age_and_gender_consistent\": true,\n        \"no_identity_blending\": true\n      }\n    },\n    \"output_settings\": {\n      \"aspect_ratio\": \"2:3\",\n      \"orientation\": \"portrait\",\n      \"resolution\": \"ultra_high_res\",\n      \"render_style\": \"photoreal_cinematic_romance_poster_rainy_drama\",\n      \"sharpness\": \"high\",\n      \"film_grain\": \"subtle\",\n      \"dynamic_range\": \"high\",\n      \"print_ready\": true\n    },\n    \"creative_prompt\": {\n      \"scene_summary\": \"创作一张受雨中戏剧性拥抱启发的照片级真实电影海报。仅限两人（一女一男）。面部必须完全匹配上传的参考图片（最大身份保真）。近距离情感姿势，情侣在雨中紧紧拥抱。大雨倾盆，湿透的衣物，真实的皮肤质感，强烈的浪漫情感。柔和的阴天自然光配电影级对比度，海报级真实感。\",\n      \"composition\": {\n        \"framing\": \"中近景到特写，上半身为主体\",\n        \"pose\": \"雨中亲密拥抱，面庞贴近，情感浓烈\",\n        \"environment\": \"户外暴雨，模糊的自然背景，无可见建筑\",\n        \"weather\": \"大雨伴有可见的水滴和雨丝\",\n        \"title_area\": \"底部中央预留标题位置\"\n      },\n      \"wardrobe_and_styling\": {\n        \"female_outfit\": \"简约短袖或盖袖连衣裙，被雨水浸透，天然面料\",\n        \"male_outfit\": \"浅色衬衫被雨水浸透，袖子自然垂下\",\n        \"hair_and_makeup\": \"湿发丝，自然妆容，无华丽造型\",\n        \"skin\": \"真实的湿润皮肤质感，可见毛孔，无平滑处理\"\n      },\n      \"lighting_and_color\": {\n        \"lighting\": \"柔和自然的阴天光线，雨中有微妙的高光\",\n        \"color_palette\": \"冷蓝色和柔和的中性色，浪漫的柔和色调\",\n        \"avoid_cgi\": \"严格照片级真实，仅电影级光学效果\"\n      },\n      \"typography_and_text\": {\n        \"title_text_exact\": \"THE NOTEBOOK\",\n        \"text_style\": \"优雅经典衬线体，浪漫剧情片感觉，完全可读\",\n        \"placement\": {\n          \"title\": \"底部中央\"\n        },\n        \"strict_spelling_rule\": \"完全按照提供的标题渲染。其他任何位置不得出现文字。\"\n      },\n      \"strict_rules\": [\n        \"仅限两人\",\n        \"仅使用上传的女性和男性参考图片的面部（最大相似度，无偏移）\",\n        \"仅允许一个文本元素：'THE NOTEBOOK'\",\n        \"无标语、无演员名字、无演职员表、无工作室标志、无水印\",\n        \"照片级真实电影浪漫海报风格\"\n      ]\n    },\n    \"negative_prompt\": [\n      \"多余的人物\",\n      \"多余的面部\",\n      \"身份偏移\",\n      \"面部融合\",\n      \"换脸痕迹\",\n      \"美颜滤镜\",\n      \"塑料皮肤\",\n      \"卡通\",\n      \"动漫\",\n      \"CGI效果\",\n      \"模糊的面部\",\n      \"畸形的手\",\n      \"多余的手指\",\n      \"多余的文本\",\n      \"演员名字\",\n      \"标语\",\n      \"演职员表\",\n      \"水印\",\n      \"标志\"\n    ]\n  }\n}",
+      "nameEn": "Romantic Couple in Rain Movie Poster - The Notebook",
+      "descriptionEn": "",
+      "contentEn": "{\n  \"generation_request\": {\n    \"meta_data\": {\n      \"tool\": \"NanoBanana Pro\",\n      \"task_type\": \"text_to_image_photoreal_movie_poster_notebook_style_title_only\",\n      \"version\": \"v1.0\",\n      \"priority\": \"high\"\n    },\n    \"references\": {\n      \"reference_images\": {\n        \"female_reference\": \"UPLOAD_FEMALE_REFERENCE_IMAGE (REQUIRED)\",\n        \"male_reference\": \"UPLOAD_MALE_REFERENCE_IMAGE (REQUIRED)\",\n        \"layout_reference\": \"UPLOAD_THIS_NOTEBOOK_POSTER_AS_LAYOUT_REFERENCE (RECOMMENDED)\"\n      },\n      \"reference_rules\": {\n        \"exactly_two_references_only\": true,\n        \"preserve_identity_female\": true,\n        \"preserve_identity_male\": true,\n        \"identity_lock_strength_female\": 0.995,\n        \"identity_lock_strength_male\": 0.995,\n        \"face_similarity_priority\": \"MAX\",\n        \"preserve_facial_proportions\": true,\n        \"preserve_eye_shape_nose_lips_jawline\": true,\n        \"no_beautify_no_face_morph\": true,\n        \"keep_age_and_gender_consistent\": true,\n        \"no_identity_blending\": true\n      }\n    },\n    \"output_settings\": {\n      \"aspect_ratio\": \"2:3\",\n      \"orientation\": \"portrait\",\n      \"resolution\": \"ultra_high_res\",\n      \"render_style\": \"photoreal_cinematic_romance_poster_rainy_drama\",\n      \"sharpness\": \"high\",\n      \"film_grain\": \"subtle\",\n      \"dynamic_range\": \"high\",\n      \"print_ready\": true\n    },\n    \"creative_prompt\": {\n      \"scene_summary\": \"Create a photoreal cinematic romance poster inspired by a rain-soaked dramatic embrace. EXACTLY TWO people only (one woman and one man). Faces must match the uploaded references exactly (MAX identity). Close, emotional pose with the couple embracing tightly in the rain. Heavy rainfall, wet clothing, skin texture realistic, intense romantic emotion. Soft overcast daylight with cinematic contrast, poster-ready realism.\",\n      \"composition\": {\n        \"framing\": \"medium close-up to close-up, upper bodies dominant\",\n        \"pose\": \"intimate embrace in the rain, faces close, emotional intensity\",\n        \"environment\": \"outdoor rainstorm, blurred natural background, no visible buildings\",\n        \"weather\": \"heavy rain with visible droplets and streaks\",\n        \"title_area\": \"bottom-center reserved for title only\"\n      },\n      \"wardrobe_and_styling\": {\n        \"female_outfit\": \"simple short-sleeve or cap-sleeve dress, soaked by rain, natural fabric\",\n        \"male_outfit\": \"light shirt soaked by rain, sleeves relaxed\",\n        \"hair_and_makeup\": \"wet hair strands, natural makeup, no glam styling\",\n        \"skin\": \"realistic wet skin texture, pores visible, no smoothing\"\n      },\n      \"lighting_and_color\": {\n        \"lighting\": \"soft natural overcast light with subtle highlights from rain\",\n        \"color_palette\": \"cool blues and soft neutrals, romantic muted tones\",\n        \"avoid_cgi\": \"strictly photoreal, cinematic optics only\"\n      },\n      \"typography_and_text\": {\n        \"title_text_exact\": \"THE NOTEBOOK\",\n        \"text_style\": \"elegant classic serif, romantic drama feel, fully readable\",\n        \"placement\": {\n          \"title\": \"bottom-center\"\n        },\n        \"strict_spelling_rule\": \"Render the title EXACTLY as provided. No other text anywhere.\"\n      },\n      \"strict_rules\": [\n        \"Exactly 2 people only\",\n        \"Use ONLY the uploaded female and male references for faces (MAX similarity, no drift)\",\n        \"ONLY one text element allowed: 'THE NOTEBOOK'\",\n        \"No tagline, no actor names, no credits block, no studio logos, no watermark\",\n        \"Photoreal cinematic romance poster look\"\n      ]\n    },\n    \"negative_prompt\": [\n      \"extra people\",\n      \"extra faces\",\n      \"identity drift\",\n      \"face blending\",\n      \"face swap artifacts\",\n      \"beautify filter\",\n      \"plastic skin\",\n      \"cartoon\",\n      \"anime\",\n      \"cgi look\",\n      \"blurry faces\",\n      \"deformed hands\",\n      \"extra fingers\",\n      \"extra text\",\n      \"actor names\",\n      \"tagline\",\n      \"credits block\",\n      \"watermark\",\n      \"logo\"\n    ]\n  }\n}"
+    },
+    {
+      "id": "resource-cinematic-posters-3",
+      "categoryId": "cinematic-posters",
+      "name": "电影级沙漠行走：橙色雾霭中的独行身影",
+      "description": "",
+      "content": "{\n  \"description\": \"一个穿着长外套的孤独身影在浓密的橙红色雾霭中穿越荒芜的景观。\",\n  \"subject\": {\n    \"type\": \"孤独身影\",\n    \"attire\": \"长外套\",\n    \"action\": \"行走\"\n  },\n  \"setting\": {\n    \"location\": \"荒芜景观\",\n    \"atmosphere\": \"浓密的橙红色雾霭\"\n  },\n  \"visual_style\": {\n    \"composition\": \"电影级剪影\",\n    \"color_palette\": \"温暖单色调\",\n    \"texture\": \"微妙的胶片颗粒\",\n    \"lighting\": \"高对比度\",\n    \"realism\": \"照片级真实\"\n  }\n}",
+      "nameEn": "Cinematic Desert Walk: Solitary Figure in Orange Haze",
+      "descriptionEn": "",
+      "contentEn": "{\n  \"description\": \"A lone figure in a long coat walking across a barren landscape in thick orange-red fog.\",\n  \"subject\": {\n    \"type\": \"lone figure\",\n    \"attire\": \"long coat\",\n    \"action\": \"walking\"\n  },\n  \"setting\": {\n    \"location\": \"barren landscape\",\n    \"atmosphere\": \"thick orange-red fog\"\n  },\n  \"visual_style\": {\n    \"composition\": \"cinematic silhouette\",\n    \"color_palette\": \"warm monochrome\",\n    \"texture\": \"subtle film grain\",\n    \"lighting\": \"high contrast\",\n    \"realism\": \"photorealistic\"\n  }\n}"
+    },
+    {
+      "id": "resource-cinematic-posters-4",
+      "categoryId": "cinematic-posters",
+      "name": "电影级土耳其历史：首届议会大厦事件",
+      "description": "",
+      "content": "{\n  \"meta\": {\n    \"model\": \"nano-banana-pro\",\n    \"mode\": \"thinking\",\n    \"use_search_grounding\": true,\n    \"language\": \"tr\"\n  },\n  \"input\": {\n    \"location\": \"{{KONUM}}\",\n    \"date\": \"{{YYYY-MM-DD}}\",\n    \"aspectRatio\": \"{{16:9 | 4:3 | 1:1 | 9:16}}\",\n    \"timeOfDay\": \"{{optional}}\",\n    \"mood\": \"{{optional: epic | solemn | celebratory | tense | melancholic}}\"\n  },\n  \"prompt\": {\n    \"positive\": \"地点：{{KONUM}}\\n日期：{{YYYY-MM-DD}}\\n\\n首先使用可靠来源进行搜索，确定该日期在该地点发生的最重要的历史事件。然后生成一张代表该事件的照片级真实、超细节、电影级画面。\\n\\n时期准确性必须遵守：建筑、服装、武器/车辆和城市肌理必须与历史相符。不得出现任何现代物品、建筑、车辆或标牌。单一场景、单一瞬间、真实相机物理、自然人体比例、高精度微细节。\",\n    \"negative\": \"现代建筑, 汽车, 沥青, 霓虹灯, 智能手机, 错误时代的服装/盔甲, 奇幻, 动漫, 卡通, 文字叠加, 模糊, 低分辨率, 多余的肢体\"\n  },\n  \"render\": {\n    \"quality\": \"ultra\",\n    \"resolution\": \"4k\"\n  }\n}",
+      "nameEn": "Cinematic Turkish History: First Parliament Building Event",
+      "descriptionEn": "",
+      "contentEn": "{\n  \"meta\": {\n    \"model\": \"nano-banana-pro\",\n    \"mode\": \"thinking\",\n    \"use_search_grounding\": true,\n    \"language\": \"tr\"\n  },\n  \"input\": {\n    \"location\": \"{{KONUM}}\",\n    \"date\": \"{{YYYY-MM-DD}}\",\n    \"aspectRatio\": \"{{16:9 | 4:3 | 1:1 | 9:16}}\",\n    \"timeOfDay\": \"{{optional}}\",\n    \"mood\": \"{{optional: epic | solemn | celebratory | tense | melancholic}}\"\n  },\n  \"prompt\": {\n    \"positive\": \"Konum: {{KONUM}}\\nTarih: {{YYYY-MM-DD}}\\n\\nÖnce güvenilir kaynaklarla arama yap ve bu tarihte bu konumda gerçekleşen en önemli tarihsel olayı belirle. Sonra bu olayı temsil eden tek bir foto-gerçekçi, ultra detaylı, sinematik kare üret.\\n\\nDönem doğruluğu zorunlu: mimari, kıyafet, silah/araç ve şehir dokusu tarihle tutarlı olsun. Modern hiçbir obje, bina, araç veya tabela görünmesin. Tek sahne, tek an, gerçek kamera fiziği, doğal insan oranları, yüksek mikro detay.\",\n    \"negative\": \"modern buildings, cars, asphalt, neon, smartphones, wrong era clothing/armor, fantasy, anime, cartoon, text overlay, blurry, low-res, extra limbs\"\n  },\n  \"render\": {\n    \"quality\": \"ultra\",\n    \"resolution\": \"4k\"\n  }\n}"
+    },
+    {
+      "id": "resource-cinematic-posters-5",
+      "categoryId": "cinematic-posters",
+      "name": "Nano Banana AI 电影级UFC照片提示词生成器",
+      "description": "",
+      "content": "你所要做的就是复制并粘贴这段JSON，你将获得看起来像是创意总监制作的图片\n\n评论\"nano\"，我会私信发给你（必须先关注）",
+      "nameEn": "Nano Banana AI Prompt Generator for Cinematic UFC Photos",
+      "descriptionEn": "",
+      "contentEn": "all you have to do is copy and paste the JSON and you'll get images that look like a creative director made it\\n\\ncomment \"nano\" and I'll DM it to you (must be following)"
+    },
+    {
+      "id": "resource-cinematic-posters-6",
+      "categoryId": "cinematic-posters",
+      "name": "少年骇客电影海报：照片级真实与动画双人组合",
+      "description": "",
+      "content": "超高清分辨率8K工作室肖像，展示一位真实人类女性站在自选的卡通角色旁边，\n全身构图，两个主体清晰可见且居中。\n\n人类主体：年轻成年女性，自然微笑，放松自信的姿态，真实的面部特征，自然妆容，\n穿着现代休闲服装，如针织毛衣、合身牛仔裤或裤子、休闲运动鞋，双手放松或自然摆姿势，\n照片级真实的皮肤质感，细腻的发丝，柔和的面部高光。\n\n卡通角色：[INSERT CARTOON CHARACTER NAME OR STYLE]，完全动画化和风格化，鲜艳饱和的色彩，平滑或毛绒般的表面质感，\n富有表现力的大眼睛，友好自信的表情，夸张的卡通比例，以类似人类的姿势直立站立，\n与人类主体自然互动，站立靠近或轻微倾斜。\n\n灯光：柔和专业工作室灯光，均匀照明，无强烈阴影，微妙的轮廓光将主体与背景分离。\n\n背景：干净简约的工作室背景，纯色或平滑渐变，颜色与主体协调，无道具，无文字。\n\n风格与品质：超精细，照片级真实人物+高质量3D卡通渲染，超锐利对焦，电影级清晰度，\n商业广告外观，高级质感，无水印，无标志，无文字，完美平衡的真实感与动画感。",
+      "nameEn": "Ben 10 Cinematic Poster: Photorealistic & Animated Duo",
+      "descriptionEn": "",
+      "contentEn": "Ultra-high-resolution 8K studio portrait featuring a real human woman standing beside a stylized cartoon character of choice, \nfull-body composition, both subjects clearly visible and centered.\n\nHuman subject: young adult woman with natural smile, relaxed confident posture, realistic facial features, natural makeup, \nwearing modern casual clothing such as a knit sweater, fitted jeans or pants, and casual sneakers, hands relaxed or casually posed, \nphotorealistic skin texture, detailed hair strands, soft facial highlights.\n\nCartoon character: [INSERT CARTOON CHARACTER NAME OR STYLE], fully animated and stylized, vibrant saturated colors, smooth or plush-like surface texture, \nexpressive large eyes, friendly confident expression, exaggerated cartoon proportions, standing upright in a human-like pose, \ninteracting naturally with the human subject by standing close or leaning slightly.\n\nLighting: soft professional studio lighting, even illumination, no harsh shadows, subtle rim light separating subjects from background.\n\nBackground: clean minimal studio backdrop, solid color or smooth gradient, color-coordinated with subjects, no props, no text.\n\nStyle & Quality: hyper-detailed, photorealistic human + high-quality 3D cartoon render, ultra-sharp focus, cinematic clarity, \ncommercial advertising look, premium finish, no watermark, no logos, no text, perfectly balanced realism and animation."
+    },
+    {
+      "id": "resource-cinematic-posters-7",
+      "categoryId": "cinematic-posters",
+      "name": "巨型铅笔城市景观：超现实都市建筑",
+      "description": "",
+      "content": "将[EVERYDAY OBJECT]变为一座巨大的现实世界纪念碑。表面材质物理准确，有可见的磨损、划痕、灰尘，以及像人和车辆这样的比例参照。从低角度电影级视角拍摄，真实的日光，超精细的纹理。",
+      "nameEn": "Giant Pencil Cityscape: Surreal Urban Construction",
+      "descriptionEn": "",
+      "contentEn": "Transform [EVERYDAY OBJECT] into a massive real-world monument. Surface materials are physically accurate, with visible wear, scratches, dust, and scale references like people and vehicles. Shot from a low-angle cinematic perspective, realistic daylight, ultra-detailed textures."
+    },
+    {
+      "id": "resource-cinematic-posters-8",
+      "categoryId": "cinematic-posters",
+      "name": "古墓丽影劳拉·克劳馥游戏艺术 - 古老丛林遗迹",
+      "description": "",
+      "content": "可能会因为这个被骂，但这只是单个Nano Banana提示词，没有使用原始上传图片作为参考",
+      "nameEn": "Tomb Raider Lara Croft Game Art - Ancient Jungle Ruins",
+      "descriptionEn": "",
+      "contentEn": "Will probably get yelled at for this, but this was a single Nano Banana prompt without using the original uploaded as a reference"
+    },
+    {
+      "id": "resource-cinematic-posters-9",
+      "categoryId": "cinematic-posters",
+      "name": "雨中心碎：离别的电影级剧情",
+      "description": "",
+      "content": "创建一个9格电影级故事板，设定在阴雨绵绵、忧郁的氛围中。展示一位穿着湿透连衣裙的年轻女子站在石拱门下，一个男人走入雨中远去。包括她情感表达的特写、两人手分开的瞬间、她靠在柱子上哭泣的镜头，以及最后一个她独自站立的全景。使用柔和、忧郁的灯光，蓝灰色调，浅景深，和戏剧性的雨滴。画面应该富有情感、诗意和电影感。",
+      "nameEn": "Heartbreak in the Rain: Cinematic Drama of Separation",
+      "descriptionEn": "",
+      "contentEn": "Create a 9-panel cinematic storyboard set in a rainy, melancholic atmosphere. Show a young woman in a soaked dress standing beneath stone arches as a man walks away into the rain. Include close-ups of her emotional expression, a moment of their hands parting, shots of her crying against a pillar, and a final wide shot of her standing alone. Use soft, moody lighting, blue-gray tones, shallow depth of field, and dramatic raindrops. Panels should feel emotional, poetic, and film-like"
+    }
+  ]
+}

@@ -67,19 +67,6 @@
       "contentEn": "{\n  \"meta\": {\n    \"model\": \"nano-banana-pro\",\n    \"mode\": \"thinking\",\n    \"use_search_grounding\": true,\n    \"language\": \"tr\"\n  },\n  \"input\": {\n    \"location\": \"{{KONUM}}\",\n    \"date\": \"{{YYYY-MM-DD}}\",\n    \"aspectRatio\": \"{{16:9 | 4:3 | 1:1 | 9:16}}\",\n    \"timeOfDay\": \"{{optional}}\",\n    \"mood\": \"{{optional: epic | solemn | celebratory | tense | melancholic}}\"\n  },\n  \"prompt\": {\n    \"positive\": \"Konum: {{KONUM}}\\nTarih: {{YYYY-MM-DD}}\\n\\nÖnce güvenilir kaynaklarla arama yap ve bu tarihte bu konumda gerçekleşen en önemli tarihsel olayı belirle. Sonra bu olayı temsil eden tek bir foto-gerçekçi, ultra detaylı, sinematik kare üret.\\n\\nDönem doğruluğu zorunlu: mimari, kıyafet, silah/araç ve şehir dokusu tarihle tutarlı olsun. Modern hiçbir obje, bina, araç veya tabela görünmesin. Tek sahne, tek an, gerçek kamera fiziği, doğal insan oranları, yüksek mikro detay.\",\n    \"negative\": \"modern buildings, cars, asphalt, neon, smartphones, wrong era clothing/armor, fantasy, anime, cartoon, text overlay, blurry, low-res, extra limbs\"\n  },\n  \"render\": {\n    \"quality\": \"ultra\",\n    \"resolution\": \"4k\"\n  }\n}"
     },
     {
-      "id": "resource-cinematic-posters-5",
-      "name": "Nano Banana AI 电影级UFC照片提示词生成器",
-      "content": "你所要做的就是复制并粘贴这段JSON，你将获得看起来像是创意总监制作的图片\n\n评论\"nano\"，我会私信发给你（必须先关注）",
-      "categoryId": "cinematic-posters",
-      "order": 5,
-      "sourceCategory": "Cinematic Posters",
-      "previewImage": "https://pbs.twimg.com/amplify_video_thumb/1970192305375363073/img/IEUWwE75t1IL0uHG.jpg",
-      "author": "Tyler",
-      "authorUrl": "https://x.com/tyler_agg/status/1970192360102633768",
-      "nameEn": "Nano Banana AI Prompt Generator for Cinematic UFC Photos",
-      "contentEn": "all you have to do is copy and paste the JSON and you'll get images that look like a creative director made it\n\ncomment \"nano\" and I'll DM it to you (must be following)"
-    },
-    {
       "id": "resource-cinematic-posters-6",
       "name": "少年骇客电影海报：照片级真实与动画双人组合",
       "content": "超高清分辨率8K工作室肖像，展示一位真实人类女性站在自选的卡通角色旁边，\n全身构图，两个主体清晰可见且居中。\n\n人类主体：年轻成年女性，自然微笑，放松自信的姿态，真实的面部特征，自然妆容，\n穿着现代休闲服装，如针织毛衣、合身牛仔裤或裤子、休闲运动鞋，双手放松或自然摆姿势，\n照片级真实的皮肤质感，细腻的发丝，柔和的面部高光。\n\n卡通角色：[INSERT CARTOON CHARACTER NAME OR STYLE]，完全动画化和风格化，鲜艳饱和的色彩，平滑或毛绒般的表面质感，\n富有表现力的大眼睛，友好自信的表情，夸张的卡通比例，以类似人类的姿势直立站立，\n与人类主体自然互动，站立靠近或轻微倾斜。\n\n灯光：柔和专业工作室灯光，均匀照明，无强烈阴影，微妙的轮廓光将主体与背景分离。\n\n背景：干净简约的工作室背景，纯色或平滑渐变，颜色与主体协调，无道具，无文字。\n\n风格与品质：超精细，照片级真实人物+高质量3D卡通渲染，超锐利对焦，电影级清晰度，\n商业广告外观，高级质感，无水印，无标志，无文字，完美平衡的真实感与动画感。",
@@ -104,19 +91,6 @@
       "authorUrl": "https://x.com/aleenaamiir/status/2002937974993088841",
       "nameEn": "Giant Pencil Cityscape: Surreal Urban Construction",
       "contentEn": "Transform [EVERYDAY OBJECT] into a massive real-world monument. Surface materials are physically accurate, with visible wear, scratches, dust, and scale references like people and vehicles. Shot from a low-angle cinematic perspective, realistic daylight, ultra-detailed textures."
-    },
-    {
-      "id": "resource-cinematic-posters-8",
-      "name": "古墓丽影劳拉·克劳馥游戏艺术 - 古老丛林遗迹",
-      "content": "可能会因为这个被骂，但这只是单个Nano Banana提示词，没有使用原始上传图片作为参考",
-      "categoryId": "cinematic-posters",
-      "order": 8,
-      "sourceCategory": "Cinematic Posters",
-      "previewImage": "https://pbs.twimg.com/media/G75s71rWsAITwgT.jpg",
-      "author": "Paul Tassi",
-      "authorUrl": "https://x.com/PaulTassi/status/1999158619020181607",
-      "nameEn": "Tomb Raider Lara Croft Game Art - Ancient Jungle Ruins",
-      "contentEn": "Will probably get yelled at for this, but this was a single Nano Banana prompt without using the original uploaded as a reference"
     },
     {
       "id": "resource-cinematic-posters-9",

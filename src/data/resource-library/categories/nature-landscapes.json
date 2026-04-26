@@ -2,22 +2,9 @@
   "categoryId": "nature-landscapes",
   "prompts": [
     {
-      "id": "resource-nature-landscapes-0",
-      "name": "现代房屋外观 | 住宅建筑与庭院",
-      "content": "首先拍摄一张类似第一张的照片，然后使用 (Nano Banana Pro) 并输入以下提示词：\\n\\n\\",
-      "categoryId": "nature-landscapes",
-      "order": 0,
-      "sourceCategory": "Nature & Landscapes",
-      "previewImage": "https://pbs.twimg.com/media/G6oUIPaWwAAhk1q.jpg",
-      "author": "مصلح نايش",
-      "authorUrl": "https://x.com/muslehNayesh/status/1993427924511609323",
-      "nameEn": "Modern House Exterior | Residential Architecture & Yard",
-      "contentEn": "في البداية خذ صورة مثل الأولى ، ثم استخدم (Nano Banana Pro) واكتب هذه المطالبة (Prompt):\n\n \"غير واجهة المبنى إلى واجهة مودرن جميلة، وأضف مسبحاً وجلسة خارجية في الحوش\".\n\nبعد ذلك، اختر (Veo 3.1) من Gemini ، وارفع الصورة الأولى والصورة الثانية التي عدلت عليها، واكتب هذه المطالبة:\n\n \"لقطة بتقنية التايم لابس للبناء، حركة سريعة لعمّال البناء وهم يعملون على واجهة المبنى ويغيرونها، وأيضاً يحفرون للمسبح ويتم تعبئته بالماء، وهم يضعون الجلسة العربية وبقية التعديلات\".\n\nسيظهر لك فيديو مثل البوست في المرفق.\n\nيا الله أرونا إبداعاتكم"
-    },
-    {
       "id": "resource-nature-landscapes-1",
       "name": "植物幼苗上休憩的微缩人物 - 写实摄影风格",
-      "content": "一个微小的人物坐着并倚靠在一株高大的嫩豆芽上\\",
+      "content": "一个微小的人物坐着并倚靠在一株高大的嫩豆芽上。",
       "categoryId": "nature-landscapes",
       "order": 1,
       "sourceCategory": "Nature & Landscapes",
@@ -30,7 +17,7 @@
     {
       "id": "resource-nature-landscapes-2",
       "name": "阿尔卑斯山村与雄伟雪山景观",
-      "content": "高山圣地村庄\\",
+      "content": "高山圣地村庄。",
       "categoryId": "nature-landscapes",
       "order": 2,
       "sourceCategory": "Nature & Landscapes",
@@ -43,7 +30,7 @@
     {
       "id": "resource-nature-landscapes-3",
       "name": "宠物店插画 | 教育性动物用品展示",
-      "content": "{pet shop} 场景，并用英文标注每个物品。\\n\\n标注格式：\\n- 第一行：英文单词\\n- 第二行：IPA音标\\n- 第三行：{Chinese} 中文翻译",
+      "content": "{pet shop} 场景，并用英文标注每个物品。\n\n标注格式：\n- 第一行：英文单词\n- 第二行：IPA音标\n- 第三行：{Chinese} 中文翻译",
       "categoryId": "nature-landscapes",
       "order": 3,
       "sourceCategory": "Nature & Landscapes",
@@ -56,7 +43,7 @@
     {
       "id": "resource-nature-landscapes-4",
       "name": "奇幻猫咪之旅：从素描到写实的森林穿越",
-      "content": "提示词：一个温馨的房间，墙壁看起来像巨大的纸质插画，扁平的墨线和水彩渲染，但「纸墙」的一角被掀起，露出后面完全立体的森林。掀起边缘像厚卡纸一样向外卷曲，在插画表面投下真实的阴影。视觉错觉：二维绘制的物体（画出来的灯、画出来的架子）投下真实的立体阴影，而三维森林则投下淡淡的",
+      "content": "提示词：一个温馨的房间，墙壁看起来像巨大的纸质插画，扁平的墨线和水彩渲染，但「纸墙」的一角被掀起，露出后面完全立体的森林。掀起边缘像厚卡纸一样向外卷曲，在插画表面投下真实的阴影。视觉错觉：二维绘制的物体（画出来的灯、画出来的架子）投下真实的立体阴影，而三维森林则投下淡淡的。",
       "categoryId": "nature-landscapes",
       "order": 4,
       "sourceCategory": "Nature & Landscapes",
@@ -64,12 +51,12 @@
       "author": "Umesh",
       "authorUrl": "https://x.com/umesh_ai/status/2003059524681466121",
       "nameEn": "Whimsical Cat Journey: Sketch to Photorealistic Forest",
-      "contentEn": "Prompt : A cozy room where the wall looks like a giant paper illustration, flat ink lines and watercolor washes, yet a corner of the “paper wall” is peeled back, revealing a fully 3D forest behind it. The peeled edge curls outward like thick cardstock, casting a real shadow on the illustrated surface. The illusion: the 2D drawn objects (a drawn lamp, drawn shelf) cast realistic 3D shadows, while the 3D forest casts faint “ink” shadows as if it’s becoming a drawing. A cat sits half-in, half-out: front paws in 3D forest moss, back body in 2D sketch form, seamlessly blended. Soft morning light, gentle pastel palette, tactile paper fibers visible, high detail, whimsical but believable “mixed-dimension” realism."
+      "contentEn": "Prompt : A cozy room where the wall looks like a giant paper illustration, flat ink lines and watercolor washes, yet a corner of the \"paper wall\" is peeled back, revealing a fully 3D forest behind it. The peeled edge curls outward like thick cardstock, casting a real shadow on the illustrated surface. The illusion: the 2D drawn objects (a drawn lamp, drawn shelf) cast realistic 3D shadows, while the 3D forest casts faint \"ink\" shadows as if it's becoming a drawing. A cat sits half-in, half-out: front paws in 3D forest moss, back body in 2D sketch form, seamlessly blended. Soft morning light, gentle pastel palette, tactile paper fibers visible, high detail, whimsical but believable \"mixed-dimension\" realism."
     },
     {
       "id": "resource-nature-landscapes-5",
       "name": "四季树木景观 - 鲜艳的自然轮回",
-      "content": "{Scene} 的超写实数字插画，以单一连续构图展示季节的轮回。场景从左到右自然流转：冬季、春季、夏季和秋季。\\n\\n左侧展现寒冷的雪冬元素，逐渐融化成春天的新绿嫩芽和花朵，然后转变为夏天茂盛的植被和明亮的阳光，最后在右侧过渡到金、橙、红色的秋季色调。\\n\\n季节之间没有明显的分界线；天气、光线和植被平滑融合，创造出统一和谐的 panorama 全景。细节丰富，象征时间的流逝，电影级光线，8K分辨率，高度细节纹理。--ar 4:3\\n\\n----\\n\\nScene：历史悠久的上海外滩滨水区，远眺黄浦江对岸充满未来感的陆家嘴金融区",
+      "content": "{Scene} 的超写实数字插画，以单一连续构图展示季节的轮回。场景从左到右自然流转：冬季、春季、夏季和秋季。\n\n左侧展现寒冷的雪冬元素，逐渐融化成春天的新绿嫩芽和花朵，然后转变为夏天茂盛的植被和明亮的阳光，最后在右侧过渡到金、橙、红色的秋季色调。\n\n季节之间没有明显的分界线；天气、光线和植被平滑融合，创造出统一和谐的 panorama 全景。细节丰富，象征时间的流逝，电影级光线，8K分辨率，高度细节纹理。--ar 4:3\n\n----\n\nScene：历史悠久的上海外滩滨水区，远眺黄浦江对岸充满未来感的陆家嘴金融区",
       "categoryId": "nature-landscapes",
       "order": 5,
       "sourceCategory": "Nature & Landscapes",
@@ -77,25 +64,12 @@
       "author": "宝玉",
       "authorUrl": "https://x.com/dotey/status/1997787952110239874",
       "nameEn": "Four Seasons Tree Landscape - Vibrant Nature Cycle",
-      "contentEn": "Hyper-realistic digital illustration of {Scene}, presented as a single continuous composition showcasing the cycle of seasons. The scene flows seamlessly from left to right in a natural progression: Winter, Spring, Summer, and Autumn. \n\nThe left side features cold snowy winter elements, gradually thawing into the fresh green buds and blooms of spring, then morphing into the lush vibrant vegetation and bright sunlight of summer, and finally transitioning into the golden, orange, and red hues of autumn on the far right. \n\nThere are no visible dividing lines between seasons; the weather, lighting, and vegetation blend smoothly to create a unified and harmonious panorama. Rich in detail, symbolic of the passage of time, cinematic lighting, 8k resolution, highly detailed textures. --ar 4:3\n\n----\n\nScene：the historic Shanghai Bund waterfront looking across the Huangpu River to the futuristic Lujiazui district"
-    },
-    {
-      "id": "resource-nature-landscapes-6",
-      "name": "戴耳机的幽默卷尾猴使用电脑",
-      "content": "Nano Banana Pro 在 invideo 上免费提供365天 - 在11月27日之前所有付费计划注册用户可无限使用。\\n\\n转发 + 评论 \\",
-      "categoryId": "nature-landscapes",
-      "order": 6,
-      "sourceCategory": "Nature & Landscapes",
-      "previewImage": "https://pbs.twimg.com/amplify_video_thumb/1992261826650992643/img/MAlSDnhVYyYr2Qr5.jpg",
-      "author": "Invideo",
-      "authorUrl": "https://x.com/invideoOfficial/status/1992261898310725759",
-      "nameEn": "Humorous Capuchin Monkey at Computer with Headphones",
-      "contentEn": "Nano Banana Pro is FREE for 365 days on invideo - and unlimited - for all paid-plan signups before Nov 27.\n\nRT + comment “Banana” for a shot at our highest plan + $1000 credits. Okay, now go lose your bananas."
+      "contentEn": "Hyper-realistic digital illustration of {Scene}, presented as a single continuous composition showcasing the cycle of seasons. The scene flows seamlessly from left to right in a natural progression: Winter, Spring, Summer, and Autumn. \n\nThe left side features cold snowy winter elements, gradually thawing into the fresh green buds and blooms of spring, then morphing into the lush vibrant vegetation and bright sunlight of summer, and finally transitioning into the golden, orange, and red hues of autumn on the far right. \n\nThere are no visible dividing lines between seasons; the weather, lighting, and vegetation blend smoothly to create a unified and harmonious panorama. Rich in detail, symbolic of the passage of time, cinematic lighting, 8k resolution, highly detailed textures. --ar 4:3\n\n----\n\nScene：the historic Shanghai Bund waterfront looking across the Huangpu River to the futuristic Lujiazui district"
     },
     {
       "id": "resource-nature-landscapes-7",
       "name": "蓝天上的逼真云层世界地图艺术",
-      "content": "提示词：一张天空中云朵的超写实照片，云朵独特地形成了世界所有大陆的形状，每个大陆在云层结构中轮廓清晰可见。背景是明亮的蓝天，散布着几朵其他较小的普通云朵。阳光微妙地照亮这朵云，突出其独特的形状。\\n\\n使用 @LeonardoAi 生成",
+      "content": "提示词：一张天空中云朵的超写实照片，云朵独特地形成了世界所有大陆的形状，每个大陆在云层结构中轮廓清晰可见。背景是明亮的蓝天，散布着几朵其他较小的普通云朵。阳光微妙地照亮这朵云，突出其独特的形状。\n\n使用 @LeonardoAi 生成",
       "categoryId": "nature-landscapes",
       "order": 7,
       "sourceCategory": "Nature & Landscapes",
@@ -108,7 +82,7 @@
     {
       "id": "resource-nature-landscapes-8",
       "name": "森林地面的树叶龙艺术：秋季自然摄影",
-      "content": "哇，你不需要冗长详细的提示词就能在 Nano Banana Pro 上创作出精彩作品！\\n\\n提示词：一张超写实的树叶照片，形状看起来像一条龙。",
+      "content": "哇，你不需要冗长详细的提示词就能在 Nano Banana Pro 上创作出精彩作品！\n\n提示词：一张超写实的树叶照片，形状看起来像一条龙。",
       "categoryId": "nature-landscapes",
       "order": 8,
       "sourceCategory": "Nature & Landscapes",
@@ -116,20 +90,7 @@
       "author": "Umesh",
       "authorUrl": "https://x.com/umesh_ai/status/2000090668631486912",
       "nameEn": "Leaf Dragon Art on Forest Floor: Autumn Nature Photography",
-      "contentEn": "wow, you don’t need long, detailed prompts to make something amazing on Nano Banana Pro!\n\nPrompt : A photorealistic image of a leaf that looks like it’s in the shape of a dragon."
-    },
-    {
-      "id": "resource-nature-landscapes-9",
-      "name": "史诗级日落天空：阳光穿透暗黑暴风云",
-      "content": "Nano Banana Pro 提示词：一张戏剧性的天空照片，旋转的暴风云自然地形成 [SUBJECT] 的轮廓形状。这种错觉应该是",
-      "categoryId": "nature-landscapes",
-      "order": 9,
-      "sourceCategory": "Nature & Landscapes",
-      "previewImage": "https://pbs.twimg.com/media/G8SNKQQa4AUXbg5.jpg",
-      "author": "Umesh",
-      "authorUrl": "https://x.com/umesh_ai/status/2000879410308899138",
-      "nameEn": "Epic Sunset Sky: Sun Rays Piercing Dark Storm Clouds",
-      "contentEn": "Prompt on Nano Banana Pro : A dramatic sky photo where swirling storm clouds naturally form the unmistakable shape of a [SUBJECT]. The illusion should be “found shape”: at first it’s just clouds; then the creature silhouette pops out. Realistic lighting: sun rays breaking through, volumetric beams, deep contrast. No fantasy glow, pure cloud structure forming the subject. High resolution, cinematic, awe-inspiring."
+      "contentEn": "wow, you don't need long, detailed prompts to make something amazing on Nano Banana Pro!\n\nPrompt : A photorealistic image of a leaf that looks like it's in the shape of a dragon."
     }
   ]
 }

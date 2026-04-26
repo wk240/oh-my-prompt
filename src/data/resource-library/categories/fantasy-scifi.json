@@ -4,7 +4,7 @@
     {
       "id": "resource-fantasy-scifi-0",
       "name": "蒙娜丽莎冷切肉拼盘艺术 - 创意美食",
-      "content": "输入A：蒙娜丽莎。<instructions> 扮演世界顶级美食专家和艺术家。\n\n输入A：杰作画作（如蒙娜丽莎、星月夜、呐喊）。\n\n分析构图、色彩、氛围、元素。挑选与该地区相关的合适食材用于画作创作。\n\n目标：制作大型冷切肉拼盘，使用腌制肉类、奶酪、水果、坚果及其他与该地区相关的食材，复刻画作。\n规则：决定每个部分使用哪些食材，使拼盘尽可能逼真地呈现画作，但主要由食物组成。\n\n2x2网格：面板1：原画参考；面板2：食材布局图；面板3：俯视制作过程；面板4：最终拼盘配酒推荐。\n输出：1张1:1图像，乡村风格美食摄影。\n\n</instructions>",
+      "content": "输入A：蒙娜丽莎。<instructions> 扮演世界顶级美食专家和艺术家。\n\n输入A：杰作画作（如蒙娜丽莎、星月夜、呐喊）。分析构图、色彩、氛围、元素。挑选与该地区相关的合适食材用于画作创作。\n\n目标：制作大型冷切肉拼盘，使用腌制肉类、奶酪、水果、坚果及其他与该地区相关的食材，复刻画作。\n规则：决定每个部分使用哪些食材，使拼盘尽可能逼真地呈现画作，但主要由食物组成。\n\n2x2网格：面板1：原画参考；面板2：食材布局图；面板3：俯视制作过程；面板4：最终拼盘配酒推荐。\n输出：1张1:1图像，乡村风格美食摄影。\n\n</instructions>",
       "categoryId": "fantasy-scifi",
       "order": 0,
       "sourceCategory": "Fantasy & Sci-Fi",
@@ -12,7 +12,7 @@
       "author": "Gadgetify",
       "authorUrl": "https://x.com/Gdgtify/status/2004509495507194326",
       "nameEn": "Mona Lisa Charcuterie Board Food Art - Creative Culinary",
-      "contentEn": "Input A:  Mona Lisa . <instructions> Act as a world class food expert and artist. \n\nInput A: Masterpiece painting (e.g., Mona Lisa, Starry Night, The Scream).\n\n Analyze composition, colors, mood, elements. Pick the right food ingredients relevant to the region that can be used in the painting. \n\nGoal: Large charcuterie platter replicating the painting using cured meats, cheeses, fruits, nuts, and other ingredients relevant to that region. \nRules: decide which ingredients should be used for each part, so the painting looks as realistic as possible but is mainly made out of food. \n\n2x2 grid: Panel 1: Original painting reference; Panel 2: Ingredient map; Panel 3: Overhead build; Panel 4: Final board with wine pairing.\nOutput: 1 x 1:1 image, rustic gourmet photography.\n\n</instructions>"
+      "contentEn": "Input A: Mona Lisa. <instructions> Act as a world class food expert and artist. \n\nInput A: Masterpiece painting (e.g., Mona Lisa, Starry Night, The Scream). Analyze composition, colors, mood, elements. Pick the right food ingredients relevant to the region that can be used in the painting. \n\nGoal: Large charcuterie platter replicating the painting using cured meats, cheeses, fruits, nuts, and other ingredients relevant to that region. \nRules: decide which ingredients should be used for each part, so the painting looks as realistic as possible but is mainly made out of food. \n\n2x2 grid: Panel 1: Original painting reference; Panel 2: Ingredient map; Panel 3: Overhead build; Panel 4: Final board with wine pairing.\nOutput: 1 x 1:1 image, rustic gourmet photography.\n\n</instructions>"
     },
     {
       "id": "resource-fantasy-scifi-1",
@@ -25,7 +25,7 @@
       "author": "ttmouse - 豆爸",
       "authorUrl": "https://x.com/ttmouse/status/2006771865436704798",
       "nameEn": "Conceptual Art: Jester's Existential Crisis Specimen Jars",
-      "contentEn": "{\n\"creation_intent\": \"娱乐或玩笑\",\n\"generation_logic\": \"瞬间叙事\",\n\"subject_kit\": {\n\"primary_subject\": \"标本罐\",\n\"secondary_elements\": [\n\"软木塞封\",\n\"浑浊液体\",\n\"手写标签\"\n]\n},\n\"core_tension\": \"角色 vs 原型\",\n\"twist_mechanisms\": [\n\"碎片马赛克\",\n\"服装分解\",\n\"时间断裂\"\n],\n\"stage_context\": \"博物馆修复工作间\",\n\"composition_rule\": \"类型学序列布局\",\n\"lighting_rule\": \"阴天柔光\",\n\"imaging_assumption\": \"极简物体研究\",\n\"deliverable_type\": \"概念帧\",\n\"creative_directive\": \"对荒诞的事物使用过度的正式感\",\n\"oblique_strategy\": \"极简约束：只用3个元素\"\n}\n\n#nanobanana #NanoBananaPro #Prompt #MetaGeny"
+      "contentEn": "{\n\"creation_intent\": \"entertainment or joke\",\n\"generation_logic\": \"moment narrative\",\n\"subject_kit\": {\n\"primary_subject\": \"specimen jar\",\n\"secondary_elements\": [\n\"cork seal\",\n\"cloudy liquid\",\n\"handwritten label\"\n]\n},\n\"core_tension\": \"character vs archetype\",\n\"twist_mechanisms\": [\n\"fragment mosaic\",\n\"costume breakdown\",\n\"time fracture\"\n],\n\"stage_context\": \"museum restoration workshop\",\n\"composition_rule\": \"typological sequence layout\",\n\"lighting_rule\": \"overcast soft light\",\n\"imaging_assumption\": \"minimalist object study\",\n\"deliverable_type\": \"concept frame\",\n\"creative_directive\": \"apply excessive formality to absurd things\",\n\"oblique_strategy\": \"minimalist constraint: only 3 elements\"\n}\n\n#nanobanana #NanoBananaPro #Prompt #MetaGeny"
     },
     {
       "id": "resource-fantasy-scifi-2",
@@ -67,32 +67,6 @@
       "contentEn": "{\n  \"image_generation_prompt\": {\n    \"full_text\": \"An ultra-realistic 8K UHD photograph of a rainy night scene at a rural Japanese bus stop. A person (based on the attached photos, with a normal build) is standing, holding a small red umbrella, wearing a red jumpsuit, blue boots, and a yellow t-shirt, looking to the side with an expression of apprehension and curiosity. Beside him, a gigantic, realistic Totoro creature, with wet fur and a leaf on its head, waits in the rain. The setting includes an aged bus stop sign, dense wet forest trees in the background, and the lighting comes from a dim lamppost and the moon, with realistic rain reflections on the wet asphalt. Wide shot. The face must be sharp and expressive.\",\n    \"technical_specs\": {\n      \"medium\": \"Photograph\",\n      \"resolution\": \"8K UHD\",\n      \"style\": \"Ultra-realistic\",\n      \"composition\": \"Wide shot\",\n      \"focus\": \"Sharp and expressive face\"\n    },\n    \"lighting\": {\n      \"sources\": [\"Dim lamppost\", \"Moon\"],\n      \"effects\": [\"Realistic rain reflections on wet asphalt\"]\n    },\n    \"environment\": {\n      \"location\": \"Rural Japanese bus stop\",\n      \"weather\": \"Rainy night\",\n      \"background\": \"Dense wet forest trees\",\n      \"props\": [\"Aged bus stop sign\"]\n    },\n    \"subjects\": [\n      {\n        \"type\": \"Human\",\n        \"reference_source\": \"Attached photos\",\n        \"build\": \"Normal\",\n        \"attire\": {\n          \"clothing\": \"Red jumpsuit, yellow t-shirt\",\n          \"footwear\": \"Blue boots\",\n          \"accessories\": \"Small red umbrella\"\n        },\n        \"pose\": \"Standing, looking to the side\",\n        \"expression\": \"Apprehension and curiosity\"\n      },\n      {\n        \"type\": \"Creature\",\n        \"identity\": \"Gigantic realistic Totoro\",\n        \"details\": [\"Wet fur\", \"Leaf on head\"],\n        \"action\": \"Waiting in the rain\"\n      }\n    ]\n  }\n}"
     },
     {
-      "id": "resource-fantasy-scifi-5",
-      "name": "艾丽莎·福廷职业生涯幻想地图 - 专业版",
-      "content": "提示词技巧：将您的领英个人资料下载为PDF，并附带简单提示词提供给Nano Banana Pro。",
-      "categoryId": "fantasy-scifi",
-      "order": 5,
-      "sourceCategory": "Fantasy & Sci-Fi",
-      "previewImage": "https://pbs.twimg.com/media/G6UuJL7bAAA_e2K.jpg",
-      "author": "Alisa Fortin",
-      "authorUrl": "https://x.com/alisa_fortin/status/1992049339511030009",
-      "nameEn": "Alisa Fortin Career Journey Fantasy Map - Professional",
-      "contentEn": "Prompt tip: Download your LinkedIn profile is a PDF and give it to Nano Banana Pro with a simple prompt."
-    },
-    {
-      "id": "resource-fantasy-scifi-6",
-      "name": "超现实香蕉自由女神像 | 黑色星期五特惠",
-      "content": "转发并回复\"EXTENDED\"（8小时内）- 私信获取300积分。\n\n这个优惠在GenAI领域前所未有。",
-      "categoryId": "fantasy-scifi",
-      "order": 6,
-      "sourceCategory": "Fantasy & Sci-Fi",
-      "previewImage": "https://pbs.twimg.com/amplify_video_thumb/1993151199676362752/img/7t_QWlxqUOvjXjbE.jpg",
-      "author": "Higgsfield AI",
-      "authorUrl": "https://x.com/higgsfield_ai/status/1993151256362467468",
-      "nameEn": "Surreal Banana Statue of Liberty | Black Friday Deal",
-      "contentEn": "Retweet & reply \"EXTENDED\" in 8h - get 300 credits in DM.\n\nThis deal has never existed in GenAI."
-    },
-    {
       "id": "resource-fantasy-scifi-7",
       "name": "快乐儿童在幻想野花草甸中骑巨蜂",
       "content": "1. 高清超写实微距照片，展示一位细小的微型女孩，深色长发，身穿飘逸的棕色亚麻裙，宁静地坐在一只带有黑色斑点的红色大瓢虫背上。瓢虫停驻在一片充满晶莹剔透晨露的鲜艳绿叶上。背景是柔和的奶油色虚化，呈现失焦的绿色枝叶和金色阳光。灯光温暖空灵，捕捉到每一滴露珠和瓢虫壳的纹理细节。\n\n2. 高清微距照片，展示一位细小精致的冒险者骑在一只巨大闪亮的绿色屎壳郎背上。屎壳郎有着闪烁的金属外壳，带有金色和蓝色光泽。冒险者身穿迷你探险装备，跨坐在屎壳郎的胸部。他们正穿过森林地面上的苔藓腐木。背景是梦幻般的虚化，呈现阳光普照的森林，金色光线透过树林洒下。对焦于屎壳郎的纹理细节，电影级灯光，8K分辨率，超写实。\n\n3. 高清电影级幻想镜头，展示一位快乐的小女孩，棕色头发，骑着一只巨大毛茸茸的大黄蜂。她身穿棕色皮革探险服，背着小挎包。他们飞越一片充满超大发光野花的草地，花朵呈现橙色、黄色和紫色。场景沐浴在温暖的金色阳光中，带有柔和的虚化和漂浮在空中的魔法尘埃粒子。大黄蜂毛发和女孩服装的纹理细节丰富，8K分辨率，奇幻冒险氛围。\n\n4. 高清超现实幻想照片，展示一位细小的微型女子，长发飘逸，身穿精致的白色蕾丝裙，优雅地站在一只巨大帝王蝶的背上。帝王蝶全焦展示，翅膀呈现鲜艳的橙黑花纹。他们漂浮在阳光普照的草地上，周围是柔和虚化的野花，色彩为红、蓝、黄。灯光温暖金色（黄金时刻），营造出梦幻般的魔幻氛围，带有柔和的镜头光晕和浅景深。",
@@ -103,7 +77,7 @@
       "author": "Aijaz",
       "authorUrl": "https://x.com/iamsofiaijaz/status/2007029735193448529",
       "nameEn": "Joyful Child Riding Giant Bee in Fantasy Wildflower Meadow",
-      "contentEn": "1.  high-definition, hyper-realistic macro photograph of a tiny, miniature girl with long dark hair wearing a flowing brown linen dress, sitting peacefully on the back of a large red ladybug with black spots. The ladybug is perched on a vibrant green leaf covered in glistening, translucent morning dew drops. The background is a soft, creamy bokeh of out-of-focus green foliage and golden sunlight. The lighting is warm and ethereal, capturing every detail of the dew drops and the texture of the ladybug's shell. \n2.  A high-definition macro photograph of a tiny, detailed adventurer riding on the back of a giant iridescent green dung beetle. The beetle has a shimmering metallic shell with hints of gold and blue. The rider is wearing rugged, miniature explorer gear and is perched on the beetle's thorax. They are traveling across a mossy, decaying log on a forest floor. The background is a soft, dreamlike bokeh of a sun-drenched forest with golden light filtering through the trees. Sharp focus on the beetle's texture, cinematic lighting, 8k resolution, hyper-realistic.\n\n3.A high-definition, cinematic fantasy shot of a tiny, cheerful young girl with brown hair riding on the back of a giant, fuzzy bumblebee. She is wearing a brown leather explorer's outfit with a small satchel. They are flying through a vibrant meadow filled with oversized, glowing wildflowers in shades of orange, yellow, and purple. The scene is bathed in warm, golden sunlight with soft bokeh and magical dust particles floating in the air. Highly detailed textures on the bee's fur and the girl's clothing, 8k resolution, whimsical and adventurous atmosphere.\n\n4. A high-definition surreal fantasy photograph of a tiny, miniature woman with long flowing hair, wearing a delicate, ethereal white lace dress, standing gracefully on the back of a giant Monarch butterfly. The butterfly is in full focus, showcasing vibrant orange and black wing patterns. They are floating in a sun-drenched meadow filled with soft-focus, bokeh wildflowers in shades of red, blue, and yellow. The lighting is warm and golden (golden hour), creating a magical, dreamlike atmosphere with soft lens flares and a shallow depth of field."
+      "contentEn": "1. A high-definition, hyper-realistic macro photograph of a tiny, miniature girl with long dark hair wearing a flowing brown linen dress, sitting peacefully on the back of a large red ladybug with black spots. The ladybug is perched on a vibrant green leaf covered in glistening, translucent morning dew drops. The background is a soft, creamy bokeh of out-of-focus green foliage and golden sunlight. The lighting is warm and ethereal, capturing every detail of the dew drops and the texture of the ladybug's shell.\n2. A high-definition macro photograph of a tiny, detailed adventurer riding on the back of a giant iridescent green dung beetle. The beetle has a shimmering metallic shell with hints of gold and blue. The rider is wearing rugged, miniature explorer gear and is perched on the beetle's thorax. They are traveling across a mossy, decaying log on a forest floor. The background is a soft, dreamlike bokeh of a sun-drenched forest with golden light filtering through the trees. Sharp focus on the beetle's texture, cinematic lighting, 8k resolution, hyper-realistic.\n\n3. A high-definition, cinematic fantasy shot of a tiny, cheerful young girl with brown hair riding on the back of a giant, fuzzy bumblebee. She is wearing a brown leather explorer's outfit with a small satchel. They are flying through a vibrant meadow filled with oversized, glowing wildflowers in shades of orange, yellow, and purple. The scene is bathed in warm, golden sunlight with soft bokeh and magical dust particles floating in the air. Highly detailed textures on the bee's fur and the girl's clothing, 8k resolution, whimsical and adventurous atmosphere.\n\n4. A high-definition surreal fantasy photograph of a tiny, miniature woman with long flowing hair, wearing a delicate, ethereal white lace dress, standing gracefully on the back of a giant Monarch butterfly. The butterfly is in full focus, showcasing vibrant orange and black wing patterns. They are floating in a sun-drenched meadow filled with soft-focus, bokeh wildflowers in shades of red, blue, and yellow. The lighting is warm and golden (golden hour), creating a magical, dreamlike atmosphere with soft lens flares and a shallow depth of field."
     },
     {
       "id": "resource-fantasy-scifi-8",

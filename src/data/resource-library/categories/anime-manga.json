@@ -38,33 +38,7 @@
       "author": "Zara",
       "authorUrl": "https://x.com/ZaraIrahh/status/1995304550610407807",
       "nameEn": "Anime & Photo Split Portrait: Playful Digital Art Woman",
-      "contentEn": "{\n  \"image_generation\": {\n    \"requirements\": {\n      \"face_preservation\": {\n        \"preserve_original\": true,\n        \"accuracy_level\": \"100% identical to reference\",\n        \"details\": [\n          \"real facial proportions\",\n          \"exact skin texture\",\n          \"true eye shape and color\",\n          \"natural soft makeup\",\n          \"subtle upward eyeliner\",\n          \"soft pink eyeshadow\",\n          \"natural rosy lips\"\n        ]\n      },\n      \"pose\": {\n        \"match_reference_pose\": true,\n        \"description\": \"Chest-up portrait, face facing forward but gently tilted to the right from the viewer’s perspective.\"\n      },\n      \"lighting\": {\n        \"match_reference_lighting\": true,\n        \"type\": \"soft diffused indoor lighting\",\n        \"direction\": \"from the front and slightly from the left\",\n        \"shadows\": \"gentle soft shadows on the sides of the face and neck\",\n        \"background_tone\": \"soft neutral with slight bluish tint\"\n      }\n    },\n\n    \"subject\": {\n      \"gender\": \"female\",\n      \"hairstyle\": {\n        \"match_reference\": true,\n        \"description\": \"same exact hairstyle as in reference image\"\n      },\n      \"expression\": \"neutral, slightly thoughtful\",\n      \"clothing\": {\n        \"top\": \"simple black T-shirt\",\n        \"necklace\": \"thin silver necklace with a small minimal pendant\"\n      }\n    },\n\n    \"composition\": {\n      \"frame\": \"chest-up portrait\",\n      \"orientation\": \"frontal with slight rightward tilt\",\n      \"style\": \"hyper-realistic with split real/cartoon effect\"\n    },\n\n    \"special_effects\": {\n      \"split_effect\": {\n        \"type\": \"irregular centered tear\",\n        \"edges\": \"white angled torn-paper look\",\n        \"description\": \"image appears ripped down the middle\"\n      },\n\n      \"realistic_side\": {\n        \"background\": \"soft, neutral, slightly bluish environment\",\n        \"filters\": [\n          \"soft analog grain\",\n          \"lightly aged texture\",\n          \"reduced saturation\",\n          \"subtle film imperfections\"\n        ],\n        \"overlays\": [\n          \"blue stylized teardrop stickers below the left eye\",\n          \"small 'Zzz' sleep symbols near forehead\",\n          \"yellow crescent moon in upper-left corner\",\n          \"light blue hand-drawn cloud\"\n        ]\n      },\n\n      \"illustrated_side\": {\n        \"art_style\": \"bold cartoon, digital illustration\",\n        \"color_palette\": \"bright, vibrant, saturated\",\n        \"hair\": \"same tone as realistic side but stylized\",\n        \"eyes\": \"exaggerated eyeliner, dramatic expression\",\n        \"background\": \"vibrant light pink pop-art style\",\n        \"decorations\": {\n          \"kawaii_elements\": [\n            \"Hello Kitty holding a microphone\",\n            \"pixel-art pink mascot character\",\n            \"yellow stars\",\n            \"pink hearts\",\n            \"colorful planets\",\n            \"bold pink Japanese characters\"\n          ]\n        }\n      }\n    },\n\n    \"aesthetic\": {\n      \"overall_tone\": \"soft, dreamy, lightly vintage\",\n      \"lighting_consistency\": \"must match reference perfectly\",\n      \"skin_texture_realism\": \"high\",\n      \"blending_quality\": \"smooth, natural transition between real and illustrated halves with crisp tear edge\"\n    },\n\n    \"output\": {\n      \"style\": \"hyper-realistic + digital cartoon fusion\",\n      \"quality\": \"ultra-high-resolution\",\n      \"filters\": [\n        \"subtle analog vintage film filter\",\n        \"soft grain\"\n      ]\n    }\n  }\n}"
-    },
-    {
-      "id": "resource-anime-manga-3",
-      "name": "动漫女孩冬季场景：幻想与神秘的鸟居门",
-      "content": "我们希望明年见到您。",
-      "categoryId": "anime-manga",
-      "order": 3,
-      "sourceCategory": "Anime & Manga",
-      "previewImage": "https://pbs.twimg.com/media/G9f3ZoDaIAAdmA4.jpg",
-      "author": "葵 詩安(E)",
-      "authorUrl": "https://x.com/inosent999/status/2006375240595841281",
-      "nameEn": "Anime Girls Winter Scene: Fantasy & Mystery Torii Gate",
-      "contentEn": "来年もよろしくお願いします。"
-    },
-    {
-      "id": "resource-anime-manga-4",
-      "name": "欢快的动漫 VTuber 漫画：Polka、Luna、Kanata",
-      "content": "nano banana pro",
-      "categoryId": "anime-manga",
-      "order": 4,
-      "sourceCategory": "Anime & Manga",
-      "previewImage": "https://pbs.twimg.com/media/G7msbDxaAAAhbOJ.jpg",
-      "author": "Iリス@pixai",
-      "authorUrl": "https://x.com/loveko28516/status/1997942976270741580",
-      "nameEn": "Cheerful Anime VTuber Comic Strip: Polka, Luna, Kanata",
-      "contentEn": "nano banana pro"
+      "contentEn": "{\n  \"image_generation\": {\n    \"requirements\": {\n      \"face_preservation\": {\n        \"preserve_original\": true,\n        \"accuracy_level\": \"100% identical to reference\",\n        \"details\": [\n          \"real facial proportions\",\n          \"exact skin texture\",\n          \"true eye shape and color\",\n          \"natural soft makeup\",\n          \"subtle upward eyeliner\",\n          \"soft pink eyeshadow\",\n          \"natural rosy lips\"\n        ]\n      },\n      \"pose\": {\n        \"match_reference_pose\": true,\n        \"description\": \"Chest-up portrait, face facing forward but gently tilted to the right from the viewer's perspective.\"\n      },\n      \"lighting\": {\n        \"match_reference_lighting\": true,\n        \"type\": \"soft diffused indoor lighting\",\n        \"direction\": \"from the front and slightly from the left\",\n        \"shadows\": \"gentle soft shadows on the sides of the face and neck\",\n        \"background_tone\": \"soft neutral with slight bluish tint\"\n      }\n    },\n\n    \"subject\": {\n      \"gender\": \"female\",\n      \"hairstyle\": {\n        \"match_reference\": true,\n        \"description\": \"same exact hairstyle as in reference image\"\n      },\n      \"expression\": \"neutral, slightly thoughtful\",\n      \"clothing\": {\n        \"top\": \"simple black T-shirt\",\n        \"necklace\": \"thin silver necklace with a small minimal pendant\"\n      }\n    },\n\n    \"composition\": {\n      \"frame\": \"chest-up portrait\",\n      \"orientation\": \"frontal with slight rightward tilt\",\n      \"style\": \"hyper-realistic with split real/cartoon effect\"\n    },\n\n    \"special_effects\": {\n      \"split_effect\": {\n        \"type\": \"irregular centered tear\",\n        \"edges\": \"white angled torn-paper look\",\n        \"description\": \"image appears ripped down the middle\"\n      },\n\n      \"realistic_side\": {\n        \"background\": \"soft, neutral, slightly bluish environment\",\n        \"filters\": [\n          \"soft analog grain\",\n          \"lightly aged texture\",\n          \"reduced saturation\",\n          \"subtle film imperfections\"\n        ],\n        \"overlays\": [\n          \"blue stylized teardrop stickers below the left eye\",\n          \"small 'Zzz' sleep symbols near forehead\",\n          \"yellow crescent moon in upper-left corner\",\n          \"light blue hand-drawn cloud\"\n        ]\n      },\n\n      \"illustrated_side\": {\n        \"art_style\": \"bold cartoon, digital illustration\",\n        \"color_palette\": \"bright, vibrant, saturated\",\n        \"hair\": \"same tone as realistic side but stylized\",\n        \"eyes\": \"exaggerated eyeliner, dramatic expression\",\n        \"background\": \"vibrant light pink pop-art style\",\n        \"decorations\": {\n          \"kawaii_elements\": [\n            \"Hello Kitty holding a microphone\",\n            \"pixel-art pink mascot character\",\n            \"yellow stars\",\n            \"pink hearts\",\n            \"colorful planets\",\n            \"bold pink Japanese characters\"\n          ]\n        }\n      }\n    },\n\n    \"aesthetic\": {\n      \"overall_tone\": \"soft, dreamy, lightly vintage\",\n      \"lighting_consistency\": \"must match reference perfectly\",\n      \"skin_texture_realism\": \"high\",\n      \"blending_quality\": \"smooth, natural transition between real and illustrated halves with crisp tear edge\"\n    },\n\n    \"output\": {\n      \"style\": \"hyper-realistic + digital cartoon fusion\",\n      \"quality\": \"ultra-high-resolution\",\n      \"filters\": [\n        \"subtle analog vintage film filter\",\n        \"soft grain\"\n      ]\n    }\n  }\n}"
     },
     {
       "id": "resource-anime-manga-5",
@@ -78,45 +52,6 @@
       "authorUrl": "https://x.com/NanoBanana/status/1997971252858982531",
       "nameEn": "Coffee Shop Art: Anime, Sketch & Claymation Characters",
       "contentEn": "With Nano Banana Pro it's easy to combine different styles in a single image. In this photo we've included an anime character, a sketched character and a claymation one, all with just a prompt."
-    },
-    {
-      "id": "resource-anime-manga-6",
-      "name": "Hololive VTuber 漫画：Shiori Novella 和朋友们 React",
-      "content": "nano banana pro",
-      "categoryId": "anime-manga",
-      "order": 6,
-      "sourceCategory": "Anime & Manga",
-      "previewImage": "https://pbs.twimg.com/media/G8M22TsaAAErJVA.jpg",
-      "author": "Iリス@pixai",
-      "authorUrl": "https://x.com/loveko28516/status/2000503643167191327",
-      "nameEn": "Hololive VTuber Comic Strip: Shiori Novella and Friends React",
-      "contentEn": "nano banana pro"
-    },
-    {
-      "id": "resource-anime-manga-7",
-      "name": "漫画冒险：年轻团队执行失落之城任务",
-      "content": "Nano Banana Pro 和一代漫画中的多个角色和故事情节！\n\n注意这个提示\n\n仅限接下来的 48 小时 - 在 Higgsfield 获得 1 年无限期 Nano Banana Pro！\n\n12 小时内：关注、点赞、转发和评论 = 免费 100 个积分",
-      "categoryId": "anime-manga",
-      "order": 7,
-      "sourceCategory": "Anime & Manga",
-      "previewImage": "https://pbs.twimg.com/media/G6S_VF7bQAA9CbT.jpg",
-      "author": "Higgsfield AI",
-      "authorUrl": "https://x.com/higgsfield_ai/status/1991927306282316258",
-      "nameEn": "Comic Book Adventure: Young Team on a Lost City Mission",
-      "contentEn": "Nano Banana Pro & MULTIPLE characters in ONE comics generation with a storyline! \n\nWatch this prompt \n\nFor the next 48 hours ONLY - get 1 Year UNLIMITED Nano Banana Pro on Higgsfield!\n\nFor 12 hours: follow, like, retweet & comment = FREE 100 credits"
-    },
-    {
-      "id": "resource-anime-manga-8",
-      "name": "宇宙飞船战斗中的动漫科幻飞行员 - 激烈的动作",
-      "content": "这将避免触发\"真实的 CGI\"，并且您不必执行整个\"幕后\"技巧。\n\n@venturetwins",
-      "categoryId": "anime-manga",
-      "order": 8,
-      "sourceCategory": "Anime & Manga",
-      "previewImage": "https://pbs.twimg.com/media/G6NnhH9bIAEXW_q.jpg",
-      "author": "Brent Lynch",
-      "authorUrl": "https://x.com/BrentLynch/status/1991549772642361604",
-      "nameEn": "Anime Sci-Fi Pilot in Spaceship Combat - Intense Action",
-      "contentEn": "This will avoid triggering \"photoreal CGI\" and you won't have to do the whole \"behind the scenes\" trick.\n\n@venturetwins"
     }
   ]
 }

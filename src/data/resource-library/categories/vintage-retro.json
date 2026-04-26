@@ -2,19 +2,6 @@
   "categoryId": "vintage-retro",
   "prompts": [
     {
-      "id": "resource-vintage-retro-0",
-      "name": "Awesome Nano Banana Pro：Nano Banana提示词与图像生成",
-      "content": "快去获取吧。",
-      "categoryId": "vintage-retro",
-      "order": 0,
-      "sourceCategory": "Vintage & Retro",
-      "previewImage": "https://pbs.twimg.com/media/G9qHZgvakAAuKrB.jpg",
-      "author": "Robin Delta",
-      "authorUrl": "https://x.com/heyrobinai/status/2007065458328088741",
-      "nameEn": "Awesome Nano Banana Pro: Nano Banana Prompts & Image Generation",
-      "contentEn": "Go grab it."
-    },
-    {
       "id": "resource-vintage-retro-1",
       "name": "阿波罗11号登月舱LM-5鹰号蓝图与月球渲染",
       "content": "一位专业[DISCIPLINE]设计师为[SUBJECT]制作的展示板——[ICONIC FEATURES / ERA]，左侧为带有标注和尺寸的黑白2D技术图纸，中央为展示[KEY INTERNAL COMPONENTS / MATERIALS]的爆炸轴测图，右侧为[SUBJECT]在[ICONIC ENVIRONMENT / SCENE]中的写实3D渲染，配合[LIGHTING / ATMOSPHERE / MOTION DETAILS]；视觉风格从[TECHNICAL / ARCHIVAL TONES]过渡到[EMOTIONAL / ATMOSPHERIC COLOR PALETTE]，简洁的网格布局，博物馆级工业设计展示，超精细电影级真实感，标题栏写着「[TITLE] — [YEAR / VARIANT / TAGLINE]」。\n\n查看ALT获取灵感",
@@ -25,7 +12,7 @@
       "author": "Alexandra Aisling",
       "authorUrl": "https://x.com/AllaAisling/status/2003849647392247864",
       "nameEn": "Apollo 11 Lunar Module LM-5 Eagle Blueprint & Moon Render",
-      "contentEn": "An expert [DISCIPLINE] designer’s presentation board for [SUBJECT] — [ICONIC FEATURES / ERA], featuring black-and-white 2D technical drawings with annotations and dimensions on the left, an exploded axonometric diagram revealing [KEY INTERNAL COMPONENTS / MATERIALS] in the center, and a photorealistic 3D render of [SUBJECT] in [ICONIC ENVIRONMENT / SCENE] on the right, with [LIGHTING / ATMOSPHERE / MOTION DETAILS]; visual style transitions from [TECHNICAL / ARCHIVAL TONES] to [EMOTIONAL / ATMOSPHERIC COLOR PALETTE], clean grid layout, museum-grade industrial design presentation, ultra-detailed cinematic realism, title block reading “[TITLE] — [YEAR / VARIANT / TAGLINE]”.\n\nSee ALTs for ideas"
+      "contentEn": "An expert [DISCIPLINE] designer's presentation board for [SUBJECT] — [ICONIC FEATURES / ERA], featuring black-and-white 2D technical drawings with annotations and dimensions on the left, an exploded axonometric diagram revealing [KEY INTERNAL COMPONENTS / MATERIALS] in the center, and a photorealistic 3D render of [SUBJECT] in [ICONIC ENVIRONMENT / SCENE] on the right, with [LIGHTING / ATMOSPHERE / MOTION DETAILS]; visual style transitions from [TECHNICAL / ARCHIVAL TONES] to [EMOTIONAL / ATMOSPHERIC COLOR PALETTE], clean grid layout, museum-grade industrial design presentation, ultra-detailed cinematic realism, title block reading \"[TITLE] — [YEAR / VARIANT / TAGLINE]\".\n\nSee ALTs for ideas"
     },
     {
       "id": "resource-vintage-retro-2",
@@ -51,7 +38,7 @@
       "author": "ΛRMIN | AI",
       "authorUrl": "https://x.com/Arminn_Ai/status/1994049675163205921",
       "nameEn": "Vintage Digital Camera Portrait | Y2K Aesthetic & Nostalgia",
-      "contentEn": "Close-up, top-down shot of a black early 2000s compact digital camera resting on textured blue denim fabric. The rear LCD screen is illuminated, displaying a lo-fi, grainy, flash-lit selfie of a young woman. Subject on screen has dark wavy hair, heavy Y2K-style pink blush on cheeks and nose, winged eyeliner, and glossy lips, looking over her shoulder with a soft gaze. The camera body has visible buttons and a directional pad. Shallow depth of field with focus sharp on the LCD screen and slightly blurred edges.\n———————————————\nNano Banana Pro is unlimited for a year for everyone joining @higgsfield_ai. Less than a day left, don’t miss it."
+      "contentEn": "Close-up, top-down shot of a black early 2000s compact digital camera resting on textured blue denim fabric. The rear LCD screen is illuminated, displaying a lo-fi, grainy, flash-lit selfie of a young woman. Subject on screen has dark wavy hair, heavy Y2K-style pink blush on cheeks and nose, winged eyeliner, and glossy lips, looking over her shoulder with a soft gaze. The camera body has visible buttons and a directional pad. Shallow depth of field with focus sharp on the LCD screen and slightly blurred edges.\n———————————————\nNano Banana Pro is unlimited for a year for everyone joining @higgsfield_ai. Less than a day left, don't miss it."
     },
     {
       "id": "resource-vintage-retro-4",
@@ -67,32 +54,6 @@
       "contentEn": "A vintage patent document for [INVENTION], styled after late 1800s United States Patent Office filings. The page features precise technical drawings with numbered callouts (Fig. 1, Fig. 2, Fig. 3) showing front, side, and exploded views. Handwritten annotations in fountain-pen ink describe mechanisms. The paper is aged ivory with foxing stains and soft fold creases. An official embossed seal and red wax stamp appear in the corner. A hand-signed inventor's name and date appear at the bottom. The entire image feels like a recovered archival document—authoritative, historic, and slightly mysterious.\n\nCheck ALTs for ideas"
     },
     {
-      "id": "resource-vintage-retro-5",
-      "name": "复古塔罗牌全套 - 78张完整插画",
-      "content": "尝试将nano banana pro推向极限。要求生成一套完整的78张塔罗牌。一个提示词。它做到了",
-      "categoryId": "vintage-retro",
-      "order": 5,
-      "sourceCategory": "Vintage & Retro",
-      "previewImage": "https://pbs.twimg.com/media/G8zuIMhXwAABBKy.jpg",
-      "author": "gokaygokay",
-      "authorUrl": "https://x.com/gokayfem/status/2003237826331378093",
-      "nameEn": "Vintage Tarot Card Deck Collection - Full Set Illustration",
-      "contentEn": "trying to push nano banana pro to its limits. asked for a complete 78-card tarot deck. one prompt. it delivered"
-    },
-    {
-      "id": "resource-vintage-retro-6",
-      "name": "历史悠久的纽约熨斗大厦与1910年代汽车 - 伍德罗·威尔逊时代",
-      "content": "在看到人们可视化坐标后，我们尝试了提示词「在1916年可视化40.7422° N, 73.9880° W」，并多次运行，每次增加十年。这是一个GIF合集：",
-      "categoryId": "vintage-retro",
-      "order": 6,
-      "sourceCategory": "Vintage & Retro",
-      "previewImage": "https://pbs.twimg.com/tweet_video_thumb/G8fXKMDbwAAWndW.jpg",
-      "author": "Rajan Patel",
-      "authorUrl": "https://x.com/rajanpatel/status/2001815354163748917",
-      "nameEn": "Historic NYC Flatiron Building & 1910s Cars - Woodrow Wilson",
-      "contentEn": "After seeing folks visualize coordinates, we tried the prompt “Visualize 40.7422° N, 73.9880° W in 1916” and reran it several times, adding a decade with each go. Here’s a GIF compilation:"
-    },
-    {
       "id": "resource-vintage-retro-7",
       "name": "复古褐色调人像：两位1930年代时尚女性",
       "content": "想象你是一位专业的照片修复师。完美修复这张照片。使其清晰锐利并提高分辨率。去除划痕。让它看起来像是现在拍摄的。\n\n这是我曾祖母的照片。我在Adobe Firefly应用中使用Nano Banana Pro。",
@@ -104,32 +65,6 @@
       "authorUrl": "https://x.com/icreatelife/status/1993307937851249076",
       "nameEn": "Vintage Sepia Portrait: Two Women in 1930s Fashion",
       "contentEn": "Imagine you are a professional photo restorer. Restore this photo perfectly. Make it sharp and improve resolution. Get rid of scratches. Make it a way it would look if it was taken now. \n\nPhoto of my great-grandmother. I use Nano Banana Pro in Adobe Firefly app."
-    },
-    {
-      "id": "resource-vintage-retro-8",
-      "name": "诺曼底登陆二战士兵奥马哈海滩黑白照片",
-      "content": "「在[COORDINATES]，[DATE & TIME]创建一张图像。」",
-      "categoryId": "vintage-retro",
-      "order": 8,
-      "sourceCategory": "Vintage & Retro",
-      "previewImage": "https://pbs.twimg.com/media/G6iVH_OWUAAoDwZ.jpg",
-      "author": "Alex Prompter",
-      "authorUrl": "https://x.com/alex_prompter/status/1993006848153407923",
-      "nameEn": "D-Day Landing WWII Soldiers Omaha Beach Black White Photo",
-      "contentEn": "\"create an image at [COORDINATES], [DATE & TIME].\""
-    },
-    {
-      "id": "resource-vintage-retro-9",
-      "name": "大人物勒布斯基像素画：督爷、沃尔特、复古游戏画面",
-      "content": "玩得开心！分享你的最佳作品。",
-      "categoryId": "vintage-retro",
-      "order": 9,
-      "sourceCategory": "Vintage & Retro",
-      "previewImage": "https://pbs.twimg.com/media/G6chVarXwAES5mr.jpg",
-      "author": "Kris Kashtanova",
-      "authorUrl": "https://x.com/icreatelife/status/1992598016868720997",
-      "nameEn": "Big Lebowski Pixel Art: Dude, Walter, Retro Game Screen",
-      "contentEn": "Have fun! Share your bests."
     }
   ]
 }

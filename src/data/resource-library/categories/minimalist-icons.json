@@ -2,19 +2,6 @@
   "categoryId": "minimalist-icons",
   "prompts": [
     {
-      "id": "resource-minimalist-icons-0",
-      "name": "皮卡丘 vs. 暴鲤龙像素画 - 宝可梦雷电攻击对战",
-      "content": "它甚至知道哪些招式应该有效，哪些不应该有效",
-      "categoryId": "minimalist-icons",
-      "order": 0,
-      "sourceCategory": "Minimalist Icons",
-      "previewImage": "https://pbs.twimg.com/media/G6NhJQkXIAIuM5D.jpg",
-      "author": "proper",
-      "authorUrl": "https://x.com/ProperPrompter/status/1991542935725441273",
-      "nameEn": "Pikachu vs. Gyarados Pixel Art - Pokemon Thunderbolt Battle",
-      "contentEn": "It even knows which moves should and should not be effective"
-    },
-    {
       "id": "resource-minimalist-icons-1",
       "name": "名人面孔：极简矢量艺术与扁平设计肖像",
       "content": "一个单独、独立、严格双色调的扁平矢量图标，表现 [CHARACTER NAME] 的面部。\n\n**内容范围（仅面部）：**\n设计必须仅表现 [CHARACTER NAME] 的头部、面部或头盔。绝对不可包含肩膀、躯干、武器或配饰。\n\n**动态双色调配色方案（Material Design）：**\n整张图片必须严格仅使用两种纯扁平颜色，由 AI 根据角色的背景故事、阵营或标志性外观选择。\n1. **背景主题色：** 一种柔和、悦目的纯扁平颜色，覆盖整个画布。\n2. **前景主题色：** 第二种纯扁平颜色，用于图标形状和文字，与背景形成良好对比。\n* **美学约束：** 颜色必须选自「Google Material Design」美学风格——柔和色调、哑光质感、悦目舒适，避免过于刺眼的饱和度或霓虹色调。无渐变、阴影或描边。\n\n**风格与技法（硬核极简主义）：**\n风格为硬核几何极简主义，高度抽象。将面部特征简化为最基本的块状、棱角形状。使用大面积的**前景主题色**实心块来定义形态。内部细节（眼睛、嘴巴、关键特征）必须仅通过**背景主题色**负空间的粗犷块状「切割」来呈现。图标必须是悬浮剪影，无包围圆形、边框或容器形状。\n\n**背景：**\n背景完全填充纯扁平的**背景主题色**。\n\n**排版（关键约束）：**\n悬浮图标正下方居中放置名称「[CHARACTER NAME]」。\n1. **字体族（严格）：** 文字必须以 **Inter Bold** 字体风格呈现。切勿使用其他字体。\n2. **大小写与颜色：** 仅限标题大小写。文字颜色必须与**前景主题色**完全一致。\n3. **尺寸与比例（严格）：** 文字必须非常小。整个文本字符串的总宽度不得超过图片总宽度的 25%。\n4. **字距：** 保持非常紧凑的负字距（约 **-8%**）。",
@@ -28,19 +15,6 @@
       "contentEn": "A single, isolated, strict duotone flat vector icon representing the face of [CHARACTER NAME].\n\n**CONTENT SCOPE (FACE ONLY):**\nThe design must represent ONLY the head, face, or helmet of [CHARACTER NAME]. Absolutely NO shoulders, torso, weapons, or accessories.\n\n**DYNAMIC DUOTONE COLOR PALETTE (MATERIAL DESIGN):**\nThe entire image must use strictly ONLY TWO solid, flat colors chosen by the AI based on the character's lore, allegiance, or iconic appearance.\n1.  **Background Theme Color:** A moderate, pleasing solid flat color covering the entire canvas.\n2.  **Foreground Theme Color:** A second solid flat color used for the icon shape and the text, chosen to contrast well with the background.\n* **Aesthetic Constraint:** The colors must be chosen from a \"Google Material Design\" aesthetic—moderate hues, matte finish, pleasing to the eye, avoiding overly harsh saturation or neon tones. No gradients, shadows, or outlines.\n\n**STYLE & TECHNIQUE (BRUTAL MINIMALISM):**\nThe style is brutal geometric minimalism with high abstraction. Reduce facial features to their most basic, blocky, angular shapes. Use large, solid masses of the **Foreground Theme Color** to define the form. Internal details (eyes, mouth, key features) must be formed solely by bold, blocky \"cuts\" of the **Background Theme Color** negative space into the foreground silhouette. The icon must be a free-floating silhouette with NO enclosing circle, border, or container shape.\n\n**BACKGROUND:**\nThe background is filled entirely with the solid, flat **Background Theme Color**.\n\n**TYPOGRAPHY (CRITICAL CONSTRAINTS):**\nDirectly below the floating icon, placed centrally, is the name \"[CHARACTER NAME]\".\n1.  **FONT FAMILY (STRICT):** The text MUST be rendered in the style of the font **Inter Bold**. Do NOT use any other font.\n2.  **CASE & COLOR:** Title case only. The text color must exactly match the solid **Foreground Theme Color**.\n3.  **SIZE & SCALE (STRICT):** The text must be very small. The total width of the entire text string must NOT exceed 25% of the total image width.\n4.  **KERNING:** Maintain very tight negative kerning (approx **-8%**)."
     },
     {
-      "id": "resource-minimalist-icons-2",
-      "name": "AI RAG 演进：记忆系统与知识图谱信息图",
-      "content": "</text>",
-      "categoryId": "minimalist-icons",
-      "order": 2,
-      "sourceCategory": "Minimalist Icons",
-      "previewImage": "https://pbs.twimg.com/media/G6coV5jXQAARgvk.jpg",
-      "author": "God of Prompt",
-      "authorUrl": "https://x.com/godofprompt/status/1992605871302697425",
-      "nameEn": "AI RAG Evolution: Memory Systems & Knowledge Graphs Infographic",
-      "contentEn": "</text>"
-    },
-    {
       "id": "resource-minimalist-icons-3",
       "name": "极致特写：断裂铅笔、石墨与木质纹理",
       "content": "提示词：想象通过显微镜观察铅笔尖。想象铅笔尖的样子，并创建一张图片。",
@@ -52,45 +26,6 @@
       "authorUrl": "https://x.com/umesh_ai/status/1998641973943742577",
       "nameEn": "Extreme Close-up: Broken Pencil, Graphite & Wood Texture",
       "contentEn": "Prompt : Imagine a pencil tip seen through a microscope. Imagine how the pencil tip would look and create an image."
-    },
-    {
-      "id": "resource-minimalist-icons-4",
-      "name": "手握发光数字图标 - WiFi 与声波",
-      "content": "第3步：我不喜欢这个构图，所以我用这个提示词调整：'改变角度。调整手部，让它以可信的方式紧紧握住标志。'\n\n完成。身为设计师的时代真好！",
-      "categoryId": "minimalist-icons",
-      "order": 4,
-      "sourceCategory": "Minimalist Icons",
-      "previewImage": "https://pbs.twimg.com/media/G6sm2f4aIAA4CEt.jpg",
-      "author": "Tatiana Tsiguleva",
-      "authorUrl": "https://x.com/ciguleva/status/1993729993495740675",
-      "nameEn": "Hand Holding Glowing Digital Icons - WiFi & Sound Waves",
-      "contentEn": "Step 3: I didn't like the composition, so I used this prompt to adjust it: 'Change the angle. Adjust the hand so it grips the logo firmly and in a believable way.'\n\nDone. What a time to be a designer!"
-    },
-    {
-      "id": "resource-minimalist-icons-5",
-      "name": "Gemini 3 提示词最佳实践 | AI 提示工程指南",
-      "content": "这是我用于通用场景的 Gemini 3 提示词最佳实践。https://philschmid.de/gemini-3-prompt-practices…\n\n- 由 Nano Banana Pro 可视化",
-      "categoryId": "minimalist-icons",
-      "order": 5,
-      "sourceCategory": "Minimalist Icons",
-      "previewImage": "https://pbs.twimg.com/media/G6hSrhHXMAAZogk.jpg",
-      "author": "Philipp Schmid",
-      "authorUrl": "https://x.com/_philschmid/status/1992933770484392243",
-      "nameEn": "Gemini 3 Prompting Best Practices | AI Prompt Engineering Guide",
-      "contentEn": "Here are my Gemini 3 Prompting Best Practices for General Usage. https://philschmid.de/gemini-3-prompt-practices…\n\n- visualized by Nano Banana Pro"
-    },
-    {
-      "id": "resource-minimalist-icons-6",
-      "name": "奇幻像素风法术与技能图标 | 游戏 UI 素材",
-      "content": "11月21日，Higgsfield 授予了 Google Nano Banana Pro 图像模型的免费访问权限。\n#Higgsfield #HiggsfieldBanana #Nanobananapro #PR\n#独立游戏 #Indiegame #kanaworksai",
-      "categoryId": "minimalist-icons",
-      "order": 6,
-      "sourceCategory": "Minimalist Icons",
-      "previewImage": "https://pbs.twimg.com/media/G6gE1t-bgAA6v92.jpg",
-      "author": "KANA",
-      "authorUrl": "https://x.com/KanaWorks_AI/status/1992850006450348453",
-      "nameEn": "Fantasy Pixel Art Spell & Ability Icons | Game UI Assets",
-      "contentEn": "on November 21st Higgsfield granted FREE access to Google's Nano Banana Pro Image model.  \n#Higgsfield #HiggsfieldBanana #Nanobananapro #PR \n#インディーゲーム #Indiegame #kanaworksai"
     }
   ]
 }

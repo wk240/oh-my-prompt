@@ -7,15 +7,26 @@
 
 import { createPortal } from 'react-dom'
 import { useEffect, useCallback, useState, useRef } from 'react'
-import { X, Bookmark, ArrowUpRight } from 'lucide-react'
-import type { ResourcePrompt } from '../../shared/types'
+import { X, Bookmark, ArrowUpRight, Languages, Pencil } from 'lucide-react'
+import type { ResourcePrompt, Prompt } from '../../shared/types'
 
 interface PromptPreviewModalProps {
-  prompt: ResourcePrompt
+  prompt: ResourcePrompt | Prompt  // Changed: support both types
   isOpen: boolean
   onClose: () => void
-  onCollect?: () => void
-  onInject?: () => void // Inject callback
+  onCollect?: () => void           // Only for resource prompts
+  onInject?: (language: 'zh' | 'en') => void // Inject callback with language
+  globalLanguage?: 'zh' | 'en' // Global preference for initial state
+  onEdit?: () => void              // NEW: for user prompts
+  isUserPrompt?: boolean           // NEW: flag to distinguish type
+}
+
+/**
+ * Type guard to check if prompt is a ResourcePrompt
+ * ResourcePrompt has previewImage and/or author fields that Prompt doesn't have
+ */
+function isResourcePrompt(prompt: ResourcePrompt | Prompt): prompt is ResourcePrompt {
+  return 'previewImage' in prompt || 'author' in prompt
 }
 
 const PORTAL_ID = 'oh-my-prompt-dropdown-portal'
@@ -39,11 +50,71 @@ function getPortalContainer(): HTMLElement {
   return container
 }
 
-export function PromptPreviewModal({ prompt, isOpen, onClose, onCollect, onInject }: PromptPreviewModalProps) {
+export function PromptPreviewModal({
+  prompt,
+  isOpen,
+  onClose,
+  onCollect,
+  onInject,
+  globalLanguage = 'zh',
+  onEdit,          // NEW: for user prompts
+  isUserPrompt = false, // NEW: flag to distinguish type
+}: PromptPreviewModalProps) {
   // Hover preview state
   const [showPreview, setShowPreview] = useState(false)
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Image URL state for user prompts (async loading)
+  const [imageUrl, setImageUrl] = useState<string | null>(null)
+
+  // Local language state (defaults to global preference, but can be overridden in modal)
+  const [modalLanguage, setModalLanguage] = useState<'zh' | 'en'>(globalLanguage)
+
+  // Sync with global preference when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setModalLanguage(globalLanguage)
+    }
+  }, [isOpen, globalLanguage])
+
+  // Get display values based on modal language
+  const displayName = modalLanguage === 'en' && prompt.nameEn ? prompt.nameEn : prompt.name
+  const displayContent = modalLanguage === 'en' && prompt.contentEn ? prompt.contentEn : prompt.content
+
+  // Load image URL on mount or when prompt changes
+  useEffect(() => {
+    if (!isOpen) {
+      setImageUrl(null)
+      return
+    }
+
+    let mounted = true
+
+    async function loadImage() {
+      if (isUserPrompt && prompt.localImage) {
+        const { getCachedImageUrl } = await import('../../lib/sync/image-sync')
+        const url = await getCachedImageUrl(prompt.localImage)
+        if (mounted) {
+          setImageUrl(url)
+        }
+      } else if (isResourcePrompt(prompt) && prompt.previewImage) {
+        if (mounted) {
+          setImageUrl(prompt.previewImage)
+        }
+      } else {
+        if (mounted) {
+          setImageUrl(null)
+        }
+      }
+    }
+
+    loadImage()
+
+    return () => {
+      mounted = false
+    }
+  }, [prompt, isUserPrompt, isOpen])
 
   // Escape key closes modal
   useEffect(() => {
@@ -70,15 +141,15 @@ export function PromptPreviewModal({ prompt, isOpen, onClose, onCollect, onInjec
     if (e.target === e.currentTarget) onClose()
   }, [onClose])
 
-  // Handle inject click - close modal and call inject callback
+  // Handle inject click - close modal and call inject callback with language
   const handleInject = useCallback(() => {
-    onInject?.()
+    onInject?.(modalLanguage)
     onClose()
-  }, [onInject, onClose])
+  }, [onInject, onClose, modalLanguage])
 
   // Handle image mouse enter - start 500ms timer
   const handleImageMouseEnter = () => {
-    if (prompt.previewImage) {
+    if (imageUrl) {
       hoverTimerRef.current = setTimeout(() => {
         setShowPreview(true)
       }, HOVER_PREVIEW_DELAY)
@@ -107,7 +178,7 @@ export function PromptPreviewModal({ prompt, isOpen, onClose, onCollect, onInjec
   const previewTopPosition = mousePos.y - PREVIEW_OFFSET - previewHeight
   const shouldStickToTop = previewTopPosition < 0
 
-  const previewElement = showPreview && prompt.previewImage ? (
+  const previewElement = showPreview && imageUrl ? (
     <div
       style={{
         position: 'fixed',
@@ -126,7 +197,7 @@ export function PromptPreviewModal({ prompt, isOpen, onClose, onCollect, onInjec
       }}
     >
       <img
-        src={prompt.previewImage}
+        src={imageUrl}
         alt={prompt.name}
         style={{
           maxWidth: `${PREVIEW_MAX_WIDTH}px`,
@@ -169,8 +240,8 @@ export function PromptPreviewModal({ prompt, isOpen, onClose, onCollect, onInjec
           top: '50%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
-          width: '400px',
-          maxHeight: '480px',
+          width: '560px',
+          maxHeight: '640px',
           background: '#ffffff',
           borderRadius: '12px',
           boxShadow: '0 12px 32px rgba(0,0,0,0.2)',
@@ -203,7 +274,7 @@ export function PromptPreviewModal({ prompt, isOpen, onClose, onCollect, onInjec
               flex: '1',
               minWidth: '0',
             }}>
-              {prompt.name}
+              {displayName}
             </span>
             <button
               onClick={onClose}
@@ -223,8 +294,8 @@ export function PromptPreviewModal({ prompt, isOpen, onClose, onCollect, onInjec
               <X style={{ width: 16, height: 16 }} />
             </button>
           </div>
-          {/* Author attribution */}
-          {prompt.author && (
+          {/* Author attribution - only for resource prompts */}
+          {!isUserPrompt && isResourcePrompt(prompt) && prompt.author && (
             <a
               href={prompt.authorUrl}
               target="_blank"
@@ -241,13 +312,13 @@ export function PromptPreviewModal({ prompt, isOpen, onClose, onCollect, onInjec
           )}
         </div>
         {/* Preview Image - with hover preview */}
-        {prompt.previewImage && (
+        {imageUrl && (
           <div style={{
             padding: '16px',
             borderBottom: '1px solid #E5E5E5',
           }}>
             <img
-              src={prompt.previewImage}
+              src={imageUrl}
               alt={prompt.name}
               onMouseEnter={handleImageMouseEnter}
               onMouseMove={handleImageMouseMove}
@@ -268,13 +339,44 @@ export function PromptPreviewModal({ prompt, isOpen, onClose, onCollect, onInjec
         {/* Content */}
         <div style={{
           padding: '16px',
-          maxHeight: '320px',
+          maxHeight: '400px',
           overflow: 'auto',
-          fontSize: '12px',
+          fontSize: '13px',
           color: '#171717',
-          lineHeight: '1.4',
+          lineHeight: '1.5',
         }}>
-          {prompt.content}
+          {displayContent}
+        </div>
+        {/* Language switch toggle - aligned left, above footer */}
+        <div style={{
+          padding: '12px 16px',
+          borderTop: '1px solid #E5E5E5',
+          display: 'flex',
+          justifyContent: 'flex-start',
+        }}>
+          <button
+            onClick={() => setModalLanguage(modalLanguage === 'zh' ? 'en' : 'zh')}
+            aria-label={modalLanguage === 'zh' ? '切换到英文' : '切换到中文'}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              padding: '8px 0',
+              width: '100px',
+              background: '#E0F2FE',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '13px',
+              fontWeight: 500,
+              color: '#0369A1',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+            }}
+          >
+            <Languages style={{ width: 16, height: 16 }} />
+            {modalLanguage === 'zh' ? 'English' : '中文'}
+          </button>
         </div>
         {/* Footer */}
         <div style={{
@@ -283,30 +385,56 @@ export function PromptPreviewModal({ prompt, isOpen, onClose, onCollect, onInjec
           display: 'flex',
           gap: '12px',
         }}>
-          {/* Left 1/3: 收藏 button */}
-          <button
-            onClick={() => onCollect?.()}
-            aria-label="收藏提示词"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '4px',
-              padding: '8px 12px',
-              background: '#ffffff',
-              border: '1px solid #E5E5E5',
-              borderRadius: '6px',
-              fontSize: '12px',
-              fontWeight: 500,
-              color: '#171717',
-              cursor: 'pointer',
-              flex: '1',
-              minWidth: '0',
-            }}
-          >
-            <Bookmark style={{ width: 14, height: 14 }} />
-            收藏
-          </button>
+          {/* User prompt: Edit button; Resource prompt: Collect button */}
+          {isUserPrompt ? (
+            <button
+              onClick={() => onEdit?.()}
+              aria-label="编辑提示词"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '4px',
+                padding: '8px 12px',
+                background: '#ffffff',
+                border: '1px solid #E5E5E5',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: 500,
+                color: '#171717',
+                cursor: 'pointer',
+                flex: '1',
+                minWidth: '0',
+              }}
+            >
+              <Pencil style={{ width: 14, height: 14 }} />
+              编辑
+            </button>
+          ) : (
+            <button
+              onClick={() => onCollect?.()}
+              aria-label="收藏提示词"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '4px',
+                padding: '8px 12px',
+                background: '#ffffff',
+                border: '1px solid #E5E5E5',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: 500,
+                color: '#171717',
+                cursor: 'pointer',
+                flex: '1',
+                minWidth: '0',
+              }}
+            >
+              <Bookmark style={{ width: 14, height: 14 }} />
+              收藏
+            </button>
+          )}
           {/* Right 2/3: 插入 button */}
           <button
             onClick={handleInject}

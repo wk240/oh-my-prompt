@@ -474,27 +474,5 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
   }
 }))
 
-// Setup beforeunload handler to flush pending saves when popup closes
-// Guard against duplicate listener registration
-let beforeUnloadHandlerRegistered = false
-if (typeof window !== 'undefined' && !beforeUnloadHandlerRegistered) {
-  beforeUnloadHandlerRegistered = true
-  window.addEventListener('beforeunload', () => {
-    // Clear any pending timeout and send message immediately
-    // beforeunload doesn't wait for async operations, so send synchronously
-    if (saveTimeout) {
-      clearTimeout(saveTimeout)
-      saveTimeout = null
-    }
-    const state = usePromptStore.getState()
-    const version = chrome.runtime.getManifest().version
-    // Send message without awaiting - will be queued even if popup closes
-    chrome.runtime.sendMessage({
-      type: MessageType.SET_STORAGE,
-      payload: {
-        version,
-        userData: { prompts: state.prompts, categories: state.categories }
-      }
-    })
-  })
-}
+// Note: beforeunload handler moved to popup-only files to prevent
+// content script from triggering backup on Lovart page refresh.

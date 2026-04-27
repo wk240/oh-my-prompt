@@ -1287,7 +1287,7 @@ export function DropdownContainer({
               onClick={() => handleLanguageSwitch(resourceLanguage === 'zh' ? 'en' : 'zh')}
               aria-label={resourceLanguage === 'zh' ? '切换到英文' : '切换到中文'}
             >
-              {resourceLanguage === 'zh' ? '中文' : 'ENG'}
+              {resourceLanguage === 'zh' ? '中文' : 'EN'}
             </button>
             <Tooltip content="访问官网" placement="bottom">
               <a

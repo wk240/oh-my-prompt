@@ -1145,11 +1145,15 @@ export function DropdownContainer({
     toastMessage: null,
   })
 
-  // Helper methods for modal state
-  const openModal = (key: keyof ModalStates) => setModalStates(prev => ({ ...prev, [key]: true }))
-  const closeModal = (key: keyof ModalStates) => setModalStates(prev => ({ ...prev, [key]: false }))
-  const setToastMessage = (message: string) => setModalStates(prev => ({ ...prev, toastMessage: message }))
-  const hideToast = () => setModalStates(prev => ({ ...prev, toastMessage: null }))
+  // Helper methods for modal state (memoized for stable references)
+  const openModal = useCallback((key: keyof ModalStates) =>
+    setModalStates(prev => ({ ...prev, [key]: true })), [])
+  const closeModal = useCallback((key: keyof ModalStates) =>
+    setModalStates(prev => ({ ...prev, [key]: false })), [])
+  const setToastMessage = useCallback((message: string) =>
+    setModalStates(prev => ({ ...prev, toastMessage: message })), [])
+  const hideToast = useCallback(() =>
+    setModalStates(prev => ({ ...prev, toastMessage: null })), [])
 
   // Grouped editing states
   interface EditingStates {
@@ -1170,11 +1174,11 @@ export function DropdownContainer({
     deletingPrompt: null,
   })
 
-  // Helper methods for editing state
-  const setEditingItem = <K extends keyof EditingStates>(key: K, value: EditingStates[K]) =>
-    setEditingStates(prev => ({ ...prev, [key]: value }))
-  const clearEditingItem = <K extends keyof EditingStates>(key: K) =>
-    setEditingStates(prev => ({ ...prev, [key]: null }))
+  // Helper methods for editing state (memoized for stable references)
+  const setEditingItem = useCallback(<K extends keyof EditingStates>(key: K, value: EditingStates[K]) =>
+    setEditingStates(prev => ({ ...prev, [key]: value })), [])
+  const clearEditingItem = useCallback(<K extends keyof EditingStates>(key: K) =>
+    setEditingStates(prev => ({ ...prev, [key]: null })), [])
 
   // Refresh/loading state (not modal-related)
   const [isRefreshing, setIsRefreshing] = useState(false)

@@ -1,10 +1,34 @@
 /**
  * image-sync.ts - Image file operations for local folder backup
  * Uses File System Access API for reading/writing image files
+ *
+ * IMPORTANT: FileSystemDirectoryHandle cannot cross origin boundaries via messaging.
+ * Content scripts (lovart.ai) and service worker (chrome-extension://xxx) are different origins.
+ * Therefore, content scripts send image data to service worker for file operations.
  */
 
 import { IMAGE_DIR_NAME, MAX_IMAGE_SIZE, ALLOWED_IMAGE_EXTENSIONS } from '@/shared/constants'
-import { getFolderHandle } from './indexeddb'
+import { getFolderHandle, checkFolderPermission, requestFolderPermission } from './indexeddb'
+import { MessageType } from '@/shared/messages'
+
+/**
+ * Check if we're in content script context
+ * Content scripts run in web page context (lovart.ai), service worker and popup in extension context
+ * Key difference: extension pages have chrome-extension:// URLs, content scripts don't
+ */
+function isContentScriptContext(): boolean {
+  try {
+    // Check if window.location is a chrome-extension:// URL
+    // Extension pages (popup, options, service worker) have chrome-extension:// URLs
+    // Content scripts run in web page context (lovart.ai) - NOT chrome-extension://
+    return typeof chrome !== 'undefined' &&
+      chrome.runtime &&
+      typeof chrome.runtime.sendMessage === 'function' &&
+      window.location.href.startsWith('chrome-extension://') === false
+  } catch {
+    return false
+  }
+}
 
 /**
  * Image operation result types
@@ -12,13 +36,12 @@ import { getFolderHandle } from './indexeddb'
 export interface ImageSaveResult {
   success: boolean
   relativePath?: string
-  error?: 'FOLDER_NOT_CONFIGURED' | 'WRITE_FAILED' | 'FILE_TOO_LARGE' | 'INVALID_FORMAT'
+  error?: 'FOLDER_NOT_CONFIGURED' | 'FOLDER_NOT_FOUND' | 'PERMISSION_DENIED' | 'WRITE_FAILED' | 'FILE_TOO_LARGE' | 'INVALID_FORMAT'
 }
 
 export interface ImageReadResult {
   success: boolean
   blob?: Blob
-  /** Blob URL created via URL.createObjectURL. WARNING: Caller must revoke via URL.revokeObjectURL() to avoid memory leaks. Prefer getCachedImageUrl() for managed URL lifecycle. */
   url?: string
   error?: 'FOLDER_NOT_CONFIGURED' | 'READ_FAILED' | 'FILE_NOT_FOUND'
 }
@@ -33,6 +56,16 @@ export interface ImageDownloadResult {
  * Check if folder is configured and accessible
  */
 export async function isFolderConfigured(): Promise<boolean> {
+  if (isContentScriptContext()) {
+    // Content script: ask service worker
+    try {
+      const response = await chrome.runtime.sendMessage({ type: MessageType.GET_SYNC_STATUS })
+      return response?.success && response.data?.hasFolder
+    } catch {
+      return false
+    }
+  }
+  // Extension context: direct access
   const handle = await getFolderHandle()
   return handle !== null
 }
@@ -41,13 +74,10 @@ export async function isFolderConfigured(): Promise<boolean> {
  * Get extension from filename or content-type
  */
 function getImageExtension(filename: string, contentType?: string): string {
-  // Try filename extension first
   const ext = filename.split('.').pop()?.toLowerCase()
   if (ext && ALLOWED_IMAGE_EXTENSIONS.includes(ext)) {
     return ext === 'jpeg' ? 'jpg' : ext
   }
-
-  // Try content-type
   if (contentType) {
     const typeMap: Record<string, string> = {
       'image/jpeg': 'jpg',
@@ -57,8 +87,104 @@ function getImageExtension(filename: string, contentType?: string): string {
     }
     return typeMap[contentType] || 'jpg'
   }
+  return 'jpg'
+}
 
-  return 'jpg' // Default fallback
+/**
+ * Save image via service worker (content script context)
+ */
+async function saveImageViaServiceWorker(
+  promptId: string,
+  blob: Blob,
+  originalFilename?: string
+): Promise<ImageSaveResult> {
+  console.log('[Oh My Prompt] saveImage: sending to service worker, promptId:', promptId, 'blob size:', blob.size)
+
+  // Convert blob to Uint8Array and then to plain array for messaging
+  // ArrayBuffer cannot be reliably passed cross-origin (content script -> service worker)
+  const arrayBuffer = await blob.arrayBuffer()
+  const uint8Array = new Uint8Array(arrayBuffer)
+  const dataArray = Array.from(uint8Array)  // Plain array can be serialized cross-origin
+  console.log('[Oh My Prompt] Data array created, length:', dataArray.length)
+
+  try {
+    const response = await chrome.runtime.sendMessage({
+      type: MessageType.SAVE_IMAGE,
+      payload: {
+        promptId,
+        data: dataArray,  // Use plain array instead of ArrayBuffer
+        originalFilename
+      }
+    })
+
+    if (response?.success) {
+      console.log('[Oh My Prompt] Image saved via service worker:', response.data?.relativePath)
+      return { success: true, relativePath: response.data?.relativePath }
+    }
+    console.error('[Oh My Prompt] Save image failed:', response?.error)
+    return { success: false, error: response?.error }
+  } catch (error) {
+    console.error('[Oh My Prompt] Failed to send save image message:', error)
+    return { success: false, error: 'WRITE_FAILED' }
+  }
+}
+
+/**
+ * Save image directly (extension context: popup or service worker)
+ */
+async function saveImageDirect(
+  promptId: string,
+  blob: Blob,
+  originalFilename?: string
+): Promise<ImageSaveResult> {
+  console.log('[Oh My Prompt] saveImage direct, promptId:', promptId, 'blob size:', blob.size)
+
+  const handle = await getFolderHandle()
+  if (!handle) {
+    console.log('[Oh My Prompt] No folder handle found')
+    return { success: false, error: 'FOLDER_NOT_CONFIGURED' }
+  }
+
+  // Check and request permission if needed
+  const permission = await checkFolderPermission(handle, 'readwrite')
+  console.log('[Oh My Prompt] Permission status:', permission)
+  if (permission === 'denied') {
+    return { success: false, error: 'PERMISSION_DENIED' }
+  }
+  if (permission === 'prompt') {
+    const restored = await requestFolderPermission(handle, 'readwrite')
+    if (restored !== 'granted') {
+      return { success: false, error: 'PERMISSION_DENIED' }
+    }
+  }
+
+  if (blob.size > MAX_IMAGE_SIZE) {
+    return { success: false, error: 'FILE_TOO_LARGE' }
+  }
+
+  const ext = getImageExtension(originalFilename || '', blob.type)
+
+  try {
+    console.log('[Oh My Prompt] Creating images directory...')
+    const imagesDir = await handle.getDirectoryHandle(IMAGE_DIR_NAME, { create: true })
+    console.log('[Oh My Prompt] Images directory ready')
+
+    const filename = `${promptId}.${ext}`
+    const fileHandle = await imagesDir.getFileHandle(filename, { create: true })
+    const writable = await fileHandle.createWritable()
+    await writable.write(blob)
+    await writable.close()
+
+    const relativePath = `${IMAGE_DIR_NAME}/${filename}`
+    console.log('[Oh My Prompt] Image saved:', relativePath)
+    return { success: true, relativePath }
+  } catch (error) {
+    console.error('[Oh My Prompt] Save image failed:', error)
+    if (error instanceof Error && error.name === 'NotFoundError') {
+      return { success: false, error: 'FOLDER_NOT_FOUND' }
+    }
+    return { success: false, error: 'WRITE_FAILED' }
+  }
 }
 
 /**
@@ -70,48 +196,32 @@ export async function saveImage(
   blob: Blob,
   originalFilename?: string
 ): Promise<ImageSaveResult> {
-  const handle = await getFolderHandle()
-  if (!handle) {
-    return { success: false, error: 'FOLDER_NOT_CONFIGURED' }
+  if (isContentScriptContext()) {
+    return await saveImageViaServiceWorker(promptId, blob, originalFilename)
   }
+  return await saveImageDirect(promptId, blob, originalFilename)
+}
 
-  // Check file size
-  if (blob.size > MAX_IMAGE_SIZE) {
-    return { success: false, error: 'FILE_TOO_LARGE' }
-  }
-
-  // Determine extension
-  const ext = getImageExtension(originalFilename || '', blob.type)
-
+/**
+ * Delete image via service worker (content script context)
+ */
+async function deleteImageViaServiceWorker(promptId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    // Ensure images directory exists
-    let imagesDir: FileSystemDirectoryHandle
-    try {
-      imagesDir = await handle.getDirectoryHandle(IMAGE_DIR_NAME, { create: true })
-    } catch {
-      return { success: false, error: 'WRITE_FAILED' }
-    }
-
-    // Write image file
-    const filename = `${promptId}.${ext}`
-    const fileHandle = await imagesDir.getFileHandle(filename, { create: true })
-    const writable = await fileHandle.createWritable()
-    await writable.write(blob)
-    await writable.close()
-
-    const relativePath = `${IMAGE_DIR_NAME}/${filename}`
-    console.log('[Oh My Prompt] Image saved:', relativePath)
-    return { success: true, relativePath }
+    const response = await chrome.runtime.sendMessage({
+      type: MessageType.DELETE_IMAGE,
+      payload: { promptId }
+    })
+    return { success: response?.success ?? false, error: response?.error }
   } catch (error) {
-    console.error('[Oh My Prompt] Failed to save image:', error)
-    return { success: false, error: 'WRITE_FAILED' }
+    console.error('[Oh My Prompt] Failed to send delete image message:', error)
+    return { success: false, error: 'DELETE_FAILED' }
   }
 }
 
 /**
- * Delete image file from folder
+ * Delete image directly (extension context)
  */
-export async function deleteImage(promptId: string): Promise<{ success: boolean; error?: string }> {
+async function deleteImageDirect(promptId: string): Promise<{ success: boolean; error?: string }> {
   const handle = await getFolderHandle()
   if (!handle) {
     return { success: false, error: 'FOLDER_NOT_CONFIGURED' }
@@ -119,34 +229,42 @@ export async function deleteImage(promptId: string): Promise<{ success: boolean;
 
   try {
     const imagesDir = await handle.getDirectoryHandle(IMAGE_DIR_NAME)
-
-    // Try all possible extensions
     for (const ext of ALLOWED_IMAGE_EXTENSIONS) {
       const filename = `${promptId}.${ext}`
       try {
         await imagesDir.removeEntry(filename)
         console.log('[Oh My Prompt] Image deleted:', filename)
       } catch {
-        // File doesn't exist with this extension, try next
+        // File doesn't exist, try next
       }
     }
-
     return { success: true }
-  } catch (error) {
-    // images directory doesn't exist - nothing to delete
+  } catch {
     return { success: true }
   }
 }
 
 /**
- * Read image blob from relative path.
- *
- * WARNING: This function returns a blob URL created via URL.createObjectURL().
- * The caller is responsible for revoking the URL via URL.revokeObjectURL() when
- * no longer needed to avoid memory leaks. For automatic URL lifecycle management,
- * prefer getCachedImageUrl() which handles caching and cleanup.
+ * Delete image file from folder
+ */
+export async function deleteImage(promptId: string): Promise<{ success: boolean; error?: string }> {
+  if (isContentScriptContext()) {
+    return await deleteImageViaServiceWorker(promptId)
+  }
+  return await deleteImageDirect(promptId)
+}
+
+/**
+ * Read image blob from relative path (extension context only)
+ * Note: Content script cannot read images directly - must use cached URLs from service worker
  */
 export async function readImage(relativePath: string): Promise<ImageReadResult> {
+  // Content script should not call this - images are read via service worker during preview
+  if (isContentScriptContext()) {
+    console.warn('[Oh My Prompt] readImage called in content script context - use getCachedImageUrl instead')
+    return { success: false, error: 'FOLDER_NOT_CONFIGURED' }
+  }
+
   const handle = await getFolderHandle()
   if (!handle) {
     return { success: false, error: 'FOLDER_NOT_CONFIGURED' }
@@ -157,7 +275,6 @@ export async function readImage(relativePath: string): Promise<ImageReadResult> 
     const filename = relativePath.split('/').pop() || relativePath
     const fileHandle = await imagesDir.getFileHandle(filename)
     const file = await fileHandle.getFile()
-
     return { success: true, blob: file, url: URL.createObjectURL(file) }
   } catch (error) {
     console.warn('[Oh My Prompt] Failed to read image:', relativePath, error)
@@ -171,21 +288,18 @@ export async function readImage(relativePath: string): Promise<ImageReadResult> 
 export async function downloadImageFromUrl(url: string): Promise<ImageDownloadResult> {
   try {
     const response = await fetch(url)
-
     if (!response.ok) {
       return { success: false, error: 'DOWNLOAD_FAILED' }
     }
 
     const contentType = response.headers.get('content-type') || ''
     if (!contentType.startsWith('image/')) {
-      console.warn('[Oh My Prompt] Response content-type is not an image type:', contentType, 'for URL:', url)
+      console.warn('[Oh My Prompt] Response content-type is not an image:', contentType)
     }
 
     const blob = await response.blob()
-
-    // Validate blob size
     if (blob.size > MAX_IMAGE_SIZE) {
-      return { success: false, error: 'DOWNLOAD_FAILED' } // Treat as download failure for size
+      return { success: false, error: 'DOWNLOAD_FAILED' }
     }
 
     return { success: true, blob }
@@ -204,12 +318,10 @@ const imageUrlCache = new Map<string, string>()
  * Get cached image URL or create new one
  */
 export async function getCachedImageUrl(relativePath: string): Promise<string | null> {
-  // Return cached URL if exists
   if (imageUrlCache.has(relativePath)) {
     return imageUrlCache.get(relativePath)!
   }
 
-  // Read image and create URL
   const result = await readImage(relativePath)
   if (result.success && result.url) {
     imageUrlCache.set(relativePath, result.url)
@@ -231,11 +343,9 @@ export function revokeCachedImageUrl(relativePath: string): void {
 }
 
 /**
- * Clear all cached image URLs (cleanup on dropdown close)
+ * Clear all cached image URLs
  */
 export function clearImageUrlCache(): void {
-  imageUrlCache.forEach((url) => {
-    URL.revokeObjectURL(url)
-  })
+  imageUrlCache.forEach((url) => URL.revokeObjectURL(url))
   imageUrlCache.clear()
 }

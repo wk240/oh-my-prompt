@@ -520,21 +520,14 @@ export function DropdownContainer({
   // Handle language switch in resource library
   const handleLanguageSwitch = useCallback((lang: 'zh' | 'en') => {
     setResourceLanguage(lang)
-    // Save language preference to storage
-    chrome.runtime.sendMessage({ type: MessageType.GET_STORAGE }, (response) => {
-      if (response?.success) {
-        const currentSettings = response.data?.settings || { showBuiltin: true, syncEnabled: false }
-        chrome.runtime.sendMessage({
-          type: MessageType.SET_STORAGE,
-          payload: {
-            version: chrome.runtime.getManifest().version,
-            userData: { prompts: localPrompts, categories: localCategories },
-            settings: { ...currentSettings, resourceLanguage: lang }
-          }
-        })
+    // Save language preference to storage only (no backup trigger)
+    chrome.runtime.sendMessage({
+      type: MessageType.SET_SETTINGS_ONLY,
+      payload: {
+        settings: { resourceLanguage: lang }
       }
     })
-  }, [localPrompts, localCategories])
+  }, [])
 
   // Check if a resource prompt is already collected
   const isPromptCollected = useCallback((resourcePrompt: ResourcePrompt): boolean => {

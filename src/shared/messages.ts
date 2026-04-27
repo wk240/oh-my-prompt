@@ -20,7 +20,8 @@ export enum MessageType {
   OPEN_EXTENSIONS = 'OPEN_EXTENSIONS',
   EXPORT_DATA = 'EXPORT_DATA',
   DISMISS_BACKUP_WARNING = 'DISMISS_BACKUP_WARNING',
-  RESTORE_PERMISSION = 'RESTORE_PERMISSION'  // Restore folder permission after extension update
+  RESTORE_PERMISSION = 'RESTORE_PERMISSION',  // Restore folder permission after extension update
+  SET_SETTINGS_ONLY = 'SET_SETTINGS_ONLY'  // Update settings only, no backup trigger (for language toggle)
 }
 
 export interface Message<T = unknown> {

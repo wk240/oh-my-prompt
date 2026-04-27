@@ -254,8 +254,9 @@ export async function changeSyncFolder(): Promise<{ success: boolean; error?: st
 
 /**
  * Manual sync trigger
+ * Returns whether a new history backup was created
  */
-export async function manualSync(): Promise<{ success: boolean; error?: string }> {
+export async function manualSync(): Promise<{ success: boolean; createdNewBackup?: boolean; error?: string }> {
   const handle = await getFolderHandle()
   if (!handle) {
     return { success: false, error: '文件夹权限已失效，请重新选择' }
@@ -264,9 +265,9 @@ export async function manualSync(): Promise<{ success: boolean; error?: string }
   try {
     const storageManager = StorageManager.getInstance()
     const data = await storageManager.getData()
-    await syncToLocalFolder(data.userData, handle)
+    const result = await syncToLocalFolder(data.userData, handle)
     await storageManager.updateSettings({ lastSyncTime: Date.now(), hasUnsyncedChanges: false })
-    return { success: true }
+    return { success: true, createdNewBackup: result.createdNewBackup }
   } catch (error) {
     return { success: false, error: '同步失败，请检查文件夹权限' }
   }

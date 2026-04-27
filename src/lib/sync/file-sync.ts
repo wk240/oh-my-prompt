@@ -1,5 +1,6 @@
 import type { Prompt, Category, UserData } from '../../shared/types'
 import { BACKUP_FILE_NAME, BACKUP_HISTORY_PREFIX, BACKUP_HISTORY_PATTERN, MAX_BACKUP_HISTORY } from '../../shared/constants'
+import { computeUserDataHash } from './hash'
 
 export interface BackupVersion {
   filename: string
@@ -7,6 +8,7 @@ export interface BackupVersion {
   promptCount: number
   categoryCount: number
   isLatest: boolean
+  contentHash?: string
 }
 
 /**
@@ -21,13 +23,16 @@ export async function backupToFolder(
     const fileHandle = await handle.getFileHandle(BACKUP_FILE_NAME, { create: true })
     const writable = await fileHandle.createWritable()
 
+    const contentHash = await computeUserDataHash(userData)
+
     const backupFile = {
       version: chrome.runtime.getManifest().version,
       userData: {
         prompts: userData.prompts,
         categories: userData.categories
       },
-      backupTime: new Date().toISOString()
+      backupTime: new Date().toISOString(),
+      contentHash
     }
 
     await writable.write(JSON.stringify(backupFile, null, 2))
@@ -40,15 +45,22 @@ export async function backupToFolder(
   }
 }
 
+export interface SyncResult {
+  createdNewBackup: boolean // True if new history backup was created, false if content unchanged
+}
+
 /**
  * Sync user data to local folder (uses same file as backup)
- * Also creates history backup and cleans up old versions
+ * Also creates history backup (only if content changed) and cleans up old versions
+ * Returns SyncResult indicating whether a new history backup was created
  */
 export async function syncToLocalFolder(
   userData: UserData,
   handle: FileSystemDirectoryHandle
-): Promise<void> {
+): Promise<SyncResult> {
   try {
+    const contentHash = await computeUserDataHash(userData)
+
     const fileHandle = await handle.getFileHandle(BACKUP_FILE_NAME, { create: true })
     const writable = await fileHandle.createWritable()
 
@@ -58,7 +70,8 @@ export async function syncToLocalFolder(
         prompts: userData.prompts,
         categories: userData.categories
       },
-      backupTime: new Date().toISOString()
+      backupTime: new Date().toISOString(),
+      contentHash
     }
 
     await writable.write(JSON.stringify(backupFile, null, 2))
@@ -66,9 +79,18 @@ export async function syncToLocalFolder(
 
     console.log('[Oh My Prompt] Synced to local folder:', BACKUP_FILE_NAME)
 
-    // Create history backup and cleanup old versions
-    await createHistoryBackup(handle)
+    // Create history backup only if content changed
+    const hashExists = await checkHashExistsInHistory(handle, contentHash)
+    let createdNewBackup = false
+    if (!hashExists) {
+      await createHistoryBackup(handle)
+      createdNewBackup = true
+    } else {
+      console.log('[Oh My Prompt] Skipped history backup - content unchanged')
+    }
+
     await cleanupOldBackups(handle)
+    return { createdNewBackup }
   } catch (error) {
     console.error('[Oh My Prompt] Failed to sync to local folder:', error)
     throw error
@@ -140,6 +162,35 @@ export async function selectSyncFolder(): Promise<FileSystemDirectoryHandle | nu
     // User cancelled or picker failed
     console.log('[Oh My Prompt] Folder selection cancelled:', error)
     return null
+  }
+}
+
+/**
+ * Check if a hash already exists in history backup files
+ */
+async function checkHashExistsInHistory(handle: FileSystemDirectoryHandle, hash: string): Promise<boolean> {
+  try {
+    const dirHandle = handle as FileSystemDirectoryHandle & {
+      keys: () => AsyncIterableIterator<string>
+    }
+    for await (const name of dirHandle.keys()) {
+      if (BACKUP_HISTORY_PATTERN.test(name)) {
+        try {
+          const fileHandle = await handle.getFileHandle(name)
+          const file = await fileHandle.getFile()
+          const content = await file.text()
+          const parsed = JSON.parse(content)
+          if (parsed.contentHash === hash) {
+            return true
+          }
+        } catch {
+          // Skip unreadable files
+        }
+      }
+    }
+    return false
+  } catch {
+    return false
   }
 }
 
@@ -233,7 +284,8 @@ export async function listBackupVersions(handle: FileSystemDirectoryHandle): Pro
         backupTime: parsed.backupTime || '',
         promptCount: parsed.userData?.prompts?.length || 0,
         categoryCount: parsed.userData?.categories?.length || 0,
-        isLatest: true
+        isLatest: true,
+        contentHash: parsed.contentHash
       })
     } catch {
       // latest.json not found
@@ -256,7 +308,8 @@ export async function listBackupVersions(handle: FileSystemDirectoryHandle): Pro
             backupTime: parsed.backupTime || '',
             promptCount: parsed.userData?.prompts?.length || 0,
             categoryCount: parsed.userData?.categories?.length || 0,
-            isLatest: false
+            isLatest: false,
+            contentHash: parsed.contentHash
           })
         } catch {
           // Skip unreadable files

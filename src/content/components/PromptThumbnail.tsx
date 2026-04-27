@@ -2,6 +2,9 @@
  * PromptThumbnail - Lazy-loaded thumbnail component using Intersection Observer
  * Only loads image when near viewport (100px threshold)
  * Hover to show full-size preview (no delay, instant display)
+ *
+ * NOTE: Blob URLs are managed by the centralized image cache (image-sync.ts).
+ * Do NOT revoke URLs at component level - the cache handles lifecycle.
  */
 
 import { useRef, useState, useEffect } from 'react'
@@ -82,15 +85,6 @@ export function PromptThumbnail({
 
     loadImage()
   }, [isInView, isLoaded, relativePath])
-
-  // Revoke blob URL when component unmounts
-  useEffect(() => {
-    return () => {
-      if (imageUrl) {
-        URL.revokeObjectURL(imageUrl)
-      }
-    }
-  }, [imageUrl])
 
   // Handle thumbnail mouse enter - show preview immediately
   const handleThumbnailMouseEnter = () => {

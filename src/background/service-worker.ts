@@ -381,6 +381,21 @@ chrome.runtime.onMessage.addListener(
           })
         return true // Required for async response
 
+      case MessageType.SET_SETTINGS_ONLY:
+        // Update settings only, no backup trigger (for language toggle)
+        const settingsPayload = message.payload as { settings: SyncSettings }
+        if (!settingsPayload || !settingsPayload.settings) {
+          sendResponse({ success: false, error: 'No settings provided' })
+          return true
+        }
+        storageManager.updateSettings(settingsPayload.settings)
+          .then(() => sendResponse({ success: true } as MessageResponse))
+          .catch(error => {
+            console.error('[Oh My Prompt] SET_SETTINGS_ONLY error:', error)
+            sendResponse({ success: false, error: String(error) })
+          })
+        return true // Required for async response
+
       default:
         sendResponse({ success: false, error: `Unknown message type: ${message.type}` })
     }

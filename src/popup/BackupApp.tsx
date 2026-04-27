@@ -154,7 +154,7 @@ function BackupApp() {
     setLoading(false)
 
     if (result.success) {
-      setSuccess('备份成功')
+      setSuccess(result.createdNewBackup ? '备份成功' : '内容无变更')
       await loadStatus()
       // Refresh history list if visible
       if (showHistory) {

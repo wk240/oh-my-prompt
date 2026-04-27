@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.1] - 2026-04-27
+
+### Added / 新增
+- **[EN]** Content hash deduplication for backup history to prevent duplicate backups
+- **[CN]** 备份历史添加内容哈希去重，防止重复备份
+
+### Fixed / 修复
+- **[EN]** Thumbnail loss when switching between user data and resource library
+- **[CN]** 切换用户数据和资源库时缩略图丢失
+- **[EN]** Unwanted backup trigger on language toggle
+- **[CN]** 语言切换时意外触发备份
+- **[EN]** Removed beforeunload handler that caused errors on page close
+- **[CN]** 移除导致页面关闭错误的 beforeunload 处理器
+
 ## [1.2.0] - 2026-04-27
 
 ### Added / 新增

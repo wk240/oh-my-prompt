@@ -5,6 +5,7 @@ export enum MessageType {
   INSERT_PROMPT = 'INSERT_PROMPT',
   BACKUP_TO_FOLDER = 'BACKUP_TO_FOLDER',
   SAVE_IMAGE = 'SAVE_IMAGE',  // Save image via service worker (content script cannot access FileSystemDirectoryHandle cross-origin)
+  READ_IMAGE = 'READ_IMAGE',  // Read image via service worker and return data array for content script
   DELETE_IMAGE = 'DELETE_IMAGE',  // Delete image via service worker
   GET_FOLDER_HANDLE = 'GET_FOLDER_HANDLE',  // Get folder handle from service worker (deprecated - handles cannot cross origins)
   SAVE_FOLDER_HANDLE = 'SAVE_FOLDER_HANDLE',

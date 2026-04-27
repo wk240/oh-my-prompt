@@ -197,6 +197,42 @@ chrome.runtime.onMessage.addListener(
           })
         return true // Required for async response
 
+      case MessageType.READ_IMAGE:
+        // Read image from folder and return as data array (content script cannot access FileSystemDirectoryHandle cross-origin)
+        const readImagePayload = message.payload as { relativePath: string }
+        if (!readImagePayload || !readImagePayload.relativePath) {
+          sendResponse({ success: false, error: 'Invalid payload' })
+          return true
+        }
+        getFolderHandle()
+          .then(async (handle) => {
+            if (!handle) {
+              return { success: false, error: 'FOLDER_NOT_CONFIGURED' }
+            }
+            try {
+              const imagesDir = await handle.getDirectoryHandle(IMAGE_DIR_NAME)
+              const filename = readImagePayload.relativePath.split('/').pop() || readImagePayload.relativePath
+              const fileHandle = await imagesDir.getFileHandle(filename)
+              const file = await fileHandle.getFile()
+              // Convert blob to plain array for cross-origin messaging
+              const arrayBuffer = await file.arrayBuffer()
+              const uint8Array = new Uint8Array(arrayBuffer)
+              const dataArray = Array.from(uint8Array)
+              const mimeType = file.type || 'image/jpeg'
+              console.log('[Oh My Prompt] Image read via service worker:', filename, 'size:', file.size, 'type:', mimeType)
+              return { success: true, data: { dataArray, mimeType } }
+            } catch (error) {
+              console.warn('[Oh My Prompt] Read image failed:', readImagePayload.relativePath, error)
+              return { success: false, error: 'FILE_NOT_FOUND' }
+            }
+          })
+          .then(result => sendResponse(result as MessageResponse))
+          .catch(error => {
+            console.error('[Oh My Prompt] READ_IMAGE error:', error)
+            sendResponse({ success: false, error: String(error) })
+          })
+        return true // Required for async response
+
       case MessageType.DELETE_IMAGE:
         // Delete image from folder (content script cannot access FileSystemDirectoryHandle cross-origin)
         const deleteImagePayload = message.payload as { promptId: string }

@@ -255,14 +255,42 @@ export async function deleteImage(promptId: string): Promise<{ success: boolean;
 }
 
 /**
- * Read image blob from relative path (extension context only)
- * Note: Content script cannot read images directly - must use cached URLs from service worker
+ * Read image via service worker (content script context)
+ * Returns blob URL for display
+ */
+async function readImageViaServiceWorker(relativePath: string): Promise<ImageReadResult> {
+  console.log('[Oh My Prompt] readImageViaServiceWorker:', relativePath)
+  try {
+    const response = await chrome.runtime.sendMessage({
+      type: MessageType.READ_IMAGE,
+      payload: { relativePath }
+    })
+
+    if (response?.success && response.data?.dataArray) {
+      // Convert plain array back to Uint8Array and create blob URL
+      const uint8Array = new Uint8Array(response.data.dataArray)
+      const mimeType = response.data.mimeType || 'image/jpeg'
+      const blob = new Blob([uint8Array], { type: mimeType })
+      const url = URL.createObjectURL(blob)
+      console.log('[Oh My Prompt] Image blob URL created:', url, 'size:', blob.size)
+      return { success: true, blob, url }
+    }
+
+    console.warn('[Oh My Prompt] readImageViaServiceWorker failed:', response?.error)
+    return { success: false, error: response?.error || 'READ_FAILED' }
+  } catch (error) {
+    console.error('[Oh My Prompt] Failed to send read image message:', error)
+    return { success: false, error: 'READ_FAILED' }
+  }
+}
+
+/**
+ * Read image blob from relative path
+ * Works in both extension context (direct) and content script context (via service worker)
  */
 export async function readImage(relativePath: string): Promise<ImageReadResult> {
-  // Content script should not call this - images are read via service worker during preview
   if (isContentScriptContext()) {
-    console.warn('[Oh My Prompt] readImage called in content script context - use getCachedImageUrl instead')
-    return { success: false, error: 'FOLDER_NOT_CONFIGURED' }
+    return await readImageViaServiceWorker(relativePath)
   }
 
   const handle = await getFolderHandle()

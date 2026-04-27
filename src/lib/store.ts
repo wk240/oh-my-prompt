@@ -38,6 +38,130 @@ interface PromptStore {
   // Computed getters
   getPromptsByCategory: (categoryId: string) => Prompt[]
   getFilteredPrompts: () => Prompt[]
+
+  // Flush pending debounced save (for beforeunload)
+  flushSave: () => Promise<{ success: boolean; syncSuccess?: boolean; error?: string }>
+}
+
+/**
+ * Debounce state for storage operations
+ */
+let saveTimeout: ReturnType<typeof setTimeout> | null = null
+let pendingSaveResolve: ((value: { success: boolean; syncSuccess?: boolean; error?: string }) => void) | null = null
+let pendingSaveReject: ((error: Error) => void) | null = null
+
+/**
+ * Debounced save to storage - batches rapid state changes
+ * @param getState - Function to get current state for building storage schema
+ * @param delay - Debounce delay in milliseconds (default: 300ms)
+ * @returns Promise that resolves when the save completes
+ */
+function debouncedSaveToStorage(
+  getState: () => { prompts: Prompt[]; categories: Category[] },
+  delay: number = 300
+): Promise<{ success: boolean; syncSuccess?: boolean; error?: string }> {
+  // Clear existing timeout
+  if (saveTimeout) {
+    clearTimeout(saveTimeout)
+    saveTimeout = null
+  }
+
+  // Reject previous pending promise if exists (will be replaced)
+  if (pendingSaveReject) {
+    // Don't reject, just clear - the new promise will handle the save
+    pendingSaveResolve = null
+    pendingSaveReject = null
+  }
+
+  // Create new promise that resolves when save completes
+  return new Promise((resolve, reject) => {
+    pendingSaveResolve = resolve
+    pendingSaveReject = reject
+    saveTimeout = setTimeout(async () => {
+      saveTimeout = null
+      try {
+        const { prompts, categories } = getState()
+        const version = chrome.runtime.getManifest().version
+        const response = await chrome.runtime.sendMessage({
+          type: MessageType.SET_STORAGE,
+          payload: {
+            version,
+            userData: { prompts, categories }
+          } as StorageSchema
+        })
+
+        if (!response?.success) {
+          throw new Error(response?.error || 'Storage operation failed')
+        }
+
+        const result = { success: true, syncSuccess: response.data?.syncSuccess }
+        if (pendingSaveResolve) {
+          pendingSaveResolve(result)
+          pendingSaveResolve = null
+          pendingSaveReject = null
+        }
+      } catch (error) {
+        console.error('[Oh My Prompt] Debounced save failed:', error)
+        const result = { success: false, error: '数据保存失败，请检查存储配额' }
+        if (pendingSaveResolve) {
+          pendingSaveResolve(result)
+          pendingSaveResolve = null
+          pendingSaveReject = null
+        }
+      }
+    }, delay)
+  })
+}
+
+/**
+ * Flush pending debounced save immediately
+ * Used before popup closes to ensure data is saved
+ */
+async function flushPendingSave(
+  getState: () => { prompts: Prompt[]; categories: Category[] }
+): Promise<{ success: boolean; syncSuccess?: boolean; error?: string }> {
+  // Clear the timeout if there's a pending save
+  if (saveTimeout) {
+    clearTimeout(saveTimeout)
+    saveTimeout = null
+  }
+
+  // If there's a pending promise, execute the save immediately
+  if (pendingSaveResolve) {
+    try {
+      const { prompts, categories } = getState()
+      const version = chrome.runtime.getManifest().version
+      const response = await chrome.runtime.sendMessage({
+        type: MessageType.SET_STORAGE,
+        payload: {
+          version,
+          userData: { prompts, categories }
+        } as StorageSchema
+      })
+
+      if (!response?.success) {
+        throw new Error(response?.error || 'Storage operation failed')
+      }
+
+      const result = { success: true, syncSuccess: response.data?.syncSuccess }
+      pendingSaveResolve(result)
+      pendingSaveResolve = null
+      pendingSaveReject = null
+      return result
+    } catch (error) {
+      console.error('[Oh My Prompt] Flush save failed:', error)
+      const result = { success: false, error: '数据保存失败，请检查存储配额' }
+      if (pendingSaveResolve) {
+        pendingSaveResolve(result)
+        pendingSaveResolve = null
+        pendingSaveReject = null
+      }
+      return result
+    }
+  }
+
+  // No pending save
+  return { success: true }
 }
 
 /**
@@ -228,14 +352,16 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
         prompt.id === id ? { ...prompt, ...updates } : prompt
       )
     }))
-    get().saveToStorage()
+    // Debounced save - batches rapid updates
+    debouncedSaveToStorage(get)
   },
 
   deletePrompt: (id: string) => {
     set((state) => ({
       prompts: state.prompts.filter((prompt) => prompt.id !== id)
     }))
-    get().saveToStorage()
+    // Debounced save - batches rapid deletions
+    debouncedSaveToStorage(get)
   },
 
   // Category CRUD
@@ -249,6 +375,7 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
     set((state) => ({
       categories: [...state.categories, newCategory]
     }))
+    // Immediate save - user explicitly adding new category
     get().saveToStorage()
   },
 
@@ -258,7 +385,8 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
         cat.id === id ? { ...cat, name } : cat
       )
     }))
-    get().saveToStorage()
+    // Debounced save - batches rapid updates
+    debouncedSaveToStorage(get)
   },
 
   deleteCategory: (id: string) => {
@@ -276,7 +404,8 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
         selectedCategoryId: state.selectedCategoryId === id ? 'all' : state.selectedCategoryId
       }
     })
-    get().saveToStorage()
+    // Debounced save - batches rapid deletions
+    debouncedSaveToStorage(get)
   },
 
   // Reorder categories
@@ -288,8 +417,8 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
       }))
       return { categories: updatedCategories }
     })
-    // Immediate save (popup may close before debounced timer fires)
-    get().saveToStorage()
+    // Debounced save - batches rapid reorder during drag
+    debouncedSaveToStorage(get)
   },
 
   // Reorder prompts within a category
@@ -306,8 +435,8 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
       })
       return { prompts: updatedPrompts }
     })
-    // Immediate save (popup may close before debounced timer fires)
-    get().saveToStorage()
+    // Debounced save - batches rapid reorder during drag
+    debouncedSaveToStorage(get)
   },
 
   // Reorder all prompts globally
@@ -325,8 +454,8 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
       })
       return { prompts: updatedPrompts }
     })
-    // Immediate save (popup may close before debounced timer fires)
-    get().saveToStorage()
+    // Debounced save - batches rapid reorder during drag
+    debouncedSaveToStorage(get)
   },
 
   // Computed getters
@@ -343,5 +472,17 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
     }
     const categoryPrompts = prompts.filter((prompt) => prompt.categoryId === selectedCategoryId)
     return sortPromptsByOrder(categoryPrompts)
+  },
+
+  // Flush pending debounced save (for beforeunload)
+  flushSave: async () => {
+    return flushPendingSave(get)
   }
 }))
+
+// Setup beforeunload handler to flush pending saves when popup closes
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', () => {
+    usePromptStore.getState().flushSave()
+  })
+}

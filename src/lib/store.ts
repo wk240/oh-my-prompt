@@ -96,14 +96,14 @@ function debouncedSaveToStorage(
         if (pendingSaveResolve) {
           pendingSaveResolve(result)
           pendingSaveResolve = null
-                  }
+        }
       } catch (error) {
         console.error('[Oh My Prompt] Debounced save failed:', error)
         const result = { success: false, error: '数据保存失败，请检查存储配额' }
         if (pendingSaveResolve) {
           pendingSaveResolve(result)
           pendingSaveResolve = null
-                  }
+        }
       }
     }, delay)
   })
@@ -142,14 +142,14 @@ async function flushPendingSave(
       const result = { success: true, syncSuccess: response.data?.syncSuccess }
       pendingSaveResolve(result)
       pendingSaveResolve = null
-            return result
+      return result
     } catch (error) {
       console.error('[Oh My Prompt] Flush save failed:', error)
       const result = { success: false, error: '数据保存失败，请检查存储配额' }
       if (pendingSaveResolve) {
         pendingSaveResolve(result)
         pendingSaveResolve = null
-              }
+      }
       return result
     }
   }

@@ -23,7 +23,8 @@ export default defineConfig({
     sourcemap: true,
     rollupOptions: {
       input: {
-        backup: 'src/popup/backup.html'
+        backup: 'src/popup/backup.html',
+        settings: 'src/popup/settings.html'
       },
       output: {
         manualChunks(id) {

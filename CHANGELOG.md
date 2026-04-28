@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0] - 2026-04-28
+
+### Added / 新增
+- **[EN]** New features and improvements
+- **[CN]** 新功能和改进
+
 ## [1.2.2] - 2026-04-27
 
 ### Added / 新增

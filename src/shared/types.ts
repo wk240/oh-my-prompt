@@ -90,3 +90,23 @@ export interface VisionApiConfig {
   modelName: string // Model identifier (e.g., 'claude-3-5-sonnet-20241022')
   configuredAt?: number // Timestamp of configuration (optional)
 }
+
+// Phase 11: Vision API call payload
+export interface VisionApiCallPayload {
+  imageUrl: string // HTTP URL of captured image
+}
+
+// Phase 11: Vision API result payload
+export interface VisionApiResultPayload {
+  prompt: string // Generated prompt text
+}
+
+// Phase 11: Vision API error classification
+export type VisionApiErrorType = 'invalid_key' | 'network' | 'rate_limit' | 'unsupported_image' | 'timeout'
+
+// Phase 11: Vision API error payload
+export interface VisionApiErrorPayload {
+  type: VisionApiErrorType
+  message: string // User-friendly error message
+  action: 'reconfigure' | 'retry' | 'close' // UI action button type per D-05
+}

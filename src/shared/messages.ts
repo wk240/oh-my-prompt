@@ -26,7 +26,12 @@ export enum MessageType {
   // Phase 10: API configuration operations
   GET_API_CONFIG = 'GET_API_CONFIG',
   SET_API_CONFIG = 'SET_API_CONFIG',
-  DELETE_API_CONFIG = 'DELETE_API_CONFIG'
+  DELETE_API_CONFIG = 'DELETE_API_CONFIG',
+
+  // Phase 11: Vision API operations
+  VISION_API_CALL = 'VISION_API_CALL',     // Request API call from loading page
+  VISION_API_RESULT = 'VISION_API_RESULT', // Response with generated prompt
+  VISION_API_ERROR = 'VISION_API_ERROR'    // Error classification for UI
 }
 
 export interface Message<T = unknown> {

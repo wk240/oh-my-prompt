@@ -4,10 +4,28 @@ import { StorageManager } from '../lib/storage'
 import { saveFolderHandle, getFolderHandle, checkFolderPermission, requestFolderPermission } from '../lib/sync/indexeddb'
 import { getSyncStatus, triggerSync, restorePermission } from '../lib/sync/sync-manager'
 import { checkForUpdate, getUpdateStatus, clearUpdateStatus, type UpdateStatus } from '../lib/version-checker'
-import { IMAGE_DIR_NAME, ALLOWED_IMAGE_EXTENSIONS } from '../shared/constants'
+import { IMAGE_DIR_NAME, ALLOWED_IMAGE_EXTENSIONS, CAPTURED_IMAGE_STORAGE_KEY } from '../shared/constants'
 import '../lib/migrations/v1.0' // Register migrations
 
 console.log('[Oh My Prompt] Service Worker started')
+
+// Phase 9: Create context menu on extension install (D-06)
+chrome.runtime.onInstalled.addListener(() => {
+  // Type assertion for icons property (supported in Chrome 88+, not in @types/chrome yet)
+  chrome.contextMenus.create({
+    id: 'convert-to-prompt',
+    title: '转提示词',
+    icons: { '16': 'assets/icon-16.png' }, // D-04: Lightning bolt icon matching extension brand
+    contexts: ['image'], // D-02, MENU-02: Only appear on image elements
+    targetUrlPatterns: ['http://*/*', 'https://*/*'] // D-03, D-07: Filter to http/https URLs only
+  } as chrome.contextMenus.CreateProperties & { icons: Record<string, string> }, () => {
+    if (chrome.runtime.lastError) {
+      console.error('[Oh My Prompt] Context menu creation error:', chrome.runtime.lastError)
+    } else {
+      console.log('[Oh My Prompt] Context menu created successfully')
+    }
+  })
+})
 
 const storageManager = StorageManager.getInstance()
 
@@ -403,3 +421,30 @@ chrome.runtime.onMessage.addListener(
     return true // Required for async sendResponse
   }
 )
+
+// Phase 9: Handle context menu click - capture image URL (MENU-03, D-05)
+chrome.contextMenus.onClicked.addListener((info: chrome.contextMenus.OnClickData, tab?: chrome.tabs.Tab) => {
+  if (info.menuItemId === 'convert-to-prompt') {
+    if (!info.srcUrl) {
+      console.warn('[Oh My Prompt] No srcUrl in context menu click data')
+      return
+    }
+
+    // Double-check URL type (targetUrlPatterns should handle this, but validate defensively)
+    if (!info.srcUrl.startsWith('http://') && !info.srcUrl.startsWith('https://')) {
+      console.warn('[Oh My Prompt] Invalid URL type (not http/https):', info.srcUrl)
+      return
+    }
+
+    // Store captured URL for Phase 11 Vision API processing (D-05, D-08)
+    chrome.storage.local.set({
+      [CAPTURED_IMAGE_STORAGE_KEY]: {
+        url: info.srcUrl,
+        capturedAt: Date.now(),
+        tabId: tab?.id // Store tab ID for Phase 12 insert vs clipboard decision
+      }
+    })
+
+    console.log('[Oh My Prompt] Captured image URL:', info.srcUrl, 'from tab:', tab?.id)
+  }
+})

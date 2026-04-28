@@ -4,6 +4,7 @@ import { StorageManager } from '../lib/storage'
 import { saveFolderHandle, getFolderHandle, checkFolderPermission, requestFolderPermission } from '../lib/sync/indexeddb'
 import { getSyncStatus, triggerSync, restorePermission } from '../lib/sync/sync-manager'
 import { checkForUpdate, getUpdateStatus, clearUpdateStatus, type UpdateStatus } from '../lib/version-checker'
+import { executeVisionApiCall, classifyApiError, getLanguagePreference } from '../lib/vision-api'
 import { IMAGE_DIR_NAME, ALLOWED_IMAGE_EXTENSIONS, CAPTURED_IMAGE_STORAGE_KEY, VISION_API_CONFIG_STORAGE_KEY } from '../shared/constants'
 import '../lib/migrations/v1.0' // Register migrations
 
@@ -462,6 +463,58 @@ chrome.runtime.onMessage.addListener(
           })
         return true // Required for async response
 
+      // Phase 11: Vision API call handler (VISION-01, VISION-02)
+      case MessageType.VISION_API_CALL:
+        const visionCallPayload = message.payload as { imageUrl: string; retryCount?: number }
+        if (!visionCallPayload || !visionCallPayload.imageUrl) {
+          sendResponse({ success: false, error: { type: 'network', message: '无效的图片URL', action: 'close' } })
+          return true
+        }
+
+        // SECURITY: Validate imageUrl starts with http/https (T-11-03)
+        const imageUrl = visionCallPayload.imageUrl
+        if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+          sendResponse({ success: false, error: { type: 'unsupported_image', message: '图片URL格式无效', action: 'close' } })
+          return true
+        }
+
+        // Get API config from storage
+        chrome.storage.local.get(VISION_API_CONFIG_STORAGE_KEY)
+          .then(async (result) => {
+            const config = result[VISION_API_CONFIG_STORAGE_KEY] as VisionApiConfig | undefined
+            if (!config || !config.apiKey) {
+              sendResponse({
+                success: false,
+                error: { type: 'invalid_key', message: 'API Key 未配置', action: 'reconfigure' }
+              })
+              return
+            }
+
+            // Get language preference
+            const languagePreference = await getLanguagePreference()
+
+            // Execute Vision API call (security validations inside executeVisionApiCall)
+            const retryCount = visionCallPayload.retryCount || 0
+            // SECURITY: Log request details without apiKey (T-11-01)
+            console.log('[Oh My Prompt] VISION_API_CALL: baseUrl=', config.baseUrl, 'modelName=', config.modelName, 'retryCount=', retryCount)
+
+            try {
+              const prompt = await executeVisionApiCall(config, imageUrl, languagePreference)
+              sendResponse({ success: true, data: { prompt } })
+            } catch (apiError) {
+              const classifiedError = classifyApiError(apiError, retryCount)
+              sendResponse({ success: false, error: classifiedError })
+            }
+          })
+          .catch((storageError) => {
+            console.error('[Oh My Prompt] VISION_API_CALL storage error:', storageError)
+            sendResponse({
+              success: false,
+              error: { type: 'network', message: '读取配置失败', action: 'reconfigure' }
+            })
+          })
+        return true // Required for async response
+
       default:
         sendResponse({ success: false, error: `Unknown message type: ${message.type}` })
     }
@@ -504,12 +557,17 @@ chrome.contextMenus.onClicked.addListener((info: chrome.contextMenus.OnClickData
             tabId: tab?.id // Store tab ID for Phase 12 insert vs clipboard decision
           }
         })
-
-        console.log('[Oh My Prompt] Captured image URL:', info.srcUrl, 'from tab:', tab?.id)
+          .then(() => {
+            // Phase 11: Open loading page for Vision API processing (D-04)
+            chrome.tabs.create({
+              url: chrome.runtime.getURL('src/popup/loading.html')
+            })
+            console.log('[Oh My Prompt] Captured image URL, opened loading page:', info.srcUrl, 'from tab:', tab?.id)
+          })
       })
       .catch((error) => {
         console.error('[Oh My Prompt] API config check error:', error)
-        // On error, still proceed with URL capture (graceful degradation)
+        // On error, still proceed with URL capture and open loading page (graceful degradation)
         chrome.storage.local.set({
           [CAPTURED_IMAGE_STORAGE_KEY]: {
             url: info.srcUrl,
@@ -517,7 +575,12 @@ chrome.contextMenus.onClicked.addListener((info: chrome.contextMenus.OnClickData
             tabId: tab?.id
           }
         })
-        console.log('[Oh My Prompt] Captured image URL (fallback):', info.srcUrl, 'from tab:', tab?.id)
+          .then(() => {
+            chrome.tabs.create({
+              url: chrome.runtime.getURL('src/popup/loading.html')
+            })
+            console.log('[Oh My Prompt] Captured image URL (fallback), opened loading page:', info.srcUrl, 'from tab:', tab?.id)
+          })
       })
   }
 })

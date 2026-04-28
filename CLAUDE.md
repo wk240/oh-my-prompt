@@ -34,13 +34,15 @@ npm run preview
 # TypeScript check (no emit)
 npx tsc --noEmit
 
-# E2E tests (Playwright)
+# E2E tests (Playwright - tests/ directory currently empty)
 npm run test           # Run all tests
 npm run test:ui        # Interactive test UI
 npm run test:headed    # Run with visible browser
 ```
 
 After running `npm run dev`, load the extension from `dist/` folder in Chrome via `chrome://extensions` (enable Developer Mode).
+
+**Note:** `manifest.json` is at project root (imported by `vite.config.ts`), not in `src/`.
 
 <!-- GSD:stack-start source:research/STACK.md -->
 ## Technology Stack
@@ -119,7 +121,7 @@ src/
 ### Data Flow
 
 1. **Storage-First:** All state derives from `chrome.storage.local` via `StorageSchema`
-2. **Message Types:** `GET_STORAGE`, `SET_STORAGE`, `PING`, `INSERT_PROMPT`, `BACKUP_TO_FOLDER`, `SAVE_FOLDER_HANDLE`, `GET_SYNC_STATUS`, `SET_UNSYNCED_FLAG`, `OPEN_BACKUP_PAGE`, `REFRESH_DATA`, `CHECK_UPDATE`, `GET_UPDATE_STATUS`, `CLEAR_UPDATE_STATUS`, `OPEN_EXTENSIONS`, `EXPORT_DATA`, `DISMISS_BACKUP_WARNING`
+2. **Message Types:** See `src/shared/messages.ts` for full MessageType enum (25 types including `PING`, `GET_STORAGE`, `SET_STORAGE`, `INSERT_PROMPT`, `BACKUP_TO_FOLDER`, `SAVE_IMAGE`, `READ_IMAGE`, `DELETE_IMAGE`, `GET_FOLDER_HANDLE`, `SAVE_FOLDER_HANDLE`, `GET_SYNC_STATUS`, `SET_UNSYNCED_FLAG`, `SYNC_FAILED`, `OPEN_BACKUP_PAGE`, `REFRESH_DATA`, `CHECK_UPDATE`, `GET_UPDATE_STATUS`, `CLEAR_UPDATE_STATUS`, `OPEN_EXTENSIONS`, `EXPORT_DATA`, `DISMISS_BACKUP_WARNING`, `RESTORE_PERMISSION`, `SET_SETTINGS_ONLY`)
 3. **Zustand Sync:** Popup store calls `saveToStorage()` after each CRUD operation, which triggers auto-sync if enabled
 
 ### Lovart Platform Integration

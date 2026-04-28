@@ -69,7 +69,7 @@ Plans:
 
 **Milestone Goal:** 用户右键点击任意网站图片，AI分析生成提示词并直接插入Lovart输入框
 
-- [ ] **Phase 9: Context Menu Foundation** - Add right-click menu integration for image-to-prompt
+- [x] **Phase 9: Context Menu Foundation** - Add right-click menu integration for image-to-prompt (plans created)
 - [ ] **Phase 10: API Key Management** - Secure API key storage and provider selection
 - [ ] **Phase 11: Vision API Integration** - Connect to Claude/OpenAI Vision APIs
 - [ ] **Phase 12: Prompt Insertion** - Deliver generated prompt to user
@@ -85,7 +85,11 @@ Plans:
   2. Menu item only appears on image elements (not on text, links, or other elements)
   3. Clicking the menu item captures the image URL for processing
   4. Menu item appears immediately after extension install without page reload
-**Plans**: TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 09-01-PLAN.md — Add contextMenus permission + storage key constant (Wave 1)
+- [ ] 09-02-PLAN.md — Implement context menu creation + URL capture handler (Wave 2)
 
 ### Phase 10: API Key Management
 **Goal**: 用户可安全配置和管理Vision AI API密钥
@@ -138,11 +142,11 @@ Plans:
 | 6. Network Cache Layer | v1.1.0 | 4/4 | Complete | 2026-04-19 |
 | 7. Dropdown Online Library UI | v1.1.0 | 5/5 | Complete | 2026-04-19 |
 | 8. Search & Collect Features | v1.2.0 | 0/5 | Ready for execution | - |
-| 9. Context Menu Foundation | v1.3.0 | 0/4 | Not started | - |
+| 9. Context Menu Foundation | v1.3.0 | 0/2 | Ready for execution | - |
 | 10. API Key Management | v1.3.0 | 0/4 | Not started | - |
 | 11. Vision API Integration | v1.3.0 | 0/4 | Not started | - |
 | 12. Prompt Insertion | v1.3.0 | 0/3 | Not started | - |
 
 ---
 
-*Roadmap updated: 2026-04-28 — v1.3.0 milestone planned (Phases 9-12)*
+*Roadmap updated: 2026-04-28 — Phase 9 plans created (09-01, 09-02)*

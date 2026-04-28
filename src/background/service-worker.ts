@@ -484,15 +484,40 @@ chrome.contextMenus.onClicked.addListener((info: chrome.contextMenus.OnClickData
       return
     }
 
-    // Store captured URL for Phase 11 Vision API processing (D-05, D-08)
-    chrome.storage.local.set({
-      [CAPTURED_IMAGE_STORAGE_KEY]: {
-        url: info.srcUrl,
-        capturedAt: Date.now(),
-        tabId: tab?.id // Store tab ID for Phase 12 insert vs clipboard decision
-      }
-    })
+    // Phase 10: Check API config before proceeding (AUTH-03)
+    // If no config or apiKey, open settings page for onboarding
+    chrome.storage.local.get(VISION_API_CONFIG_STORAGE_KEY)
+      .then((result) => {
+        const config = result[VISION_API_CONFIG_STORAGE_KEY] as VisionApiConfig | undefined
+        if (!config || !config.apiKey) {
+          // Open settings page for onboarding
+          chrome.tabs.create({ url: chrome.runtime.getURL('src/popup/settings.html') })
+          console.log('[Oh My Prompt] No API config found, opened settings for onboarding')
+          return
+        }
 
-    console.log('[Oh My Prompt] Captured image URL:', info.srcUrl, 'from tab:', tab?.id)
+        // API config exists, proceed with URL capture for Phase 11 Vision API processing (D-05, D-08)
+        chrome.storage.local.set({
+          [CAPTURED_IMAGE_STORAGE_KEY]: {
+            url: info.srcUrl,
+            capturedAt: Date.now(),
+            tabId: tab?.id // Store tab ID for Phase 12 insert vs clipboard decision
+          }
+        })
+
+        console.log('[Oh My Prompt] Captured image URL:', info.srcUrl, 'from tab:', tab?.id)
+      })
+      .catch((error) => {
+        console.error('[Oh My Prompt] API config check error:', error)
+        // On error, still proceed with URL capture (graceful degradation)
+        chrome.storage.local.set({
+          [CAPTURED_IMAGE_STORAGE_KEY]: {
+            url: info.srcUrl,
+            capturedAt: Date.now(),
+            tabId: tab?.id
+          }
+        })
+        console.log('[Oh My Prompt] Captured image URL (fallback):', info.srcUrl, 'from tab:', tab?.id)
+      })
   }
 })

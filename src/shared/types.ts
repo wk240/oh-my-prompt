@@ -82,3 +82,11 @@ export interface UpdateStatus {
   releaseNotes?: string
   checkedAt: number
 }
+
+// Phase 10: Vision API configuration
+export interface VisionApiConfig {
+  baseUrl: string // API endpoint base URL
+  apiKey: string // User-provided API key
+  modelName: string // Model identifier (e.g., 'claude-3-5-sonnet-20241022')
+  configuredAt?: number // Timestamp of configuration (optional)
+}

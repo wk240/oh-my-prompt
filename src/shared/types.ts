@@ -110,3 +110,22 @@ export interface VisionApiErrorPayload {
   message: string // User-friendly error message
   action: 'reconfigure' | 'retry' | 'close' // UI action button type per D-05
 }
+
+// Phase 12: Prompt insertion payload (forwarded to content script)
+export interface InsertPromptPayload {
+  prompt: string  // Generated prompt text
+  tabId: number   // Lovart tab ID for targeted messaging
+}
+
+// Phase 12: Content script insertion result
+export interface InsertResultPayload {
+  success: boolean
+  error?: string  // 'INPUT_NOT_FOUND' or other error
+}
+
+// Phase 12: Save to temporary category payload
+export interface SaveTemporaryPromptPayload {
+  name: string      // Prompt name (generated from prompt content)
+  content: string   // Prompt content
+  imageUrl?: string // Source image URL (optional, for reference)
+}

@@ -1,5 +1,5 @@
 import { MessageType, MessageResponse } from '../shared/messages'
-import type { StorageSchema, SyncSettings, UserData, VisionApiConfig } from '../shared/types'
+import type { StorageSchema, SyncSettings, UserData, VisionApiConfig, InsertPromptPayload, InsertResultPayload, SaveTemporaryPromptPayload, Prompt } from '../shared/types'
 import { StorageManager } from '../lib/storage'
 import { saveFolderHandle, getFolderHandle, checkFolderPermission, requestFolderPermission } from '../lib/sync/indexeddb'
 import { getSyncStatus, triggerSync, restorePermission } from '../lib/sync/sync-manager'
@@ -100,10 +100,33 @@ chrome.runtime.onMessage.addListener(
         return true // Required for async response
 
       case MessageType.INSERT_PROMPT:
-        // Phase 2: Return success for content script acknowledgment
-        // Phase 3 will add storage retrieval
-        sendResponse({ success: true, data: message.payload } as MessageResponse)
-        break
+        // Phase 12: Forward INSERT_PROMPT to content script (D-02)
+        const insertPayload = message.payload as InsertPromptPayload
+        if (!insertPayload || !insertPayload.prompt || !insertPayload.tabId) {
+          sendResponse({ success: false, error: 'Invalid payload: prompt and tabId required' })
+          return true
+        }
+
+        // Forward to content script on Lovart tab
+        chrome.tabs.sendMessage(insertPayload.tabId, {
+          type: MessageType.INSERT_PROMPT_TO_CS,
+          payload: { prompt: insertPayload.prompt }
+        })
+          .then((response: InsertResultPayload | undefined) => {
+            if (response && response.success) {
+              sendResponse({ success: true })
+            } else {
+              sendResponse({
+                success: false,
+                error: response?.error || 'Insert failed'
+              })
+            }
+          })
+          .catch((error) => {
+            console.error('[Oh My Prompt] INSERT_PROMPT forwarding error:', error)
+            sendResponse({ success: false, error: 'Tab not reachable' })
+          })
+        return true // Required for async response
 
       case MessageType.SAVE_FOLDER_HANDLE:
         // Save handle from content script (backup already done in content script)
@@ -512,6 +535,63 @@ chrome.runtime.onMessage.addListener(
               success: false,
               error: { type: 'network', message: '读取配置失败', action: 'reconfigure' }
             })
+          })
+        return true // Required for async response
+
+      // Phase 12: Save to temporary category (D-03, D-04)
+      case MessageType.SAVE_TEMPORARY_PROMPT:
+        const savePayload = message.payload as SaveTemporaryPromptPayload
+        if (!savePayload || !savePayload.name || !savePayload.content) {
+          sendResponse({ success: false, error: 'Invalid payload: name and content required' })
+          return true
+        }
+
+        storageManager.getData()
+          .then(async (data) => {
+            const categories = data.userData.categories
+            const prompts = data.userData.prompts
+
+            // Find or create '临时' category (D-04)
+            let tempCategory = categories.find(c => c.name === '临时')
+            if (!tempCategory) {
+              tempCategory = {
+                id: crypto.randomUUID(),
+                name: '临时',
+                order: categories.length
+              }
+              categories.push(tempCategory)
+              console.log('[Oh My Prompt] Created 临时 category')
+            }
+
+            // Calculate order (max order + 1 in temporary category)
+            const tempPrompts = prompts.filter(p => p.categoryId === tempCategory!.id)
+            const maxOrder = tempPrompts.length > 0 ? Math.max(...tempPrompts.map(p => p.order)) : -1
+
+            // Add new prompt (D-06)
+            const newPrompt: Prompt = {
+              id: crypto.randomUUID(),
+              name: savePayload.name,
+              content: savePayload.content,
+              categoryId: tempCategory.id,
+              order: maxOrder + 1,
+              remoteImageUrl: savePayload.imageUrl // Optional source URL
+            }
+            prompts.push(newPrompt)
+
+            // Save to storage
+            const version = chrome.runtime.getManifest().version
+            await storageManager.saveData({
+              version,
+              userData: { prompts, categories },
+              settings: data.settings
+            })
+
+            console.log('[Oh My Prompt] Saved prompt to 临时 category:', savePayload.name)
+            sendResponse({ success: true })
+          })
+          .catch((error) => {
+            console.error('[Oh My Prompt] SAVE_TEMPORARY_PROMPT error:', error)
+            sendResponse({ success: false, error: 'Storage save failed' })
           })
         return true // Required for async response
 

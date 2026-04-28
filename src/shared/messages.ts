@@ -31,7 +31,11 @@ export enum MessageType {
   // Phase 11: Vision API operations
   VISION_API_CALL = 'VISION_API_CALL',     // Request API call from loading page
   VISION_API_RESULT = 'VISION_API_RESULT', // Response with generated prompt
-  VISION_API_ERROR = 'VISION_API_ERROR'    // Error classification for UI
+  VISION_API_ERROR = 'VISION_API_ERROR',    // Error classification for UI
+
+  // Phase 12: Prompt insertion routing
+  INSERT_PROMPT_TO_CS = 'INSERT_PROMPT_TO_CS',  // Forward INSERT_PROMPT to content script
+  SAVE_TEMPORARY_PROMPT = 'SAVE_TEMPORARY_PROMPT'  // Save prompt to '临时' category
 }
 
 export interface Message<T = unknown> {

@@ -1,16 +1,16 @@
 # Technology Stack
 
-**Analysis Date:** 2026-04-25
+**Analysis Date:** 2026/04/28
 
 ## Languages
 
 **Primary:**
-- TypeScript 5.x - All source code (strict mode enabled)
+- TypeScript 5.x - Entire codebase (`src/**/*.ts`, `src/**/*.tsx`)
 - Target: ES2020 (per `tsconfig.json`)
 
 **Secondary:**
-- JSON - Configuration files, data files, resource library (`manifest.json`, `src/data/resource-library/prompts.json`)
-- CSS - Tailwind CSS for popup styling
+- JSON - Configuration files, manifest, built-in data
+- CSS - Tailwind CSS for popup styling (inline CSS for content script Shadow DOM)
 
 ## Runtime
 
@@ -21,54 +21,51 @@
 
 **Package Manager:**
 - npm - Package management
-- Lockfile: `package-lock.json` (present, 154KB)
+- Lockfile: `package-lock.json` (present)
 
 ## Frameworks
 
 **Core:**
-- React 19.x - UI framework for popup and content script Shadow DOM components
+- React 19.x (`react`, `react-dom`) - UI framework for popup and content script dropdown
 - Chrome Extension Manifest V3 - Extension platform (service worker, content scripts, popup)
-- Vite 6.x - Build tool with hot reload for development
+- Vite 6.x (`vite`) - Build tool with hot reload for development
+- @crxjs/vite-plugin 2.x - Chrome Extension bundler for Vite
 
 **Testing:**
-- Playwright 1.59.x - E2E testing framework
+- Playwright 1.59.x (`@playwright/test`) - E2E testing framework
 - Config: `playwright.config.ts` (Chromium only, base URL localhost:5173)
-- Note: `tests/` directory not created yet - only config present
 
 **Build/Dev:**
-- @crxjs/vite-plugin 2.x - Chrome Extension bundler for Vite (handles manifest transformation)
 - @vitejs/plugin-react 4.x - React support for Vite
 - TypeScript 5.x - Type checking (`tsc --noEmit` before build)
+- Tailwind CSS 3.x - CSS framework (popup only)
+- PostCSS 8.x + autoprefixer 10.x - CSS processing
 
 ## Key Dependencies
 
 **Critical:**
-- zustand 5.0.12 - State management for popup (CRUD operations, storage sync)
+- Zustand 5.x (`zustand`) - State management for popup store with CRUD operations
+- @dnd-kit/core 6.x, @dnd-kit/sortable 10.x - Drag-and-drop for prompt/category reordering
 - @radix-ui/react-* (dialog, alert-dialog, dropdown-menu, select, scroll-area, separator, toast, slot) - Headless UI primitives
-- lucide-react 1.8.0 - Icon library (Check, FolderOpen, RefreshCw, X, History, etc.)
-- @dnd-kit/core 6.3.1, @dnd-kit/sortable 10.0.0 - Drag-and-drop for prompt/category reordering
-- class-variance-authority 0.7.1, clsx 2.1.1, tailwind-merge 3.5.0 - CSS utility libraries
+- Lucide React 1.x (`lucide-react`) - Icon library
+- class-variance-authority, clsx, tailwind-merge - CSS utility libraries for component variants
 
 **Infrastructure:**
 - @types/chrome 0.0.260 - Chrome Extension API TypeScript types
-- tailwindcss 3.4.19 - CSS framework (popup only, not content script)
-- tailwindcss-animate 1.0.7 - Animation utilities for Tailwind
-- postcss 8.5.10 + autoprefixer 10.5.0 - CSS processing pipeline
+- tailwindcss-animate 1.x - Animation utilities for Tailwind
 
 ## Configuration
 
 **Environment:**
+- No `.env` file - Extension runs in browser context, no server-side secrets
+- Settings stored in `chrome.storage.local` via `StorageSchema`
 - TypeScript: `tsconfig.json` - Strict mode, path alias `@/*` -> `./src/*`
-- Vite: `vite.config.ts` - CRX plugin, React plugin, code splitting (vendor-react, vendor-icons, vendor-dnd, vendor-zustand)
-- Tailwind: `tailwind.config.ts` - Dark mode `class`, custom theme colors, animation keyframes
-- PostCSS: `postcss.config.js` - Tailwind and autoprefixer plugins
 
 **Build:**
-- Entry point: `manifest.json` (service worker, content scripts, popup)
-- Output: `dist/` directory
-- Sourcemaps: enabled (`sourcemap: true` in vite.config.ts)
-- Base path: `./` (relative paths for extension compatibility)
-- Manual chunks: React ecosystem, lucide icons, dnd-kit, zustand separated
+- `vite.config.ts` - CRX plugin, React plugin, code splitting (vendor-react, vendor-icons, vendor-dnd, vendor-zustand)
+- `tailwind.config.ts` - Dark mode `class`, custom theme colors, animation keyframes
+- `postcss.config.js` - Tailwind and autoprefixer plugins
+- `manifest.json` - Chrome Extension manifest (MV3)
 
 ## Platform Requirements
 
@@ -80,9 +77,8 @@
 **Production:**
 - Chromium-based browser (Chrome 88+, Edge, Brave)
 - Extension loaded via `chrome://extensions` (unpacked from `dist/`)
-- No server-side deployment required
 - Optional: Local filesystem for backup sync (File System Access API)
 
 ---
 
-*Stack analysis: 2026-04-25*
+*Stack analysis: 2026/04/28*

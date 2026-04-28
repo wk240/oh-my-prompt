@@ -88,8 +88,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 09-01-PLAN.md — Add contextMenus permission + storage key constant (Wave 1)
-- [ ] 09-02-PLAN.md — Implement context menu creation + URL capture handler (Wave 2)
+- [x] 09-01-PLAN.md — Add contextMenus permission + storage key constant (Wave 1)
+- [x] 09-02-PLAN.md — Implement context menu creation + URL capture handler (Wave 2)
 
 ### Phase 10: API Key Management
 **Goal**: 用户可安全配置和管理Vision AI API密钥

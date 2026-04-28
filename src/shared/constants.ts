@@ -29,3 +29,6 @@ export const MAX_BACKUP_HISTORY = 100
 export const IMAGE_DIR_NAME = 'images'
 export const MAX_IMAGE_SIZE = 5 * 1024 * 1024 // 5MB limit
 export const ALLOWED_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif']
+
+// Captured image URL storage key (for Phase 9 context menu)
+export const CAPTURED_IMAGE_STORAGE_KEY = '_capturedImageUrl'

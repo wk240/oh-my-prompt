@@ -417,22 +417,22 @@ case MessageType.INSERT_PROMPT:
 | A3 | Content script is always loaded on Lovart pages | Pitfall 1 | SPA navigation may not trigger content script reload |
 | A4 | Lovart input selector `[data-testid="agent-message-input"]` is stable | InsertHandler | If Lovart changes selector, InsertHandler needs update |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Vision API Response Format Conflict**
+1. **Vision API Response Format Conflict** — RESOLVED
    - What we know: Current vision-api.ts returns `prompt: string` (plain text)
-   - What CONTEXT.md expects: `{ name, prompt, tags, previewImage, timestamp }` structured response
-   - Recommendation: Either update Phase 11 vision-api.ts parseVisionResponse() OR adapt Phase 12 to generate name from prompt content (e.g., first 50 chars + timestamp)
+   - What CONTEXT.md expected: `{ name, prompt, tags, previewImage, timestamp }` structured response
+   - **Resolution:** Adapted Phase 12 to work with plain string format. Plan 12-03 generates name from prompt content (first 50 chars + timestamp). Deferred structured response to future enhancement. No Phase 11 rework required.
 
-2. **Toast Notification for Clipboard Copy**
+2. **Toast Notification for Clipboard Copy** — RESOLVED
    - What we know: ToastNotification exists in content script context (Shadow DOM portal)
-   - What's unclear: How to show toast after clipboard copy from extension page
-   - Recommendation: Use inline success feedback in LoadingApp (no toast needed), or open small notification page
+   - What was unclear: How to show toast after clipboard copy from extension page
+   - **Resolution:** Use inline success feedback in LoadingApp UI (simple text display). Loading page is isolated context, no toast portal needed. Plan 12-03 implements inline feedback with 1s auto-close.
 
-3. **Content Script Response Timeout**
+3. **Content Script Response Timeout** — RESOLVED
    - What we know: chrome.tabs.sendMessage can hang indefinitely if no response
-   - What's unclear: Reasonable timeout threshold for Lovart insertion
-   - Recommendation: 5 seconds timeout, fallback to clipboard with "插入失败" message
+   - What was unclear: Reasonable timeout threshold for Lovart insertion
+   - **Resolution:** 5 seconds timeout implemented in Plan 12-03. Fallback to clipboard with "插入失败" message if timeout exceeds threshold.
 
 ## Environment Availability
 

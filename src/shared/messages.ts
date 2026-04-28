@@ -21,7 +21,12 @@ export enum MessageType {
   EXPORT_DATA = 'EXPORT_DATA',
   DISMISS_BACKUP_WARNING = 'DISMISS_BACKUP_WARNING',
   RESTORE_PERMISSION = 'RESTORE_PERMISSION',  // Restore folder permission after extension update
-  SET_SETTINGS_ONLY = 'SET_SETTINGS_ONLY'  // Update settings only, no backup trigger (for language toggle)
+  SET_SETTINGS_ONLY = 'SET_SETTINGS_ONLY',  // Update settings only, no backup trigger (for language toggle)
+
+  // Phase 10: API configuration operations
+  GET_API_CONFIG = 'GET_API_CONFIG',
+  SET_API_CONFIG = 'SET_API_CONFIG',
+  DELETE_API_CONFIG = 'DELETE_API_CONFIG'
 }
 
 export interface Message<T = unknown> {

@@ -1,10 +1,10 @@
 import { MessageType, MessageResponse } from '../shared/messages'
-import type { StorageSchema, SyncSettings, UserData } from '../shared/types'
+import type { StorageSchema, SyncSettings, UserData, VisionApiConfig } from '../shared/types'
 import { StorageManager } from '../lib/storage'
 import { saveFolderHandle, getFolderHandle, checkFolderPermission, requestFolderPermission } from '../lib/sync/indexeddb'
 import { getSyncStatus, triggerSync, restorePermission } from '../lib/sync/sync-manager'
 import { checkForUpdate, getUpdateStatus, clearUpdateStatus, type UpdateStatus } from '../lib/version-checker'
-import { IMAGE_DIR_NAME, ALLOWED_IMAGE_EXTENSIONS, CAPTURED_IMAGE_STORAGE_KEY } from '../shared/constants'
+import { IMAGE_DIR_NAME, ALLOWED_IMAGE_EXTENSIONS, CAPTURED_IMAGE_STORAGE_KEY, VISION_API_CONFIG_STORAGE_KEY } from '../shared/constants'
 import '../lib/migrations/v1.0' // Register migrations
 
 console.log('[Oh My Prompt] Service Worker started')
@@ -410,6 +410,54 @@ chrome.runtime.onMessage.addListener(
           .then(() => sendResponse({ success: true } as MessageResponse))
           .catch(error => {
             console.error('[Oh My Prompt] SET_SETTINGS_ONLY error:', error)
+            sendResponse({ success: false, error: String(error) })
+          })
+        return true // Required for async response
+
+      // Phase 10: API configuration handlers (AUTH-01, AUTH-02, AUTH-04)
+      case MessageType.GET_API_CONFIG:
+        // Get Vision API configuration from storage
+        chrome.storage.local.get(VISION_API_CONFIG_STORAGE_KEY)
+          .then((result) => {
+            const config = result[VISION_API_CONFIG_STORAGE_KEY] as VisionApiConfig | undefined
+            sendResponse({ success: true, data: config || null } as MessageResponse<VisionApiConfig | null>)
+          })
+          .catch(error => {
+            console.error('[Oh My Prompt] GET_API_CONFIG error:', error)
+            sendResponse({ success: false, error: String(error) })
+          })
+        return true // Required for async response
+
+      case MessageType.SET_API_CONFIG:
+        // Save Vision API configuration with timestamp
+        const apiConfigPayload = message.payload as VisionApiConfig
+        if (!apiConfigPayload || !apiConfigPayload.baseUrl || !apiConfigPayload.apiKey || !apiConfigPayload.modelName) {
+          sendResponse({ success: false, error: 'Invalid payload: baseUrl, apiKey, and modelName required' })
+          return true
+        }
+        // SECURITY: Log baseUrl and modelName only, never apiKey (AUTH-02, T-10-01)
+        console.log('[Oh My Prompt] SET_API_CONFIG: baseUrl=', apiConfigPayload.baseUrl, 'modelName=', apiConfigPayload.modelName)
+        const configWithTimestamp: VisionApiConfig = {
+          ...apiConfigPayload,
+          configuredAt: Date.now()
+        }
+        chrome.storage.local.set({ [VISION_API_CONFIG_STORAGE_KEY]: configWithTimestamp })
+          .then(() => sendResponse({ success: true } as MessageResponse))
+          .catch(error => {
+            console.error('[Oh My Prompt] SET_API_CONFIG error:', error)
+            sendResponse({ success: false, error: String(error) })
+          })
+        return true // Required for async response
+
+      case MessageType.DELETE_API_CONFIG:
+        // Delete Vision API configuration
+        chrome.storage.local.remove(VISION_API_CONFIG_STORAGE_KEY)
+          .then(() => {
+            console.log('[Oh My Prompt] API config deleted')
+            sendResponse({ success: true } as MessageResponse)
+          })
+          .catch(error => {
+            console.error('[Oh My Prompt] DELETE_API_CONFIG error:', error)
             sendResponse({ success: false, error: String(error) })
           })
         return true // Required for async response

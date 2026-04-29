@@ -10,22 +10,8 @@
   },
   "content_scripts": [
     {
-      "matches": [
-        "*://lovart.ai/*",
-        "*://*.lovart.ai/*",
-        "file:///*"
-      ],
-      "js": ["src/content/content-script.ts"],
-      "run_at": "document_idle"
-    },
-    {
       "matches": ["<all_urls>"],
-      "exclude_matches": [
-        "*://lovart.ai/*",
-        "*://*.lovart.ai/*",
-        "file:///*"
-      ],
-      "js": ["src/content/vision-only-script.ts"],
+      "js": ["src/content/core/coordinator.ts"],
       "run_at": "document_idle"
     }
   ],

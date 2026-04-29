@@ -384,56 +384,96 @@ export default function SidePanelApp() {
 
   // Check current tab input availability on mount
   useEffect(() => {
-    chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
-      const tab = tabs[0]
-      if (tab?.id && tab?.url) {
-        setCurrentTabId(tab.id)
+    console.log('[Oh My Prompt] SidePanel: Starting input availability check')
 
-        // For Lovart pages, always enable (has dedicated content script)
-        const isLovart = tab.url.includes('lovart.ai') || tab.url.startsWith('file://')
-        if (isLovart) {
-          setIsOnLovart(true)
-          return
-        }
+    // Helper function to check if a URL is a special page (no content script)
+    const isSpecialPage = (url: string): boolean => {
+      return url.startsWith('chrome://') || url.startsWith('edge://') || url.startsWith('about://') || url.startsWith('chrome-extension://')
+    }
 
-        // Check if URL is a valid page for content scripts
-        // chrome://, edge://, about: pages cannot have content scripts
-        if (tab.url.startsWith('chrome://') || tab.url.startsWith('edge://') || tab.url.startsWith('about:')) {
-          setIsOnLovart(false)
-          return
-        }
-
-        // For other pages, query content script for input availability
-        // Retry up to 3 times with delays (content script may still be loading)
-        const checkInput = async (retries: number): Promise<boolean> => {
-          for (let i = 0; i < retries; i++) {
-            try {
-              // Add delay for subsequent retries
-              if (i > 0) {
-                await new Promise(resolve => setTimeout(resolve, 500))
-              }
-              const response = await chrome.tabs.sendMessage(tab.id!, {
-                type: MessageType.CHECK_INPUT_AVAILABILITY
-              })
-              if (response?.success && response.data?.hasInput) {
-                return true
-              }
-            } catch {
-              // Content script not ready yet, retry
-              console.log(`[Oh My Prompt] Content script not ready, retry ${i + 1}/${retries}`)
-            }
+    // Helper function to check input availability on a tab
+    const checkInputOnTab = async (tabId: number, retries: number): Promise<boolean> => {
+      console.log('[Oh My Prompt] SidePanel: Starting checkInput on tab', tabId, 'with', retries, 'retries')
+      for (let i = 0; i < retries; i++) {
+        try {
+          if (i > 0) {
+            console.log('[Oh My Prompt] SidePanel: Waiting 500ms before retry', i + 1)
+            await new Promise(resolve => setTimeout(resolve, 500))
           }
-          return false
-        }
-
-        const hasInput = await checkInput(3)
-        if (hasInput) {
-          setIsOnLovart(true)
-          console.log('[Oh My Prompt] Input available on non-Lovart page')
-        } else {
-          setIsOnLovart(false)
+          console.log('[Oh My Prompt] SidePanel: Sending CHECK_INPUT_AVAILABILITY to tab', tabId)
+          const response = await chrome.tabs.sendMessage(tabId, {
+            type: MessageType.CHECK_INPUT_AVAILABILITY
+          })
+          console.log('[Oh My Prompt] SidePanel: Received response:', response)
+          if (response?.success && response.data?.hasInput) {
+            console.log('[Oh My Prompt] SidePanel: Input available!')
+            return true
+          }
+        } catch (error) {
+          console.log(`[Oh My Prompt] SidePanel: Message failed, retry ${i + 1}/${retries}`, error)
         }
       }
+      return false
+    }
+
+    // First check active tab, then fallback to other tabs in the same window
+    chrome.tabs.query({ active: true, currentWindow: true }, async (activeTabs) => {
+      const activeTab = activeTabs[0]
+      console.log('[Oh My Prompt] SidePanel: Active tab:', activeTab?.id, activeTab?.url)
+
+      // If active tab is valid and not special page, use it
+      if (activeTab?.id && activeTab?.url) {
+        const isLovart = activeTab.url.includes('lovart.ai') || activeTab.url.startsWith('file://')
+        if (isLovart) {
+          console.log('[Oh My Prompt] SidePanel: Lovart page detected, enabling injection')
+          setCurrentTabId(activeTab.id)
+          setIsOnLovart(true)
+          return
+        }
+
+        if (!isSpecialPage(activeTab.url)) {
+          setCurrentTabId(activeTab.id)
+          const hasInput = await checkInputOnTab(activeTab.id, 3)
+          setIsOnLovart(hasInput)
+          console.log('[Oh My Prompt] SidePanel: Input check result:', hasInput)
+          return
+        }
+      }
+
+      // Active tab is special page, find another tab in the same window
+      console.log('[Oh My Prompt] SidePanel: Active tab is special page, searching for other tabs')
+      chrome.tabs.query({ currentWindow: true }, async (allTabs) => {
+        // Find first non-special page tab (excluding active tab which we already checked)
+        const candidateTabs = allTabs.filter(t =>
+          t.id && t.url && !isSpecialPage(t.url) && t.id !== activeTab?.id
+        )
+
+        console.log('[Oh My Prompt] SidePanel: Found', candidateTabs.length, 'candidate tabs')
+        for (const tab of candidateTabs) {
+          if (tab.id && tab.url) {
+            const isLovart = tab.url.includes('lovart.ai') || tab.url.startsWith('file://')
+            if (isLovart) {
+              console.log('[Oh My Prompt] SidePanel: Found Lovart tab:', tab.id, tab.url)
+              setCurrentTabId(tab.id)
+              setIsOnLovart(true)
+              return
+            }
+
+            setCurrentTabId(tab.id)
+            const hasInput = await checkInputOnTab(tab.id, 2) // Fewer retries for fallback tabs
+            if (hasInput) {
+              console.log('[Oh My Prompt] SidePanel: Found tab with input:', tab.id, tab.url)
+              setIsOnLovart(true)
+              return
+            }
+          }
+        }
+
+        // No suitable tab found
+        console.log('[Oh My Prompt] SidePanel: No tab with input found in window')
+        setIsOnLovart(false)
+        setCurrentTabId(null)
+      })
     })
   }, [])
 

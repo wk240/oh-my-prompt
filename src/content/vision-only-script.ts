@@ -183,6 +183,9 @@ startInputDetection()
  * Listen for messages from service worker and sidepanel
  */
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  // Log all incoming messages for debugging
+  console.log(LOG_PREFIX, 'Received message type:', message.type, 'from:', _sender.id ? 'extension' : 'external')
+
   // Vision Modal handling
   if (message.type === MessageType.OPEN_VISION_MODAL) {
     const { imageUrl, tabId } = message.payload as { imageUrl: string; tabId?: number }

@@ -17,6 +17,7 @@ import { readImportFile, mergeImportData } from '../lib/import-export'
 import { Tooltip } from '../content/components/Tooltip'
 import { ToastNotification } from './components/ToastNotification'
 import { queueImageLoad } from '../lib/sync/image-loader-queue'
+import { downloadImageFromUrl, saveImage } from '../lib/sync/image-sync'
 
 // Lazy load modal components
 const PromptPreviewModal = lazy(() => import('../content/components/PromptPreviewModal').then(m => ({ default: m.PromptPreviewModal })))
@@ -49,6 +50,11 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string; style?:
 
 // Fallback placeholder SVG for failed image loads
 const FALLBACK_IMAGE_SVG = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="60" height="40" viewBox="0 0 60 40"%3E%3Crect fill="%23f0f0f0" width="60" height="40"/%3E%3Ctext fill="%23999" font-family="sans-serif" font-size="8" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3ENo Image%3C/text%3E%3C/svg%3E'
+
+// Hover preview constants (same as PromptPreviewModal)
+const PREVIEW_OFFSET = 16
+const PREVIEW_MAX_WIDTH = 720
+const PREVIEW_MAX_HEIGHT = 480
 
 // Sortable category item component
 function SortableCategoryItem({
@@ -160,6 +166,10 @@ function SortablePromptItem({
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [imageLoaded, setImageLoaded] = useState(false)
 
+  // Hover preview state
+  const [showPreview, setShowPreview] = useState(false)
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
+
   // Load image from local folder when prompt has localImage
   useEffect(() => {
     if (!prompt.localImage || imageLoaded) return
@@ -183,35 +193,136 @@ function SortablePromptItem({
 
   const IconComponent = ICON_MAP[prompt.categoryId === 'design' ? 'design' : prompt.categoryId === 'style' ? 'style' : 'default']
 
+  // Hover preview handlers
+  const handleImageMouseEnter = () => {
+    if (imageUrl) {
+      setShowPreview(true)
+    }
+  }
+
+  const handleImageMouseMove = (e: React.MouseEvent) => {
+    setMousePos({ x: e.clientX, y: e.clientY })
+  }
+
+  const handleImageMouseLeave = () => {
+    setShowPreview(false)
+  }
+
+  // Preview element calculation with boundary detection
+  const previewHeight = PREVIEW_MAX_HEIGHT + 32 + 16
+  const previewWidth = PREVIEW_MAX_WIDTH + 32 + 16
+  const previewTopPosition = mousePos.y - PREVIEW_OFFSET - previewHeight
+  const previewLeftPosition = mousePos.x - PREVIEW_OFFSET - previewWidth
+
+  const shouldStickToTop = previewTopPosition < 0
+  const shouldStickToLeft = previewLeftPosition < 0
+
+  // Determine position and transform based on boundary conditions
+  const getPreviewStyle = () => {
+    const baseStyle: React.CSSProperties = {
+      position: 'fixed',
+      zIndex: 2147483647,
+      background: '#ffffff',
+      borderRadius: '12px',
+      boxShadow: '0 12px 48px rgba(0,0,0,0.25)',
+      padding: '16px',
+      maxWidth: `${PREVIEW_MAX_WIDTH + 32}px`,
+      maxHeight: `${PREVIEW_MAX_HEIGHT + 32}px`,
+      overflow: 'hidden',
+      pointerEvents: 'none',
+    }
+
+    if (shouldStickToLeft && shouldStickToTop) {
+      // Both boundaries: stick to left and top
+      return {
+        ...baseStyle,
+        left: PREVIEW_OFFSET,
+        top: PREVIEW_OFFSET,
+      }
+    } else if (shouldStickToLeft) {
+      // Only left boundary: stick to left, normal vertical position
+      return {
+        ...baseStyle,
+        left: PREVIEW_OFFSET,
+        top: mousePos.y - PREVIEW_OFFSET,
+        transform: 'translateY(-100%)',
+      }
+    } else if (shouldStickToTop) {
+      // Only top boundary: normal horizontal position, stick to top
+      return {
+        ...baseStyle,
+        left: mousePos.x - PREVIEW_OFFSET,
+        top: PREVIEW_OFFSET,
+        transform: 'translateX(-100%)',
+      }
+    } else {
+      // No boundary: normal position (left and above cursor)
+      return {
+        ...baseStyle,
+        left: mousePos.x - PREVIEW_OFFSET,
+        top: mousePos.y - PREVIEW_OFFSET,
+        transform: 'translate(-100%, -100%)',
+      }
+    }
+  }
+
+  const previewElement = showPreview && imageUrl ? (
+    <div style={getPreviewStyle()}>
+      <img
+        src={imageUrl}
+        alt={prompt.name}
+        style={{
+          maxWidth: `${PREVIEW_MAX_WIDTH}px`,
+          maxHeight: `${PREVIEW_MAX_HEIGHT}px`,
+          width: 'auto',
+          height: 'auto',
+          borderRadius: '8px',
+          display: 'block',
+          objectFit: 'contain',
+        }}
+        onError={(e) => {
+          e.currentTarget.src = FALLBACK_IMAGE_SVG
+        }}
+      />
+    </div>
+  ) : null
+
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={`prompt-item ${isSelected ? 'selected' : ''} ${isDragging ? 'dragging' : ''}`}
-      onClick={() => onSelect(prompt)}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          onSelect(prompt)
-        }
-      }}
-    >
-      {prompt.localImage && (
-        imageUrl ? (
-          <img
-            src={imageUrl}
-            alt={prompt.name}
-            className="prompt-item-thumbnail"
-            onError={(e) => { e.currentTarget.src = FALLBACK_IMAGE_SVG }}
-          />
-        ) : (
-          <div className="prompt-item-thumbnail prompt-item-thumbnail-loading">
-            <Shapes style={{ width: 16, height: 16, color: '#64748B' }} />
-          </div>
-        )
-      )}
+    <>
+      {/* Hover preview rendered to body */}
+      {previewElement}
+      <div
+        ref={setNodeRef}
+        style={style}
+        className={`prompt-item ${isSelected ? 'selected' : ''} ${isDragging ? 'dragging' : ''}`}
+        onClick={() => onSelect(prompt)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onSelect(prompt)
+          }
+        }}
+      >
+        {prompt.localImage && (
+          imageUrl ? (
+            <img
+              src={imageUrl}
+              alt={prompt.name}
+              className="prompt-item-thumbnail"
+              onError={(e) => { e.currentTarget.src = FALLBACK_IMAGE_SVG }}
+              onMouseEnter={handleImageMouseEnter}
+              onMouseMove={handleImageMouseMove}
+              onMouseLeave={handleImageMouseLeave}
+              style={{ cursor: 'pointer' }}
+            />
+          ) : (
+            <div className="prompt-item-thumbnail prompt-item-thumbnail-loading">
+              <Shapes style={{ width: 16, height: 16, color: '#64748B' }} />
+            </div>
+          )
+        )}
       <div className="prompt-item-icon-wrapper">
         {showDragHandle && (
           <div className="prompt-item-drag-handle" {...attributes} {...listeners}>
@@ -246,6 +357,7 @@ function SortablePromptItem({
         </button>
       </div>
     </div>
+    </>
   )
 }
 
@@ -269,27 +381,132 @@ function SidePanelNetworkCard({
 }) {
   const displayName = language === 'en' && prompt.nameEn ? prompt.nameEn : prompt.name
 
+  // Hover preview state
+  const [showPreview, setShowPreview] = useState(false)
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
+
+  // Hover preview handlers
+  const handleImageMouseEnter = () => {
+    if (prompt.previewImage) {
+      setShowPreview(true)
+    }
+  }
+
+  const handleImageMouseMove = (e: React.MouseEvent) => {
+    setMousePos({ x: e.clientX, y: e.clientY })
+  }
+
+  const handleImageMouseLeave = () => {
+    setShowPreview(false)
+  }
+
+  // Preview element calculation with boundary detection
+  const previewHeight = PREVIEW_MAX_HEIGHT + 32 + 16
+  const previewWidth = PREVIEW_MAX_WIDTH + 32 + 16
+  const previewTopPosition = mousePos.y - PREVIEW_OFFSET - previewHeight
+  const previewLeftPosition = mousePos.x - PREVIEW_OFFSET - previewWidth
+
+  const shouldStickToTop = previewTopPosition < 0
+  const shouldStickToLeft = previewLeftPosition < 0
+
+  // Determine position and transform based on boundary conditions
+  const getPreviewStyle = (): React.CSSProperties => {
+    const baseStyle: React.CSSProperties = {
+      position: 'fixed',
+      zIndex: 2147483647,
+      background: '#ffffff',
+      borderRadius: '12px',
+      boxShadow: '0 12px 48px rgba(0,0,0,0.25)',
+      padding: '16px',
+      maxWidth: `${PREVIEW_MAX_WIDTH + 32}px`,
+      maxHeight: `${PREVIEW_MAX_HEIGHT + 32}px`,
+      overflow: 'hidden',
+      pointerEvents: 'none',
+    }
+
+    if (shouldStickToLeft && shouldStickToTop) {
+      // Both boundaries: stick to left and top
+      return {
+        ...baseStyle,
+        left: PREVIEW_OFFSET,
+        top: PREVIEW_OFFSET,
+      }
+    } else if (shouldStickToLeft) {
+      // Only left boundary: stick to left, normal vertical position
+      return {
+        ...baseStyle,
+        left: PREVIEW_OFFSET,
+        top: mousePos.y - PREVIEW_OFFSET,
+        transform: 'translateY(-100%)',
+      }
+    } else if (shouldStickToTop) {
+      // Only top boundary: normal horizontal position, stick to top
+      return {
+        ...baseStyle,
+        left: mousePos.x - PREVIEW_OFFSET,
+        top: PREVIEW_OFFSET,
+        transform: 'translateX(-100%)',
+      }
+    } else {
+      // No boundary: normal position (left and above cursor)
+      return {
+        ...baseStyle,
+        left: mousePos.x - PREVIEW_OFFSET,
+        top: mousePos.y - PREVIEW_OFFSET,
+        transform: 'translate(-100%, -100%)',
+      }
+    }
+  }
+
+  const previewElement = showPreview && prompt.previewImage ? (
+    <div style={getPreviewStyle()}>
+      <img
+        src={prompt.previewImage}
+        alt={displayName}
+        style={{
+          maxWidth: `${PREVIEW_MAX_WIDTH}px`,
+          maxHeight: `${PREVIEW_MAX_HEIGHT}px`,
+          width: 'auto',
+          height: 'auto',
+          borderRadius: '8px',
+          display: 'block',
+          objectFit: 'contain',
+        }}
+        onError={(e) => {
+          e.currentTarget.src = FALLBACK_IMAGE_SVG
+        }}
+      />
+    </div>
+  ) : null
+
   return (
-    <div
-      className="network-card"
-      onClick={onClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          onClick()
-        }
-      }}
-    >
-      {prompt.previewImage && (
-        <img
-          src={prompt.previewImage}
-          alt={displayName}
-          className="network-card-thumbnail"
-          onError={(e) => { e.currentTarget.src = FALLBACK_IMAGE_SVG }}
-        />
-      )}
+    <>
+      {/* Hover preview rendered to body */}
+      {previewElement}
+      <div
+        className="network-card"
+        onClick={onClick}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onClick()
+          }
+        }}
+      >
+        {prompt.previewImage && (
+          <img
+            src={prompt.previewImage}
+            alt={displayName}
+            className="network-card-thumbnail"
+            onError={(e) => { e.currentTarget.src = FALLBACK_IMAGE_SVG }}
+            onMouseEnter={handleImageMouseEnter}
+            onMouseMove={handleImageMouseMove}
+            onMouseLeave={handleImageMouseLeave}
+            style={{ cursor: 'pointer' }}
+          />
+        )}
       <Tooltip content={displayName}>
         <div className="network-card-name">{truncateText(displayName, 20)}</div>
       </Tooltip>
@@ -330,6 +547,7 @@ function SidePanelNetworkCard({
         )}
       </div>
     </div>
+    </>
   )
 }
 
@@ -715,7 +933,31 @@ export default function SidePanelApp() {
       remoteImageUrl: resourcePrompt.previewImage,
     }
 
+    // Add prompt first to get generated id
     await usePromptStore.getState().addPrompt(localPrompt)
+
+    // Get the newly added prompt by matching content in the category
+    const store = usePromptStore.getState()
+    const newPrompt = store.prompts.find(p =>
+      p.content === resourcePrompt.content && p.categoryId === targetCategoryId
+    )
+
+    // Download and save image locally if previewImage exists
+    if (newPrompt && resourcePrompt.previewImage) {
+      try {
+        const downloadResult = await downloadImageFromUrl(resourcePrompt.previewImage)
+        if (downloadResult.success && downloadResult.blob) {
+          const saveResult = await saveImage(newPrompt.id, downloadResult.blob)
+          if (saveResult.success && saveResult.relativePath) {
+            // Update prompt with localImage path
+            store.updatePrompt(newPrompt.id, { localImage: saveResult.relativePath })
+          }
+        }
+      } catch (error) {
+        // Image download/save failed, but prompt is already saved
+        // Keep remoteImageUrl as fallback
+      }
+    }
 
     const categoryName = usePromptStore.getState().categories.find(c => c.id === targetCategoryId)?.name || '未知分类'
     setToastMessage(`已收藏到 ${categoryName}`)

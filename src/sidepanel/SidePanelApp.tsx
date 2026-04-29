@@ -13,6 +13,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { usePromptStore } from '../lib/store'
 import { getResourcePrompts, getResourceCategories } from '../lib/resource-library'
 import { MessageType } from '../shared/messages'
+import { STORAGE_KEY } from '../shared/constants'
 import { readImportFile, mergeImportData } from '../lib/import-export'
 import { Tooltip } from '../content/components/Tooltip'
 import { ToastNotification } from './components/ToastNotification'
@@ -751,6 +752,34 @@ export default function SidePanelApp() {
   // Load data on mount
   useEffect(() => {
     loadFromStorage()
+  }, [loadFromStorage])
+
+  // Listen for REFRESH_DATA messages from service worker (backup import, sync complete)
+  useEffect(() => {
+    const handleMessage = (message: { type: string }) => {
+      if (message.type === MessageType.REFRESH_DATA) {
+        console.log('[Oh My Prompt] SidePanel: Received REFRESH_DATA, refreshing...')
+        loadFromStorage()
+      }
+    }
+    chrome.runtime.onMessage.addListener(handleMessage)
+    return () => {
+      chrome.runtime.onMessage.removeListener(handleMessage)
+    }
+  }, [loadFromStorage])
+
+  // Listen for storage changes directly (robust fallback for any storage mutation)
+  useEffect(() => {
+    const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }) => {
+      if (changes[STORAGE_KEY]) {
+        console.log('[Oh My Prompt] SidePanel: Storage changed, refreshing...')
+        loadFromStorage()
+      }
+    }
+    chrome.storage.onChanged.addListener(handleStorageChange)
+    return () => {
+      chrome.storage.onChanged.removeListener(handleStorageChange)
+    }
   }, [loadFromStorage])
 
   // Load language preference

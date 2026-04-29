@@ -12,11 +12,39 @@ import { Check, X, Trash2 } from 'lucide-react'
 import { MessageType } from '../shared/messages'
 import type { VisionApiConfig } from '../shared/types'
 
+/**
+ * Request host permission for API endpoint
+ * Must be called in user-interaction context (popup/settings page)
+ */
+async function requestApiHostPermission(baseUrl: string): Promise<boolean> {
+  try {
+    const url = new URL(baseUrl)
+    const origin = url.origin + '/*'
+
+    // Check if already granted
+    const hasPermission = await chrome.permissions.contains({ origins: [origin] })
+    if (hasPermission) {
+      console.log('[Oh My Prompt] API host permission already granted:', origin)
+      return true
+    }
+
+    // Request permission - shows Chrome's permission dialog
+    console.log('[Oh My Prompt] Requesting API host permission:', origin)
+    const granted = await chrome.permissions.request({ origins: [origin] })
+    console.log('[Oh My Prompt] Permission result:', granted ? 'granted' : 'denied')
+    return granted
+  } catch (error) {
+    console.error('[Oh My Prompt] Permission request error:', error)
+    return false
+  }
+}
+
 function SettingsApp() {
   const [config, setConfig] = useState<VisionApiConfig | null>(null)
   const [baseUrl, setBaseUrl] = useState('')
   const [apiKey, setApiKey] = useState('')
   const [modelName, setModelName] = useState('')
+  const [apiFormat, setApiFormat] = useState<'openai' | 'anthropic'>('openai')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -36,11 +64,13 @@ function SettingsApp() {
         setBaseUrl(response.data.baseUrl)
         setApiKey(response.data.apiKey)
         setModelName(response.data.modelName)
+        setApiFormat(response.data.apiFormat || 'openai')
       } else {
         setConfig(null)
         setBaseUrl('')
         setApiKey('')
         setModelName('')
+        setApiFormat('openai')
       }
       setError(null)
     } catch (err) {
@@ -81,16 +111,26 @@ function SettingsApp() {
       return
     }
 
+    const trimmedUrl = baseUrl.trim()
+
+    // Request host permission BEFORE saving config
+    const permissionGranted = await requestApiHostPermission(trimmedUrl)
+    if (!permissionGranted) {
+      setError('API域名访问权限未授予，请点击"允许"以使用该API')
+      return
+    }
+
     setLoading(true)
     try {
       const payload: VisionApiConfig = {
-        baseUrl: baseUrl.trim(),
+        baseUrl: trimmedUrl,
         apiKey: apiKey.trim(),
-        modelName: modelName.trim()
+        modelName: modelName.trim(),
+        apiFormat: apiFormat
       }
 
-      // SECURITY: Log baseUrl and modelName only, never apiKey (AUTH-02, T-10-02)
-      console.log('[Oh My Prompt] SET_API_CONFIG: baseUrl=', payload.baseUrl, 'modelName=', payload.modelName)
+      // SECURITY: Log baseUrl, modelName, apiFormat only, never apiKey (AUTH-02, T-10-02)
+      console.log('[Oh My Prompt] SET_API_CONFIG: baseUrl=', payload.baseUrl, 'modelName=', payload.modelName, 'apiFormat=', payload.apiFormat)
 
       const response = await chrome.runtime.sendMessage({
         type: MessageType.SET_API_CONFIG,
@@ -98,7 +138,7 @@ function SettingsApp() {
       })
 
       if (response.success) {
-        setSuccess('配置已保存')
+        setSuccess('配置已保存，API域名权限已授予')
         await loadConfig()
       } else {
         setError(response.error || '保存配置失败，请重试')
@@ -130,6 +170,7 @@ function SettingsApp() {
         setBaseUrl('')
         setApiKey('')
         setModelName('')
+        setApiFormat('openai')
         setDeleteDialogOpen(false)
       } else {
         setError(response.error || '删除配置失败')
@@ -190,7 +231,7 @@ function SettingsApp() {
               type="text"
               value={baseUrl}
               onChange={(e) => setBaseUrl(e.target.value)}
-              placeholder="https://api.openai.com/v1"
+              placeholder="https://dashscope.aliyuncs.com/compatible-mode/v1"
               className="w-full px-3 py-2 border border-gray-200 rounded focus:border-gray-400 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               disabled={loading}
             />
@@ -224,6 +265,25 @@ function SettingsApp() {
               className="w-full px-3 py-2 border border-gray-200 rounded focus:border-gray-400 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               disabled={loading}
             />
+          </div>
+
+          {/* API Format */}
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-1">
+              API 格式
+            </label>
+            <select
+              value={apiFormat}
+              onChange={(e) => setApiFormat(e.target.value as 'openai' | 'anthropic')}
+              className="w-full px-3 py-2 border border-gray-200 rounded focus:border-gray-400 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-white"
+              disabled={loading}
+            >
+              <option value="openai">OpenAI 格式 (大多数第三方 API)</option>
+              <option value="anthropic">Anthropic 格式 (Claude API)</option>
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              选择 API 的请求格式。大多数第三方 API 使用 OpenAI 格式。
+            </p>
           </div>
 
           {/* Error message */}

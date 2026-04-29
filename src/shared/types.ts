@@ -88,6 +88,7 @@ export interface VisionApiConfig {
   baseUrl: string // API endpoint base URL
   apiKey: string // User-provided API key
   modelName: string // Model identifier (e.g., 'claude-3-5-sonnet-20241022')
+  apiFormat: 'openai' | 'anthropic' // Request format type (user-selected)
   configuredAt?: number // Timestamp of configuration (optional)
 }
 

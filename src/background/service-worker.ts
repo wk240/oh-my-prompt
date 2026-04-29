@@ -12,14 +12,12 @@ console.log('[Oh My Prompt] Service Worker started')
 
 // Phase 9: Create context menu on extension install (D-06)
 chrome.runtime.onInstalled.addListener(() => {
-  // Type assertion for icons property (supported in Chrome 88+, not in @types/chrome yet)
   chrome.contextMenus.create({
     id: 'convert-to-prompt',
     title: '转提示词',
-    icons: { '16': 'assets/icon-16.png' }, // D-04: Lightning bolt icon matching extension brand
     contexts: ['image'], // D-02, MENU-02: Only appear on image elements
     targetUrlPatterns: ['http://*/*', 'https://*/*'] // D-03, D-07: Filter to http/https URLs only
-  } as chrome.contextMenus.CreateProperties & { icons: Record<string, string> }, () => {
+  }, () => {
     if (chrome.runtime.lastError) {
       console.error('[Oh My Prompt] Context menu creation error:', chrome.runtime.lastError)
     } else {
@@ -517,6 +515,7 @@ chrome.runtime.onMessage.addListener(
             const languagePreference = await getLanguagePreference()
 
             // Execute Vision API call (security validations inside executeVisionApiCall)
+            // Note: Content script may call API directly via CORS, this handler is fallback
             const retryCount = visionCallPayload.retryCount || 0
             // SECURITY: Log request details without apiKey (T-11-01)
             console.log('[Oh My Prompt] VISION_API_CALL: baseUrl=', config.baseUrl, 'modelName=', config.modelName, 'retryCount=', retryCount)
@@ -603,8 +602,8 @@ chrome.runtime.onMessage.addListener(
   }
 )
 
-// Phase 9: Handle context menu click - capture image URL (MENU-03, D-05)
-chrome.contextMenus.onClicked.addListener((info: chrome.contextMenus.OnClickData, tab?: chrome.tabs.Tab) => {
+// Vision Modal: Handle context menu click - request permission and send message to content script
+chrome.contextMenus.onClicked.addListener(async (info: chrome.contextMenus.OnClickData, tab?: chrome.tabs.Tab) => {
   if (info.menuItemId === 'convert-to-prompt') {
     if (!info.srcUrl) {
       console.warn('[Oh My Prompt] No srcUrl in context menu click data')
@@ -617,50 +616,65 @@ chrome.contextMenus.onClicked.addListener((info: chrome.contextMenus.OnClickData
       return
     }
 
-    // Phase 10: Check API config before proceeding (AUTH-03)
-    // If no config or apiKey, open settings page for onboarding
-    chrome.storage.local.get(VISION_API_CONFIG_STORAGE_KEY)
-      .then((result) => {
-        const config = result[VISION_API_CONFIG_STORAGE_KEY] as VisionApiConfig | undefined
-        if (!config || !config.apiKey) {
-          // Open settings page for onboarding
-          chrome.tabs.create({ url: chrome.runtime.getURL('src/popup/settings.html') })
-          console.log('[Oh My Prompt] No API config found, opened settings for onboarding')
-          return
-        }
-
-        // API config exists, proceed with URL capture for Phase 11 Vision API processing (D-05, D-08)
-        chrome.storage.local.set({
-          [CAPTURED_IMAGE_STORAGE_KEY]: {
-            url: info.srcUrl,
-            capturedAt: Date.now(),
-            tabId: tab?.id // Store tab ID for Phase 12 insert vs clipboard decision
-          }
-        })
-          .then(() => {
-            // Phase 11: Open loading page for Vision API processing (D-04)
-            chrome.tabs.create({
-              url: chrome.runtime.getURL('src/popup/loading.html')
-            })
-            console.log('[Oh My Prompt] Captured image URL, opened loading page:', info.srcUrl, 'from tab:', tab?.id)
+    // Store image URL for tracking (optional, modal uses imageUrl directly)
+    chrome.storage.local.set({
+      [CAPTURED_IMAGE_STORAGE_KEY]: {
+        url: info.srcUrl,
+        capturedAt: Date.now(),
+        tabId: tab?.id
+      }
+    })
+      .then(() => {
+        // Send message to content script to open modal
+        if (tab?.id) {
+          chrome.tabs.sendMessage(tab.id, {
+            type: MessageType.OPEN_VISION_MODAL,
+            payload: {
+              imageUrl: info.srcUrl,
+              tabId: tab.id
+            }
           })
+            .then((response) => {
+              if (response?.success) {
+                console.log('[Oh My Prompt] Vision modal opened in tab:', tab.id)
+              } else {
+                console.warn('[Oh My Prompt] Vision modal failed to open, falling back to loading page')
+                // Fallback: open loading page if content script not available
+                chrome.tabs.create({
+                  url: chrome.runtime.getURL('src/popup/loading.html')
+                })
+              }
+            })
+            .catch((error) => {
+              console.error('[Oh My Prompt] Failed to send message to content script:', error)
+              // Fallback: open loading page if message fails
+              chrome.tabs.create({
+                url: chrome.runtime.getURL('src/popup/loading.html')
+              })
+            })
+        } else {
+          // No tab ID, fallback to loading page
+          chrome.tabs.create({
+            url: chrome.runtime.getURL('src/popup/loading.html')
+          })
+        }
       })
       .catch((error) => {
-        console.error('[Oh My Prompt] API config check error:', error)
-        // On error, still proceed with URL capture and open loading page (graceful degradation)
-        chrome.storage.local.set({
-          [CAPTURED_IMAGE_STORAGE_KEY]: {
-            url: info.srcUrl,
-            capturedAt: Date.now(),
-            tabId: tab?.id
-          }
-        })
-          .then(() => {
-            chrome.tabs.create({
-              url: chrome.runtime.getURL('src/popup/loading.html')
-            })
-            console.log('[Oh My Prompt] Captured image URL (fallback), opened loading page:', info.srcUrl, 'from tab:', tab?.id)
+        console.error('[Oh My Prompt] Storage error:', error)
+        // Fallback: try to open modal anyway
+        if (tab?.id) {
+          chrome.tabs.sendMessage(tab.id, {
+            type: MessageType.OPEN_VISION_MODAL,
+            payload: {
+              imageUrl: info.srcUrl,
+              tabId: tab.id
+            }
           })
+        } else {
+          chrome.tabs.create({
+            url: chrome.runtime.getURL('src/popup/loading.html')
+          })
+        }
       })
   }
 })

@@ -35,7 +35,11 @@ export enum MessageType {
 
   // Phase 12: Prompt insertion routing
   INSERT_PROMPT_TO_CS = 'INSERT_PROMPT_TO_CS',  // Forward INSERT_PROMPT to content script
-  SAVE_TEMPORARY_PROMPT = 'SAVE_TEMPORARY_PROMPT'  // Save prompt to '临时' category
+  SAVE_TEMPORARY_PROMPT = 'SAVE_TEMPORARY_PROMPT',  // Save prompt to '临时' category
+
+  // Vision Modal: In-page popup for image-to-prompt conversion
+  OPEN_VISION_MODAL = 'OPEN_VISION_MODAL',      // SW → CS: Open modal in current page
+  VISION_MODAL_RESPONSE = 'VISION_MODAL_RESPONSE'  // CS → SW: Modal operation result
 }
 
 export interface Message<T = unknown> {

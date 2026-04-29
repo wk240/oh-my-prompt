@@ -1,6 +1,7 @@
 /**
  * Vision API integration module
- * Handles provider detection, request formatting, and error classification
+ * Handles request formatting and error classification
+ * API format is user-selected (OpenAI or Anthropic compatible)
  */
 
 import type { VisionApiConfig, VisionApiErrorPayload } from '../shared/types'
@@ -8,37 +9,16 @@ import type { VisionApiConfig, VisionApiErrorPayload } from '../shared/types'
 // Anthropic API version header (T-11-04 mitigation)
 const ANTHROPIC_VERSION = '2023-06-01'
 
-// API call timeout in milliseconds (Claude's discretion: 30 seconds)
-const API_TIMEOUT_MS = 30000
+// API call timeout in milliseconds (5 minutes for slow Vision APIs)
+const API_TIMEOUT_MS = 300000
 
 // Max retry count per D-05 (Claude's discretion: 3 retries)
 const MAX_RETRY_COUNT = 3
 
 /**
- * Detect Vision API provider from baseUrl pattern (D-01)
- * @param baseUrl - API endpoint base URL
- * @returns 'anthropic' or 'openai'
- */
-export function detectProvider(baseUrl: string): 'anthropic' | 'openai' {
-  const normalizedUrl = baseUrl.toLowerCase()
-
-  if (normalizedUrl.includes('anthropic.com')) {
-    return 'anthropic'
-  }
-
-  if (normalizedUrl.includes('openai.com')) {
-    return 'openai'
-  }
-
-  // Default fallback per D-01 (Anthropic format most common for Vision APIs)
-  console.log('[Oh My Prompt] Unknown provider domain, defaulting to Anthropic format')
-  return 'anthropic'
-}
-
-/**
- * Build Anthropic Claude Vision API request (RESEARCH Pattern 2)
+ * Build Anthropic Claude Vision API request
  * @param imageUrl - HTTP URL of image to analyze
- * @param modelName - Model identifier (e.g., 'claude-3-5-sonnet-20241022')
+ * @param modelName - Model identifier
  * @param languageInstruction - Language preference instruction
  * @returns Request body object
  */
@@ -72,9 +52,9 @@ export function buildAnthropicRequest(
 }
 
 /**
- * Build OpenAI GPT-4V API request (RESEARCH Pattern 3)
+ * Build OpenAI GPT-4V compatible API request
  * @param imageUrl - HTTP URL of image to analyze
- * @param modelName - Model identifier (e.g., 'gpt-4-vision-preview')
+ * @param modelName - Model identifier
  * @param languageInstruction - Language preference instruction
  * @returns Request body object
  */
@@ -107,13 +87,13 @@ export function buildOpenAIRequest(
 }
 
 /**
- * Build fetch headers for provider (T-11-01: apiKey never logged)
- * @param provider - 'anthropic' or 'openai'
+ * Build fetch headers for API format (T-11-01: apiKey never logged)
+ * @param apiFormat - 'anthropic' or 'openai'
  * @param apiKey - API key (not logged)
  * @returns Headers object
  */
-export function buildHeaders(provider: 'anthropic' | 'openai', apiKey: string): HeadersInit {
-  if (provider === 'anthropic') {
+export function buildHeaders(apiFormat: 'anthropic' | 'openai', apiKey: string): HeadersInit {
+  if (apiFormat === 'anthropic') {
     return {
       'Content-Type': 'application/json',
       'x-api-key': apiKey,
@@ -121,7 +101,7 @@ export function buildHeaders(provider: 'anthropic' | 'openai', apiKey: string): 
     }
   }
 
-  // OpenAI format
+  // OpenAI format (Authorization: Bearer)
   return {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${apiKey}`
@@ -130,12 +110,12 @@ export function buildHeaders(provider: 'anthropic' | 'openai', apiKey: string): 
 
 /**
  * Parse Vision API response and extract prompt text
- * @param provider - 'anthropic' or 'openai'
+ * @param apiFormat - 'anthropic' or 'openai'
  * @param response - API response JSON
  * @returns Generated prompt string
  */
-export function parseVisionResponse(provider: 'anthropic' | 'openai', response: unknown): string {
-  if (provider === 'anthropic') {
+export function parseVisionResponse(apiFormat: 'anthropic' | 'openai', response: unknown): string {
+  if (apiFormat === 'anthropic') {
     // Anthropic response: { content: [{ type: 'text', text: '...' }] }
     const anthropicResponse = response as { content?: Array<{ type?: string; text?: string }> }
     const textContent = anthropicResponse.content?.find(c => c.type === 'text')
@@ -145,6 +125,36 @@ export function parseVisionResponse(provider: 'anthropic' | 'openai', response: 
   // OpenAI response: { choices: [{ message: { content: '...' }] } }
   const openaiResponse = response as { choices?: Array<{ message?: { content?: string } }> }
   return openaiResponse.choices?.[0]?.message?.content || ''
+}
+
+/**
+ * Get full API endpoint URL from base URL
+ * @param baseUrl - User-provided base URL
+ * @param apiFormat - 'openai' or 'anthropic'
+ * @returns Full endpoint URL
+ */
+function getFullEndpoint(baseUrl: string, apiFormat: 'openai' | 'anthropic'): string {
+  const normalizedBase = baseUrl.replace(/\/$/, '') // Remove trailing slash
+
+  if (apiFormat === 'anthropic') {
+    // Anthropic: usually user provides full path, but if not, append /messages
+    if (normalizedBase.includes('/messages')) {
+      return normalizedBase
+    }
+    if (normalizedBase.includes('/v1')) {
+      return normalizedBase + '/messages'
+    }
+    return normalizedBase + '/v1/messages'
+  }
+
+  // OpenAI format: append /chat/completions if not already present
+  if (normalizedBase.includes('/chat/completions')) {
+    return normalizedBase
+  }
+  if (normalizedBase.includes('/v1')) {
+    return normalizedBase + '/chat/completions'
+  }
+  return normalizedBase + '/v1/chat/completions'
 }
 
 /**
@@ -170,52 +180,67 @@ export async function executeVisionApiCall(
     throw new Error('Image URL must be HTTP or HTTPS')
   }
 
-  const provider = detectProvider(config.baseUrl)
+  // Use user-selected API format (default to OpenAI if not specified)
+  const apiFormat = config.apiFormat || 'openai'
   const languageInstruction = languagePreference === 'zh'
     ? '请用中文回复。'
     : 'Please respond in English.'
 
-  const requestBody = provider === 'anthropic'
+  // Get full endpoint URL
+  const endpointUrl = getFullEndpoint(config.baseUrl, apiFormat)
+
+  const requestBody = apiFormat === 'anthropic'
     ? buildAnthropicRequest(imageUrl, config.modelName, languageInstruction)
     : buildOpenAIRequest(imageUrl, config.modelName, languageInstruction)
 
-  const headers = buildHeaders(provider, config.apiKey)
+  const headers = buildHeaders(apiFormat, config.apiKey)
 
   // Log request details (T-11-01: apiKey never logged)
   console.log('[Oh My Prompt] Vision API call:', {
-    provider,
+    apiFormat,
     baseUrl: config.baseUrl,
+    endpointUrl,
     modelName: config.modelName,
     imageUrl: imageUrl.substring(0, 50) + '...' // Truncate for privacy
   })
+
+  // Log request body for debugging
+  console.log('[Oh My Prompt] Vision API request body:', JSON.stringify(requestBody, null, 2))
 
   // Execute with AbortController timeout
   const abortController = new AbortController()
   const timeoutId = setTimeout(() => abortController.abort(), API_TIMEOUT_MS)
 
+  console.log('[Oh My Prompt] Vision API fetch starting...')
+
   try {
-    const response = await fetch(config.baseUrl, {
+    const response = await fetch(endpointUrl, {
       method: 'POST',
       headers,
       body: JSON.stringify(requestBody),
       signal: abortController.signal
     })
 
+    console.log('[Oh My Prompt] Vision API fetch completed, status:', response.status)
     clearTimeout(timeoutId)
 
     if (!response.ok) {
-      // Throw error with status code for classification
+      // Log response body for debugging
+      const errorText = await response.text()
+      console.log('[Oh My Prompt] Vision API error response:', errorText)
       throw new Error(`API error: ${response.status}`)
     }
 
     const data = await response.json()
-    const prompt = parseVisionResponse(provider, data)
+    console.log('[Oh My Prompt] Vision API response data:', JSON.stringify(data, null, 2).substring(0, 200))
+    const prompt = parseVisionResponse(apiFormat, data)
 
     console.log('[Oh My Prompt] Vision API success, prompt length:', prompt.length)
     return prompt
 
   } catch (error) {
     clearTimeout(timeoutId)
+    console.error('[Oh My Prompt] Vision API fetch error:', error)
 
     // Handle timeout specifically
     if (error instanceof Error && error.name === 'AbortError') {
@@ -309,11 +334,17 @@ export function classifyApiError(error: unknown, retryCount = 0): VisionApiError
     }
   }
 
-  // Generic error fallback with logging
-  console.error('[Oh My Prompt] Unhandled API error:', error)
+  // Generic error fallback with detailed logging
+  const errorDetails = error instanceof Error
+    ? { name: error.name, message: error.message, stack: error.stack?.substring(0, 200) }
+    : { value: String(error), type: typeof error }
+
+  console.error('[Oh My Prompt] Unhandled API error:', errorDetails)
+
+  // Include error message in the user message for debugging (visible in page console)
   return {
     type: 'network',
-    message: '发生未知错误，请重试',
+    message: `发生未知错误，请重试 (${error instanceof Error ? error.message : 'unknown'})`,
     action: 'retry'
   }
 }

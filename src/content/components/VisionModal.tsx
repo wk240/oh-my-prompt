@@ -85,6 +85,9 @@ function VisionModal({ imageUrl, tabId, onClose }: VisionModalProps) {
     setState('loading')
     setRetryCount(count)
 
+    // Debug log
+    console.log('[Oh My Prompt] requestApiCall: imageUrl=', imageUrl, 'retryCount=', count)
+
     try {
       const response = await chrome.runtime.sendMessage({
         type: MessageType.VISION_API_CALL,
@@ -126,9 +129,24 @@ function VisionModal({ imageUrl, tabId, onClose }: VisionModalProps) {
 
   /**
    * Handle reconfigure - show config form
+   * Loads existing config from storage for editing
    */
-  const handleReconfigure = () => {
+  const handleReconfigure = async () => {
     setState('configuring')
+
+    // Load existing config from storage to populate form
+    try {
+      const result = await chrome.storage.local.get(VISION_API_CONFIG_STORAGE_KEY)
+      const existingConfig = result[VISION_API_CONFIG_STORAGE_KEY] as VisionApiConfig | undefined
+      if (existingConfig) {
+        setApiBaseUrl(existingConfig.baseUrl || '')
+        setApiKey(existingConfig.apiKey || '')
+        setModelName(existingConfig.modelName || '')
+      }
+    } catch (error) {
+      console.error('[Oh My Prompt] Load existing config error:', error)
+      // Keep form empty if load fails
+    }
   }
 
   /**
@@ -141,11 +159,12 @@ function VisionModal({ imageUrl, tabId, onClose }: VisionModalProps) {
     }
 
     try {
-      // Save config directly to storage
+      // Save config directly to storage (default to OpenAI format)
       const configWithTimestamp: VisionApiConfig = {
         baseUrl: apiBaseUrl,
         apiKey: apiKey,
         modelName: modelName,
+        apiFormat: 'openai', // Default format for most third-party APIs
         configuredAt: Date.now()
       }
       await chrome.storage.local.set({ [VISION_API_CONFIG_STORAGE_KEY]: configWithTimestamp })

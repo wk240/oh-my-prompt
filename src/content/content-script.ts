@@ -1,6 +1,6 @@
 /**
  * Content Script - Main entry point for Lovart page integration
- * Coordinates input detection, UI injection, and prompt insertion
+ * Coordinates input detection, UI injection, prompt insertion, and Vision Modal
  */
 
 import { MessageType } from '../shared/messages'
@@ -9,6 +9,7 @@ import { InputDetector } from './input-detector'
 import { UIInjector } from './ui-injector'
 import { InsertHandler } from './insert-handler'
 import { usePromptStore } from '../lib/store'
+import { VisionModalManager } from './vision-modal-manager'
 
 console.log('[Oh My Prompt] Content script loaded on:', window.location.href)
 
@@ -110,6 +111,20 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       console.error('[Oh My Prompt] InsertHandler failed')
       sendResponse({ success: false, error: 'INSERT_FAILED' } as InsertResultPayload)
     }
+    return true
+  }
+
+  // Vision Modal: Handle OPEN_VISION_MODAL from service worker
+  if (message.type === MessageType.OPEN_VISION_MODAL) {
+    const { imageUrl, tabId } = message.payload as { imageUrl: string; tabId?: number }
+
+    console.log('[Oh My Prompt] Received OPEN_VISION_MODAL:', imageUrl.substring(0, 50) + '...')
+
+    // Create modal via VisionModalManager (singleton)
+    const manager = VisionModalManager.getInstance()
+    manager.create(imageUrl, tabId)
+
+    sendResponse({ success: true })
     return true
   }
 

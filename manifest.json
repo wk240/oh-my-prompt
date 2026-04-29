@@ -17,6 +17,16 @@
       ],
       "js": ["src/content/content-script.ts"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": ["<all_urls>"],
+      "exclude_matches": [
+        "*://lovart.ai/*",
+        "*://*.lovart.ai/*",
+        "file:///*"
+      ],
+      "js": ["src/content/vision-only-script.ts"],
+      "run_at": "document_idle"
     }
   ],
   "action": {
@@ -35,7 +45,8 @@
   "permissions": ["activeTab", "downloads", "storage", "tabs", "alarms", "contextMenus"],
   "host_permissions": [
     "https://raw.githubusercontent.com/*",
-    "https://api.github.com/*"
+    "https://api.github.com/*",
+    "https://*/*"
   ],
   "web_accessible_resources": [
     {

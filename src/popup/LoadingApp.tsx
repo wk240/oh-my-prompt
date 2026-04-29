@@ -94,6 +94,7 @@ function LoadingApp() {
       console.log('[Oh My Prompt] Loading page: requesting API call for', imageUrl.substring(0, 50) + '...')
 
       // Send API call request to service worker
+      // Permission should have been granted when user saved API config in SettingsApp
       const response = await chrome.runtime.sendMessage({
         type: MessageType.VISION_API_CALL,
         payload: { imageUrl, retryCount }

@@ -5,7 +5,7 @@ milestone_name: Image to Prompt
 status: milestone_complete
 stopped_at: Phase 12 execution complete
 last_updated: "2026-04-28T15:00:00.000Z"
-last_activity: 2026-04-28
+last_activity: 2026-04-29
 progress:
   total_phases: 4
   completed_phases: 4
@@ -93,6 +93,7 @@ Human testing required for E2E flow verification:
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
+| 260429-ji5 | Enable prompt insertion on any page with input | 2026-04-29 | 90da4ce | [260429-ji5-sidepanel-lovart-ai](./quick/260429-ji5-sidepanel-lovart-ai/) |
 | 260429-0f9 | Fix Vision API error handling | 2026-04-28 | 6d55c97 | [260429-0f9-fix-vision-api-error-handling-add-handle](./quick/260429-0f9-fix-vision-api-error-handling-add-handle/) |
 
 ## Deferred Items

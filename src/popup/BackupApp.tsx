@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { getSyncStatus, enableSync, disableSync, changeSyncFolder, manualSync, getBackupVersions, restoreFromBackup, restorePermission } from '../lib/sync/sync-manager'
 import type { SyncStatus, ExistingBackupInfo } from '../lib/sync/sync-manager'
 import type { BackupVersion } from '../lib/sync/file-sync'
+import { MessageType } from '../shared/messages'
 import { Button } from './components/ui/button'
 import { Check, FolderOpen, RefreshCw, X, History, RotateCcw } from 'lucide-react'
 import {
@@ -126,7 +127,7 @@ function BackupApp() {
       setVersions(versionsResult.versions)
       // Notify content script to refresh data
       try {
-        await chrome.runtime.sendMessage({ type: 'REFRESH_DATA' })
+        await chrome.runtime.sendMessage({ type: MessageType.REFRESH_DATA })
       } catch (err) {
         console.warn('[Oh My Prompt] Failed to notify refresh:', err)
       }
@@ -273,7 +274,7 @@ function BackupApp() {
       setVersions(versionsResult.versions)
       // Notify content script to refresh data
       try {
-        await chrome.runtime.sendMessage({ type: 'REFRESH_DATA' })
+        await chrome.runtime.sendMessage({ type: MessageType.REFRESH_DATA })
       } catch (err) {
         console.warn('[Oh My Prompt] Failed to notify refresh:', err)
       }

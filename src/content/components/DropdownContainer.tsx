@@ -6,10 +6,10 @@
 
 import { useRef, useState, useMemo, useEffect, useCallback, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
-import type { Prompt, Category, StorageSchema } from '../../shared/types'
+import type { Prompt, Category } from '../../shared/types'
 import type { ResourcePrompt, ResourceCategory, UpdateStatus } from '../../shared/types'
 import { truncateText, sortCategoriesByOrder, sortPromptsByOrder, sortProviderCategoriesByOrder, sortResourcePromptsByCategoryOrder } from '../../shared/utils'
-import { Sparkles, Palette, Shapes, ArrowUpRight, FolderOpen, Layers, Sparkle, Brush, GripVertical, Database, ArrowLeft, Sun, Frame, Paintbrush, Image, RefreshCw, ArrowUpCircle, Plus, Pencil, Trash2, Download, Upload, ExternalLink, AlertTriangle } from 'lucide-react'
+import { Sparkles, Palette, Shapes, ArrowUpRight, FolderOpen, Layers, Sparkle, Brush, GripVertical, Database, ArrowLeft, Sun, Frame, Paintbrush, Image, ArrowUpCircle, Plus, Pencil, Trash2, ExternalLink, AlertTriangle, Settings } from 'lucide-react'
 import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -27,7 +27,6 @@ const PromptEditModal = lazy(() => import('./PromptEditModal').then(m => ({ defa
 import { usePromptStore } from '../../lib/store'
 import { getResourcePrompts, getResourceCategories } from '../../lib/resource-library'
 import { MessageType } from '../../shared/messages'
-import { readImportFile, mergeImportData } from '../../lib/import-export'
 import { clearImageUrlCache, isFolderConfigured, downloadImageFromUrl, saveImage } from '../../lib/sync/image-sync'
 import { clearLoadQueue } from '../../lib/sync/image-loader-queue'
 import { PromptThumbnail } from './PromptThumbnail'
@@ -38,7 +37,6 @@ interface DropdownContainerProps {
   categories: Category[]
   onSelect: (prompt: Prompt) => void
   onInjectResource?: (prompt: ResourcePrompt) => void  // Inject resource prompt directly
-  onRefresh?: () => Promise<{ success: boolean; backupSuccess: boolean; error?: string }>  // Refresh data from storage
   isOpen: boolean
   selectedPromptId: string | null
   onClose?: () => void
@@ -311,7 +309,6 @@ export function DropdownContainer({
   categories: propCategories,
   onSelect,
   onInjectResource,
-  onRefresh,
   isOpen,
   selectedPromptId,
   onClose: _onClose,
@@ -441,9 +438,6 @@ export function DropdownContainer({
     setEditingStates(prev => ({ ...prev, [key]: null })), [])
 
   // Refresh/loading state (not modal-related)
-  const [isRefreshing, setIsRefreshing] = useState(false)
-
-  // Update notification data state (not modal-related)
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus | null>(null)
 
   // Backup warning data states (not modal-related)
@@ -509,17 +503,6 @@ export function DropdownContainer({
       setUpdateStatus(null)
     })
   }, [])
-
-  // Handle refresh with loading state
-  const handleRefreshClick = useCallback(async () => {
-    if (isRefreshing || !onRefresh) return
-    setIsRefreshing(true)
-    try {
-      await onRefresh()
-    } finally {
-      setIsRefreshing(false)
-    }
-  }, [isRefreshing, onRefresh])
 
   // Handle language switch in resource library
   const handleLanguageSwitch = useCallback((lang: 'zh' | 'en') => {
@@ -823,7 +806,7 @@ export function DropdownContainer({
 
       try {
         await chrome.runtime.sendMessage({
-          type: 'SET_STORAGE',
+          type: MessageType.SET_STORAGE,
           payload: {
             version: '1.0.0',
             userData: { prompts: updatedPrompts, categories: localCategories }
@@ -856,7 +839,7 @@ export function DropdownContainer({
 
       try {
         await chrome.runtime.sendMessage({
-          type: 'SET_STORAGE',
+          type: MessageType.SET_STORAGE,
           payload: {
             version: '1.0.0',
             userData: { prompts: localPrompts, categories: updatedCategories }
@@ -931,65 +914,6 @@ export function DropdownContainer({
     showToast('提示词已删除')
   }, [editingStates.deletingPrompt])
 
-  // Export handler - send message to background worker (chrome.downloads only works in background)
-  const handleExport = useCallback(async () => {
-    const version = chrome.runtime.getManifest().version
-    const data: StorageSchema = {
-      version,
-      userData: { prompts: localPrompts, categories: localCategories },
-      settings: { showBuiltin: true, syncEnabled: false }
-    }
-    try {
-      const response = await chrome.runtime.sendMessage({ type: MessageType.EXPORT_DATA, payload: data })
-      if (response?.success) {
-        showToast('导出成功')
-      } else {
-        showToast(response?.error || '导出失败')
-      }
-    } catch (error) {
-      showToast('导出失败')
-    }
-  }, [localPrompts, localCategories])
-
-  // Import handler
-  const handleImport = useCallback(() => {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = '.json'
-
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0]
-      if (!file) return
-
-      const result = await readImportFile(file)
-
-      if (result.valid && result.data) {
-        const merged = mergeImportData(
-          { prompts: localPrompts, categories: localCategories },
-          result.data.userData
-        )
-
-        // Update local state
-        setLocalPrompts(merged.prompts)
-        setLocalCategories(merged.categories)
-
-        // Update store and save to storage
-        usePromptStore.setState({
-          prompts: merged.prompts,
-          categories: merged.categories,
-          selectedCategoryId: 'all'
-        })
-        await usePromptStore.getState().saveToStorage()
-
-        showToast(`导入成功：新增 ${merged.addedCount} 条，跳过 ${merged.skippedCount} 条重复`)
-      } else {
-        showToast(result.error || '导入失败')
-      }
-    }
-
-    input.click()
-  }, [localPrompts, localCategories])
-
   // Handle first-time backup warning actions
   const handleBackupWarningSelectFolder = useCallback(async () => {
     closeModal('showFirstBackupWarning')
@@ -1061,7 +985,7 @@ export function DropdownContainer({
       <>
         {modalStates.showBackupReminder && (
           <div className="backup-reminder-banner-closed">
-            <RefreshCw style={{ width: 14, height: 14, color: '#1e40af' }} />
+            <AlertTriangle style={{ width: 14, height: 14, color: '#1e40af' }} />
             <span className="backup-reminder-text">本次改动尚未备份</span>
             <span
               className="backup-reminder-link"
@@ -1275,35 +1199,6 @@ export function DropdownContainer({
                 <ArrowUpCircle style={{ width: 14, height: 14 }} />
               </button>
             </Tooltip>
-            <Tooltip content="备份数据" placement="bottom">
-              <button
-                className={`dropdown-action-btn ${isRefreshing ? 'refreshing' : ''}`}
-                onClick={handleRefreshClick}
-                aria-label="备份数据"
-                disabled={isRefreshing}
-              >
-                <RefreshCw style={{ width: 14, height: 14 }} />
-              </button>
-            </Tooltip>
-            <Tooltip content="导入" placement="bottom">
-              <button
-                className="dropdown-action-btn"
-                onClick={handleImport}
-                aria-label="导入"
-              >
-                <Upload style={{ width: 14, height: 14 }} />
-              </button>
-            </Tooltip>
-            <Tooltip content="导出" placement="bottom">
-              <button
-                className="dropdown-action-btn"
-                onClick={handleExport}
-                aria-label="导出"
-              >
-                <Download style={{ width: 14, height: 14 }} />
-              </button>
-            </Tooltip>
-            {/* Language toggle - works for both local prompts and resource library */}
             <button
               className="dropdown-language-btn"
               onClick={() => handleLanguageSwitch(resourceLanguage === 'zh' ? 'en' : 'zh')}
@@ -1311,7 +1206,16 @@ export function DropdownContainer({
             >
               {resourceLanguage === 'zh' ? '中' : 'EN'}
             </button>
-            <Tooltip content="访问官网" placement="bottom">
+            <Tooltip content="设置" placement="bottom">
+              <button
+                className="dropdown-action-btn"
+                onClick={() => chrome.runtime.sendMessage({ type: MessageType.OPEN_SETTINGS_PAGE })}
+                aria-label="设置"
+              >
+                <Settings style={{ width: 14, height: 14 }} />
+              </button>
+            </Tooltip>
+            <Tooltip content="官网" placement="bottom">
               <a
                 className="dropdown-action-btn"
                 href="https://oh-my-prompt.com/"
@@ -1345,16 +1249,16 @@ export function DropdownContainer({
             {/* Backup reminder banner - shows after sorting changes */}
             {modalStates.showBackupReminder && (
               <div className="backup-reminder-banner">
-                <RefreshCw style={{ width: 14, height: 14, color: '#1e40af' }} />
+                <AlertTriangle style={{ width: 14, height: 14, color: '#1e40af' }} />
                 <span className="backup-reminder-text">本次改动尚未备份</span>
                 <span
                   className="backup-reminder-link"
                   onClick={() => {
                     closeModal('showBackupReminder')
-                    handleRefreshClick()
+                    chrome.runtime.sendMessage({ type: MessageType.OPEN_SETTINGS_PAGE })
                   }}
                 >
-                  立即备份
+                  设置备份
                 </span>
                 <span className="backup-reminder-close" onClick={() => closeModal('showBackupReminder')}>×</span>
               </div>

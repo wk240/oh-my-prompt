@@ -60,7 +60,7 @@ function getStoredLanguagePreference(): 'zh' | 'en' {
 /**
  * VisionModal - In-page modal for image-to-prompt conversion
  * Supports: API call, prompt preview with 3-Tab layout (中文/英文/JSON), insertion/clipboard
- * Note: API configuration is handled in settings.html (opened via OPEN_API_SETTINGS)
+ * Note: API configuration is handled in settings.html (opened via OPEN_SETTINGS_PAGE)
  */
 function VisionModal({ imageUrl, tabId, onClose }: VisionModalProps) {
   const [state, setState] = useState<VisionModalState>('loading')
@@ -195,7 +195,7 @@ function VisionModal({ imageUrl, tabId, onClose }: VisionModalProps) {
    * Open settings page for API configuration
    */
   const handleOpenSettings = () => {
-    chrome.runtime.sendMessage({ type: MessageType.OPEN_API_SETTINGS })
+    chrome.runtime.sendMessage({ type: MessageType.OPEN_SETTINGS_PAGE })
     onClose()
   }
 

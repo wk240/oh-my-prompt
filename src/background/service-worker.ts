@@ -394,12 +394,12 @@ chrome.runtime.onMessage.addListener(
           })
         return true // Required for async response
 
-      case MessageType.OPEN_API_SETTINGS:
-        // Open settings.html for API configuration (called from VisionModal error state)
+      case MessageType.OPEN_SETTINGS_PAGE:
+        // Open settings.html for settings center (called from dropdown or VisionModal)
         chrome.tabs.create({ url: chrome.runtime.getURL('src/popup/settings.html') })
           .then(() => sendResponse({ success: true } as MessageResponse))
           .catch(error => {
-            console.error('[Oh My Prompt] OPEN_API_SETTINGS error:', error)
+            console.error('[Oh My Prompt] OPEN_SETTINGS_PAGE error:', error)
             sendResponse({ success: false, error: 'Failed to open settings page' })
           })
         return true // Required for async response

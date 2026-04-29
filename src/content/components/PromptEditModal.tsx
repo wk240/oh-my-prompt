@@ -9,6 +9,7 @@ import { createPortal } from 'react-dom'
 import { Upload, Link, Image as ImageIcon, AlertCircle } from 'lucide-react'
 import { BaseModal } from './BaseModal'
 import type { Prompt, Category } from '../../shared/types'
+import { MessageType } from '../../shared/messages'
 import {
   saveImage,
   deleteImage,
@@ -693,7 +694,7 @@ export function PromptEditModal({
                 onClick={() => {
                   setShowFolderWarning(false)
                   // Open backup page for folder selection
-                  chrome.runtime.sendMessage({ type: 'OPEN_BACKUP_PAGE' })
+                  chrome.runtime.sendMessage({ type: MessageType.OPEN_BACKUP_PAGE })
                 }}
                 style={{
                   padding: '4px 8px',

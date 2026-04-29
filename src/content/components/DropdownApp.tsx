@@ -10,7 +10,6 @@ import type { Prompt } from '../../shared/types'
 import type { ResourcePrompt } from '../../shared/types'
 import { InsertHandler } from '../insert-handler'
 import { usePromptStore } from '../../lib/store'
-import { MessageType } from '../../shared/messages'
 
 interface DropdownAppProps {
   inputElement: HTMLElement
@@ -82,13 +81,6 @@ export function DropdownApp({ inputElement }: DropdownAppProps) {
     }, 2000)
   }, [inputElement])
 
-  const handleRefresh = useCallback(async () => {
-    // Open backup page instead of doing backup in content script
-    console.log('[Oh My Prompt] Refresh clicked, opening backup page...')
-    await chrome.runtime.sendMessage({ type: MessageType.OPEN_BACKUP_PAGE })
-    return { success: true, backupSuccess: false }
-  }, [])
-
   // Handle direct injection of resource prompt
   const handleInjectResource = useCallback((resourcePrompt: ResourcePrompt) => {
     insertHandlerRef.current.insertPrompt(inputElement, resourcePrompt.content)
@@ -108,7 +100,6 @@ export function DropdownApp({ inputElement }: DropdownAppProps) {
         categories={categories}
         onSelect={handleSelect}
         onInjectResource={handleInjectResource}
-        onRefresh={handleRefresh}
         isOpen={isOpen}
         selectedPromptId={selectedPromptId}
         onClose={handleClose}

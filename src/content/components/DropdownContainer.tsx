@@ -16,7 +16,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { NetworkPromptCard } from './NetworkPromptCard'
 import { ProviderCategoryItem } from './ProviderCategoryItem'
 import { CategorySelectDialog } from './CategorySelectDialog'
-import { ToastNotification } from './ToastNotification'
+import { showToast } from './ToastNotification'
 import { Tooltip } from './Tooltip'
 // Lazy load Modal components - only loaded when user opens them
 const PromptPreviewModal = lazy(() => import('./PromptPreviewModal').then(m => ({ default: m.PromptPreviewModal })))
@@ -390,7 +390,6 @@ export function DropdownContainer({
     showLatestTip: boolean       // "Already latest" tip
     showBackupReminder: boolean  // Backup reminder banner
     showFirstBackupWarning: boolean // First-time backup warning banner
-    toastMessage: string | null  // Toast notification message
   }
 
   const [modalStates, setModalStates] = useState<ModalStates>({
@@ -407,7 +406,6 @@ export function DropdownContainer({
     showLatestTip: false,
     showBackupReminder: false,
     showFirstBackupWarning: false,
-    toastMessage: null,
   })
 
   // Helper methods for modal state (memoized for stable references)
@@ -415,10 +413,6 @@ export function DropdownContainer({
     setModalStates(prev => ({ ...prev, [key]: true })), [])
   const closeModal = useCallback((key: keyof ModalStates) =>
     setModalStates(prev => ({ ...prev, [key]: false })), [])
-  const setToastMessage = useCallback((message: string) =>
-    setModalStates(prev => ({ ...prev, toastMessage: message })), [])
-  const hideToast = useCallback(() =>
-    setModalStates(prev => ({ ...prev, toastMessage: null })), [])
 
   // Grouped editing states
   interface EditingStates {
@@ -557,8 +551,7 @@ export function DropdownContainer({
         ? { ...resourcePrompt, content: resourcePrompt.contentEn, name: resourcePrompt.nameEn || resourcePrompt.name }
         : resourcePrompt
       onInjectResource(promptToInject)
-      setToastMessage('已注入提示词')
-      setTimeout(() => hideToast(), 2000)
+      showToast('已注入提示词')
     }
   }, [onInjectResource, resourceLanguage])
 
@@ -631,8 +624,7 @@ export function DropdownContainer({
       }
     } else if (!folderConfigured && resourcePrompt.previewImage) {
       // Folder not configured - show toast
-      setToastMessage('图片未保存，请先配置备份文件夹')
-      setTimeout(() => hideToast(), 3000)
+      showToast('图片未保存，请先配置备份文件夹')
     }
 
     // If image download failed or no image, create prompt without image
@@ -652,7 +644,7 @@ export function DropdownContainer({
     const categoryName = usePromptStore.getState().categories.find(c => c.id === targetCategoryId)?.name || '未知分类'
 
     // Show success toast
-    setToastMessage(`已收藏到 ${categoryName}`)
+    showToast(`已收藏到 ${categoryName}`)
 
     closeModal('isCategoryDialog')
     closeModal('isPreview')
@@ -884,16 +876,14 @@ export function DropdownContainer({
   // CRUD handlers for categories
   const handleAddCategory = useCallback((name: string) => {
     usePromptStore.getState().addCategory(name)
-    setToastMessage('分类已添加')
-    setTimeout(() => hideToast(), 2000)
+    showToast('分类已添加')
   }, [])
 
   const handleUpdateCategory = useCallback((name: string) => {
     if (!editingStates.category) return
     usePromptStore.getState().updateCategory(editingStates.category.id, name)
     clearEditingItem('category')
-    setToastMessage('分类已更新')
-    setTimeout(() => hideToast(), 2000)
+    showToast('分类已更新')
   }, [editingStates.category])
 
   const handleDeleteCategory = useCallback(() => {
@@ -907,8 +897,7 @@ export function DropdownContainer({
       setSelectedCategoryId('all')
     }
     clearEditingItem('deletingCategory')
-    setToastMessage('分类已删除')
-    setTimeout(() => hideToast(), 2000)
+    showToast('分类已删除')
   }, [editingStates.deletingCategory, selectedCategoryId])
 
   // CRUD handlers for prompts
@@ -922,8 +911,7 @@ export function DropdownContainer({
       localImage: data.localImage,
       remoteImageUrl: data.remoteImageUrl,
     })
-    setToastMessage('提示词已添加')
-    setTimeout(() => hideToast(), 2000)
+    showToast('提示词已添加')
   }, [localPrompts])
 
   const handleUpdatePrompt = useCallback((data: { name: string; description?: string; content: string; categoryId: string; localImage?: string; remoteImageUrl?: string }) => {
@@ -937,8 +925,7 @@ export function DropdownContainer({
       remoteImageUrl: data.remoteImageUrl,
     })
     clearEditingItem('prompt')
-    setToastMessage('提示词已更新')
-    setTimeout(() => hideToast(), 2000)
+    showToast('提示词已更新')
   }, [editingStates.prompt])
 
   const handleDeletePrompt = useCallback(() => {
@@ -946,8 +933,7 @@ export function DropdownContainer({
     usePromptStore.getState().deletePrompt(editingStates.deletingPrompt.id)
     setLocalPrompts(prev => prev.filter(p => p.id !== editingStates.deletingPrompt!.id))
     clearEditingItem('deletingPrompt')
-    setToastMessage('提示词已删除')
-    setTimeout(() => hideToast(), 2000)
+    showToast('提示词已删除')
   }, [editingStates.deletingPrompt])
 
   // Export handler - send message to background worker (chrome.downloads only works in background)
@@ -961,14 +947,12 @@ export function DropdownContainer({
     try {
       const response = await chrome.runtime.sendMessage({ type: MessageType.EXPORT_DATA, payload: data })
       if (response?.success) {
-        setToastMessage('导出成功')
+        showToast('导出成功')
       } else {
-        setToastMessage(response?.error || '导出失败')
+        showToast(response?.error || '导出失败')
       }
-      setTimeout(() => hideToast(), 2000)
     } catch (error) {
-      setToastMessage('导出失败')
-      setTimeout(() => hideToast(), 2000)
+      showToast('导出失败')
     }
   }, [localPrompts, localCategories])
 
@@ -1002,11 +986,9 @@ export function DropdownContainer({
         })
         await usePromptStore.getState().saveToStorage()
 
-        setToastMessage(`导入成功：新增 ${merged.addedCount} 条，跳过 ${merged.skippedCount} 条重复`)
-        setTimeout(() => hideToast(), 2000)
+        showToast(`导入成功：新增 ${merged.addedCount} 条，跳过 ${merged.skippedCount} 条重复`)
       } else {
-        setToastMessage(result.error || '导入失败')
-        setTimeout(() => hideToast(), 2000)
+        showToast(result.error || '导入失败')
       }
     }
 
@@ -1564,8 +1546,7 @@ export function DropdownContainer({
                 ? { ...editingStates.resourcePrompt, content: editingStates.resourcePrompt.contentEn, name: editingStates.resourcePrompt.nameEn || editingStates.resourcePrompt.name }
                 : editingStates.resourcePrompt
               onInjectResource(promptToInject)
-              setToastMessage('已注入提示词')
-              setTimeout(() => hideToast(), 2000)
+              showToast('已注入提示词')
             }
           }}
           globalLanguage={resourceLanguage}
@@ -1600,8 +1581,7 @@ export function DropdownContainer({
               onSelect(promptToInject)
               closeModal('isUserPreview')
               clearEditingItem('userPrompt')
-              setToastMessage('已插入提示词')
-              setTimeout(() => hideToast(), 2000)
+              showToast('已插入提示词')
             }
           }}
         />
@@ -1614,13 +1594,6 @@ export function DropdownContainer({
       onClose={() => closeModal('isCategoryDialog')}
       onConfirm={handleConfirmCollect}
     />
-    {/* Toast notification */}
-    {modalStates.toastMessage && (
-      <ToastNotification
-        message={modalStates.toastMessage}
-        onClose={() => hideToast()}
-      />
-    )}
     {/* "Already latest" tip - Portal rendered outside dropdown to escape overflow:hidden */}
     {modalStates.showLatestTip && updateButtonRef.current && (
       <div

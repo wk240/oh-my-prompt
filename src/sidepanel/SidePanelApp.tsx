@@ -15,7 +15,7 @@ import { getResourcePrompts, getResourceCategories } from '../lib/resource-libra
 import { MessageType } from '../shared/messages'
 import { readImportFile, mergeImportData } from '../lib/import-export'
 import { Tooltip } from '../content/components/Tooltip'
-import { ToastNotification } from '../content/components/ToastNotification'
+import { ToastNotification } from './components/ToastNotification'
 
 // Lazy load modal components
 const PromptPreviewModal = lazy(() => import('../content/components/PromptPreviewModal').then(m => ({ default: m.PromptPreviewModal })))
@@ -326,95 +326,39 @@ export default function SidePanelApp() {
   const [isOnLovart, setIsOnLovart] = useState(false)
   const [currentTabId, setCurrentTabId] = useState<number | null>(null)
 
-  // Modal states
-  const [modalStates, setModalStates] = useState({
-    isPreview: false,
-    isCategoryDialog: false,
-    isCategoryAdd: false,
-    isCategoryEdit: false,
-    isCategoryDelete: false,
-    isPromptAdd: false,
-    isPromptEdit: false,
-    isPromptDelete: false,
-    isUpdateGuide: false,
-    showLatestTip: false,
-    toastMessage: null as string | null,
-  })
-
-  // Editing states
-  const [editingStates, setEditingStates] = useState({
-    resourcePrompt: null as ResourcePrompt | null,
-    category: null as Category | null,
-    prompt: null as Prompt | null,
-    deletingCategory: null as Category | null,
-    deletingPrompt: null as Prompt | null,
-  })
-
-  // Update status
-  const [updateStatus, setUpdateStatus] = useState<UpdateStatus | null>(null)
-  const [isRefreshing, setIsRefreshing] = useState(false)
-
-  // Resource library data
-  const [resourcePrompts, setResourcePrompts] = useState<ResourcePrompt[]>([])
-  const rawResourcePrompts = useMemo(() => getResourcePrompts(), [])
-  const resourceCategories = useMemo(() => getResourceCategories(), [])
-
-  // Load data on mount
-  useEffect(() => {
-    loadFromStorage()
-  }, [loadFromStorage])
-
-  // Load language preference
-  useEffect(() => {
-    chrome.runtime.sendMessage({ type: MessageType.GET_STORAGE }, (response) => {
-      if (response?.success && response.data?.settings?.resourceLanguage) {
-        setResourceLanguage(response.data.settings.resourceLanguage)
-      }
-    })
+  // Helper function to check if a URL is a special page (no content script)
+  const isSpecialPage = useCallback((url: string): boolean => {
+    return url.startsWith('chrome://') || url.startsWith('edge://') || url.startsWith('about://') || url.startsWith('chrome-extension://')
   }, [])
 
-  // Transform resource prompts by language
-  useEffect(() => {
-    setResourcePrompts(rawResourcePrompts.map(p => ({
-      ...p,
-      name: resourceLanguage === 'en' && p.nameEn ? p.nameEn : p.name,
-      content: resourceLanguage === 'en' && p.contentEn ? p.contentEn : p.content,
-    })))
-  }, [rawResourcePrompts, resourceLanguage])
-
-  // Check current tab input availability on mount
-  useEffect(() => {
-    console.log('[Oh My Prompt] SidePanel: Starting input availability check')
-
-    // Helper function to check if a URL is a special page (no content script)
-    const isSpecialPage = (url: string): boolean => {
-      return url.startsWith('chrome://') || url.startsWith('edge://') || url.startsWith('about://') || url.startsWith('chrome-extension://')
-    }
-
-    // Helper function to check input availability on a tab
-    const checkInputOnTab = async (tabId: number, retries: number): Promise<boolean> => {
-      console.log('[Oh My Prompt] SidePanel: Starting checkInput on tab', tabId, 'with', retries, 'retries')
-      for (let i = 0; i < retries; i++) {
-        try {
-          if (i > 0) {
-            console.log('[Oh My Prompt] SidePanel: Waiting 500ms before retry', i + 1)
-            await new Promise(resolve => setTimeout(resolve, 500))
-          }
-          console.log('[Oh My Prompt] SidePanel: Sending CHECK_INPUT_AVAILABILITY to tab', tabId)
-          const response = await chrome.tabs.sendMessage(tabId, {
-            type: MessageType.CHECK_INPUT_AVAILABILITY
-          })
-          console.log('[Oh My Prompt] SidePanel: Received response:', response)
-          if (response?.success && response.data?.hasInput) {
-            console.log('[Oh My Prompt] SidePanel: Input available!')
-            return true
-          }
-        } catch (error) {
-          console.log(`[Oh My Prompt] SidePanel: Message failed, retry ${i + 1}/${retries}`, error)
+  // Helper function to check input availability on a tab
+  const checkInputOnTab = useCallback(async (tabId: number, retries: number): Promise<boolean> => {
+    console.log('[Oh My Prompt] SidePanel: Starting checkInput on tab', tabId, 'with', retries, 'retries')
+    for (let i = 0; i < retries; i++) {
+      try {
+        if (i > 0) {
+          console.log('[Oh My Prompt] SidePanel: Waiting 500ms before retry', i + 1)
+          await new Promise(resolve => setTimeout(resolve, 500))
         }
+        console.log('[Oh My Prompt] SidePanel: Sending CHECK_INPUT_AVAILABILITY to tab', tabId)
+        const response = await chrome.tabs.sendMessage(tabId, {
+          type: MessageType.CHECK_INPUT_AVAILABILITY
+        })
+        console.log('[Oh My Prompt] SidePanel: Received response:', response)
+        if (response?.success && response.data?.hasInput) {
+          console.log('[Oh My Prompt] SidePanel: Input available!')
+          return true
+        }
+      } catch (error) {
+        console.log(`[Oh My Prompt] SidePanel: Message failed, retry ${i + 1}/${retries}`, error)
       }
-      return false
     }
+    return false
+  }, [])
+
+  // Check input availability for current active tab
+  const checkInputAvailability = useCallback(async () => {
+    console.log('[Oh My Prompt] SidePanel: Starting input availability check')
 
     // First check active tab, then fallback to other tabs in the same window
     chrome.tabs.query({ active: true, currentWindow: true }, async (activeTabs) => {
@@ -475,7 +419,81 @@ export default function SidePanelApp() {
         setCurrentTabId(null)
       })
     })
+  }, [isSpecialPage, checkInputOnTab])
+
+  // Check current tab input availability on mount
+  useEffect(() => {
+    checkInputAvailability()
+  }, [checkInputAvailability])
+
+  // Re-check when tab is switched
+  useEffect(() => {
+    const handleTabActivated = () => {
+      console.log('[Oh My Prompt] SidePanel: Tab activated, re-checking input availability')
+      checkInputAvailability()
+    }
+
+    chrome.tabs.onActivated.addListener(handleTabActivated)
+    return () => {
+      chrome.tabs.onActivated.removeListener(handleTabActivated)
+    }
+  }, [checkInputAvailability])
+
+  // Modal states
+  const [modalStates, setModalStates] = useState({
+    isPreview: false,
+    isCategoryDialog: false,
+    isCategoryAdd: false,
+    isCategoryEdit: false,
+    isCategoryDelete: false,
+    isPromptAdd: false,
+    isPromptEdit: false,
+    isPromptDelete: false,
+    isUpdateGuide: false,
+    showLatestTip: false,
+    toastMessage: null as string | null,
+  })
+
+  // Editing states
+  const [editingStates, setEditingStates] = useState({
+    resourcePrompt: null as ResourcePrompt | null,
+    category: null as Category | null,
+    prompt: null as Prompt | null,
+    deletingCategory: null as Category | null,
+    deletingPrompt: null as Prompt | null,
+  })
+
+  // Update status
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatus | null>(null)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+
+  // Resource library data
+  const [resourcePrompts, setResourcePrompts] = useState<ResourcePrompt[]>([])
+  const rawResourcePrompts = useMemo(() => getResourcePrompts(), [])
+  const resourceCategories = useMemo(() => getResourceCategories(), [])
+
+  // Load data on mount
+  useEffect(() => {
+    loadFromStorage()
+  }, [loadFromStorage])
+
+  // Load language preference
+  useEffect(() => {
+    chrome.runtime.sendMessage({ type: MessageType.GET_STORAGE }, (response) => {
+      if (response?.success && response.data?.settings?.resourceLanguage) {
+        setResourceLanguage(response.data.settings.resourceLanguage)
+      }
+    })
   }, [])
+
+  // Transform resource prompts by language
+  useEffect(() => {
+    setResourcePrompts(rawResourcePrompts.map(p => ({
+      ...p,
+      name: resourceLanguage === 'en' && p.nameEn ? p.nameEn : p.name,
+      content: resourceLanguage === 'en' && p.contentEn ? p.contentEn : p.content,
+    })))
+  }, [rawResourcePrompts, resourceLanguage])
 
   // Fetch update status
   useEffect(() => {
@@ -896,11 +914,7 @@ export default function SidePanelApp() {
     chrome.tabs.create({ url: chrome.runtime.getURL('src/popup/settings.html') })
   }, [])
 
-  // Go to Lovart
-  const handleGoToLovart = useCallback(() => {
-    chrome.tabs.create({ url: 'https://lovart.ai' })
-  }, [])
-
+  
   return (
     <div className="side-panel-container">
       {/* Sidebar */}
@@ -1069,10 +1083,7 @@ export default function SidePanelApp() {
         {!isOnLovart && (
           <div className="lovart-status-banner">
             <AlertTriangle style={{ width: 14, height: 14, color: '#ea580c' }} />
-            <span className="banner-text">当前页面未检测到输入框</span>
-            <button className="banner-btn" onClick={handleGoToLovart}>
-              前往 Lovart
-            </button>
+            <span className="banner-text">无法连接到页面，请关闭并重新打开扩展</span>
           </div>
         )}
 

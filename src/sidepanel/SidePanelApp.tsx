@@ -834,24 +834,41 @@ export default function SidePanelApp() {
       if (response?.success && response.data) {
         const syncStatus = response.data
         if (syncStatus.hasUnsyncedChanges) {
-          openModal('showBackupReminder')
+          setModalStates(prev => ({ ...prev, showBackupReminder: true }))
         }
         // Check for first-time backup warning
         if (!syncStatus.hasFolder && !syncStatus.dismissedBackupWarning) {
           const promptCount = prompts.length
           if (promptCount > 0) {
             setBackupWarningPromptCount(promptCount)
-            openModal('showFirstBackupWarning')
+            setModalStates(prev => ({ ...prev, showFirstBackupWarning: true }))
           }
         }
       }
     })
   }, [prompts.length])
 
-  // Listen for sync failure events from service worker
+  // Listen for storage changes to detect sync failures
+  useEffect(() => {
+    const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }) => {
+      // Check if settings changed and hasUnsyncedChanges became true
+      if (changes['prompt_script_data']) {
+        const newValue = changes['prompt_script_data'].newValue
+        if (newValue?.settings?.hasUnsyncedChanges && !modalStates.showBackupReminder) {
+          setModalStates(prev => ({ ...prev, showBackupReminder: true }))
+        }
+      }
+    }
+    chrome.storage.onChanged.addListener(handleStorageChange)
+    return () => {
+      chrome.storage.onChanged.removeListener(handleStorageChange)
+    }
+  }, [modalStates.showBackupReminder])
+
+  // Listen for sync failure events from service worker (legacy - for content script compatibility)
   useEffect(() => {
     const handleSyncFailed = () => {
-      openModal('showBackupReminder')
+      setModalStates(prev => ({ ...prev, showBackupReminder: true }))
     }
     window.addEventListener('oh-my-prompt-sync-failed', handleSyncFailed)
     return () => {

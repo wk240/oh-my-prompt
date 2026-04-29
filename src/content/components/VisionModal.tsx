@@ -308,17 +308,16 @@ function VisionModal({ imageUrl, tabId, onClose }: VisionModalProps) {
   }, [onClose])
 
   /**
-   * Drag handlers - mouse down on header starts drag
+   * Drag handlers - mouse down on header starts drag (both minimized and expanded)
    */
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (isMinimized) return
     e.preventDefault()
     setIsDragging(true)
     dragOffset.current = {
       x: e.clientX - position.x,
       y: e.clientY - position.y
     }
-  }, [position, isMinimized])
+  }, [position])
 
   useEffect(() => {
     if (!isDragging) return
@@ -414,30 +413,32 @@ function VisionModal({ imageUrl, tabId, onClose }: VisionModalProps) {
           userSelect: isDragging ? 'none' : 'auto'
         }}
       >
-        {/* Header - draggable when not minimized */}
+        {/* Header - always draggable */}
         <div
           className="modal-header"
           onMouseDown={handleMouseDown}
-          style={{ cursor: isMinimized ? 'default' : 'grab' }}
+          style={{ cursor: 'grab' }}
         >
-          {isMinimized ? (
-            <span className="minimized-status">
-              {state === 'loading' && '分析中...'}
-              {state === 'success' && '分析完成'}
-              {state === 'error' && '出错了'}
+          <>
+            <img className="modal-logo-icon" src={chrome.runtime.getURL('assets/icon-128.png')} alt="Oh My Prompt" />
+            <span className="modal-brand">
+              {state === 'loading' ? '分析中...' : 'Oh My Prompt'}
             </span>
-          ) : (
-            <h1 className="modal-title">图片转提示词</h1>
-          )}
+          </>
           <div className="modal-header-actions">
             {isMinimized ? (
-              <button
-                className="modal-action-btn"
-                onClick={handleExpand}
-                aria-label="放大"
-              >
-                <Maximize2 />
-              </button>
+              <>
+                <button className="modal-action-btn" onClick={onClose} aria-label="关闭">
+                  <X />
+                </button>
+                <button
+                  className="modal-action-btn"
+                  onClick={handleExpand}
+                  aria-label="放大"
+                >
+                  <Maximize2 />
+                </button>
+              </>
             ) : (
               <button
                 className="modal-action-btn"
@@ -447,9 +448,6 @@ function VisionModal({ imageUrl, tabId, onClose }: VisionModalProps) {
                 <Minimize2 />
               </button>
             )}
-            <button className="modal-action-btn" onClick={onClose} aria-label="关闭">
-              <X />
-            </button>
           </div>
         </div>
 
@@ -464,7 +462,7 @@ function VisionModal({ imageUrl, tabId, onClose }: VisionModalProps) {
               </div>
             )}
 
-            {/* Success state - 3-Tab layout */}
+            {/* Success state - 3-Tab layout (footer moved outside for fixed positioning) */}
             {state === 'success' && fullData && (
               <div className="success-view">
                 {/* Tab content */}
@@ -503,34 +501,6 @@ function VisionModal({ imageUrl, tabId, onClose }: VisionModalProps) {
                       {renderJsonPrompt()}
                     </div>
                   )}
-                </div>
-
-                {/* Bottom footer - tabs left, action button right */}
-                <div className="modal-footer">
-                  <div className="tab-buttons">
-                    <button
-                      className={`tab-btn ${activeTab === 'zh' ? 'active' : ''}`}
-                      onClick={() => setActiveTab('zh')}
-                    >
-                      中
-                    </button>
-                    <button
-                      className={`tab-btn ${activeTab === 'en' ? 'active' : ''}`}
-                      onClick={() => setActiveTab('en')}
-                    >
-                      英文
-                    </button>
-                    <button
-                      className={`tab-btn ${activeTab === 'json' ? 'active' : ''}`}
-                      onClick={() => setActiveTab('json')}
-                    >
-                      JSON
-                    </button>
-                  </div>
-                  <button className="btn btn-primary" onClick={handleConfirm}>
-                    <Copy />
-                    复制并暂存
-                  </button>
                 </div>
               </div>
             )}
@@ -577,6 +547,36 @@ function VisionModal({ imageUrl, tabId, onClose }: VisionModalProps) {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Fixed footer - only show in success state when not minimized */}
+        {!isMinimized && state === 'success' && fullData && (
+          <div className="modal-footer">
+            <div className="tab-buttons">
+              <button
+                className={`tab-btn ${activeTab === 'zh' ? 'active' : ''}`}
+                onClick={() => setActiveTab('zh')}
+              >
+                中
+              </button>
+              <button
+                className={`tab-btn ${activeTab === 'en' ? 'active' : ''}`}
+                onClick={() => setActiveTab('en')}
+              >
+                英文
+              </button>
+              <button
+                className={`tab-btn ${activeTab === 'json' ? 'active' : ''}`}
+                onClick={() => setActiveTab('json')}
+              >
+                JSON
+              </button>
+            </div>
+            <button className="btn btn-primary" onClick={handleConfirm}>
+              <Copy />
+              复制并暂存
+            </button>
           </div>
         )}
       </div>

@@ -150,7 +150,8 @@ export class VisionModalManager {
 
       /* Modal card minimized state */
       .modal-card.minimized {
-        width: auto;
+        width: 200px;
+        height: auto;
         max-width: 200px;
         max-height: none;
       }
@@ -170,6 +171,13 @@ export class VisionModalManager {
         font-size: 12px;
         font-weight: 600;
         color: #171717;
+      }
+
+      .modal-brand {
+        font-size: 12px;
+        font-weight: 600;
+        color: #171717;
+        margin-left: 6px;
       }
 
       .modal-header-actions {
@@ -211,6 +219,12 @@ export class VisionModalManager {
         align-items: center;
         padding: 8px 16px;
         gap: 12px;
+      }
+
+      .modal-logo-icon {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
       }
 
       .minimized-status {

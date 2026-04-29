@@ -322,7 +322,7 @@ export default function SidePanelApp() {
   const [resourceLanguage, setResourceLanguage] = useState<'zh' | 'en'>('zh')
   const [loadedCount, setLoadedCount] = useState(50)
 
-  // Lovart page detection
+  // Input availability detection (universal - works on any page with input)
   const [isOnLovart, setIsOnLovart] = useState(false)
   const [currentTabId, setCurrentTabId] = useState<number | null>(null)
 
@@ -382,14 +382,35 @@ export default function SidePanelApp() {
     })))
   }, [rawResourcePrompts, resourceLanguage])
 
-  // Check current tab on mount
+  // Check current tab input availability on mount
   useEffect(() => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
       const tab = tabs[0]
       if (tab?.id && tab?.url) {
         setCurrentTabId(tab.id)
+
+        // For Lovart pages, always enable (has dedicated content script)
         const isLovart = tab.url.includes('lovart.ai') || tab.url.startsWith('file://')
-        setIsOnLovart(isLovart)
+        if (isLovart) {
+          setIsOnLovart(true)
+          return
+        }
+
+        // For other pages, query content script for input availability
+        try {
+          const response = await chrome.tabs.sendMessage(tab.id, {
+            type: MessageType.CHECK_INPUT_AVAILABILITY
+          })
+          if (response?.success && response.data?.hasInput) {
+            setIsOnLovart(true)
+            console.log('[Oh My Prompt] Input available on non-Lovart page')
+          } else {
+            setIsOnLovart(false)
+          }
+        } catch {
+          // Content script may not be loaded or no input found
+          setIsOnLovart(false)
+        }
       }
     })
   }, [])
@@ -959,11 +980,11 @@ export default function SidePanelApp() {
           </div>
         </div>
 
-        {/* Lovart status banner */}
+        {/* Input availability status banner */}
         {!isOnLovart && (
           <div className="lovart-status-banner">
             <AlertTriangle style={{ width: 14, height: 14, color: '#ea580c' }} />
-            <span className="banner-text">当前页面不支持提示词插入</span>
+            <span className="banner-text">当前页面未检测到输入框</span>
             <button className="banner-btn" onClick={handleGoToLovart}>
               前往 Lovart
             </button>

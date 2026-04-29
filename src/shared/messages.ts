@@ -40,7 +40,11 @@ export enum MessageType {
 
   // Vision Modal: In-page popup for image-to-prompt conversion
   OPEN_VISION_MODAL = 'OPEN_VISION_MODAL',      // SW → CS: Open modal in current page
-  VISION_MODAL_RESPONSE = 'VISION_MODAL_RESPONSE'  // CS → SW: Modal operation result
+  VISION_MODAL_RESPONSE = 'VISION_MODAL_RESPONSE',  // CS → SW: Modal operation result
+
+  // Universal input detection
+  CHECK_INPUT_AVAILABILITY = 'CHECK_INPUT_AVAILABILITY',  // SP → CS: Query if input element is available
+  INPUT_AVAILABILITY_RESPONSE = 'INPUT_AVAILABILITY_RESPONSE',  // CS → SP: Response with availability status
 }
 
 export interface Message<T = unknown> {

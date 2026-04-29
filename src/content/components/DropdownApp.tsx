@@ -23,7 +23,7 @@ export function DropdownApp({
   inputElement,
   inserter,
   buttonComponent: ButtonComponent,
-  buttonStyle
+  buttonStyle: _buttonStyle // Reserved for future custom button styling
 }: DropdownAppProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null)

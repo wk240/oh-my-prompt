@@ -22,6 +22,7 @@ export enum MessageType {
   DISMISS_BACKUP_WARNING = 'DISMISS_BACKUP_WARNING',
   RESTORE_PERMISSION = 'RESTORE_PERMISSION',  // Restore folder permission after extension update
   SET_SETTINGS_ONLY = 'SET_SETTINGS_ONLY',  // Update settings only, no backup trigger (for language toggle)
+  OPEN_API_SETTINGS = 'OPEN_API_SETTINGS',  // Open settings.html for API configuration
 
   // Phase 10: API configuration operations
   GET_API_CONFIG = 'GET_API_CONFIG',

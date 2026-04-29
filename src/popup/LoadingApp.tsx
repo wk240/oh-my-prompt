@@ -11,7 +11,7 @@ interface LoadingAppState {
   imageUrl?: string
   errorType?: VisionApiErrorType
   errorMessage?: string
-  errorAction?: 'reconfigure' | 'retry' | 'close'
+  errorAction?: 'settings' | 'retry' | 'close'
   retryCount: number
   // Phase 12: Lovart detection and delivery result
   isLovartPage?: boolean      // True if user is on Lovart page (D-01)
@@ -139,7 +139,7 @@ function LoadingApp() {
     requestApiCall(state.retryCount + 1)
   }
 
-  const handleReconfigure = () => {
+  const handleOpenSettings = () => {
     chrome.tabs.create({ url: chrome.runtime.getURL('src/popup/settings.html') })
     window.close()
   }
@@ -333,10 +333,10 @@ function LoadingApp() {
             <div className="space-y-4">
               <p className="text-sm text-red-500" role="alert">{state.errorMessage}</p>
               <div className="flex gap-2">
-                {state.errorAction === 'reconfigure' && (
-                  <Button onClick={handleReconfigure}>
+                {state.errorAction === 'settings' && (
+                  <Button onClick={handleOpenSettings}>
                     <Settings style={{ width: 16, height: 16 }} />
-                    重新配置
+                    配置API
                   </Button>
                 )}
                 {state.errorAction === 'retry' && (

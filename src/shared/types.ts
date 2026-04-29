@@ -99,9 +99,38 @@ export interface VisionApiCallPayload {
   imageFormat?: 'url' | 'base64' // Format indicator (default: base64)
 }
 
-// Phase 11: Vision API result payload
+// Phase 11: Vision API result payload (updated to include full structured data)
 export interface VisionApiResultPayload {
-  prompt: string // Generated prompt text
+  prompt: string // Primary prompt text (for backward compatibility)
+  fullData?: VisionApiResultData // Full structured result data
+}
+
+// Vision API structured result (bilingual output with JSON details)
+export interface VisionApiResultData {
+  zh: {
+    prompt: string
+    analysis: string
+  }
+  en: {
+    prompt: string
+    analysis: string
+  }
+  zh_style_tags: string[]
+  en_style_tags: string[]
+  json_prompt: {
+    subject: string
+    action_pose: string
+    details_appearance: string
+    environment_background: string
+    lighting_atmosphere: string
+    style_camera: string
+    colors: string[]
+    materials: string[]
+    aspect_ratio: string
+    // Additional nested fields as needed (composition, layout, text, constraints, etc.)
+    [key: string]: unknown
+  }
+  confidence: number
 }
 
 // Phase 11: Vision API error classification
@@ -111,7 +140,7 @@ export type VisionApiErrorType = 'invalid_key' | 'network' | 'rate_limit' | 'uns
 export interface VisionApiErrorPayload {
   type: VisionApiErrorType
   message: string // User-friendly error message
-  action: 'reconfigure' | 'retry' | 'close' // UI action button type per D-05
+  action: 'settings' | 'retry' | 'close' // UI action button type - 'settings' opens settings.html
 }
 
 // Phase 12: Prompt insertion payload (forwarded to content script)
@@ -126,9 +155,11 @@ export interface InsertResultPayload {
   error?: string  // 'INPUT_NOT_FOUND' or other error
 }
 
-// Phase 12: Save to temporary category payload
+// Phase 12: Save to temporary category payload (updated for bilingual support)
 export interface SaveTemporaryPromptPayload {
   name: string      // Prompt name (generated from prompt content)
-  content: string   // Prompt content
+  content: string   // Prompt content (Chinese)
+  contentEn?: string // Prompt content (English, optional)
   imageUrl?: string // Source image URL (optional, for reference)
+  styleTags?: string[] // Style tags for reference (optional)
 }

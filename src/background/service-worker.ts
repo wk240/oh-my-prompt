@@ -382,6 +382,16 @@ chrome.runtime.onMessage.addListener(
           })
         return true // Required for async response
 
+      case MessageType.OPEN_API_SETTINGS:
+        // Open settings.html for API configuration (called from VisionModal error state)
+        chrome.tabs.create({ url: chrome.runtime.getURL('src/popup/settings.html') })
+          .then(() => sendResponse({ success: true } as MessageResponse))
+          .catch(error => {
+            console.error('[Oh My Prompt] OPEN_API_SETTINGS error:', error)
+            sendResponse({ success: false, error: 'Failed to open settings page' })
+          })
+        return true // Required for async response
+
       case MessageType.EXPORT_DATA:
         // Export data as JSON file download using data URL (service worker doesn't support blob URLs)
         const exportPayload = message.payload as { version: string; userData: { prompts: unknown[]; categories: unknown[] }; settings: unknown }
@@ -508,13 +518,10 @@ chrome.runtime.onMessage.addListener(
             if (!config || !config.apiKey) {
               sendResponse({
                 success: false,
-                error: { type: 'invalid_key', message: 'API Key 未配置', action: 'reconfigure' }
+                error: { type: 'invalid_key', message: 'API Key 未配置', action: 'settings' }
               })
               return
             }
-
-            // Get language preference
-            const languagePreference = await getLanguagePreference()
 
             // Compress image to base64 (reduces payload size for large images)
             const retryCount = visionCallPayload.retryCount || 0
@@ -526,9 +533,12 @@ chrome.runtime.onMessage.addListener(
               const base64Image = await asyncCompressImageFromUrl(imageUrl)
               console.log('[Oh My Prompt] Image compressed successfully')
 
-              // Step 2: Execute Vision API call with base64 data
-              const prompt = await executeVisionApiCall(config, base64Image, languagePreference, 'base64')
-              sendResponse({ success: true, data: { prompt } })
+              // Step 2: Execute Vision API call with base64 data (returns structured result)
+              const resultData = await executeVisionApiCall(config, base64Image, 'base64')
+              // Get language preference for primary prompt selection
+              const languagePreference = await getLanguagePreference()
+              const primaryPrompt = languagePreference === 'en' ? resultData.en.prompt : resultData.zh.prompt
+              sendResponse({ success: true, data: { prompt: primaryPrompt, fullData: resultData } })
             } catch (apiError) {
               // If compression fails, classify as unsupported_image
               if (apiError instanceof Error && apiError.message.includes('Failed to fetch image')) {
@@ -553,7 +563,7 @@ chrome.runtime.onMessage.addListener(
             console.error('[Oh My Prompt] VISION_API_CALL storage error:', storageError)
             sendResponse({
               success: false,
-              error: { type: 'network', message: '读取配置失败', action: 'reconfigure' }
+              error: { type: 'network', message: '读取配置失败', action: 'settings' }
             })
           })
         return true // Required for async response
@@ -587,11 +597,12 @@ chrome.runtime.onMessage.addListener(
             const tempPrompts = prompts.filter(p => p.categoryId === tempCategory!.id)
             const maxOrder = tempPrompts.length > 0 ? Math.max(...tempPrompts.map(p => p.order)) : -1
 
-            // Add new prompt (D-06)
+            // Add new prompt (D-06) - support bilingual content
             const newPrompt: Prompt = {
               id: crypto.randomUUID(),
               name: savePayload.name,
               content: savePayload.content,
+              contentEn: savePayload.contentEn, // English content (optional)
               categoryId: tempCategory.id,
               order: maxOrder + 1,
               remoteImageUrl: savePayload.imageUrl // Optional source URL
@@ -607,6 +618,16 @@ chrome.runtime.onMessage.addListener(
             })
 
             console.log('[Oh My Prompt] Saved prompt to 临时 category:', savePayload.name)
+
+            // Broadcast REFRESH_DATA to all Lovart tabs so dropdown updates immediately
+            chrome.tabs.query({ url: ['*://lovart.ai/*', '*://*.lovart.ai/*'] }, (tabs) => {
+              tabs.forEach(tab => {
+                if (tab.id) {
+                  chrome.tabs.sendMessage(tab.id, { type: MessageType.REFRESH_DATA })
+                }
+              })
+            })
+
             sendResponse({ success: true })
           })
           .catch((error) => {

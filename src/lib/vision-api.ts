@@ -4,7 +4,7 @@
  * API format is user-selected (OpenAI or Anthropic compatible)
  */
 
-import type { VisionApiConfig, VisionApiErrorPayload } from '../shared/types'
+import type { VisionApiConfig, VisionApiErrorPayload, VisionApiResultData } from '../shared/types'
 import { extractBase64Data } from './image-utils'
 
 // Anthropic API version header (T-11-04 mitigation)
@@ -16,22 +16,84 @@ const API_TIMEOUT_MS = 300000
 // Max retry count per D-05 (Claude's discretion: 3 retries)
 const MAX_RETRY_COUNT = 3
 
+// Vision system prompt for structured bilingual output
+const VISION_SYSTEM_PROMPT = `You are an extremely rigorous visual analyst, cinematography analyst, and prompt engineer. Always produce highly detailed, visually grounded prompt output for every supported model provider. Return valid JSON only and follow the requested schema exactly. Make zh.prompt and en.prompt richly detailed, production-ready, and information-dense while keeping the requested field order. Make json_prompt the most detailed layer of the output, using nested objects and arrays when useful, but prefer compact factual phrases over verbose prose. Cover composition, lens language, spatial layout, subjects, objects, text, symbols, lighting, color, materials, background, environment, and generation constraints. Do not hallucinate. When uncertain, mark information as uncertain or approximate.
+
+You are also preparing bilingual prompt output for image generation.
+Analyze the provided image and return valid JSON only.
+
+The JSON schema:
+{
+  "zh": {
+    "prompt": "A highly detailed, production-ready Chinese image generation prompt, ordered as: Subject, Action/Pose, Details/Appearance, Environment/Background, Lighting/Atmosphere, Style/Camera, Colors, Materials, Aspect Ratio.",
+    "analysis": "A compact Chinese explanation that covers the same fields, with extra attention on style and camera language."
+  },
+  "en": {
+    "prompt": "A highly detailed, production-ready English image generation prompt, ordered as: Subject, Action/Pose, Details/Appearance, Environment/Background, Lighting/Atmosphere, Style/Camera, Colors, Materials, Aspect Ratio.",
+    "analysis": "A compact English explanation that covers the same fields, with extra attention on style and camera language."
+  },
+  "zh_style_tags": ["中文标签1", "中文标签2", "中文标签3"],
+  "en_style_tags": ["english tag 1", "english tag 2", "english tag 3"],
+  "json_prompt": {
+    "subject": "Main subject.",
+    "action_pose": "Action or pose.",
+    "details_appearance": "Details, clothing, appearance, accessories or visible design details.",
+    "environment_background": "Environment or background.",
+    "lighting_atmosphere": "Lighting and atmosphere.",
+    "style_camera": "Art style, design language, camera or lens feeling, and technical visual cues.",
+    "colors": ["primary color"],
+    "materials": ["material 1"],
+    "aspect_ratio": "4:5",
+    "...any_extra_nested_fields_you_need": {}
+  },
+  "confidence": 0.0
+}
+
+Rules:
+- Return JSON only. No markdown fences.
+- Keep prompts directly usable for Midjourney, Flux or SDXL style generation.
+- zh.prompt and en.prompt should be highly detailed, information-dense, and still directly usable without extra rewriting.
+- Be faithful to visually verifiable facts. Do not invent unseen objects, brands, text, camera specs, materials, art movements or lighting setups.
+- If something is uncertain, use broader wording instead of hallucinating specifics.
+- json_prompt is the strictest part of the output. It can use nested objects and arrays, but prefer compact factual phrases instead of long prose.
+- json_prompt must always preserve these exact top-level baseline keys:
+  subject, action_pose, details_appearance, environment_background, lighting_atmosphere, style_camera, colors, materials, aspect_ratio
+- Beyond those baseline keys, add only the extra fields that materially help reconstruction, such as overview, composition, layout, text, constraints and uncertainties.
+- Both zh.prompt and en.prompt must follow this exact information order:
+  1. Subject
+  2. Action/Pose
+  3. Details/Appearance
+  4. Environment/Background
+  5. Lighting/Atmosphere
+  6. Style/Camera
+  7. Colors
+  8. Materials
+  9. Aspect Ratio
+- The style/camera part should be richer than before: describe design language, era influence, medium, finish, camera angle, lens feel, framing logic and aesthetic cues when they are visually supported.
+- The analysis should briefly explain all the same fields in natural language, and stay compact.
+- Return 4 to 6 concise style tags in both Chinese and English.
+- zh_style_tags must be Chinese. en_style_tags must be English.
+- Confidence must be a number between 0 and 1.
+
+Analyze this image and output bilingual prompt JSON.
+Prioritize accurate visual grounding over creativity.
+Keep zh.prompt and en.prompt highly detailed, richly descriptive, and directly usable.
+Focus on: subject, action/pose, details/appearance, environment/background, lighting/atmosphere, style/camera, colors, materials and aspect ratio.
+The json_prompt must preserve the baseline top-level keys while adding only the extra nested fields needed for faithful reconstruction.
+Prefer compact phrases, compact arrays and compact nested objects over long natural-language paragraphs.`
+
 /**
  * Build Anthropic Claude Vision API request
  * @param image - Image URL or base64 data
  * @param modelName - Model identifier
- * @param languageInstruction - Language preference instruction
  * @param format - 'url' or 'base64' (default 'base64')
  * @returns Request body object
  */
 export function buildAnthropicRequest(
   image: string,
   modelName: string,
-  languageInstruction: string,
   format: 'url' | 'base64' = 'base64'
 ): object {
-  const systemPrompt = `Analyze this image and generate a detailed image generation prompt that can recreate it. Focus on style, subject, lighting, composition. ${languageInstruction}`
-
   // Build image source based on format
   const imageSource = format === 'base64'
     ? {
@@ -46,7 +108,7 @@ export function buildAnthropicRequest(
 
   return {
     model: modelName,
-    max_tokens: 1024,
+    max_tokens: 4096, // Increased for structured JSON output
     messages: [{
       role: 'user',
       content: [
@@ -56,7 +118,7 @@ export function buildAnthropicRequest(
         },
         {
           type: 'text',
-          text: systemPrompt
+          text: VISION_SYSTEM_PROMPT
         }
       ]
     }]
@@ -67,18 +129,14 @@ export function buildAnthropicRequest(
  * Build OpenAI GPT-4V compatible API request
  * @param image - Image URL or base64 data URL
  * @param modelName - Model identifier
- * @param languageInstruction - Language preference instruction
  * @param format - 'url' or 'base64' (default 'base64')
  * @returns Request body object
  */
 export function buildOpenAIRequest(
   image: string,
   modelName: string,
-  languageInstruction: string,
   format: 'url' | 'base64' = 'base64'
 ): object {
-  const systemPrompt = `Analyze this image and generate a detailed image generation prompt that can recreate it. Focus on style, subject, lighting, composition. ${languageInstruction}`
-
   // For OpenAI format, image_url.url can be either:
   // - HTTP URL: "https://example.com/image.jpg"
   // - Data URL: "data:image/jpeg;base64,xxxxx"
@@ -93,7 +151,7 @@ export function buildOpenAIRequest(
       content: [
         {
           type: 'text',
-          text: systemPrompt
+          text: VISION_SYSTEM_PROMPT
         },
         {
           type: 'image_url',
@@ -103,7 +161,7 @@ export function buildOpenAIRequest(
         }
       ]
     }],
-    max_tokens: 1024
+    max_tokens: 4096 // Increased for structured JSON output
   }
 }
 
@@ -130,12 +188,12 @@ export function buildHeaders(apiFormat: 'anthropic' | 'openai', apiKey: string):
 }
 
 /**
- * Parse Vision API response and extract prompt text
+ * Extract text content from Vision API response
  * @param apiFormat - 'anthropic' or 'openai'
  * @param response - API response JSON
- * @returns Generated prompt string
+ * @returns Raw text content from response
  */
-export function parseVisionResponse(apiFormat: 'anthropic' | 'openai', response: unknown): string {
+function extractTextContent(apiFormat: 'anthropic' | 'openai', response: unknown): string {
   if (apiFormat === 'anthropic') {
     // Anthropic response: { content: [{ type: 'text', text: '...' }] }
     const anthropicResponse = response as { content?: Array<{ type?: string; text?: string }> }
@@ -146,6 +204,78 @@ export function parseVisionResponse(apiFormat: 'anthropic' | 'openai', response:
   // OpenAI response: { choices: [{ message: { content: '...' }] } }
   const openaiResponse = response as { choices?: Array<{ message?: { content?: string } }> }
   return openaiResponse.choices?.[0]?.message?.content || ''
+}
+
+/**
+ * Validate Vision API result has required fields
+ * @param data - Parsed VisionApiResultData
+ * @throws Error if validation fails
+ */
+function validateVisionResult(data: VisionApiResultData): void {
+  // Check required top-level fields
+  if (!data.zh || !data.en) {
+    throw new Error('Missing zh or en fields in Vision API response')
+  }
+
+  if (!data.zh.prompt || !data.en.prompt) {
+    throw new Error('Missing prompt fields in Vision API response')
+  }
+
+  // Check json_prompt has baseline keys
+  const requiredKeys = ['subject', 'action_pose', 'details_appearance', 'environment_background', 'lighting_atmosphere', 'style_camera', 'colors', 'materials', 'aspect_ratio']
+  for (const key of requiredKeys) {
+    if (!(key in data.json_prompt)) {
+      throw new Error(`Missing required json_prompt key: ${key}`)
+    }
+  }
+
+  // Validate confidence is a number between 0 and 1
+  if (typeof data.confidence !== 'number' || data.confidence < 0 || data.confidence > 1) {
+    throw new Error('Invalid confidence value in Vision API response')
+  }
+}
+
+/**
+ * Parse Vision API response and extract structured data
+ * @param apiFormat - 'anthropic' or 'openai'
+ * @param response - API response JSON
+ * @returns VisionApiResultData with bilingual prompts and JSON details
+ * @throws Error if parsing or validation fails
+ */
+export function parseVisionResponse(apiFormat: 'anthropic' | 'openai', response: unknown): VisionApiResultData {
+  // Extract raw text content
+  const text = extractTextContent(apiFormat, response)
+
+  if (!text) {
+    throw new Error('Empty response from Vision API')
+  }
+
+  // Strip potential markdown code fences
+  let jsonText = text.trim()
+  if (jsonText.startsWith('```json')) {
+    jsonText = jsonText.slice(7)
+  }
+  if (jsonText.startsWith('```')) {
+    jsonText = jsonText.slice(3)
+  }
+  if (jsonText.endsWith('```')) {
+    jsonText = jsonText.slice(0, -3)
+  }
+  jsonText = jsonText.trim()
+
+  // Parse JSON
+  let data: VisionApiResultData
+  try {
+    data = JSON.parse(jsonText) as VisionApiResultData
+  } catch (parseError) {
+    console.error('[Oh My Prompt] Vision API JSON parse error:', parseError, 'raw text:', text.substring(0, 200))
+    throw new Error('Failed to parse Vision API response as JSON')
+  }
+
+  // Validate required fields
+  validateVisionResult(data)
+
+  return data
 }
 
 /**
@@ -182,17 +312,15 @@ function getFullEndpoint(baseUrl: string, apiFormat: 'openai' | 'anthropic'): st
  * Execute Vision API call with timeout
  * @param config - VisionApiConfig from storage
  * @param imageData - Base64 data URL (preferred) or HTTP URL
- * @param languagePreference - 'zh' or 'en'
  * @param format - 'url' or 'base64' (default 'base64')
- * @returns Generated prompt string
+ * @returns VisionApiResultData with bilingual prompts and JSON details
  * @throws Error on API failure
  */
 export async function executeVisionApiCall(
   config: VisionApiConfig,
   imageData: string,
-  languagePreference: 'zh' | 'en',
   format: 'url' | 'base64' = 'base64'
-): Promise<string> {
+): Promise<VisionApiResultData> {
   // SECURITY: Validate baseUrl starts with https:// (T-11-02)
   if (!config.baseUrl.startsWith('https://')) {
     throw new Error('API Base URL must use HTTPS for security')
@@ -213,9 +341,6 @@ export async function executeVisionApiCall(
 
   // Use user-selected API format (default to OpenAI if not specified)
   const apiFormat = config.apiFormat || 'openai'
-  const languageInstruction = languagePreference === 'zh'
-    ? '请用中文回复。'
-    : 'Please respond in English.'
 
   // Get full endpoint URL
   const endpointUrl = getFullEndpoint(config.baseUrl, apiFormat)
@@ -228,8 +353,8 @@ export async function executeVisionApiCall(
     : imageData
 
   const requestBody = apiFormat === 'anthropic'
-    ? buildAnthropicRequest(imageForApi, config.modelName, languageInstruction, format)
-    : buildOpenAIRequest(imageForApi, config.modelName, languageInstruction, format)
+    ? buildAnthropicRequest(imageForApi, config.modelName, format)
+    : buildOpenAIRequest(imageForApi, config.modelName, format)
 
   const headers = buildHeaders(apiFormat, config.apiKey)
 
@@ -281,10 +406,10 @@ export async function executeVisionApiCall(
 
     const data = await response.json()
     console.log('[Oh My Prompt] Vision API response data:', JSON.stringify(data, null, 2).substring(0, 200))
-    const prompt = parseVisionResponse(apiFormat, data)
+    const resultData = parseVisionResponse(apiFormat, data)
 
-    console.log('[Oh My Prompt] Vision API success, prompt length:', prompt.length)
-    return prompt
+    console.log('[Oh My Prompt] Vision API success, zh.prompt length:', resultData.zh.prompt.length)
+    return resultData
 
   } catch (error) {
     clearTimeout(timeoutId)
@@ -314,7 +439,7 @@ export function classifyApiError(error: unknown, retryCount = 0): VisionApiError
       return {
         type: 'invalid_key',
         message: 'API Key 无效，请检查配置',
-        action: 'reconfigure'
+        action: 'settings'
       }
     }
 
@@ -359,7 +484,7 @@ export function classifyApiError(error: unknown, retryCount = 0): VisionApiError
       return {
         type: 'network',
         message: 'API 端点不存在，请检查 Base URL 配置',
-        action: 'reconfigure'
+        action: 'settings'
       }
     }
 
@@ -368,7 +493,7 @@ export function classifyApiError(error: unknown, retryCount = 0): VisionApiError
       return {
         type: 'invalid_key',
         message: 'API 访问被拒绝，请检查 API Key 权限',
-        action: 'reconfigure'
+        action: 'settings'
       }
     }
 

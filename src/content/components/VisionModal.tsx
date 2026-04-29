@@ -1,19 +1,19 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Loader2, Check, X, RefreshCw, Settings } from 'lucide-react'
 import { MessageType } from '@/shared/messages'
-import { VISION_API_CONFIG_STORAGE_KEY } from '@/shared/constants'
-import type { VisionApiConfig, VisionApiErrorPayload, InsertPromptPayload, SaveTemporaryPromptPayload } from '@/shared/types'
+import type { VisionApiErrorPayload, VisionApiResultData, InsertPromptPayload, SaveTemporaryPromptPayload } from '@/shared/types'
 
 /**
  * VisionModal state machine
  */
 type VisionModalState =
   | 'loading'      // API call in progress
-  | 'configuring'  // Show API config form
   | 'success'      // Prompt preview, awaiting confirmation
   | 'error'        // Error display
   | 'confirming'   // Processing confirmation
   | 'feedback'     // Success feedback before auto-close
+
+type TabType = 'zh' | 'en' | 'json'
 
 interface VisionModalProps {
   imageUrl: string
@@ -46,29 +46,44 @@ async function copyToClipboard(text: string): Promise<boolean> {
 }
 
 /**
+ * Get language preference from storage (sync read)
+ */
+function getStoredLanguagePreference(): 'zh' | 'en' {
+  try {
+    const stored = localStorage.getItem('omps_language_preference')
+    return stored === 'en' ? 'en' : 'zh'
+  } catch {
+    return 'zh'
+  }
+}
+
+/**
  * VisionModal - In-page modal for image-to-prompt conversion
- * Supports: API call, configuration, prompt preview, insertion/clipboard
+ * Supports: API call, prompt preview with 3-Tab layout (中文/英文/JSON), insertion/clipboard
+ * Note: API configuration is handled in settings.html (opened via OPEN_API_SETTINGS)
  */
 function VisionModal({ imageUrl, tabId, onClose }: VisionModalProps) {
   const [state, setState] = useState<VisionModalState>('loading')
-  const [prompt, setPrompt] = useState<string>('')
+  const [fullData, setFullData] = useState<VisionApiResultData | null>(null)
   const [errorMessage, setErrorMessage] = useState<string>('')
-  const [errorAction, setErrorAction] = useState<'reconfigure' | 'retry' | 'close'>('close')
+  const [errorAction, setErrorAction] = useState<'settings' | 'retry' | 'close'>('close')
   const [retryCount, setRetryCount] = useState(0)
   const [feedbackMessage, setFeedbackMessage] = useState<string>('')
   const [isLovartPage, setIsLovartPage] = useState(false)
-
-  // API config form state
-  const [apiBaseUrl, setApiBaseUrl] = useState('')
-  const [apiKey, setApiKey] = useState('')
-  const [modelName, setModelName] = useState('')
+  const [activeTab, setActiveTab] = useState<TabType>('zh')
+  const [languagePreference, setLanguagePreference] = useState<'zh' | 'en'>('zh')
 
   /**
-   * Check if current page is Lovart
+   * Check if current page is Lovart and get language preference
    */
   useEffect(() => {
     const lovartPattern = /^https?:\/\/(?:[^/]*\.)?lovart\.ai(?:\/|$)/
     setIsLovartPage(lovartPattern.test(window.location.href))
+
+    // Get stored language preference and set default tab
+    const pref = getStoredLanguagePreference()
+    setLanguagePreference(pref)
+    setActiveTab(pref)
   }, [])
 
   /**
@@ -79,13 +94,24 @@ function VisionModal({ imageUrl, tabId, onClose }: VisionModalProps) {
   }, [])
 
   /**
+   * Get current prompt based on active tab
+   */
+  const getCurrentPrompt = useCallback(() => {
+    if (!fullData) return ''
+    if (activeTab === 'zh') return fullData.zh.prompt
+    if (activeTab === 'en') return fullData.en.prompt
+    // JSON tab - return formatted JSON as prompt
+    return JSON.stringify(fullData.json_prompt, null, 2)
+  }, [fullData, activeTab])
+
+  /**
    * Request Vision API call via service worker (uses host_permissions for CORS bypass)
    */
   const requestApiCall = useCallback(async (count: number) => {
     setState('loading')
     setRetryCount(count)
+    setFullData(null)
 
-    // Debug log
     console.log('[Oh My Prompt] requestApiCall: imageUrl=', imageUrl, 'retryCount=', count)
 
     try {
@@ -104,7 +130,33 @@ function VisionModal({ imageUrl, tabId, onClose }: VisionModalProps) {
       }
 
       if (response.success) {
-        setPrompt(response.data.prompt)
+        const fullDataResult = response.data.fullData as VisionApiResultData | undefined
+        if (fullDataResult) {
+          setFullData(fullDataResult)
+          // Set default tab based on language preference
+          setActiveTab(languagePreference)
+        } else {
+          // Fallback: if fullData not available, create minimal structure
+          const fallbackData: VisionApiResultData = {
+            zh: { prompt: response.data.prompt || '', analysis: '' },
+            en: { prompt: response.data.prompt || '', analysis: '' },
+            zh_style_tags: [],
+            en_style_tags: [],
+            json_prompt: {
+              subject: '',
+              action_pose: '',
+              details_appearance: '',
+              environment_background: '',
+              lighting_atmosphere: '',
+              style_camera: '',
+              colors: [],
+              materials: [],
+              aspect_ratio: ''
+            },
+            confidence: 0.5
+          }
+          setFullData(fallbackData)
+        }
         setState('success')
       } else {
         const error = response.error as VisionApiErrorPayload | undefined
@@ -118,7 +170,7 @@ function VisionModal({ imageUrl, tabId, onClose }: VisionModalProps) {
       setErrorAction('retry')
       setState('error')
     }
-  }, [imageUrl])
+  }, [imageUrl, languagePreference])
 
   /**
    * Handle retry
@@ -128,60 +180,19 @@ function VisionModal({ imageUrl, tabId, onClose }: VisionModalProps) {
   }
 
   /**
-   * Handle reconfigure - show config form
-   * Loads existing config from storage for editing
+   * Open settings page for API configuration
    */
-  const handleReconfigure = async () => {
-    setState('configuring')
-
-    // Load existing config from storage to populate form
-    try {
-      const result = await chrome.storage.local.get(VISION_API_CONFIG_STORAGE_KEY)
-      const existingConfig = result[VISION_API_CONFIG_STORAGE_KEY] as VisionApiConfig | undefined
-      if (existingConfig) {
-        setApiBaseUrl(existingConfig.baseUrl || '')
-        setApiKey(existingConfig.apiKey || '')
-        setModelName(existingConfig.modelName || '')
-      }
-    } catch (error) {
-      console.error('[Oh My Prompt] Load existing config error:', error)
-      // Keep form empty if load fails
-    }
-  }
-
-  /**
-   * Save API config and retry
-   */
-  const handleSaveConfig = async () => {
-    if (!apiBaseUrl || !apiKey || !modelName) {
-      setErrorMessage('请填写所有配置项')
-      return
-    }
-
-    try {
-      // Save config directly to storage (default to OpenAI format)
-      const configWithTimestamp: VisionApiConfig = {
-        baseUrl: apiBaseUrl,
-        apiKey: apiKey,
-        modelName: modelName,
-        apiFormat: 'openai', // Default format for most third-party APIs
-        configuredAt: Date.now()
-      }
-      await chrome.storage.local.set({ [VISION_API_CONFIG_STORAGE_KEY]: configWithTimestamp })
-
-      // Config saved, retry API call
-      requestApiCall(0)
-    } catch (error) {
-      console.error('[Oh My Prompt] Save API config error:', error)
-      setErrorMessage('配置保存失败')
-    }
+  const handleOpenSettings = () => {
+    chrome.runtime.sendMessage({ type: MessageType.OPEN_API_SETTINGS })
+    onClose()
   }
 
   /**
    * Handle confirmation - insert/copy + save + feedback
    */
   const handleConfirm = async () => {
-    if (!prompt) {
+    const currentPrompt = getCurrentPrompt()
+    if (!currentPrompt || !fullData) {
       setState('error')
       setErrorMessage('没有可用的提示词')
       setErrorAction('close')
@@ -199,7 +210,7 @@ function VisionModal({ imageUrl, tabId, onClose }: VisionModalProps) {
         const response = await chrome.runtime.sendMessage({
           type: MessageType.INSERT_PROMPT,
           payload: {
-            prompt: prompt,
+            prompt: currentPrompt,
             tabId: tabId
           } as InsertPromptPayload
         })
@@ -207,26 +218,28 @@ function VisionModal({ imageUrl, tabId, onClose }: VisionModalProps) {
         insertSuccess = response?.success === true
 
         if (!insertSuccess) {
-          clipboardSuccess = await copyToClipboard(prompt)
+          clipboardSuccess = await copyToClipboard(currentPrompt)
         }
       } catch (error) {
         console.error('[Oh My Prompt] INSERT_PROMPT error:', error)
-        clipboardSuccess = await copyToClipboard(prompt)
+        clipboardSuccess = await copyToClipboard(currentPrompt)
       }
     } else {
-      clipboardSuccess = await copyToClipboard(prompt)
+      clipboardSuccess = await copyToClipboard(currentPrompt)
     }
 
-    // Step 2: Save to '临时' category
-    const promptName = generatePromptName(prompt)
+    // Step 2: Save to '临时' category with bilingual content
+    const promptName = generatePromptName(fullData.zh.prompt)
 
     try {
       await chrome.runtime.sendMessage({
         type: MessageType.SAVE_TEMPORARY_PROMPT,
         payload: {
           name: promptName,
-          content: prompt,
-          imageUrl: imageUrl
+          content: fullData.zh.prompt,
+          contentEn: fullData.en.prompt,
+          imageUrl: imageUrl,
+          styleTags: fullData.zh_style_tags
         } as SaveTemporaryPromptPayload
       })
     } catch (saveError) {
@@ -265,6 +278,64 @@ function VisionModal({ imageUrl, tabId, onClose }: VisionModalProps) {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [onClose])
 
+  /**
+   * Render JSON prompt as key-value list
+   */
+  const renderJsonPrompt = () => {
+    if (!fullData) return null
+    const jsonPrompt = fullData.json_prompt
+    const baselineKeys = [
+      'subject', 'action_pose', 'details_appearance', 'environment_background',
+      'lighting_atmosphere', 'style_camera', 'colors', 'materials', 'aspect_ratio'
+    ]
+
+    return (
+      <div className="json-details">
+        {baselineKeys.map(key => {
+          const value = jsonPrompt[key]
+          if (!value) return null
+          const displayValue = Array.isArray(value) ? value.join(', ') : String(value)
+          return (
+            <div className="json-row" key={key}>
+              <span className="json-key">{key}:</span>
+              <span className="json-value">{displayValue}</span>
+            </div>
+          )
+        })}
+        {/* Additional fields */}
+        {Object.keys(jsonPrompt)
+          .filter(key => !baselineKeys.includes(key))
+          .map(key => {
+            const value = jsonPrompt[key]
+            if (!value) return null
+            const displayValue = typeof value === 'object'
+              ? JSON.stringify(value)
+              : String(value)
+            return (
+              <div className="json-row" key={key}>
+                <span className="json-key">{key}:</span>
+                <span className="json-value">{displayValue}</span>
+              </div>
+            )
+          })}
+      </div>
+    )
+  }
+
+  /**
+   * Render style tags as chips
+   */
+  const renderStyleTags = (tags: string[]) => {
+    if (!tags || tags.length === 0) return null
+    return (
+      <div className="style-tags">
+        {tags.map((tag, index) => (
+          <span className="style-tag" key={index}>{tag}</span>
+        ))}
+      </div>
+    )
+  }
+
   return (
     <div className="modal-overlay" onClick={(e) => {
       if (e.target === e.currentTarget) onClose()
@@ -288,61 +359,77 @@ function VisionModal({ imageUrl, tabId, onClose }: VisionModalProps) {
             </div>
           )}
 
-          {/* Configuring state - API config form */}
-          {state === 'configuring' && (
-            <div className="config-view">
-              <p className="config-description">
-                首次使用需要配置 Vision AI API。请填写以下信息：
-              </p>
-              <div className="config-form">
-                <div className="config-field">
-                  <label className="config-label">API Base URL</label>
-                  <input
-                    type="text"
-                    className="config-input"
-                    placeholder="OpenAI: https://api.openai.com/v1/chat/completions | Anthropic: https://api.anthropic.com"
-                    value={apiBaseUrl}
-                    onChange={(e) => setApiBaseUrl(e.target.value)}
-                  />
-                </div>
-                <div className="config-field">
-                  <label className="config-label">API Key</label>
-                  <input
-                    type="password"
-                    className="config-input"
-                    placeholder="输入您的 API Key"
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                  />
-                </div>
-                <div className="config-field">
-                  <label className="config-label">Model Name</label>
-                  <input
-                    type="text"
-                    className="config-input"
-                    placeholder="例如: gpt-4-vision-preview"
-                    value={modelName}
-                    onChange={(e) => setModelName(e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="action-buttons">
-                <button className="btn btn-primary" onClick={handleSaveConfig}>
-                  <Check />
-                  保存并继续
-                </button>
-                <button className="btn btn-outline" onClick={onClose}>
-                  取消
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Success state - prompt preview */}
-          {state === 'success' && (
+          {/* Success state - 3-Tab layout */}
+          {state === 'success' && fullData && (
             <div className="success-view">
-              <p className="success-label">生成的提示词：</p>
-              <div className="prompt-preview">{prompt}</div>
+              {/* Tab buttons */}
+              <div className="tab-buttons">
+                <button
+                  className={`tab-btn ${activeTab === 'zh' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('zh')}
+                >
+                  中文
+                </button>
+                <button
+                  className={`tab-btn ${activeTab === 'en' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('en')}
+                >
+                  英文
+                </button>
+                <button
+                  className={`tab-btn ${activeTab === 'json' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('json')}
+                >
+                  JSON
+                </button>
+              </div>
+
+              {/* Tab content */}
+              <div className="tab-content">
+                {/* Chinese tab */}
+                {activeTab === 'zh' && (
+                  <div className="prompt-tab">
+                    <div className="prompt-preview">{fullData.zh.prompt}</div>
+                    {fullData.zh.analysis && (
+                      <div className="analysis-section">
+                        <p className="analysis-label">分析说明:</p>
+                        <p className="analysis-text">{fullData.zh.analysis}</p>
+                      </div>
+                    )}
+                    {renderStyleTags(fullData.zh_style_tags)}
+                  </div>
+                )}
+
+                {/* English tab */}
+                {activeTab === 'en' && (
+                  <div className="prompt-tab">
+                    <div className="prompt-preview">{fullData.en.prompt}</div>
+                    {fullData.en.analysis && (
+                      <div className="analysis-section">
+                        <p className="analysis-label">Analysis:</p>
+                        <p className="analysis-text">{fullData.en.analysis}</p>
+                      </div>
+                    )}
+                    {renderStyleTags(fullData.en_style_tags)}
+                  </div>
+                )}
+
+                {/* JSON tab */}
+                {activeTab === 'json' && (
+                  <div className="json-tab">
+                    {renderJsonPrompt()}
+                  </div>
+                )}
+              </div>
+
+              {/* Confidence indicator */}
+              <div className="confidence-section">
+                <span className={`confidence-label ${fullData.confidence < 0.7 ? 'low' : ''}`}>
+                  置信度: {Math.round(fullData.confidence * 100)}%
+                </span>
+              </div>
+
+              {/* Action buttons */}
               <div className="action-buttons">
                 <button className="btn btn-primary" onClick={handleConfirm}>
                   <Check />
@@ -379,8 +466,8 @@ function VisionModal({ imageUrl, tabId, onClose }: VisionModalProps) {
             <div className="error-view">
               <p className="error-message" role="alert">{errorMessage}</p>
               <div className="action-buttons">
-                {errorAction === 'reconfigure' && (
-                  <button className="btn btn-primary" onClick={handleReconfigure}>
+                {errorAction === 'settings' && (
+                  <button className="btn btn-primary" onClick={handleOpenSettings}>
                     <Settings />
                     配置API
                   </button>

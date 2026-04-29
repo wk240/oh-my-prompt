@@ -401,6 +401,142 @@ export class VisionModalManager {
       .modal-content::-webkit-scrollbar-thumb:hover {
         background: #ccc;
       }
+
+      /* Tab buttons - 3-Tab layout */
+      .tab-buttons {
+        display: flex;
+        gap: 4px;
+        background: #f0f0f0;
+        padding: 4px;
+        border-radius: 8px;
+      }
+
+      .tab-btn {
+        flex: 1;
+        padding: 8px 16px;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        color: #64748B;
+        background: transparent;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+
+      .tab-btn:hover {
+        color: #171717;
+      }
+
+      .tab-btn.active {
+        background: #ffffff;
+        color: #171717;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+
+      /* Tab content container */
+      .tab-content {
+        min-height: 150px;
+      }
+
+      .prompt-tab {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      /* Analysis section */
+      .analysis-section {
+        background: #fafafa;
+        padding: 12px;
+        border-radius: 6px;
+      }
+
+      .analysis-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #64748B;
+        margin-bottom: 6px;
+      }
+
+      .analysis-text {
+        font-size: 13px;
+        color: #525252;
+        line-height: 1.4;
+      }
+
+      /* Style tags - chips */
+      .style-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .style-tag {
+        padding: 4px 10px;
+        background: #e8f4fd;
+        border-radius: 12px;
+        font-size: 12px;
+        color: #1890ff;
+        font-weight: 500;
+      }
+
+      /* JSON tab details */
+      .json-tab {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .json-details {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .json-row {
+        display: flex;
+        gap: 8px;
+        padding: 6px 0;
+        border-bottom: 1px solid #f0f0f0;
+      }
+
+      .json-row:last-child {
+        border-bottom: none;
+      }
+
+      .json-key {
+        font-size: 12px;
+        font-weight: 600;
+        color: #64748B;
+        min-width: 140px;
+        flex-shrink: 0;
+      }
+
+      .json-value {
+        font-size: 13px;
+        color: #171717;
+        flex: 1;
+        word-break: break-word;
+      }
+
+      /* Confidence section */
+      .confidence-section {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 0;
+      }
+
+      .confidence-label {
+        font-size: 12px;
+        color: #64748B;
+        font-weight: 500;
+      }
+
+      .confidence-label.low {
+        color: #f59e0b;
+      }
     `
   }
 }

@@ -815,12 +815,14 @@ export default function SidePanelApp() {
     setTimeout(hideToast, 2000)
   }, [editingStates.deletingCategory, selectedCategoryId, clearEditingItem, closeModal, setToastMessage, hideToast])
 
-  const handleAddPrompt = useCallback((data: { name: string; description?: string; content: string; categoryId: string }) => {
+  const handleAddPrompt = useCallback((data: { name: string; description?: string; content: string; categoryId: string; localImage?: string; remoteImageUrl?: string }) => {
     usePromptStore.getState().addPrompt({
       name: data.name,
       description: data.description,
       content: data.content,
       categoryId: data.categoryId,
+      localImage: data.localImage,
+      remoteImageUrl: data.remoteImageUrl,
       order: prompts.filter(p => p.categoryId === data.categoryId).length,
     })
     closeModal('isPromptAdd')
@@ -828,13 +830,15 @@ export default function SidePanelApp() {
     setTimeout(hideToast, 2000)
   }, [prompts, closeModal, setToastMessage, hideToast])
 
-  const handleUpdatePrompt = useCallback((data: { name: string; description?: string; content: string; categoryId: string }) => {
+  const handleUpdatePrompt = useCallback((data: { name: string; description?: string; content: string; categoryId: string; localImage?: string; remoteImageUrl?: string }) => {
     if (!editingStates.prompt) return
     usePromptStore.getState().updatePrompt(editingStates.prompt.id, {
       name: data.name,
       description: data.description,
       content: data.content,
       categoryId: data.categoryId,
+      localImage: data.localImage,
+      remoteImageUrl: data.remoteImageUrl,
     })
     clearEditingItem('prompt')
     closeModal('isPromptEdit')

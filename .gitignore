@@ -8,3 +8,4 @@ tests/
 .worktrees/
 playwright-report
 test-results
+.claude/worktrees/

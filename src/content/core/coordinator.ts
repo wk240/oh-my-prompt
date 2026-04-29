@@ -12,9 +12,19 @@ import type { InsertResultPayload } from '../../shared/types'
 import { usePromptStore } from '../../lib/store'
 import { VisionModalManager } from '../vision-modal-manager'
 import { lovartConfig } from '../platforms/lovart/config'
+import { chatgptConfig } from '../platforms/chatgpt/config'
+import { claudeAiConfig } from '../platforms/claude-ai/config'
+import { geminiConfig } from '../platforms/gemini/config'
+import { liblibConfig } from '../platforms/liblib/config'
+import { jimengConfig } from '../platforms/jimeng/config'
 
 // Register platform configurations
 registerPlatform(lovartConfig)
+registerPlatform(chatgptConfig)
+registerPlatform(claudeAiConfig)
+registerPlatform(geminiConfig)
+registerPlatform(liblibConfig)
+registerPlatform(jimengConfig)
 
 const LOG_PREFIX = '[Oh My Prompt]'
 

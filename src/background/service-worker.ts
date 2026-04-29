@@ -5,6 +5,7 @@ import { saveFolderHandle, getFolderHandle, checkFolderPermission, requestFolder
 import { getSyncStatus, triggerSync, restorePermission } from '../lib/sync/sync-manager'
 import { checkForUpdate, getUpdateStatus, clearUpdateStatus, type UpdateStatus } from '../lib/version-checker'
 import { executeVisionApiCall, classifyApiError, getLanguagePreference } from '../lib/vision-api'
+import { asyncCompressImageFromUrl } from '../lib/image-utils'
 import { IMAGE_DIR_NAME, ALLOWED_IMAGE_EXTENSIONS, CAPTURED_IMAGE_STORAGE_KEY, VISION_API_CONFIG_STORAGE_KEY } from '../shared/constants'
 import '../lib/migrations/v1.0' // Register migrations
 
@@ -485,6 +486,7 @@ chrome.runtime.onMessage.addListener(
         return true // Required for async response
 
       // Phase 11: Vision API call handler (VISION-01, VISION-02)
+      // Now compresses image to base64 before sending to API
       case MessageType.VISION_API_CALL:
         const visionCallPayload = message.payload as { imageUrl: string; retryCount?: number }
         if (!visionCallPayload || !visionCallPayload.imageUrl) {
@@ -514,16 +516,35 @@ chrome.runtime.onMessage.addListener(
             // Get language preference
             const languagePreference = await getLanguagePreference()
 
-            // Execute Vision API call (security validations inside executeVisionApiCall)
-            // Note: Content script may call API directly via CORS, this handler is fallback
+            // Compress image to base64 (reduces payload size for large images)
             const retryCount = visionCallPayload.retryCount || 0
-            // SECURITY: Log request details without apiKey (T-11-01)
             console.log('[Oh My Prompt] VISION_API_CALL: baseUrl=', config.baseUrl, 'modelName=', config.modelName, 'retryCount=', retryCount)
+            console.log('[Oh My Prompt] Compressing image from URL...')
 
             try {
-              const prompt = await executeVisionApiCall(config, imageUrl, languagePreference)
+              // Step 1: Compress image to base64
+              const base64Image = await asyncCompressImageFromUrl(imageUrl)
+              console.log('[Oh My Prompt] Image compressed successfully')
+
+              // Step 2: Execute Vision API call with base64 data
+              const prompt = await executeVisionApiCall(config, base64Image, languagePreference, 'base64')
               sendResponse({ success: true, data: { prompt } })
             } catch (apiError) {
+              // If compression fails, classify as unsupported_image
+              if (apiError instanceof Error && apiError.message.includes('Failed to fetch image')) {
+                sendResponse({
+                  success: false,
+                  error: { type: 'network', message: '图片下载失败，请检查图片链接', action: 'close' }
+                })
+                return
+              }
+              if (apiError instanceof Error && apiError.message.includes('Unsupported image type')) {
+                sendResponse({
+                  success: false,
+                  error: { type: 'unsupported_image', message: '图片格式不支持', action: 'close' }
+                })
+                return
+              }
               const classifiedError = classifyApiError(apiError, retryCount)
               sendResponse({ success: false, error: classifiedError })
             }

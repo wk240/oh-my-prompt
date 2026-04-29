@@ -94,7 +94,9 @@ export interface VisionApiConfig {
 
 // Phase 11: Vision API call payload
 export interface VisionApiCallPayload {
-  imageUrl: string // HTTP URL of captured image
+  imageUrl: string // HTTP URL of captured image (for reference)
+  imageBase64?: string // Compressed base64 image data (actual payload for API)
+  imageFormat?: 'url' | 'base64' // Format indicator (default: base64)
 }
 
 // Phase 11: Vision API result payload

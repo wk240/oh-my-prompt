@@ -5,6 +5,7 @@
  */
 
 import type { VisionApiConfig, VisionApiErrorPayload } from '../shared/types'
+import { extractBase64Data } from './image-utils'
 
 // Anthropic API version header (T-11-04 mitigation)
 const ANTHROPIC_VERSION = '2023-06-01'
@@ -17,17 +18,31 @@ const MAX_RETRY_COUNT = 3
 
 /**
  * Build Anthropic Claude Vision API request
- * @param imageUrl - HTTP URL of image to analyze
+ * @param image - Image URL or base64 data
  * @param modelName - Model identifier
  * @param languageInstruction - Language preference instruction
+ * @param format - 'url' or 'base64' (default 'base64')
  * @returns Request body object
  */
 export function buildAnthropicRequest(
-  imageUrl: string,
+  image: string,
   modelName: string,
-  languageInstruction: string
+  languageInstruction: string,
+  format: 'url' | 'base64' = 'base64'
 ): object {
   const systemPrompt = `Analyze this image and generate a detailed image generation prompt that can recreate it. Focus on style, subject, lighting, composition. ${languageInstruction}`
+
+  // Build image source based on format
+  const imageSource = format === 'base64'
+    ? {
+        type: 'base64',
+        media_type: 'image/jpeg', // We compress to JPEG
+        data: image // Pure base64 string (without data URL prefix)
+      }
+    : {
+        type: 'url',
+        url: image
+      }
 
   return {
     model: modelName,
@@ -37,10 +52,7 @@ export function buildAnthropicRequest(
       content: [
         {
           type: 'image',
-          source: {
-            type: 'url',
-            url: imageUrl
-          }
+          source: imageSource
         },
         {
           type: 'text',
@@ -53,17 +65,26 @@ export function buildAnthropicRequest(
 
 /**
  * Build OpenAI GPT-4V compatible API request
- * @param imageUrl - HTTP URL of image to analyze
+ * @param image - Image URL or base64 data URL
  * @param modelName - Model identifier
  * @param languageInstruction - Language preference instruction
+ * @param format - 'url' or 'base64' (default 'base64')
  * @returns Request body object
  */
 export function buildOpenAIRequest(
-  imageUrl: string,
+  image: string,
   modelName: string,
-  languageInstruction: string
+  languageInstruction: string,
+  format: 'url' | 'base64' = 'base64'
 ): object {
   const systemPrompt = `Analyze this image and generate a detailed image generation prompt that can recreate it. Focus on style, subject, lighting, composition. ${languageInstruction}`
+
+  // For OpenAI format, image_url.url can be either:
+  // - HTTP URL: "https://example.com/image.jpg"
+  // - Data URL: "data:image/jpeg;base64,xxxxx"
+  const imageUrl = format === 'base64'
+    ? image // Already a data URL from compression
+    : image // HTTP URL
 
   return {
     model: modelName,
@@ -160,24 +181,34 @@ function getFullEndpoint(baseUrl: string, apiFormat: 'openai' | 'anthropic'): st
 /**
  * Execute Vision API call with timeout
  * @param config - VisionApiConfig from storage
- * @param imageUrl - HTTP URL of captured image
+ * @param imageData - Base64 data URL (preferred) or HTTP URL
  * @param languagePreference - 'zh' or 'en'
+ * @param format - 'url' or 'base64' (default 'base64')
  * @returns Generated prompt string
  * @throws Error on API failure
  */
 export async function executeVisionApiCall(
   config: VisionApiConfig,
-  imageUrl: string,
-  languagePreference: 'zh' | 'en'
+  imageData: string,
+  languagePreference: 'zh' | 'en',
+  format: 'url' | 'base64' = 'base64'
 ): Promise<string> {
   // SECURITY: Validate baseUrl starts with https:// (T-11-02)
   if (!config.baseUrl.startsWith('https://')) {
     throw new Error('API Base URL must use HTTPS for security')
   }
 
-  // SECURITY: Validate imageUrl starts with http/https (T-11-03)
-  if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
-    throw new Error('Image URL must be HTTP or HTTPS')
+  // Validate image data based on format
+  if (format === 'url') {
+    // URL format: must be HTTP URL
+    if (!imageData.startsWith('http://') && !imageData.startsWith('https://')) {
+      throw new Error('Image URL must be HTTP or HTTPS')
+    }
+  } else {
+    // Base64 format: must be data URL
+    if (!imageData.startsWith('data:image/')) {
+      throw new Error('Image must be a valid data URL for base64 format')
+    }
   }
 
   // Use user-selected API format (default to OpenAI if not specified)
@@ -189,23 +220,40 @@ export async function executeVisionApiCall(
   // Get full endpoint URL
   const endpointUrl = getFullEndpoint(config.baseUrl, apiFormat)
 
+  // Prepare image data for API
+  // For Anthropic: need pure base64 (without data URL prefix)
+  // For OpenAI: can use full data URL
+  const imageForApi = apiFormat === 'anthropic' && format === 'base64'
+    ? extractBase64Data(imageData) // Remove "data:image/jpeg;base64," prefix
+    : imageData
+
   const requestBody = apiFormat === 'anthropic'
-    ? buildAnthropicRequest(imageUrl, config.modelName, languageInstruction)
-    : buildOpenAIRequest(imageUrl, config.modelName, languageInstruction)
+    ? buildAnthropicRequest(imageForApi, config.modelName, languageInstruction, format)
+    : buildOpenAIRequest(imageForApi, config.modelName, languageInstruction, format)
 
   const headers = buildHeaders(apiFormat, config.apiKey)
 
   // Log request details (T-11-01: apiKey never logged)
+  // For base64, log size instead of full content
+  const imageLog = format === 'base64'
+    ? `base64 (${imageData.length} chars)`
+    : imageData.substring(0, 50) + '...'
+
   console.log('[Oh My Prompt] Vision API call:', {
     apiFormat,
     baseUrl: config.baseUrl,
     endpointUrl,
     modelName: config.modelName,
-    imageUrl: imageUrl.substring(0, 50) + '...' // Truncate for privacy
+    imageFormat: format,
+    image: imageLog
   })
 
-  // Log request body for debugging
-  console.log('[Oh My Prompt] Vision API request body:', JSON.stringify(requestBody, null, 2))
+  // Log request body for debugging (truncate base64 data)
+  const logRequestBody = JSON.stringify(requestBody, null, 2)
+  const truncatedLog = logRequestBody.length > 500
+    ? logRequestBody.substring(0, 500) + '... (truncated)'
+    : logRequestBody
+  console.log('[Oh My Prompt] Vision API request body:', truncatedLog)
 
   // Execute with AbortController timeout
   const abortController = new AbortController()

@@ -16,6 +16,7 @@ import { MessageType } from '../shared/messages'
 import { readImportFile, mergeImportData } from '../lib/import-export'
 import { Tooltip } from '../content/components/Tooltip'
 import { ToastNotification } from './components/ToastNotification'
+import { queueImageLoad } from '../lib/sync/image-loader-queue'
 
 // Lazy load modal components
 const PromptPreviewModal = lazy(() => import('../content/components/PromptPreviewModal').then(m => ({ default: m.PromptPreviewModal })))
@@ -155,6 +156,25 @@ function SortablePromptItem({
     isDragging,
   } = useSortable({ id: prompt.id })
 
+  // Async image loading state
+  const [imageUrl, setImageUrl] = useState<string | null>(null)
+  const [imageLoaded, setImageLoaded] = useState(false)
+
+  // Load image from local folder when prompt has localImage
+  useEffect(() => {
+    if (!prompt.localImage || imageLoaded) return
+
+    const loadImage = async () => {
+      const url = await queueImageLoad(prompt.localImage!)
+      if (url) {
+        setImageUrl(url)
+      }
+      setImageLoaded(true)
+    }
+
+    loadImage()
+  }, [prompt.localImage, imageLoaded])
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -179,12 +199,18 @@ function SortablePromptItem({
       }}
     >
       {prompt.localImage && (
-        <img
-          src={prompt.localImage}
-          alt={prompt.name}
-          className="prompt-item-thumbnail"
-          onError={(e) => { e.currentTarget.src = FALLBACK_IMAGE_SVG }}
-        />
+        imageUrl ? (
+          <img
+            src={imageUrl}
+            alt={prompt.name}
+            className="prompt-item-thumbnail"
+            onError={(e) => { e.currentTarget.src = FALLBACK_IMAGE_SVG }}
+          />
+        ) : (
+          <div className="prompt-item-thumbnail prompt-item-thumbnail-loading">
+            <Shapes style={{ width: 16, height: 16, color: '#64748B' }} />
+          </div>
+        )
       )}
       <div className="prompt-item-icon-wrapper">
         {showDragHandle && (
@@ -285,7 +311,7 @@ function SidePanelNetworkCard({
         <Tooltip content={isCollected ? '已收藏' : '收藏'}>
           <button
             onClick={(e) => { e.stopPropagation(); onCollect?.() }}
-            className="network-card-btn collect"
+            className={`network-card-btn collect ${isCollected ? 'collected' : ''}`}
             aria-label={isCollected ? '已收藏' : '收藏'}
           >
             <Bookmark style={{ width: 12, height: 12, fill: isCollected ? 'currentColor' : 'none' }} />

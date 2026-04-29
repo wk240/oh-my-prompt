@@ -97,7 +97,7 @@
 }
 
 .side-panel-sidebar {
-  width: 180px;
+  width: 140px;
   background: #f8f8f8;
   border-right: 1px solid #E5E5E5;
   display: flex;
@@ -450,6 +450,12 @@
   flex-shrink: 0;
 }
 
+.prompt-item-thumbnail-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .prompt-item-icon-wrapper {
   position: relative;
   width: 16px;
@@ -575,10 +581,10 @@
   color: #dc2626;
 }
 
-/* Network Cards Grid */
+/* Network Cards Grid - Responsive fluid layout */
 .network-cards-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 12px;
 }
 
@@ -660,12 +666,22 @@
 }
 
 .network-card-btn.collect {
+  background: #ffffff;
+  color: #171717;
+  border: 1px solid #E5E5E5;
+}
+
+.network-card-btn.collect:hover {
+  background: #f8f8f8;
+}
+
+.network-card-btn.collect.collected {
   background: #171717;
   color: #ffffff;
   border: none;
 }
 
-.network-card-btn.collect:hover {
+.network-card-btn.collect.collected:hover {
   background: #404040;
 }
 

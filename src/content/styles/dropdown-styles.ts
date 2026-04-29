@@ -24,7 +24,7 @@ export const DROPDOWN_STYLES = `
   }
 
   #${PORTAL_ID} .dropdown-sidebar {
-    width: 160px;
+    width: 140px;
     background: #f8f8f8;
     border-right: 1px solid #E5E5E5;
     display: flex;

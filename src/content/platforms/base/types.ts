@@ -48,7 +48,7 @@ export interface UIInjectionConfig {
   anchorSelector: string
   position: InjectionPosition
   buttonStyle?: ButtonStyleConfig
-  customButton?: React.ComponentType<{ inputElement: HTMLElement }>
+  customButton?: React.ComponentType<{ inputElement: HTMLElement; isOpen: boolean; onClick: () => void }>
 }
 
 /**

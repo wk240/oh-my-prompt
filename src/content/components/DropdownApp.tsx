@@ -8,17 +8,25 @@ import { TriggerButton } from './TriggerButton'
 import { DropdownContainer } from './DropdownContainer'
 import type { Prompt } from '../../shared/types'
 import type { ResourcePrompt } from '../../shared/types'
-import { InsertHandler } from '../insert-handler'
+import type { InsertStrategy } from '../platforms/base/strategy-interface'
+import type { ButtonStyleConfig } from '../platforms/base/types'
 import { usePromptStore } from '../../lib/store'
 
 interface DropdownAppProps {
   inputElement: HTMLElement
+  inserter: InsertStrategy
+  buttonComponent?: React.ComponentType<{ inputElement: HTMLElement; isOpen: boolean; onClick: () => void }>
+  buttonStyle?: ButtonStyleConfig
 }
 
-export function DropdownApp({ inputElement }: DropdownAppProps) {
+export function DropdownApp({
+  inputElement,
+  inserter,
+  buttonComponent: ButtonComponent,
+  buttonStyle
+}: DropdownAppProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null)
-  const insertHandlerRef = useRef<InsertHandler>(new InsertHandler())
   const scrollPositionRef = useRef<number>(0) // Remember scroll position when closing
 
   // Subscribe to Zustand store for reactive updates
@@ -74,26 +82,34 @@ export function DropdownApp({ inputElement }: DropdownAppProps) {
   }, [])
 
   const handleSelect = useCallback((prompt: Prompt) => {
-    insertHandlerRef.current.insertPrompt(inputElement, prompt.content)
+    inserter.insert(inputElement, prompt.content)
     setSelectedPromptId(prompt.id)
     setTimeout(() => {
       setSelectedPromptId(null)
     }, 2000)
-  }, [inputElement])
+  }, [inputElement, inserter])
 
   // Handle direct injection of resource prompt
   const handleInjectResource = useCallback((resourcePrompt: ResourcePrompt) => {
-    insertHandlerRef.current.insertPrompt(inputElement, resourcePrompt.content)
+    inserter.insert(inputElement, resourcePrompt.content)
     setIsOpen(false)
-  }, [inputElement])
+  }, [inputElement, inserter])
 
   // Always use DropdownContainer (Portal) to escape overflow clipping
   return (
     <div className="dropdown-app">
-      <TriggerButton
-        isOpen={isOpen}
-        onClick={handleToggle}
-      />
+      {ButtonComponent ? (
+        <ButtonComponent
+          inputElement={inputElement}
+          isOpen={isOpen}
+          onClick={handleToggle}
+        />
+      ) : (
+        <TriggerButton
+          isOpen={isOpen}
+          onClick={handleToggle}
+        />
+      )}
 
       <DropdownContainer
         prompts={prompts}

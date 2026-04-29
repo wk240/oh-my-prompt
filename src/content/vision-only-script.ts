@@ -242,8 +242,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
 console.log(LOG_PREFIX, 'Vision-only content script loaded (with universal input support):', window.location.href)
 
-// Cleanup on unload
-window.addEventListener('unload', () => {
+// Cleanup on page hide (replaces unload for bfcache compatibility)
+window.addEventListener('pagehide', () => {
   if (inputCheckInterval !== undefined) {
     clearInterval(inputCheckInterval)
   }

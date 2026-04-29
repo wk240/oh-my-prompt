@@ -132,9 +132,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 })
 
 /**
- * Cleanup on page unload
+ * Cleanup on page hide (replaces unload for bfcache compatibility)
  */
-window.addEventListener('unload', () => {
+window.addEventListener('pagehide', () => {
   inputDetector.stop()
   uiInjector.remove()
   console.log('[Oh My Prompt] Cleanup complete')

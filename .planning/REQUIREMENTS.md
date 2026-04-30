@@ -2,57 +2,41 @@
 
 **Milestone:** v1.3.0
 **Created:** 2026-04-28
-**Status:** Scoped
+**Status:** Shipped (2026-04-28)
 
 ---
 
 ## Context Menu Integration (MENU)
 
-- [ ] **MENU-01**: User sees "转提示词" option when right-clicking any image on any website
-- [ ] **MENU-02**: Menu item only appears on image elements (not text, links, other elements)
-- [ ] **MENU-03**: Click captures image URL (`srcUrl`) for processing
+- [x] **MENU-01**: User sees "转提示词" option when right-clicking any image on any website ✓ Phase 9
+- [x] **MENU-02**: Menu item only appears on image elements (not text, links, other elements) ✓ Phase 9
+- [x] **MENU-03**: Click captures image URL (`srcUrl`) for processing ✓ Phase 9
 
 ---
 
 ## API Key Management (AUTH)
 
-- [ ] **AUTH-01**: User can configure API key in popup settings page
-- [ ] **AUTH-02**: API key stored securely in chrome.storage.local (not sync, not exposed in logs)
-- [ ] **AUTH-03**: First-time use of "转提示词" triggers onboarding dialog to configure API key
-- [ ] **AUTH-04**: User can select Vision AI provider (Claude Vision or OpenAI GPT-4V)
+- [x] **AUTH-01**: User can configure API key in popup settings page ✓ Phase 10
+- [x] **AUTH-02**: API key stored securely in chrome.storage.local (not sync, not exposed in logs) ✓ Phase 10
+- [x] **AUTH-03**: First-time use of "转提示词" triggers onboarding dialog to configure API key ✓ Phase 10
+- [x] **AUTH-04**: User can select Vision AI provider (Claude Vision or OpenAI GPT-4V) ✓ Phase 10
 
 ---
 
 ## Vision API Integration (VISION)
 
-- [ ] **VISION-01**: Service worker calls Vision API with captured image URL
-- [ ] **VISION-02**: API returns prompt text suitable for Lovart image generation
-- [ ] **VISION-03**: Loading indicator shown during API call (visual feedback for 2-10 sec latency)
-- [ ] **VISION-04**: Clear error messages shown for API failures (rate limit, invalid key, network error, unsupported image)
+- [x] **VISION-01**: Service worker calls Vision API with captured image URL ✓ Phase 11
+- [x] **VISION-02**: API returns prompt text suitable for Lovart image generation ✓ Phase 11
+- [x] **VISION-03**: Loading indicator shown during API call (visual feedback for 2-10 sec latency) ✓ Phase 11
+- [x] **VISION-04**: Clear error messages shown for API failures (rate limit, invalid key, network error, unsupported image) ✓ Phase 11
 
 ---
 
 ## Prompt Insertion (INSERT)
 
-- [ ] **INSERT-01**: Generated prompt inserted into Lovart input field when user is on Lovart page
-- [ ] **INSERT-02**: When not on Lovart page, prompt copied to clipboard with notification toast
-- [ ] **INSERT-03**: User sees prompt preview before insertion (preview dialog with confirm/cancel)
-
----
-
-## Future Requirements (Deferred)
-
-(None identified — all scoped requirements included in this milestone)
-
----
-
-## Out of Scope
-
-- **Free tier API calls** — User must provide own API key; no built-in free quota
-- **Local image upload** — Only right-click on existing web images; no drag-drop or file picker
-- **Multiple prompt templates** — Single output format; future may add style templates
-- **Usage analytics** — No tracking of API calls; future may add usage log viewer
-- **Batch processing** — Single image at a time; future may add multi-image queue
+- [x] **INSERT-01**: Generated prompt inserted into Lovart input field when user is on Lovart page ✓ Phase 12
+- [x] **INSERT-02**: When not on Lovart page, prompt copied to clipboard with notification toast ✓ Phase 12
+- [x] **INSERT-03**: User sees prompt preview before insertion (preview dialog with confirm/cancel) ✓ Phase 12
 
 ---
 
@@ -60,23 +44,23 @@
 
 | REQ-ID | Phase | Plan |
 |--------|-------|------|
-| MENU-01 | Phase 9 | TBD |
-| MENU-02 | Phase 9 | TBD |
-| MENU-03 | Phase 9 | TBD |
-| AUTH-01 | Phase 10 | TBD |
-| AUTH-02 | Phase 10 | TBD |
-| AUTH-03 | Phase 10 | TBD |
-| AUTH-04 | Phase 10 | TBD |
-| VISION-01 | Phase 11 | TBD |
-| VISION-02 | Phase 11 | TBD |
-| VISION-03 | Phase 11 | TBD |
-| VISION-04 | Phase 11 | TBD |
-| INSERT-01 | Phase 12 | TBD |
-| INSERT-02 | Phase 12 | TBD |
-| INSERT-03 | Phase 12 | TBD |
+| MENU-01 | Phase 9 | 09-01-PLAN.md, 09-02-PLAN.md |
+| MENU-02 | Phase 9 | 09-02-PLAN.md |
+| MENU-03 | Phase 9 | 09-02-PLAN.md |
+| AUTH-01 | Phase 10 | 10-02-PLAN.md |
+| AUTH-02 | Phase 10 | 10-01-PLAN.md, 10-02-PLAN.md |
+| AUTH-03 | Phase 10 | 10-03-PLAN.md |
+| AUTH-04 | Phase 10 | 10-02-PLAN.md |
+| VISION-01 | Phase 11 | 11-03-PLAN.md |
+| VISION-02 | Phase 11 | 11-02-PLAN.md |
+| VISION-03 | Phase 11 | 11-04-PLAN.md |
+| VISION-04 | Phase 11 | 11-04-PLAN.md |
+| INSERT-01 | Phase 12 | 12-02-PLAN.md, 12-03-PLAN.md |
+| INSERT-02 | Phase 12 | 12-03-PLAN.md |
+| INSERT-03 | Phase 12 | 12-01-PLAN.md, 12-03-PLAN.md |
 
-*Traceability updated: 2026-04-28 — Roadmap created*
+*Traceability updated: 2026-04-28 — Milestone shipped*
 
 ---
 
-*Requirements defined: 2026-04-28*
+*Requirements defined: 2026-04-28 · Shipped: 2026-04-28*

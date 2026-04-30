@@ -5,22 +5,22 @@ All notable changes to this project will be documented in this file.
 ## [1.3.0] - 2026-04-28
 
 ### Added / 新增
-- **[EN]** New features and improvements
-- **[CN]** 新功能和改进
-
-## [1.2.2] - 2026-04-27
-
-### Added / 新增
-- **[EN]** Content hash deduplication for backup history to prevent duplicate backups
-- **[CN]** 备份历史添加内容哈希去重，防止重复备份
+- **[EN]** Multi-platform support: Lovart, ChatGPT, Claude.ai, Gemini, LibLib, 即梦
+- **[CN]** 多平台支持：Lovart、ChatGPT、Claude.ai、Gemini、LibLib、即梦
+- **[EN]** Vision API integration: right-click any image to generate prompt via AI
+- **[CN]** Vision API 集成：右键任意图片，AI 分析生成提示词
+- **[EN]** Image-to-prompt workflow with Claude Vision / GPT-4V support
+- **[CN]** 图片转提示词流程，支持 Claude Vision / GPT-4V
+- **[EN]** API key management in popup settings
+- **[CN]** Popup 设置页管理 API 密钥
+- **[EN]** Clipboard fallback for non-supported pages
+- **[CN]** 非支持页面自动复制到剪贴板
 
 ### Fixed / 修复
-- **[EN]** Thumbnail loss when switching between user data and resource library
-- **[CN]** 切换用户数据和资源库时缩略图丢失
-- **[EN]** Unwanted backup trigger on language toggle
-- **[CN]** 语言切换时意外触发备份
-- **[EN]** Removed beforeunload handler that caused errors on page close
-- **[CN]** 移除导致页面关闭错误的 beforeunload 处理器
+- **[EN]** Sidepanel universal input detection (works on any page with input)
+- **[CN]** Sidepanel 通用输入检测（任何有输入框的页面都能工作）
+- **[EN]** Storage change detection and auto-sync for sidepanel
+- **[CN]** Sidepanel 存储变更检测和自动同步
 
 ## [1.2.1] - 2026-04-27
 

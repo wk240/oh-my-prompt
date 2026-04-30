@@ -13,6 +13,8 @@ export interface LovartStyleConfig {
   borderRadius: string
   boxShadow: string
   color: string
+  hoverBackgroundColor: string
+  activeBackgroundColor: string
 }
 
 /**
@@ -20,10 +22,12 @@ export interface LovartStyleConfig {
  * Used when runtime extraction fails
  */
 export const DEFAULT_STYLE: LovartStyleConfig = {
-  backgroundColor: '#f5f5f5',
+  backgroundColor: 'transparent',
   borderRadius: '8px',
   boxShadow: 'none',
   color: '#666',
+  hoverBackgroundColor: 'rgba(0, 0, 0, 0.05)',
+  activeBackgroundColor: 'rgba(0, 0, 0, 0.1)',
 }
 
 /**
@@ -66,6 +70,8 @@ function extractStyleFromElement(element: HTMLElement): LovartStyleConfig {
     borderRadius: computed.borderRadius || DEFAULT_STYLE.borderRadius,
     boxShadow: computed.boxShadow || DEFAULT_STYLE.boxShadow,
     color: computed.color || DEFAULT_STYLE.color,
+    hoverBackgroundColor: DEFAULT_STYLE.hoverBackgroundColor,
+    activeBackgroundColor: DEFAULT_STYLE.activeBackgroundColor,
   }
 }
 

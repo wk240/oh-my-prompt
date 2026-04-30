@@ -192,10 +192,10 @@ function VisionModal({ imageUrl, tabId, onClose }: VisionModalProps) {
   }
 
   /**
-   * Open API config page directly for API configuration
+   * Open API config page via service worker (content script cannot use chrome.tabs)
    */
   const handleOpenSettings = () => {
-    chrome.tabs.create({ url: chrome.runtime.getURL('src/popup/api-config.html') })
+    chrome.runtime.sendMessage({ type: MessageType.OPEN_API_CONFIG_PAGE })
     onClose()
   }
 

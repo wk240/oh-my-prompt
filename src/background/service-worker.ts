@@ -420,6 +420,16 @@ chrome.runtime.onMessage.addListener(
           })
         return true // Required for async response
 
+      case MessageType.OPEN_API_CONFIG_PAGE:
+        // Open api-config.html from Vision Modal (content script cannot use chrome.tabs)
+        chrome.tabs.create({ url: chrome.runtime.getURL('src/popup/api-config.html') })
+          .then(() => sendResponse({ success: true } as MessageResponse))
+          .catch(error => {
+            console.error('[Oh My Prompt] OPEN_API_CONFIG_PAGE error:', error)
+            sendResponse({ success: false, error: 'Failed to open API config page' })
+          })
+        return true // Required for async response
+
       case MessageType.EXPORT_DATA:
         // Export data as JSON file download using data URL (service worker doesn't support blob URLs)
         const exportPayload = message.payload as { version: string; userData: { prompts: unknown[]; categories: unknown[] }; settings: unknown }

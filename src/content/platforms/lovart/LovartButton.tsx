@@ -20,6 +20,8 @@ interface LovartButtonProps {
 export function LovartButton({ isOpen, onClick }: LovartButtonProps) {
   const [style, setStyle] = useState<LovartStyleConfig>(DEFAULT_STYLE)
   const [iconColor, setIconColor] = useState<string>(DEFAULT_STYLE.color)
+  const [isHovered, setIsHovered] = useState(false)
+  const [isActive, setIsActive] = useState(false)
 
   // Extract Lovart styles on mount
   useEffect(() => {
@@ -43,11 +45,25 @@ export function LovartButton({ isOpen, onClick }: LovartButtonProps) {
     }
   }
 
+  // Compute background color based on hover/active state
+  const getBackgroundColor = () => {
+    if (isActive) return style.activeBackgroundColor
+    if (isHovered) return style.hoverBackgroundColor
+    return style.backgroundColor
+  }
+
   return (
     <button
       className="lovart-trigger-button"
       onClick={handleClick}
       onKeyDown={handleKeyDown}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => {
+        setIsHovered(false)
+        setIsActive(false)
+      }}
+      onMouseDown={() => setIsActive(true)}
+      onMouseUp={() => setIsActive(false)}
       role="button"
       tabIndex={0}
       aria-label="选择预设提示词"
@@ -59,12 +75,13 @@ export function LovartButton({ isOpen, onClick }: LovartButtonProps) {
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: style.backgroundColor,
+        backgroundColor: getBackgroundColor(),
         borderRadius: style.borderRadius,
         boxShadow: style.boxShadow,
         color: iconColor,
         cursor: 'pointer',
         border: 'none',
+        transition: 'background-color 150ms',
       }}
     >
       <svg

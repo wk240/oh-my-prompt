@@ -114,10 +114,35 @@ export class Injector {
         border: none;
         padding: 0;
         cursor: pointer;
+        position: relative;
       }
 
       .trigger-icon {
         display: block;
+      }
+
+      .trigger-tooltip {
+        position: absolute;
+        bottom: calc(100% + 8px);
+        left: 50%;
+        transform: translateX(-50%);
+        background: #1f1f1f;
+        color: #fff;
+        font-size: 12px;
+        font-weight: 500;
+        padding: 6px 10px;
+        border-radius: 6px;
+        white-space: nowrap;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.15s, visibility 0.15s;
+        z-index: 1000;
+        pointer-events: none;
+      }
+
+      .trigger-button:hover .trigger-tooltip {
+        opacity: 1;
+        visibility: visible;
       }
     `
   }

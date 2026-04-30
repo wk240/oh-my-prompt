@@ -1,5 +1,5 @@
 /**
- * TriggerButton - "Select Prompt" trigger with accent dot
+ * TriggerButton - "Select Prompt" trigger with custom tooltip
  * Positioned left of input
  */
 
@@ -29,9 +29,8 @@ export function TriggerButton({ isOpen, onClick }: TriggerButtonProps) {
       onKeyDown={handleKeyDown}
       role="button"
       tabIndex={0}
-      aria-label="选择预设提示词"
+      aria-label="Oh, My Prompt"
       aria-expanded={isOpen}
-      title="Oh My Prompt"
     >
       <svg
         className="trigger-icon"
@@ -47,6 +46,7 @@ export function TriggerButton({ isOpen, onClick }: TriggerButtonProps) {
           fillOpacity="0.9"
         />
       </svg>
+      <span className="trigger-tooltip">Oh, My Prompt</span>
     </button>
   )
 }

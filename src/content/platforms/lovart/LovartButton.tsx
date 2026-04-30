@@ -66,9 +66,8 @@ export function LovartButton({ isOpen, onClick }: LovartButtonProps) {
       onMouseUp={() => setIsActive(false)}
       role="button"
       tabIndex={0}
-      aria-label="选择预设提示词"
+      aria-label="Oh, My Prompt"
       aria-expanded={isOpen}
-      title="Oh My Prompt"
       style={{
         width: '32px',
         height: '32px',
@@ -82,6 +81,7 @@ export function LovartButton({ isOpen, onClick }: LovartButtonProps) {
         cursor: 'pointer',
         border: 'none',
         transition: 'background-color 150ms',
+        position: 'relative',
       }}
     >
       <svg
@@ -98,6 +98,27 @@ export function LovartButton({ isOpen, onClick }: LovartButtonProps) {
           fillOpacity="0.9"
         />
       </svg>
+      {isHovered && (
+        <span
+          style={{
+            position: 'absolute',
+            bottom: 'calc(100% + 8px)',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: '#1f1f1f',
+            color: '#fff',
+            fontSize: '12px',
+            fontWeight: '500',
+            padding: '6px 10px',
+            borderRadius: '6px',
+            whiteSpace: 'nowrap',
+            zIndex: 1000,
+            pointerEvents: 'none',
+          }}
+        >
+          Oh, My Prompt
+        </span>
+      )}
     </button>
   )
 }

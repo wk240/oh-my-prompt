@@ -370,6 +370,13 @@ export class VisionModalManager {
         line-height: 1.5;
       }
 
+      .prompt-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #64748B;
+        margin-bottom: 6px;
+      }
+
       /* Prompt title */
       .prompt-title {
         font-size: 16px;

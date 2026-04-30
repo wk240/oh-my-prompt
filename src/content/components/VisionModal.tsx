@@ -549,13 +549,8 @@ function VisionModal({ imageUrl, tabId, onClose }: VisionModalProps) {
             {/* Success state - language + format toggle layout */}
             {state === 'success' && fullData && (
               <div className="success-view">
-                {/* Prompt section with header and copy button */}
+                {/* Prompt section */}
                 <div className="prompt-section">
-                  <div className="prompt-header">
-                    <span className="prompt-header-label">提示词</span>
-                    <span className="prompt-header-divider">/</span>
-                    <span className="prompt-header-label-en">prompt</span>
-                  </div>
                 </div>
                 {/* Content based on format */}
                 <div className="tab-content">
@@ -569,7 +564,10 @@ function VisionModal({ imageUrl, tabId, onClose }: VisionModalProps) {
                             <div className="prompt-title">{fullData.zh.title}</div>
                           )}
                           <div className="prompt-preview-wrapper">
-                            <div className="prompt-preview">{fullData.zh.prompt}</div>
+                            <div className="prompt-preview">
+                              <p className="prompt-label">提示词:</p>
+                              {fullData.zh.prompt}
+                            </div>
                             <button
                               className={`prompt-copy-btn ${isPromptCopied ? 'copied' : ''}`}
                               onClick={handleCopyPrompt}
@@ -594,7 +592,10 @@ function VisionModal({ imageUrl, tabId, onClose }: VisionModalProps) {
                             <div className="prompt-title">{fullData.en.title}</div>
                           )}
                           <div className="prompt-preview-wrapper">
-                            <div className="prompt-preview">{fullData.en.prompt}</div>
+                            <div className="prompt-preview">
+                              <p className="prompt-label">Prompt:</p>
+                              {fullData.en.prompt}
+                            </div>
                             <button
                               className={`prompt-copy-btn ${isPromptCopied ? 'copied' : ''}`}
                               onClick={handleCopyPrompt}

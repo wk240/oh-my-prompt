@@ -1,7 +1,7 @@
 /**
  * ImageHoverButtonManager - Universal image hover button for prompt conversion
  * Detects images on any website and shows a floating button on hover
- * Uses MutationObserver + IntersectionObserver for performance optimization
+ * Uses MutationObserver with throttling for performance optimization
  */
 
 import { createRoot, type Root } from 'react-dom/client'
@@ -17,13 +17,13 @@ const MIN_HEIGHT = 100
 // Maximum number of hover buttons active at once (performance limit)
 const MAX_ACTIVE_BUTTONS = 20
 
-// Debounce delay for hover detection (ms)
-const HOVER_DELAY = 200
-// Hide immediately when mouse leaves (no delay)
-const HIDE_DELAY = 0
+// Debounce delay for hover detection (ms) - longer for smoother experience
+const HOVER_DELAY = 300
+// Graceful hide delay - allows smooth fade-out animation
+const HIDE_DELAY = 150
 
-// Throttle for MutationObserver callbacks (ms)
-const OBSERVER_THROTTLE = 100
+// Throttle for MutationObserver callbacks (ms) - longer for Pinterest-like sites
+const OBSERVER_THROTTLE = 300
 
 /**
  * ImageHoverButtonManager creates hover buttons on images across all websites
@@ -33,7 +33,6 @@ export class ImageHoverButtonManager {
   private static instance: ImageHoverButtonManager | null = null
 
   private mutationObserver: MutationObserver | null = null
-  private intersectionObserver: IntersectionObserver | null = null
   private trackedImages: Set<HTMLImageElement> = new Set()
   private activeButtons: Map<HTMLImageElement, { overlay: HTMLDivElement; root: Root }> = new Map()
   private showTimeouts: Map<HTMLImageElement, number> = new Map()
@@ -66,25 +65,11 @@ export class ImageHoverButtonManager {
   }
 
   /**
-   * Start observing images on the page
+   * Start observing images on the page - lazy hover strategy
+   * No IntersectionObserver, no cleanup on scroll - just add hover listeners
    */
   start(): void {
     console.log(LOG_PREFIX, 'ImageHoverButtonManager started')
-
-    // Setup IntersectionObserver for lazy button attachment
-    this.intersectionObserver = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          const img = entry.target as HTMLImageElement
-          if (entry.isIntersecting) {
-            this.prepareImageForHover(img)
-          } else {
-            this.cleanupImage(img)
-          }
-        }
-      },
-      { threshold: 0.1, rootMargin: '50px' }
-    )
 
     // Setup MutationObserver to detect new images (with throttling)
     this.mutationObserver = new MutationObserver((mutations) => {
@@ -115,8 +100,8 @@ export class ImageHoverButtonManager {
       }
     })
 
-    // Observe existing images
-    document.querySelectorAll('img').forEach((img) => this.observeImage(img))
+    // Attach hover listeners to existing images
+    document.querySelectorAll('img').forEach((img) => this.attachHoverListener(img))
 
     // Start observing DOM changes
     this.mutationObserver.observe(document.body, {
@@ -130,7 +115,6 @@ export class ImageHoverButtonManager {
    */
   stop(): void {
     this.mutationObserver?.disconnect()
-    this.intersectionObserver?.disconnect()
 
     // Cleanup all active buttons
     for (const [img] of this.activeButtons) {
@@ -148,28 +132,6 @@ export class ImageHoverButtonManager {
   }
 
   /**
-   * Observe an image for intersection
-   */
-  private observeImage(img: HTMLImageElement): void {
-    if (this.trackedImages.has(img)) return
-    if (img.dataset.ompTracked) return
-
-    // DIAGNOSTIC: Log image being observed
-    console.log(LOG_PREFIX, 'observeImage:', {
-      src: img.src?.substring(0, 50),
-      complete: img.complete,
-      width: img.getBoundingClientRect().width,
-      height: img.getBoundingClientRect().height,
-      hasOverlay: this.checkForOverlay(img)
-    })
-
-    this.trackedImages.add(img)
-    img.dataset.ompTracked = 'true'
-
-    this.intersectionObserver?.observe(img)
-  }
-
-  /**
    * Process pending images collected by MutationObserver (throttled)
    */
   private processPendingImages(): void {
@@ -178,38 +140,33 @@ export class ImageHoverButtonManager {
     this.pendingImages.clear()
 
     for (const img of images) {
-      this.observeImage(img)
+      this.attachHoverListener(img)
     }
   }
 
   /**
-   * Check if image has an overlay element blocking mouse events
+   * Attach hover listener directly to image (lazy strategy - no IntersectionObserver)
    */
-  private checkForOverlay(img: HTMLImageElement): boolean {
-    const rect = img.getBoundingClientRect()
-    const parent = img.parentElement
+  private attachHoverListener(img: HTMLImageElement): void {
+    if (this.trackedImages.has(img)) return
+    if (img.dataset.ompTracked) return
 
-    if (!parent) return false
+    this.trackedImages.add(img)
+    img.dataset.ompTracked = 'true'
 
-    // Check if parent or siblings cover the image
-    const potentialOverlays = parent.querySelectorAll(':scope > *:not(img)')
-    for (const el of potentialOverlays) {
-      if (el instanceof HTMLElement) {
-        const elRect = el.getBoundingClientRect()
-        // Check if this element overlaps the image
-        const overlaps =
-          elRect.top <= rect.top &&
-          elRect.bottom >= rect.bottom &&
-          elRect.left <= rect.left &&
-          elRect.right >= rect.right
-
-        if (overlaps && el.style.pointerEvents !== 'none') {
-          return true
-        }
+    // For incomplete images, wait for load
+    if (!img.complete) {
+      const loadHandler = () => {
+        this.prepareImageForHover(img)
+        this._loadListeners.delete(img)
       }
+      this._loadListeners.set(img, loadHandler)
+      img.addEventListener('load', loadHandler, { once: true })
+      return
     }
 
-    return false
+    // Image is complete, prepare immediately
+    this.prepareImageForHover(img)
   }
 
   /**
@@ -446,7 +403,7 @@ export class ImageHoverButtonManager {
     // Create Shadow DOM for style isolation
     const shadowRoot = overlay.attachShadow({ mode: 'closed' })
 
-    // Inject styles
+    // Inject styles with smooth animations
     const style = document.createElement('style')
     style.textContent = `
       :host {
@@ -459,6 +416,22 @@ export class ImageHoverButtonManager {
         top: 8px;
         left: 8px;
         pointer-events: auto;
+        opacity: 0;
+        animation: fadeIn 0.2s ease forwards;
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; transform: scale(0.8); }
+        to { opacity: 1; transform: scale(1); }
+      }
+
+      @keyframes fadeOut {
+        from { opacity: 1; transform: scale(1); }
+        to { opacity: 0; transform: scale(0.8); }
+      }
+
+      .button-container.fading-out {
+        animation: fadeOut 0.15s ease forwards;
       }
 
       .hover-button {

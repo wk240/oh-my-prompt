@@ -426,19 +426,27 @@ export function PromptEditModal({
       }
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        {/* Tab buttons */}
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+        {/* Tab buttons - pill style like VisionModal */}
+        <div style={{
+          display: 'flex',
+          gap: '4px',
+          background: '#f0f0f0',
+          padding: '4px',
+          borderRadius: '6px',
+        }}>
           <button
             onClick={() => setActiveTab('zh')}
             style={{
               padding: '6px 12px',
-              background: activeTab === 'zh' ? '#171717' : '#f8f8f8',
-              border: '1px solid #E5E5E5',
+              border: 'none',
               borderRadius: '4px',
-              fontSize: '12px',
+              fontSize: '13px',
               fontWeight: 500,
-              color: activeTab === 'zh' ? '#fff' : '#171717',
+              color: activeTab === 'zh' ? '#171717' : '#64748B',
+              background: activeTab === 'zh' ? '#ffffff' : 'transparent',
               cursor: 'pointer',
+              transition: 'all 0.15s ease',
+              boxShadow: activeTab === 'zh' ? '0 1px 2px rgba(0, 0, 0, 0.08)' : 'none',
             }}
           >
             中
@@ -447,13 +455,15 @@ export function PromptEditModal({
             onClick={() => setActiveTab('en')}
             style={{
               padding: '6px 12px',
-              background: activeTab === 'en' ? '#171717' : '#f8f8f8',
-              border: '1px solid #E5E5E5',
+              border: 'none',
               borderRadius: '4px',
-              fontSize: '12px',
+              fontSize: '13px',
               fontWeight: 500,
-              color: activeTab === 'en' ? '#fff' : '#171717',
+              color: activeTab === 'en' ? '#171717' : '#64748B',
+              background: activeTab === 'en' ? '#ffffff' : 'transparent',
               cursor: 'pointer',
+              transition: 'all 0.15s ease',
+              boxShadow: activeTab === 'en' ? '0 1px 2px rgba(0, 0, 0, 0.08)' : 'none',
             }}
           >
             EN

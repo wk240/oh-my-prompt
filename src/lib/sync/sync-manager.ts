@@ -1,8 +1,9 @@
 import type { UserData } from '../../shared/types'
-import { BACKUP_FILE_NAME, IMAGE_DIR_NAME } from '../../shared/constants'
+import { BACKUP_FILE_NAME, IMAGE_DIR_NAME, VISION_API_CONFIG_STORAGE_KEY } from '../../shared/constants'
 import { StorageManager } from '../storage'
 import { getFolderHandle, saveFolderHandle, checkFolderPermission, requestFolderPermission } from './indexeddb'
 import { syncToLocalFolder, readFromLocalFolder, selectSyncFolder, listBackupVersions, readBackupFile } from './file-sync'
+import { readApiConfigFromFolder } from './api-config-sync'
 import type { BackupVersion } from './file-sync'
 
 export interface SyncStatus {
@@ -99,10 +100,18 @@ export async function triggerSync(userData: UserData): Promise<{ success: boolea
 
 /**
  * Initial sync check at startup
+ * Also restores API config from encrypted file if needed
  */
 export async function initialSync(): Promise<void> {
+  console.log('[Oh My Prompt] initialSync: Starting...')
+
   const handle = await getFolderHandle()
-  if (!handle) return
+  if (!handle) {
+    console.log('[Oh My Prompt] initialSync: No folder handle found')
+    return
+  }
+
+  console.log('[Oh My Prompt] initialSync: Folder handle found:', handle.name)
 
   // Check permission before proceeding
   const permission = await checkFolderPermission(handle, 'readwrite')
@@ -117,6 +126,8 @@ export async function initialSync(): Promise<void> {
     return
   }
 
+  console.log('[Oh My Prompt] initialSync: Permission granted')
+
   const storageManager = StorageManager.getInstance()
   const storageData = await storageManager.getData()
 
@@ -127,7 +138,6 @@ export async function initialSync(): Promise<void> {
     if (localData && storageData.userData.prompts.length === 0) {
       await storageManager.updateUserData(localData)
       console.log('[Oh My Prompt] Restored from local folder backup')
-      return
     }
 
     // Case: both have data -> sync chrome.storage to local
@@ -137,6 +147,26 @@ export async function initialSync(): Promise<void> {
         await syncToLocalFolder(storageData.userData, handle)
         await storageManager.updateSettings({ lastSyncTime: Date.now() })
       }
+    }
+
+    // Restore API config from encrypted file if not in storage
+    console.log('[Oh My Prompt] initialSync: Checking for encrypted API config...')
+    try {
+      const apiConfigResult = await chrome.storage.local.get(VISION_API_CONFIG_STORAGE_KEY)
+      console.log('[Oh My Prompt] initialSync: Existing API config in storage:', !!apiConfigResult[VISION_API_CONFIG_STORAGE_KEY])
+
+      if (!apiConfigResult[VISION_API_CONFIG_STORAGE_KEY]) {
+        console.log('[Oh My Prompt] initialSync: Attempting to read from folder...')
+        const encryptedConfig = await readApiConfigFromFolder(handle)
+        console.log('[Oh My Prompt] initialSync: Encrypted config read result:', !!encryptedConfig)
+
+        if (encryptedConfig) {
+          await chrome.storage.local.set({ [VISION_API_CONFIG_STORAGE_KEY]: encryptedConfig })
+          console.log('[Oh My Prompt] Restored API config from encrypted file')
+        }
+      }
+    } catch (apiRestoreError) {
+      console.warn('[Oh My Prompt] Failed to restore API config:', apiRestoreError)
     }
   } catch (error) {
     console.error('[Oh My Prompt] Initial sync failed:', error)

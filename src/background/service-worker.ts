@@ -2,12 +2,13 @@ import { MessageType, MessageResponse } from '../shared/messages'
 import type { StorageSchema, SyncSettings, UserData, VisionApiConfig, InsertPromptPayload, InsertResultPayload, SaveTemporaryPromptPayload, Prompt } from '../shared/types'
 import { StorageManager } from '../lib/storage'
 import { saveFolderHandle, getFolderHandle, checkFolderPermission, requestFolderPermission } from '../lib/sync/indexeddb'
-import { getSyncStatus, triggerSync, restorePermission } from '../lib/sync/sync-manager'
+import { getSyncStatus, triggerSync, restorePermission, initialSync } from '../lib/sync/sync-manager'
+import { syncApiConfigToFolder } from '../lib/sync/api-config-sync'
 import { checkForUpdate, getUpdateStatus, clearUpdateStatus, type UpdateStatus } from '../lib/version-checker'
 import { executeVisionApiCall, classifyApiError, getLanguagePreference } from '../lib/vision-api'
 import { asyncCompressImageFromUrl } from '../lib/image-utils'
 import { IMAGE_DIR_NAME, ALLOWED_IMAGE_EXTENSIONS, CAPTURED_IMAGE_STORAGE_KEY, VISION_API_CONFIG_STORAGE_KEY } from '../shared/constants'
-import '../lib/migrations/v1.0' // Register migrations
+import '../lib/migrations/register' // Register all migrations
 
 console.log('[Oh My Prompt] Service Worker started')
 
@@ -37,6 +38,9 @@ function createContextMenu(): void {
 // Create on startup
 createContextMenu()
 
+// Run initial sync on startup (restores data from backup folder including encrypted API config)
+initialSync().catch(err => console.error('[Oh My Prompt] Initial sync error:', err))
+
 // Also create on install (for clean install)
 chrome.runtime.onInstalled.addListener(() => {
   createContextMenu()
@@ -44,6 +48,9 @@ chrome.runtime.onInstalled.addListener(() => {
   // Set side panel to open on action click (Chrome 116+)
   chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })
     .catch((error) => console.error('[Oh My Prompt] Side panel behavior error:', error))
+
+  // Run initial sync on install (restores data from backup folder)
+  initialSync().catch(err => console.error('[Oh My Prompt] Initial sync on install error:', err))
 })
 
 // Open side panel when extension icon is clicked (fallback for older Chrome versions)
@@ -528,7 +535,23 @@ chrome.runtime.onMessage.addListener(
           configuredAt: Date.now()
         }
         chrome.storage.local.set({ [VISION_API_CONFIG_STORAGE_KEY]: configWithTimestamp })
-          .then(() => sendResponse({ success: true } as MessageResponse))
+          .then(async () => {
+            sendResponse({ success: true } as MessageResponse)
+
+            // Auto-sync encrypted config to backup folder (if configured)
+            try {
+              const handle = await getFolderHandle()
+              if (handle) {
+                const encrypted = await syncApiConfigToFolder(configWithTimestamp, handle)
+                if (encrypted) {
+                  console.log('[Oh My Prompt] API config encrypted and saved to backup folder')
+                }
+              }
+            } catch (encryptError) {
+              // Encryption failed, but storage save succeeded - log warning only
+              console.warn('[Oh My Prompt] Failed to encrypt API config to folder:', encryptError)
+            }
+          })
           .catch(error => {
             console.error('[Oh My Prompt] SET_API_CONFIG error:', error)
             sendResponse({ success: false, error: String(error) })
@@ -621,7 +644,7 @@ chrome.runtime.onMessage.addListener(
           })
         return true // Required for async response
 
-      // Phase 12: Save to temporary category (D-03, D-04)
+      // Phase 12: Save to temporary library (independent storage, not in category system)
       // Now also saves image locally if folder is configured
       case MessageType.SAVE_TEMPORARY_PROMPT:
         const savePayload = message.payload as SaveTemporaryPromptPayload
@@ -632,26 +655,13 @@ chrome.runtime.onMessage.addListener(
 
         storageManager.getData()
           .then(async (data) => {
-            const categories = data.userData.categories
-            const prompts = data.userData.prompts
+            // Get or initialize temporary prompts array
+            const temporaryPrompts = data.temporaryPrompts || []
 
-            // Find or create '临时' category (D-04)
-            let tempCategory = categories.find(c => c.name === '临时')
-            if (!tempCategory) {
-              tempCategory = {
-                id: crypto.randomUUID(),
-                name: '临时',
-                order: categories.length
-              }
-              categories.push(tempCategory)
-              console.log('[Oh My Prompt] Created 临时 category')
-            }
+            // Calculate order (max order + 1 in temporary prompts)
+            const maxOrder = temporaryPrompts.length > 0 ? Math.max(...temporaryPrompts.map(p => p.order)) : -1
 
-            // Calculate order (max order + 1 in temporary category)
-            const tempPrompts = prompts.filter(p => p.categoryId === tempCategory!.id)
-            const maxOrder = tempPrompts.length > 0 ? Math.max(...tempPrompts.map(p => p.order)) : -1
-
-            // Add new prompt (D-06) - support bilingual content and description
+            // Add new prompt to temporary library - support bilingual content and description
             const newPrompt: Prompt = {
               id: crypto.randomUUID(),
               name: savePayload.name,
@@ -660,11 +670,10 @@ chrome.runtime.onMessage.addListener(
               contentEn: savePayload.contentEn, // English content (optional)
               description: savePayload.description, // Chinese analysis (optional)
               descriptionEn: savePayload.descriptionEn, // English analysis (optional)
-              categoryId: tempCategory.id,
+              categoryId: 'temporary', // Special marker for temporary library
               order: maxOrder + 1,
               remoteImageUrl: savePayload.imageUrl // Optional source URL
             }
-            prompts.push(newPrompt)
 
             // Try to save image locally if imageUrl provided and folder configured
             let localImageSaved = false
@@ -718,15 +727,19 @@ chrome.runtime.onMessage.addListener(
               }
             }
 
-            // Save to storage (with or without localImage)
+            // Add to temporary prompts array
+            temporaryPrompts.push(newPrompt)
+
+            // Save to storage with temporaryPrompts field
             const version = chrome.runtime.getManifest().version
             await storageManager.saveData({
               version,
-              userData: { prompts, categories },
-              settings: data.settings
+              userData: data.userData,
+              settings: data.settings,
+              temporaryPrompts
             })
 
-            console.log('[Oh My Prompt] Saved prompt to 临时 category:', savePayload.name,
+            console.log('[Oh My Prompt] Saved prompt to temporary library:', savePayload.name,
               localImageSaved ? '(image saved locally)' : '(image URL only)')
 
             // Broadcast REFRESH_DATA to all Lovart tabs so dropdown updates immediately
@@ -744,6 +757,100 @@ chrome.runtime.onMessage.addListener(
           .catch((error) => {
             console.error('[Oh My Prompt] SAVE_TEMPORARY_PROMPT error:', error)
             sendResponse({ success: false, error: 'Storage save failed' })
+          })
+        return true // Required for async response
+
+      // Clear all temporary prompts
+      case MessageType.CLEAR_TEMPORARY_PROMPTS:
+        storageManager.getData()
+          .then(async (data) => {
+            // Clear temporary prompts array
+            const version = chrome.runtime.getManifest().version
+            await storageManager.saveData({
+              version,
+              userData: data.userData,
+              settings: data.settings,
+              temporaryPrompts: []
+            })
+
+            console.log('[Oh My Prompt] Cleared all temporary prompts')
+
+            // Broadcast REFRESH_DATA to all Lovart tabs
+            chrome.tabs.query({ url: ['*://lovart.ai/*', '*://*.lovart.ai/*'] }, (tabs) => {
+              tabs.forEach(tab => {
+                if (tab.id !== undefined && tab.id >= 0) {
+                  chrome.tabs.sendMessage(tab.id, { type: MessageType.REFRESH_DATA })
+                }
+              })
+            })
+
+            sendResponse({ success: true })
+          })
+          .catch((error) => {
+            console.error('[Oh My Prompt] CLEAR_TEMPORARY_PROMPTS error:', error)
+            sendResponse({ success: false, error: 'Storage clear failed' })
+          })
+        return true // Required for async response
+
+      // Transfer temporary prompt to a category
+      case MessageType.TRANSFER_TEMPORARY_PROMPT:
+        const transferPayload = message.payload as { promptId: string; targetCategoryId: string }
+        if (!transferPayload || !transferPayload.promptId || !transferPayload.targetCategoryId) {
+          sendResponse({ success: false, error: 'Invalid payload: promptId and targetCategoryId required' })
+          return true
+        }
+
+        storageManager.getData()
+          .then(async (data) => {
+            const temporaryPrompts = data.temporaryPrompts || []
+            const prompts = data.userData.prompts
+
+            // Find the prompt in temporary library
+            const promptIndex = temporaryPrompts.findIndex(p => p.id === transferPayload.promptId)
+            if (promptIndex === -1) {
+              sendResponse({ success: false, error: 'Prompt not found in temporary library' })
+              return
+            }
+
+            const promptToTransfer = temporaryPrompts[promptIndex]
+
+            // Calculate order in target category
+            const categoryPrompts = prompts.filter(p => p.categoryId === transferPayload.targetCategoryId)
+            const maxOrder = categoryPrompts.length > 0 ? Math.max(...categoryPrompts.map(p => p.order)) : -1
+
+            // Update prompt for transfer
+            promptToTransfer.categoryId = transferPayload.targetCategoryId
+            promptToTransfer.order = maxOrder + 1
+
+            // Remove from temporary and add to prompts
+            temporaryPrompts.splice(promptIndex, 1)
+            prompts.push(promptToTransfer)
+
+            // Save to storage
+            const version = chrome.runtime.getManifest().version
+            await storageManager.saveData({
+              version,
+              userData: { prompts, categories: data.userData.categories },
+              settings: data.settings,
+              temporaryPrompts
+            })
+
+            console.log('[Oh My Prompt] Transferred prompt to category:', promptToTransfer.name, '→', transferPayload.targetCategoryId)
+
+            // Broadcast REFRESH_DATA to all Lovart tabs
+            chrome.tabs.query({ url: ['*://lovart.ai/*', '*://*.lovart.ai/*'] }, (tabs) => {
+              tabs.forEach(tab => {
+                if (tab.id !== undefined && tab.id >= 0) {
+                  chrome.tabs.sendMessage(tab.id, { type: MessageType.REFRESH_DATA })
+                }
+              })
+            })
+
+            sendResponse({ success: true })
+          })
+          .catch((error) => {
+            console.error('[Oh My Prompt] TRANSFER_TEMPORARY_PROMPT error:', error)
+            sendResponse({ success: false, error: 'Transfer failed' })
           })
         return true // Required for async response
 

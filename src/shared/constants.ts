@@ -35,3 +35,8 @@ export const CAPTURED_IMAGE_STORAGE_KEY = '_capturedImageUrl'
 
 // Vision API configuration storage key (for Phase 10)
 export const VISION_API_CONFIG_STORAGE_KEY = '_visionApiConfig'
+
+// Encryption constants
+export const SECRETS_DIR_NAME = 'secrets'
+export const API_CONFIG_ENC_FILE = 'api-config.enc'
+export const SALT_FILE = 'salt.bin'

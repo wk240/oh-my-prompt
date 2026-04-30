@@ -42,14 +42,23 @@ class Coordinator {
 
   /**
    * Initialize the coordinator
-   * Returns early if no platform matched
+   * Always sets up message listener for vision modal, even on non-platform pages
    */
   init(): void {
     console.log(LOG_PREFIX, 'Coordinator initializing on:', window.location.href)
 
-    // Exit early if no platform matched
+    // Setup message listener FIRST - always needed for vision modal on any page
+    this.setupMessageListener()
+
+    // Ping service worker to verify connection
+    this.pingServiceWorker()
+
+    // Setup lifecycle handlers
+    this.setupLifecycleHandlers()
+
+    // Exit early if no platform matched - no UI injection needed
     if (!this.platform) {
-      console.log(LOG_PREFIX, 'No platform matched, exiting')
+      console.log(LOG_PREFIX, 'No platform matched, but vision modal handler ready')
       return
     }
 
@@ -65,17 +74,8 @@ class Coordinator {
       this.handleInputDetected.bind(this, inserter)
     )
 
-    // Setup message listener
-    this.setupMessageListener()
-
-    // Ping service worker to verify connection
-    this.pingServiceWorker()
-
     // Start detector
     this.detector.start()
-
-    // Setup lifecycle handlers
-    this.setupLifecycleHandlers()
 
     console.log(LOG_PREFIX, 'Coordinator initialized for platform:', this.platform.name)
   }

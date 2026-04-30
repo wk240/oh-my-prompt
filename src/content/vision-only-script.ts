@@ -191,12 +191,23 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     const { imageUrl, tabId } = message.payload as { imageUrl: string; tabId?: number }
     console.log(LOG_PREFIX, 'Received OPEN_VISION_MODAL:', imageUrl.substring(0, 50) + '...')
 
-    // Create modal via VisionModalManager (singleton) - lazy import
-    import('./vision-modal-manager').then(({ VisionModalManager }) => {
-      const manager = VisionModalManager.getInstance()
-      manager.create(imageUrl, tabId)
-      sendResponse({ success: true })
-    })
+    // Create modal via VisionModalManager (singleton) - lazy import with error handling
+    import('./vision-modal-manager')
+      .then(({ VisionModalManager }) => {
+        try {
+          const manager = VisionModalManager.getInstance()
+          manager.create(imageUrl, tabId)
+          console.log(LOG_PREFIX, 'Vision modal created successfully')
+          sendResponse({ success: true })
+        } catch (error) {
+          console.error(LOG_PREFIX, 'Vision modal creation failed:', error)
+          sendResponse({ success: false, error: 'Modal creation failed' })
+        }
+      })
+      .catch((error) => {
+        console.error(LOG_PREFIX, 'Failed to import VisionModalManager:', error)
+        sendResponse({ success: false, error: 'Module import failed' })
+      })
 
     return true
   }

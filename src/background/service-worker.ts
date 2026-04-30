@@ -33,7 +33,8 @@ chrome.runtime.onInstalled.addListener(() => {
 
 // Open side panel when extension icon is clicked (fallback for older Chrome versions)
 chrome.action.onClicked.addListener((tab) => {
-  if (tab.id) {
+  // Check tab.id is valid (>= 0, not TAB_ID_NONE which is -1)
+  if (tab.id !== undefined && tab.id >= 0) {
     chrome.sidePanel.open({ tabId: tab.id })
       .catch((error) => console.error('[Oh My Prompt] Side panel open error:', error))
   }
@@ -96,7 +97,8 @@ chrome.runtime.onMessage.addListener(
                 // Notify UI about sync failure with error details
                 chrome.tabs.query({ url: ['*://lovart.ai/*', '*://*.lovart.ai/*'] }, (tabs) => {
                   tabs.forEach(tab => {
-                    if (tab.id) {
+                    // Check tab.id is valid (>= 0, not TAB_ID_NONE which is -1)
+                    if (tab.id !== undefined && tab.id >= 0) {
                       chrome.tabs.sendMessage(tab.id, {
                         type: MessageType.SYNC_FAILED,
                         payload: {
@@ -648,7 +650,8 @@ chrome.runtime.onMessage.addListener(
             // Broadcast REFRESH_DATA to all Lovart tabs so dropdown updates immediately
             chrome.tabs.query({ url: ['*://lovart.ai/*', '*://*.lovart.ai/*'] }, (tabs) => {
               tabs.forEach(tab => {
-                if (tab.id) {
+                // Check tab.id is valid (>= 0, not TAB_ID_NONE which is -1)
+                if (tab.id !== undefined && tab.id >= 0) {
                   chrome.tabs.sendMessage(tab.id, { type: MessageType.REFRESH_DATA })
                 }
               })
@@ -694,7 +697,8 @@ chrome.contextMenus.onClicked.addListener(async (info: chrome.contextMenus.OnCli
     })
       .then(() => {
         // Send message to content script to open modal
-        if (tab?.id) {
+        // Check tab.id is valid (>= 0, not TAB_ID_NONE which is -1)
+        if (tab?.id !== undefined && tab.id >= 0) {
           chrome.tabs.sendMessage(tab.id, {
             type: MessageType.OPEN_VISION_MODAL,
             payload: {
@@ -703,25 +707,25 @@ chrome.contextMenus.onClicked.addListener(async (info: chrome.contextMenus.OnCli
             }
           })
             .then((response) => {
+              // Any response means content script handled it (success or error shown in modal)
               if (response?.success) {
                 console.log('[Oh My Prompt] Vision modal opened in tab:', tab.id)
               } else {
-                console.warn('[Oh My Prompt] Vision modal failed to open, falling back to loading page')
-                // Fallback: open loading page if content script not available
-                chrome.tabs.create({
-                  url: chrome.runtime.getURL('src/popup/loading.html')
-                })
+                // Content script received but had internal error - don't open new tab
+                // Error will be shown in the modal or logged
+                console.warn('[Oh My Prompt] Vision modal internal error:', response?.error)
               }
             })
             .catch((error) => {
               console.error('[Oh My Prompt] Failed to send message to content script:', error)
-              // Fallback: open loading page if message fails
+              // Only open new tab if content script is completely unreachable
+              // This happens on special pages (chrome://, about:, etc.)
               chrome.tabs.create({
                 url: chrome.runtime.getURL('src/popup/loading.html')
               })
             })
         } else {
-          // No tab ID, fallback to loading page
+          // No valid tab ID, fallback to loading page
           chrome.tabs.create({
             url: chrome.runtime.getURL('src/popup/loading.html')
           })
@@ -729,8 +733,8 @@ chrome.contextMenus.onClicked.addListener(async (info: chrome.contextMenus.OnCli
       })
       .catch((error) => {
         console.error('[Oh My Prompt] Storage error:', error)
-        // Fallback: try to open modal anyway
-        if (tab?.id) {
+        // Fallback: try to open modal anyway - check tab.id is valid
+        if (tab?.id !== undefined && tab.id >= 0) {
           chrome.tabs.sendMessage(tab.id, {
             type: MessageType.OPEN_VISION_MODAL,
             payload: {

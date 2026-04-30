@@ -217,6 +217,14 @@ export class ImageHoverButtonManager {
     // Get all elements at this point
     const elements = document.elementsFromPoint(x, y)
 
+    if (DEBUG_HOVER_BUTTON) {
+      console.log(LOG_PREFIX, 'elementsFromPoint stack:', elements.slice(0, 10).map(el => ({
+        tag: el.tagName,
+        class: el.className?.toString().slice(0, 50),
+        src: el.tagName === 'IMG' ? (el as HTMLImageElement).src?.slice(0, 50) : undefined
+      })))
+    }
+
     // Find the first large enough image in the stack
     for (const el of elements) {
       if (el.tagName === 'IMG') {
@@ -224,7 +232,57 @@ export class ImageHoverButtonManager {
         const rect = img.getBoundingClientRect()
         if (rect.width >= MIN_WIDTH && rect.height >= MIN_HEIGHT) {
           return img
+        } else if (DEBUG_HOVER_BUTTON) {
+          console.log(LOG_PREFIX, 'Image found but too small:', { width: rect.width, height: rect.height })
         }
+      }
+
+      // Handle covered images: check if this element contains a large image
+      // (Some sites overlay transparent divs on images for hover effects)
+      if (el.tagName === 'DIV') {
+        const containedImg = this.findLargeImageInContainer(el as HTMLElement)
+        if (containedImg) {
+          if (DEBUG_HOVER_BUTTON) {
+            console.log(LOG_PREFIX, 'Found covered image in DIV:', containedImg.src?.slice(0, 50))
+          }
+          return containedImg
+        }
+      }
+    }
+
+    return null
+  }
+
+  /**
+   * Find a large image inside a container element
+   * Used when images are covered by transparent overlay divs
+   */
+  private findLargeImageInContainer(container: HTMLElement): HTMLImageElement | null {
+    // Query for images inside this container (direct children or nested)
+    const images = container.querySelectorAll('img')
+
+    if (DEBUG_HOVER_BUTTON && images.length > 0) {
+      console.log(LOG_PREFIX, 'Container has images:', images.length)
+    }
+
+    // Prefer the first visible large image (main image, not preview stack)
+    for (const img of images) {
+      const rect = img.getBoundingClientRect()
+      const style = window.getComputedStyle(img)
+      const opacity = parseFloat(style.opacity)
+
+      if (DEBUG_HOVER_BUTTON) {
+        console.log(LOG_PREFIX, 'Checking image in container:', {
+          src: img.src?.slice(0, 50),
+          width: rect.width,
+          height: rect.height,
+          opacity
+        })
+      }
+
+      // Check if image is large enough and visible (opacity > 0)
+      if (rect.width >= MIN_WIDTH && rect.height >= MIN_HEIGHT && opacity > 0) {
+        return img as HTMLImageElement
       }
     }
 
@@ -264,6 +322,17 @@ export class ImageHoverButtonManager {
     if (this.hideTimeout) {
       clearTimeout(this.hideTimeout)
       this.hideTimeout = null
+      if (DEBUG_HOVER_BUTTON) {
+        console.log(LOG_PREFIX, 'Cleared hide timeout (mouse returned)')
+      }
+    }
+
+    if (DEBUG_HOVER_BUTTON) {
+      console.log(LOG_PREFIX, 'About to show button', {
+        imgRect: { top: rect.top, left: rect.left, width: rect.width, height: rect.height },
+        currentImg: this.currentImg?.src?.slice(0, 30),
+        newImg: img.src?.slice(0, 30)
+      })
     }
 
     // Show immediately (singleton button is cheap, no delay needed)

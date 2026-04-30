@@ -2,7 +2,7 @@
 
 ## What This Is
 
-一个Chrome浏览器插件，用于在Lovart AI设计/绘图平台的输入框中一键插入预设的提示词模板。用户通过输入框旁的下拉菜单选择提示词，提示词按用途分类管理，支持内置编辑和数据导入导出。插件已发布v1.0版本，完整实现核心功能。
+一个Chrome浏览器插件，用于在AI设计/绘图平台的输入框中一键插入预设的提示词模板。支持多平台（Lovart、ChatGPT、Claude.ai、Gemini、LibLib、即梦等），用户通过输入框旁的下拉菜单选择提示词，提示词按用途分类管理，支持内置编辑和数据导入导出。插件已发布v1.3版本，完整实现核心功能和 Vision API 图片转提示词功能。
 
 ## Core Value
 
@@ -46,8 +46,9 @@
 
 **提示词内容类型：** 风格描述、主题设定、技术参数（光照、角度、构图）、质量/尺寸设定等模板化内容。
 
-**Shipped v1.0:** 12,000 LOC TypeScript + React. Chrome Extension Manifest V3.
+**Shipped v1.3.0:** 12,000+ LOC TypeScript + React. Chrome Extension Manifest V3.
 Tech stack: Vite, @crxjs/vite-plugin, React, Zustand, Shadow DOM.
+Supported platforms: Lovart, ChatGPT, Claude.ai, Gemini, LibLib, 即梦.
 
 ## Constraints
 
@@ -70,6 +71,8 @@ Tech stack: Vite, @crxjs/vite-plugin, React, Zustand, Shadow DOM.
 | Toast on CRUD actions | 用户操作反馈 | ✓ Good |
 | Large dataset limit (100) | 下拉性能优化 | ✓ Good |
 | 插入后保持下拉打开 | 支持连续插入多个提示词 | ✓ Good |
+| 多平台架构 (v1.3) | 可扩展支持更多AI平台 | ✓ Good |
+| 右键菜单图片转提示词 (v1.3) | Vision API赋能新场景 | ✓ Good |
 
 ---
 *Last updated: 2026-04-28 after v1.3.0 milestone initialization*

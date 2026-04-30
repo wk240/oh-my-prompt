@@ -119,7 +119,7 @@ npm run build
 <details>
 <summary><strong>Q: 为什么在其他网站看不到闪电图标？</strong></summary>
 
-扩展仅在 Lovart 平台激活，避免影响其他网站。
+扩展在 Lovart、ChatGPT、Claude.ai、Gemini、LibLib、即梦等支持的平台上激活。如在其他网站看不到图标，说明该平台暂未支持，后续版本可能添加。
 </details>
 
 <details>

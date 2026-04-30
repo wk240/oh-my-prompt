@@ -25,6 +25,9 @@ const HIDE_DELAY = 150
 // Throttle for MutationObserver callbacks (ms) - longer for Pinterest-like sites
 const OBSERVER_THROTTLE = 300
 
+// Debug mode - set to true for verbose logging
+const DEBUG_HOVER_BUTTON = true
+
 /**
  * ImageHoverButtonManager creates hover buttons on images across all websites
  * Singleton pattern - only one manager per page
@@ -43,7 +46,7 @@ export class ImageHoverButtonManager {
   private hoverHandlers: Map<HTMLImageElement, {
     target: HTMLElement
     enterHandler: () => void
-    leaveHandler: () => void
+    leaveHandler: (e: MouseEvent) => void
   }> = new Map()
 
   // Store load listeners for proper cleanup (for incomplete images)
@@ -223,7 +226,7 @@ export class ImageHoverButtonManager {
 
     // Create bound handlers and store them for proper cleanup
     const enterHandler = this.handleImageMouseEnter.bind(this, img)
-    const leaveHandler = this.handleImageMouseLeave.bind(this, img)
+    const leaveHandler = (e: MouseEvent) => this.handleImageMouseLeave(img, e)
 
     // Store handlers and target for cleanup
     this.hoverHandlers.set(img, {
@@ -236,55 +239,102 @@ export class ImageHoverButtonManager {
     hoverTarget.addEventListener('mouseenter', enterHandler)
     hoverTarget.addEventListener('mouseleave', leaveHandler)
 
-    console.log(LOG_PREFIX, 'prepareImageForHover:', {
-      src: img.src?.substring(0, 50),
-      hoverTarget: hoverTarget === img ? 'img' : 'parent',
-      prepared: true
-    })
+    if (DEBUG_HOVER_BUTTON) {
+      const targetInfo = hoverTarget === img
+        ? 'img'
+        : `${hoverTarget.tagName.toLowerCase()}.${hoverTarget.className?.split(' ').join('.')}`
+      const computedStyle = window.getComputedStyle(hoverTarget)
+      const targetRect = hoverTarget.getBoundingClientRect()
+      const imageRect = img.getBoundingClientRect()
+      console.log(LOG_PREFIX, 'prepareImageForHover:', {
+        src: img.src?.substring(0, 50),
+        hoverTarget: targetInfo,
+        prepared: true,
+        hoverTargetEl: hoverTarget,
+        pointerEvents: computedStyle.pointerEvents,
+        visibility: computedStyle.visibility,
+        overflow: computedStyle.overflow,
+        hoverTargetRect: { width: targetRect.width, height: targetRect.height },
+        imgRect: { width: imageRect.width, height: imageRect.height }
+      })
+    }
   }
 
   /**
    * Find the best element to attach hover events
-   * Prefer parent container if it wraps the image nicely (handles overlays)
+   * Prefer larger container that gives mouse more room to move without triggering mouseleave
    */
   private findBestHoverTarget(img: HTMLImageElement): HTMLElement {
-    const parent = img.parentElement
-    if (!parent) return img
-
     const imgRect = img.getBoundingClientRect()
-    const parentRect = parent.getBoundingClientRect()
 
-    // Check if parent is a good wrapper (similar size, positioned)
-    const isGoodWrapper =
-      // Parent contains the image
-      parentRect.width >= imgRect.width * 0.9 &&
-      parentRect.height >= imgRect.height * 0.9 &&
-      parentRect.width <= imgRect.width * 1.5 &&
-      parentRect.height <= imgRect.height * 1.5 &&
-      // Parent is positioned (relative/absolute/fixed) or has a click handler
-      (this.isPositioned(parent) || parent.onclick !== null || parent.style.cursor === 'pointer')
+    // Walk up the DOM tree to find a large enough container
+    // Start with parent and go up to find a container that's at least 1.5x the image size
+    // This gives mouse more room to move without triggering mouseleave
+    let candidate: HTMLElement | null = img.parentElement
+    let bestCandidate: HTMLElement | null = null
+    let bestSizeRatio = 0
 
-    if (isGoodWrapper) {
-      return parent
-    }
+    while (candidate) {
+      const candidateRect = candidate.getBoundingClientRect()
 
-    // Check grandparent for sites like Pinterest with deep nesting
-    const grandparent = parent.parentElement
-    if (grandparent) {
-      const gpRect = grandparent.getBoundingClientRect()
-      const isGoodGrandparent =
-        gpRect.width >= imgRect.width * 0.9 &&
-        gpRect.height >= imgRect.height * 0.9 &&
-        gpRect.width <= imgRect.width * 1.5 &&
-        gpRect.height <= imgRect.height * 1.5 &&
-        this.isPositioned(grandparent)
+      // Calculate how much larger the candidate is than the image
+      const widthRatio = candidateRect.width / imgRect.width
+      const heightRatio = candidateRect.height / imgRect.height
 
-      if (isGoodGrandparent) {
-        return grandparent
+      // Check if candidate contains the image and is positioned
+      const containsImage = candidate.contains(img)
+      const isPositioned = this.isPositioned(candidate)
+
+      if (containsImage && isPositioned) {
+        // Prefer candidates that are larger than the image (gives mouse room to move)
+        // But not too large (like the whole page)
+        const minSizeOK = widthRatio >= 1.0 && heightRatio >= 1.0
+        const maxSizeOK = widthRatio <= 5 && heightRatio <= 5
+
+        if (minSizeOK && maxSizeOK) {
+          const sizeRatio = Math.min(widthRatio, heightRatio)
+          // Prefer larger containers (more room for mouse)
+          if (sizeRatio > bestSizeRatio) {
+            bestCandidate = candidate
+            bestSizeRatio = sizeRatio
+
+            if (DEBUG_HOVER_BUTTON) {
+              console.log(LOG_PREFIX, 'findBestHoverTarget: found candidate', {
+                tag: candidate.tagName,
+                class: candidate.className?.split(' ')[0],
+                widthRatio,
+                heightRatio,
+                sizeRatio
+              })
+            }
+          }
+        }
       }
+
+      // Stop if we've found a good enough container (1.5x or larger)
+      if (bestSizeRatio >= 1.5) {
+        break
+      }
+
+      candidate = candidate.parentElement
     }
 
-    return img
+    // Fallback: use parent if no better candidate found
+    const finalTarget = bestCandidate || img.parentElement || img
+
+    if (DEBUG_HOVER_BUTTON) {
+      console.log(LOG_PREFIX, 'findBestHoverTarget: using', {
+        tag: finalTarget.tagName,
+        class: finalTarget.className?.split(' ')[0],
+        bestSizeRatio,
+        isImg: finalTarget === img,
+        isParent: finalTarget === img.parentElement,
+        hasPosition: this.isPositioned(finalTarget),
+        hasPointerEvents: window.getComputedStyle(finalTarget).pointerEvents
+      })
+    }
+
+    return finalTarget
   }
 
   /**
@@ -300,6 +350,16 @@ export class ImageHoverButtonManager {
    * Handle mouse enter on image - show hover button with delay
    */
   private handleImageMouseEnter(img: HTMLImageElement): void {
+    // Store enter timestamp for diagnostic
+    img.dataset.ompEnterTime = Date.now().toString()
+
+    if (DEBUG_HOVER_BUTTON) {
+      console.log(LOG_PREFIX, 'handleImageMouseEnter triggered', {
+        src: img.src?.substring(0, 50),
+        enterTime: Date.now()
+      })
+    }
+
     // Clear hide timeout if mouse returns
     const hideTimeout = this.hideTimeouts.get(img)
     if (hideTimeout) {
@@ -315,6 +375,11 @@ export class ImageHoverButtonManager {
 
     // Set new timeout to show button
     const timeout = window.setTimeout(() => {
+      if (DEBUG_HOVER_BUTTON) {
+        console.log(LOG_PREFIX, 'showButton timeout fired', {
+          src: img.src?.substring(0, 50)
+        })
+      }
       this.showButton(img)
       this.showTimeouts.delete(img)
     }, HOVER_DELAY)
@@ -325,7 +390,25 @@ export class ImageHoverButtonManager {
   /**
    * Handle mouse leave on image - delay hide (allows mouse to move to button)
    */
-  private handleImageMouseLeave(img: HTMLImageElement): void {
+  private handleImageMouseLeave(img: HTMLImageElement, event: MouseEvent): void {
+    const enterTime = parseInt(img.dataset.ompEnterTime || '0')
+    const leaveTime = Date.now()
+    const durationMs = leaveTime - enterTime
+
+    // Check relatedTarget - the element the mouse moved TO
+    const relatedTarget = event.relatedTarget as HTMLElement | null
+
+    if (DEBUG_HOVER_BUTTON) {
+      console.log(LOG_PREFIX, 'handleImageMouseLeave triggered', {
+        src: img.src?.substring(0, 50),
+        leaveTime,
+        hoverDurationMs: durationMs,
+        wasCancelledBefore: durationMs < HOVER_DELAY,
+        relatedTarget: relatedTarget ? `${relatedTarget.tagName}.${relatedTarget.className?.split(' ')[0]}` : null,
+        relatedTargetIsChild: relatedTarget ? img.contains(relatedTarget) : false
+      })
+    }
+
     // Clear show timeout if mouse left before button shown
     const showTimeout = this.showTimeouts.get(img)
     if (showTimeout) {
@@ -363,11 +446,79 @@ export class ImageHoverButtonManager {
   }
 
   /**
+   * Diagnostic: Check overlay visibility and what's covering it
+   */
+  private diagnoseOverlay(overlay: HTMLDivElement, _img: HTMLImageElement): void {
+    // Use requestAnimationFrame to ensure DOM is fully updated
+    requestAnimationFrame(() => {
+      const overlayRect = overlay.getBoundingClientRect()
+      const computedStyle = window.getComputedStyle(overlay)
+
+      // Check if overlay is in document.body
+      const isInBody = document.body.contains(overlay)
+
+      // Check elements at the button position (top-left corner + 8px offset + half button size)
+      const buttonX = overlayRect.left + 8 + 16 // center of button (8px offset + 16px half-width)
+      const buttonY = overlayRect.top + 8 + 16
+      const elementsAtButton = document.elementsFromPoint(buttonX, buttonY)
+
+      // Find what's covering our overlay (if anything)
+      const overlayIndex = elementsAtButton.indexOf(overlay)
+      const coveringElements = overlayIndex > 0 ? elementsAtButton.slice(0, overlayIndex) : []
+
+      console.log(LOG_PREFIX, '=== OVERLAY DIAGNOSIS ===', {
+        isInBody,
+        overlayRect: { top: overlayRect.top, left: overlayRect.left, width: overlayRect.width, height: overlayRect.height },
+        computedStyle: {
+          position: computedStyle.position,
+          zIndex: computedStyle.zIndex,
+          visibility: computedStyle.visibility,
+          display: computedStyle.display,
+          opacity: computedStyle.opacity,
+          pointerEvents: computedStyle.pointerEvents
+        },
+        buttonCenter: { x: buttonX, y: buttonY },
+        elementsAtButtonCount: elementsAtButton.length,
+        overlayIndexInStack: overlayIndex,
+        isCovered: coveringElements.length > 0,
+        coveringElements: coveringElements.slice(0, 5).map(el => ({
+          tag: el.tagName,
+          class: (el.className?.toString() || '').substring(0, 50),
+          id: el.id || '',
+          zIndex: el instanceof HTMLElement ? window.getComputedStyle(el).zIndex : 'N/A'
+        }))
+      })
+
+      if (coveringElements.length > 0) {
+        console.warn(LOG_PREFIX, 'WARNING: Overlay is COVERED by other elements!', coveringElements.length, 'elements above it')
+      } else if (overlayIndex === -1) {
+        console.warn(LOG_PREFIX, 'WARNING: Overlay NOT FOUND in elementsFromPoint stack - may be off-screen or hidden')
+      } else {
+        console.log(LOG_PREFIX, 'Overlay is visible (top of stack at button position)')
+      }
+    })
+  }
+
+  /**
    * Show hover button on image (positioned overlay)
    */
   private showButton(img: HTMLImageElement): void {
+    if (DEBUG_HOVER_BUTTON) {
+      console.log(LOG_PREFIX, 'showButton called', {
+        src: img.src?.substring(0, 50),
+        hasActiveButton: this.activeButtons.has(img),
+        buttonCount: this.buttonCount,
+        imageUrl: img.dataset.ompImageUrl
+      })
+    }
+
     // Check if button already active
-    if (this.activeButtons.has(img)) return
+    if (this.activeButtons.has(img)) {
+      if (DEBUG_HOVER_BUTTON) {
+        console.log(LOG_PREFIX, 'showButton: button already active, skipping')
+      }
+      return
+    }
 
     // Check button count limit
     if (this.buttonCount >= MAX_ACTIVE_BUTTONS) {
@@ -376,10 +527,24 @@ export class ImageHoverButtonManager {
     }
 
     const imageUrl = img.dataset.ompImageUrl
-    if (!imageUrl) return
+    if (!imageUrl) {
+      if (DEBUG_HOVER_BUTTON) {
+        console.log(LOG_PREFIX, 'showButton: no imageUrl, skipping')
+      }
+      return
+    }
 
     // Get image position
     const rect = img.getBoundingClientRect()
+
+    if (DEBUG_HOVER_BUTTON) {
+      console.log(LOG_PREFIX, 'showButton: creating overlay', {
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height
+      })
+    }
 
     // Create overlay container (positioned fixed relative to viewport)
     const overlay = document.createElement('div')
@@ -503,6 +668,16 @@ export class ImageHoverButtonManager {
 
     this.activeButtons.set(img, { overlay, root })
     this.buttonCount++
+
+    if (DEBUG_HOVER_BUTTON) {
+      console.log(LOG_PREFIX, 'showButton: button mounted successfully', {
+        overlayEl: overlay,
+        activeButtons: this.buttonCount
+      })
+
+      // Run diagnostic after mount to check visibility
+      this.diagnoseOverlay(overlay, img)
+    }
   }
 
   /**

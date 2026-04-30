@@ -61,6 +61,7 @@ export class ImageHoverButtonManager {
     // Pre-bind handlers for proper cleanup
     this.boundMouseOver = this.handleMouseOver.bind(this)
     this.boundMouseOut = this.handleMouseOut.bind(this)
+    this.boundStorageChange = this.handleStorageChange.bind(this)
   }
 
   /**
@@ -68,6 +69,17 @@ export class ImageHoverButtonManager {
    */
   start(): void {
     console.log(LOG_PREFIX, 'ImageHoverButtonManager started (PLAN-B: event delegation)')
+
+    // Load vision setting from storage
+    chrome.runtime.sendMessage({ type: MessageType.GET_STORAGE }, (response) => {
+      if (response?.success && response.data?.settings) {
+        this.visionEnabled = response.data.settings.visionEnabled ?? true
+        console.log(LOG_PREFIX, 'Vision feature setting loaded:', this.visionEnabled)
+      }
+    })
+
+    // Listen for storage changes to update visionEnabled
+    chrome.storage.onChanged.addListener(this.boundStorageChange)
 
     // Create singleton button
     this.singletonButton = this.createSingletonButton()
@@ -78,12 +90,23 @@ export class ImageHoverButtonManager {
   }
 
   /**
+   * Handle storage changes - update visionEnabled when settings change
+   */
+  private handleStorageChange(changes: { [key: string]: chrome.storage.StorageChange }): void {
+    if (changes['prompt_script_data']?.newValue?.settings?.visionEnabled !== undefined) {
+      this.visionEnabled = changes['prompt_script_data'].newValue.settings.visionEnabled
+      console.log(LOG_PREFIX, 'Vision feature setting updated:', this.visionEnabled)
+    }
+  }
+
+  /**
    * Stop and cleanup
    */
   stop(): void {
     // Remove event listeners
     document.removeEventListener('mouseover', this.boundMouseOver)
     document.removeEventListener('mouseout', this.boundMouseOut)
+    chrome.storage.onChanged.removeListener(this.boundStorageChange)
 
     // Clear hide timeout
     if (this.hideTimeout) clearTimeout(this.hideTimeout)

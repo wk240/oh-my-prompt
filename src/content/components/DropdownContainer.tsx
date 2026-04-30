@@ -590,9 +590,12 @@ export function DropdownContainer({
     const newPrompt: Prompt = {
       id: promptId,
       name: resourcePrompt.name,
+      nameEn: resourcePrompt.nameEn,
       content: resourcePrompt.content,
+      contentEn: resourcePrompt.contentEn,
       categoryId: targetCategoryId,
       description: resourcePrompt.description,
+      descriptionEn: resourcePrompt.descriptionEn,
       order: 0,
       remoteImageUrl: resourcePrompt.previewImage,
       localImage,

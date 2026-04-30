@@ -10,6 +10,7 @@
 import { createRoot, type Root } from 'react-dom/client'
 import { VisionModalManager } from './vision-modal-manager'
 import HoverButton from './components/HoverButton'
+import { MessageType } from '@/shared/messages'
 
 const LOG_PREFIX = '[Oh My Prompt]'
 
@@ -435,13 +436,65 @@ export class ImageHoverButtonManager {
    * Handle button click - open Vision Modal
    */
   private handleButtonClick(imageUrl: string): void {
-    console.log(LOG_PREFIX, 'Hover button clicked, opening Vision Modal')
+    console.log(LOG_PREFIX, 'Hover button clicked, checking vision setting...')
 
-    const visionManager = VisionModalManager.getInstance()
-    visionManager.create(imageUrl)
+    // Check if vision feature is enabled
+    chrome.runtime.sendMessage({ type: MessageType.GET_STORAGE }, (response) => {
+      if (response?.success && response.data?.settings) {
+        const visionEnabled = response.data.settings.visionEnabled ?? true
+        if (!visionEnabled) {
+          console.log(LOG_PREFIX, 'Vision feature is disabled')
+          // Show toast notification
+          this.showDisabledToast()
+          return
+        }
 
-    // Hide button after click
-    this.hideButton()
+        // Vision enabled, open modal
+        console.log(LOG_PREFIX, 'Vision feature enabled, opening modal')
+        const visionManager = VisionModalManager.getInstance()
+        visionManager.create(imageUrl)
+
+        // Hide button after click
+        this.hideButton()
+      } else {
+        // Failed to get settings, default to enabled
+        console.warn(LOG_PREFIX, 'Failed to get settings, defaulting to enabled')
+        const visionManager = VisionModalManager.getInstance()
+        visionManager.create(imageUrl)
+        this.hideButton()
+      }
+    })
+  }
+
+  /**
+   * Show toast when vision feature is disabled
+   */
+  private showDisabledToast(): void {
+    // Create a simple toast element
+    const toast = document.createElement('div')
+    toast.style.cssText = `
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1f1f1f;
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      z-index: 2147483647;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    `
+    toast.textContent = '转提示词功能已关闭，请在设置中开启'
+    document.body.appendChild(toast)
+
+    // Remove after 3 seconds
+    setTimeout(() => {
+      toast.style.opacity = '0'
+      toast.style.transition = 'opacity 0.3s'
+      setTimeout(() => toast.remove(), 300)
+    }, 2500)
   }
 
   /**

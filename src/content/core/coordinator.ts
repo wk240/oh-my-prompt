@@ -193,12 +193,30 @@ class Coordinator {
 
         console.log(LOG_PREFIX, 'Received OPEN_VISION_MODAL:', imageUrl.substring(0, 50) + '...')
 
-        // Create modal via VisionModalManager (singleton)
-        const manager = VisionModalManager.getInstance()
-        manager.create(imageUrl, tabId)
+        // Check if vision feature is enabled
+        chrome.runtime.sendMessage({ type: MessageType.GET_STORAGE }, (settingsResponse) => {
+          if (settingsResponse?.success && settingsResponse?.data?.settings) {
+            const visionEnabled = settingsResponse.data.settings.visionEnabled ?? true
+            if (!visionEnabled) {
+              console.log(LOG_PREFIX, 'Vision feature is disabled')
+              sendResponse({ success: false, error: 'VISION_DISABLED' })
+              return
+            }
 
-        sendResponse({ success: true })
-        return true
+            // Vision enabled, create modal
+            const manager = VisionModalManager.getInstance()
+            manager.create(imageUrl, tabId)
+            sendResponse({ success: true })
+          } else {
+            // Failed to get settings, default to enabled
+            console.warn(LOG_PREFIX, 'Failed to get settings, defaulting to enabled')
+            const manager = VisionModalManager.getInstance()
+            manager.create(imageUrl, tabId)
+            sendResponse({ success: true })
+          }
+        })
+
+        return true // Required for async sendResponse
       }
 
       return true // Required for async sendResponse

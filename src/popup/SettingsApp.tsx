@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from './components/ui/button'
-import { X, Bot, Database, Upload, Download, ChevronRight } from 'lucide-react'
+import { X, Bot, Database, Upload, Download, ChevronRight, Eye, EyeOff } from 'lucide-react'
 import { MessageType } from '../shared/messages'
 import type { StorageSchema } from '../shared/types'
 import { readImportFile, mergeImportData } from '../lib/import-export'
@@ -9,6 +9,16 @@ function SettingsApp() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [visionEnabled, setVisionEnabled] = useState(true)
+
+  // Load vision setting on mount
+  useEffect(() => {
+    chrome.runtime.sendMessage({ type: MessageType.GET_STORAGE }, (response) => {
+      if (response?.success && response.data?.settings) {
+        setVisionEnabled(response.data.settings.visionEnabled ?? true)
+      }
+    })
+  }, [])
 
   const handleClose = () => {
     window.close()
@@ -117,6 +127,17 @@ function SettingsApp() {
     input.click()
   }
 
+  // Toggle vision feature
+  const handleVisionToggle = async (enabled: boolean) => {
+    setVisionEnabled(enabled)
+    chrome.runtime.sendMessage({
+      type: MessageType.SET_SETTINGS_ONLY,
+      payload: { settings: { visionEnabled: enabled } }
+    })
+    setSuccess(enabled ? '转提示词功能已开启' : '转提示词功能已关闭')
+    setTimeout(() => setSuccess(null), 2000)
+  }
+
   return (
     <div className="w-full h-full flex items-center justify-center p-6 bg-gray-50">
       <div className="w-[480px] max-w-[90vw] bg-white rounded-xl shadow-lg border border-gray-200">
@@ -166,6 +187,28 @@ function SettingsApp() {
             </div>
             <ChevronRight style={{ width: 16, height: 16, color: '#9ca3af' }} />
           </button>
+
+          {/* Vision feature toggle */}
+          <div className="w-full flex items-center justify-between p-3 rounded-lg border border-gray-200">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 flex items-center justify-center rounded-md bg-green-100 text-green-600">
+                {visionEnabled ? <Eye style={{ width: 16, height: 16 }} /> : <EyeOff style={{ width: 16, height: 16 }} />}
+              </div>
+              <div className="text-left">
+                <div className="text-sm font-medium text-gray-900">转提示词功能</div>
+                <div className="text-xs text-gray-500">图片悬停按钮转提示词</div>
+              </div>
+            </div>
+            <button
+              onClick={() => handleVisionToggle(!visionEnabled)}
+              className={`w-12 h-6 rounded-full transition-colors ${visionEnabled ? 'bg-green-500' : 'bg-gray-300'}`}
+              aria-label={visionEnabled ? '关闭转提示词功能' : '开启转提示词功能'}
+            >
+              <div
+                className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${visionEnabled ? 'translate-x-6' : 'translate-x-0.5'}`}
+              />
+            </button>
+          </div>
 
           {/* Divider */}
           <div className="border-t border-gray-200 my-4"></div>

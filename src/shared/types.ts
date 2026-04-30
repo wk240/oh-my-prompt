@@ -36,6 +36,7 @@ export interface SyncSettings {
   hasUnsyncedChanges?: boolean // Flag to show backup reminder after reorder
   dismissedBackupWarning?: boolean // User dismissed the backup warning dialog
   resourceLanguage?: 'zh' | 'en' // Language preference for resource library, default 'zh'
+  visionEnabled?: boolean // Vision modal (image-to-prompt) feature enabled, default true
 }
 
 // New storage schema with nested structure
@@ -43,6 +44,7 @@ export interface StorageSchema {
   version: string // From manifest, dynamic read
   userData: UserData // User's prompts and categories
   settings: SyncSettings // Sync and display settings
+  temporaryPrompts?: Prompt[] // Temporary library prompts (independent storage)
   _migrationComplete?: boolean // Prevents re-migration
 }
 

@@ -51,7 +51,8 @@ export class StorageManager {
   getDefaultSettings(): SyncSettings {
     return {
       showBuiltin: true,
-      syncEnabled: false
+      syncEnabled: false,
+      visionEnabled: true
     }
   }
 
@@ -63,6 +64,7 @@ export class StorageManager {
       version: this.getCurrentVersion(),
       userData: this.getDefaultUserData(),
       settings: this.getDefaultSettings(),
+      temporaryPrompts: [],  // Temporary library prompts (empty by default)
       _migrationComplete: true
     }
   }

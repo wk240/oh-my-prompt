@@ -37,7 +37,9 @@ export enum MessageType {
 
   // Phase 12: Prompt insertion routing
   INSERT_PROMPT_TO_CS = 'INSERT_PROMPT_TO_CS',  // Forward INSERT_PROMPT to content script
-  SAVE_TEMPORARY_PROMPT = 'SAVE_TEMPORARY_PROMPT',  // Save prompt to '临时' category
+  SAVE_TEMPORARY_PROMPT = 'SAVE_TEMPORARY_PROMPT',  // Save prompt to temporary library
+  CLEAR_TEMPORARY_PROMPTS = 'CLEAR_TEMPORARY_PROMPTS',  // Clear all temporary prompts
+  TRANSFER_TEMPORARY_PROMPT = 'TRANSFER_TEMPORARY_PROMPT',  // Transfer temporary prompt to category
 
   // Vision Modal: In-page popup for image-to-prompt conversion
   OPEN_VISION_MODAL = 'OPEN_VISION_MODAL',      // SW → CS: Open modal in current page

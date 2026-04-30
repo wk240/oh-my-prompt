@@ -36,12 +36,16 @@ export class ImageHoverButtonManager {
   private singletonRoot: Root | null = null
   private currentImg: HTMLImageElement | null = null
 
+  // Vision feature enabled (cached from storage)
+  private visionEnabled: boolean = true
+
   // Timing control
   private hideTimeout: number | null = null
 
   // Bound handlers for cleanup
   private boundMouseOver: (e: MouseEvent) => void
   private boundMouseOut: (e: MouseEvent) => void
+  private boundStorageChange: (changes: { [key: string]: chrome.storage.StorageChange }) => void
 
   /**
    * Get singleton instance

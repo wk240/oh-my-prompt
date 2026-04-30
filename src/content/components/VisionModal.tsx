@@ -317,11 +317,11 @@ function VisionModal({ imageUrl, tabId, onClose }: VisionModalProps) {
     let feedback = ''
     const imageStatus = localImageSaved ? '图片已保存' : '图片URL已记录'
     if (insertSuccess) {
-      feedback = `已插入Lovart输入框，已保存到临时分类 (${imageStatus})`
+      feedback = `已插入Lovart输入框，已保存到临时库 (${imageStatus})`
     } else if (clipboardSuccess) {
-      feedback = `已复制到剪贴板，已保存到临时分类 (${imageStatus})`
+      feedback = `已复制到剪贴板，已保存到临时库 (${imageStatus})`
     } else {
-      feedback = `插入失败，请手动粘贴。已保存到临时分类 (${imageStatus})`
+      feedback = `插入失败，请手动粘贴。已保存到临时库 (${imageStatus})`
     }
 
     setFeedbackMessage(feedback)

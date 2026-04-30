@@ -236,20 +236,20 @@ function LoadingApp() {
           imageUrl: state.imageUrl
         } as SaveTemporaryPromptPayload
       })
-      console.log('[Oh My Prompt] Saved to 临时 category:', promptName)
+      console.log('[Oh My Prompt] Saved to temporary library:', promptName)
     } catch (saveError) {
-      console.error('[Oh My Prompt] Save to temporary failed:', saveError)
+      console.error('[Oh My Prompt] Save to temporary library failed:', saveError)
       // Continue even if save fails - user still got the prompt
     }
 
     // Step 3: Show feedback (D-09)
     let feedbackMessage = ''
     if (insertSuccess) {
-      feedbackMessage = '已插入Lovart输入框，已保存到临时分类'
+      feedbackMessage = '已插入Lovart输入框，已保存到临时库'
     } else if (clipboardSuccess) {
-      feedbackMessage = '已复制到剪贴板，已保存到临时分类'
+      feedbackMessage = '已复制到剪贴板，已保存到临时库'
     } else {
-      feedbackMessage = '插入失败，请手动粘贴。已保存到临时分类'
+      feedbackMessage = '插入失败，请手动粘贴。已保存到临时库'
     }
 
     setState({

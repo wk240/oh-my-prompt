@@ -7,6 +7,7 @@
 
 import { registerMigration } from './index'
 import { v1_0Migration } from './v1.0'
+import { v1_3Migration } from './v1.3'
 
 /**
  * Register all migration steps
@@ -14,6 +15,7 @@ import { v1_0Migration } from './v1.0'
  */
 export function registerAllMigrations(): void {
   registerMigration(v1_0Migration)
+  registerMigration(v1_3Migration)
 }
 
 // Auto-register when this module is imported

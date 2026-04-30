@@ -555,8 +555,10 @@ export default function SidePanelApp() {
   // Store state
   const prompts = usePromptStore((state) => state.prompts)
   const categories = usePromptStore((state) => state.categories)
+  const temporaryPrompts = usePromptStore((state) => state.temporaryPrompts)
   const isLoading = usePromptStore((state) => state.isLoading)
   const loadFromStorage = usePromptStore((state) => state.loadFromStorage)
+  const transferTemporaryPrompt = usePromptStore((state) => state.transferTemporaryPrompt)
 
   // Local state
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all')
@@ -945,16 +947,9 @@ export default function SidePanelApp() {
     }))
   }, [filteredPrompts, resourceLanguage])
 
-  // Temporary prompts filter (prompts in '临时' category)
-  const temporaryPrompts = useMemo(() => {
-    const tempCategory = categories.find(c => c.name === '临时')
-    if (!tempCategory) return []
-    return prompts.filter(p => p.categoryId === tempCategory.id)
-  }, [prompts, categories])
-
-  // Display temporary prompts with language transformation
+  // Temporary prompts from store (independent storage, not in category system)
   const displayTemporaryPrompts = useMemo(() => {
-    return temporaryPrompts.map(p => ({
+    return sortPromptsByOrder(temporaryPrompts).map(p => ({
       ...p,
       name: resourceLanguage === 'en' && p.nameEn ? p.nameEn : p.name,
       content: resourceLanguage === 'en' && p.contentEn ? p.contentEn : p.content,
@@ -1310,12 +1305,43 @@ export default function SidePanelApp() {
 
   const handleDeletePrompt = useCallback(() => {
     if (!editingStates.deletingPrompt) return
-    usePromptStore.getState().deletePrompt(editingStates.deletingPrompt.id)
+
+    // Check if deleting a temporary prompt
+    if (editingStates.deletingPrompt.categoryId === 'temporary') {
+      // Delete from temporary library
+      const updatedTemporaryPrompts = temporaryPrompts.filter(p => p.id !== editingStates.deletingPrompt!.id)
+      // Update store locally
+      usePromptStore.setState({ temporaryPrompts: updatedTemporaryPrompts })
+      // Persist via service worker
+      chrome.runtime.sendMessage({
+        type: MessageType.SET_STORAGE,
+        payload: {
+          version: chrome.runtime.getManifest().version,
+          userData: { prompts, categories },
+          settings: usePromptStore.getState().temporaryPrompts,
+          temporaryPrompts: updatedTemporaryPrompts
+        }
+      })
+    } else {
+      usePromptStore.getState().deletePrompt(editingStates.deletingPrompt.id)
+    }
+
     clearEditingItem('deletingPrompt')
     closeModal('isPromptDelete')
     setToastMessage('提示词已删除')
     setTimeout(hideToast, 2000)
-  }, [editingStates.deletingPrompt, clearEditingItem, closeModal, setToastMessage, hideToast])
+  }, [editingStates.deletingPrompt, temporaryPrompts, prompts, categories, clearEditingItem, closeModal, setToastMessage, hideToast])
+
+  // Handle transfer temporary prompt to category
+  const handleTransferPrompt = useCallback((categoryId: string) => {
+    if (!editingStates.prompt) return
+    transferTemporaryPrompt(editingStates.prompt.id, categoryId)
+    clearEditingItem('prompt')
+    closeModal('isPromptEdit')
+    const categoryName = categories.find(c => c.id === categoryId)?.name || '未知分类'
+    setToastMessage(`已转移到 ${categoryName}`)
+    setTimeout(hideToast, 2000)
+  }, [editingStates.prompt, transferTemporaryPrompt, categories, clearEditingItem, closeModal, setToastMessage, hideToast])
 
   // Language switch
   const handleLanguageSwitch = useCallback((lang: 'zh' | 'en') => {
@@ -1628,37 +1654,48 @@ export default function SidePanelApp() {
               <div className="empty-message">加载中...</div>
             </div>
           ) : isTemporaryLibrary ? (
-            // Temporary library view - list format
+            // Temporary library view - list format with clear button
             displayTemporaryPrompts.length === 0 ? (
               <div className="empty-state">
                 <div className="empty-message">暂无临时提示词</div>
               </div>
             ) : (
-              <DndContext collisionDetection={closestCenter} onDragEnd={handlePromptDragEnd}>
-                <SortableContext
-                  items={displayTemporaryPrompts.map(p => p.id)}
-                  strategy={verticalListSortingStrategy}
+              <>
+                <DndContext collisionDetection={closestCenter} onDragEnd={handlePromptDragEnd}>
+                  <SortableContext
+                    items={displayTemporaryPrompts.map(p => p.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {displayTemporaryPrompts.map(prompt => (
+                      <SortablePromptItem
+                        key={prompt.id}
+                        prompt={prompt}
+                        isSelected={selectedPromptId === prompt.id}
+                        onSelect={handleSelectPrompt}
+                        showDragHandle={displayTemporaryPrompts.length >= 2}
+                        onEdit={(p) => {
+                          setEditingItem('prompt', p)
+                          openModal('isPromptEdit')
+                        }}
+                        onDelete={(p) => {
+                          setEditingItem('deletingPrompt', p)
+                          openModal('isPromptDelete')
+                        }}
+                        canInject={inputStatus === 'available'}
+                      />
+                    ))}
+                  </SortableContext>
+                </DndContext>
+                {/* Clear all button in FAB position */}
+                <button
+                  className="fab-add-btn fab-clear-btn"
+                  onClick={() => openModal('isPromptDelete')}
+                  aria-label="清除临时库"
+                  title="清除临时库"
                 >
-                  {displayTemporaryPrompts.map(prompt => (
-                    <SortablePromptItem
-                      key={prompt.id}
-                      prompt={prompt}
-                      isSelected={selectedPromptId === prompt.id}
-                      onSelect={handleSelectPrompt}
-                      showDragHandle={displayTemporaryPrompts.length >= 2}
-                      onEdit={(p) => {
-                        setEditingItem('prompt', p)
-                        openModal('isPromptEdit')
-                      }}
-                      onDelete={(p) => {
-                        setEditingItem('deletingPrompt', p)
-                        openModal('isPromptDelete')
-                      }}
-                      canInject={inputStatus === 'available'}
-                    />
-                  ))}
-                </SortableContext>
-              </DndContext>
+                  <Trash2 style={{ width: 18, height: 18 }} />
+                </button>
+              </>
             )
           ) : isResourceLibrary ? (
             paginatedResourcePrompts.length === 0 ? (
@@ -1804,6 +1841,8 @@ export default function SidePanelApp() {
           mode="edit"
           prompt={editingStates.prompt ?? undefined}
           categories={sortableCategories}
+          isTemporary={editingStates.prompt?.categoryId === 'temporary'}
+          onTransfer={handleTransferPrompt}
           onConfirm={handleUpdatePrompt}
         />
         <DeleteConfirmModal

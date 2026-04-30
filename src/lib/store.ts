@@ -12,6 +12,7 @@ import { sortPromptsByOrder } from '../shared/utils'
 interface PromptStore {
   prompts: Prompt[]
   categories: Category[]
+  temporaryPrompts: Prompt[]  // Temporary library prompts (independent storage)
   selectedCategoryId: string | null
   isLoading: boolean
 
@@ -34,6 +35,10 @@ interface PromptStore {
   reorderCategories: (newOrder: string[]) => void
   reorderPrompts: (categoryId: string, newOrder: string[]) => void
   reorderAllPrompts: (newOrder: string[]) => void
+
+  // Temporary library
+  clearTemporaryPrompts: () => void
+  transferTemporaryPrompt: (promptId: string, categoryId: string) => void
 
   // Computed getters
   getPromptsByCategory: (categoryId: string) => Prompt[]
@@ -192,10 +197,11 @@ function generateId(): string {
 /**
  * Get default initial state
  */
-function getDefaultState(): { prompts: Prompt[]; categories: Category[]; selectedCategoryId: string | null } {
+function getDefaultState(): { prompts: Prompt[]; categories: Category[]; temporaryPrompts: Prompt[]; selectedCategoryId: string | null } {
   return {
     prompts: [],
     categories: [],
+    temporaryPrompts: [],
     selectedCategoryId: 'all'
   }
 }
@@ -235,6 +241,7 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
   // Initial state
   prompts: [],
   categories: [],
+  temporaryPrompts: [],
   selectedCategoryId: 'all',
   isLoading: true,
 
@@ -255,6 +262,7 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
         set({
           prompts: migratedPrompts,
           categories: data.userData.categories,
+          temporaryPrompts: data.temporaryPrompts || [],
           selectedCategoryId: 'all',
           isLoading: false
         })
@@ -271,6 +279,7 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
         set({
           prompts: defaultState.prompts,
           categories: defaultState.categories,
+          temporaryPrompts: defaultState.temporaryPrompts,
           selectedCategoryId: 'all',
           isLoading: false
         })
@@ -282,6 +291,7 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
       set({
         prompts: defaultState.prompts,
         categories: defaultState.categories,
+        temporaryPrompts: defaultState.temporaryPrompts,
         selectedCategoryId: 'all',
         isLoading: false
       })
@@ -466,6 +476,45 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
     }
     const categoryPrompts = prompts.filter((prompt) => prompt.categoryId === selectedCategoryId)
     return sortPromptsByOrder(categoryPrompts)
+  },
+
+  // Temporary library methods
+  clearTemporaryPrompts: () => {
+    set({ temporaryPrompts: [] })
+    // Send message to service worker to clear
+    chrome.runtime.sendMessage({ type: MessageType.CLEAR_TEMPORARY_PROMPTS })
+  },
+
+  transferTemporaryPrompt: (promptId: string, categoryId: string) => {
+    const { temporaryPrompts, prompts } = get()
+    // Find the prompt in temporary library
+    const promptIndex = temporaryPrompts.findIndex(p => p.id === promptId)
+    if (promptIndex === -1) return
+
+    const promptToTransfer = temporaryPrompts[promptIndex]
+
+    // Calculate order in target category
+    const categoryPrompts = prompts.filter(p => p.categoryId === categoryId)
+    const maxOrder = categoryPrompts.length > 0 ? Math.max(...categoryPrompts.map(p => p.order)) : -1
+
+    // Update prompt for transfer
+    promptToTransfer.categoryId = categoryId
+    promptToTransfer.order = maxOrder + 1
+
+    // Remove from temporary and add to prompts locally
+    const updatedTemporaryPrompts = temporaryPrompts.filter(p => p.id !== promptId)
+    const updatedPrompts = [...prompts, promptToTransfer]
+
+    set({
+      prompts: updatedPrompts,
+      temporaryPrompts: updatedTemporaryPrompts
+    })
+
+    // Send message to service worker to persist the transfer
+    chrome.runtime.sendMessage({
+      type: MessageType.TRANSFER_TEMPORARY_PROMPT,
+      payload: { promptId, targetCategoryId: categoryId }
+    })
   },
 
   // Flush pending debounced save (for beforeunload)

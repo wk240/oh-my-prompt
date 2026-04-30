@@ -35,6 +35,8 @@ interface PromptEditModalProps {
   prompt?: Prompt
   categories: Category[]
   defaultCategoryId?: string
+  isTemporary?: boolean  // Whether editing a temporary library prompt
+  onTransfer?: (categoryId: string) => void  // Transfer callback for temporary prompts
   onConfirm: (data: {
     name: string
     nameEn?: string
@@ -75,6 +77,8 @@ export function PromptEditModal({
   prompt,
   categories,
   defaultCategoryId,
+  isTemporary,
+  onTransfer,
   onConfirm,
 }: PromptEditModalProps) {
   const [name, setName] = useState('')
@@ -315,6 +319,13 @@ export function PromptEditModal({
     const trimmedContent = content.trim()
     if (!trimmedName || !trimmedContent || !categoryId) return
 
+    // If editing temporary prompt, use transfer callback
+    if (isTemporary && onTransfer) {
+      onTransfer(categoryId)
+      onClose()
+      return
+    }
+
     const trimmedNameEn = nameEn.trim()
     const trimmedContentEn = contentEn.trim()
     const trimmedDescriptionEn = descriptionEn.trim()
@@ -420,7 +431,7 @@ export function PromptEditModal({
               opacity: isValid ? 1 : 0.5,
             }}
           >
-            {mode === 'add' ? '添加' : '保存'}
+            {isTemporary ? '转移到分类' : (mode === 'add' ? '添加' : '保存')}
           </button>
         </>
       }

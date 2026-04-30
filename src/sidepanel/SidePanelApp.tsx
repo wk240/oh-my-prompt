@@ -1230,11 +1230,24 @@ export default function SidePanelApp() {
     setTimeout(hideToast, 2000)
   }, [editingStates.deletingCategory, selectedCategoryId, clearEditingItem, closeModal, setToastMessage, hideToast])
 
-  const handleAddPrompt = useCallback((data: { name: string; description?: string; content: string; categoryId: string; localImage?: string; remoteImageUrl?: string }) => {
+  const handleAddPrompt = useCallback((data: {
+    name: string
+    nameEn?: string
+    description?: string
+    descriptionEn?: string
+    content: string
+    contentEn?: string
+    categoryId: string
+    localImage?: string
+    remoteImageUrl?: string
+  }) => {
     usePromptStore.getState().addPrompt({
       name: data.name,
+      nameEn: data.nameEn,
       description: data.description,
+      descriptionEn: data.descriptionEn,
       content: data.content,
+      contentEn: data.contentEn,
       categoryId: data.categoryId,
       localImage: data.localImage,
       remoteImageUrl: data.remoteImageUrl,
@@ -1245,12 +1258,25 @@ export default function SidePanelApp() {
     setTimeout(hideToast, 2000)
   }, [prompts, closeModal, setToastMessage, hideToast])
 
-  const handleUpdatePrompt = useCallback((data: { name: string; description?: string; content: string; categoryId: string; localImage?: string; remoteImageUrl?: string }) => {
+  const handleUpdatePrompt = useCallback((data: {
+    name: string
+    nameEn?: string
+    description?: string
+    descriptionEn?: string
+    content: string
+    contentEn?: string
+    categoryId: string
+    localImage?: string
+    remoteImageUrl?: string
+  }) => {
     if (!editingStates.prompt) return
     usePromptStore.getState().updatePrompt(editingStates.prompt.id, {
       name: data.name,
+      nameEn: data.nameEn,
       description: data.description,
+      descriptionEn: data.descriptionEn,
       content: data.content,
+      contentEn: data.contentEn,
       categoryId: data.categoryId,
       localImage: data.localImage,
       remoteImageUrl: data.remoteImageUrl,

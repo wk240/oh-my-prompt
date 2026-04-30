@@ -37,8 +37,11 @@ interface PromptEditModalProps {
   defaultCategoryId?: string
   onConfirm: (data: {
     name: string
+    nameEn?: string
     description?: string
+    descriptionEn?: string
     content: string
+    contentEn?: string
     categoryId: string
     localImage?: string
     remoteImageUrl?: string
@@ -78,6 +81,12 @@ export function PromptEditModal({
   const [description, setDescription] = useState('')
   const [content, setContent] = useState('')
   const [categoryId, setCategoryId] = useState('')
+
+  // Bilingual editing: tab and English field states
+  const [activeTab, setActiveTab] = useState<'zh' | 'en'>('zh')
+  const [nameEn, setNameEn] = useState('')
+  const [descriptionEn, setDescriptionEn] = useState('')
+  const [contentEn, setContentEn] = useState('')
 
   // Image state
   const [localImage, setLocalImage] = useState<string | undefined>(undefined)
@@ -119,6 +128,10 @@ export function PromptEditModal({
         setDescription(prompt.description || '')
         setContent(prompt.content)
         setCategoryId(prompt.categoryId)
+        // Initialize English fields from existing prompt
+        setNameEn(prompt.nameEn || '')
+        setDescriptionEn(prompt.descriptionEn || '')
+        setContentEn(prompt.contentEn || '')
         // Reset image state from prompt
         setLocalImage(prompt.localImage)
         setRemoteImageUrl(prompt.remoteImageUrl)
@@ -143,6 +156,10 @@ export function PromptEditModal({
         setDescription('')
         setContent('')
         setCategoryId(defaultCategoryId || categories[0]?.id || '')
+        // Reset English fields for add mode
+        setNameEn('')
+        setDescriptionEn('')
+        setContentEn('')
         // Reset image state for add mode
         setLocalImage(undefined)
         setRemoteImageUrl(undefined)
@@ -151,6 +168,8 @@ export function PromptEditModal({
       setImageUrlInput('')
       setImageError(undefined)
       setShowFolderWarning(false)
+      // Reset tab to Chinese when modal opens
+      setActiveTab('zh')
 
       return () => {
         cancelled = true
@@ -296,10 +315,17 @@ export function PromptEditModal({
     const trimmedContent = content.trim()
     if (!trimmedName || !trimmedContent || !categoryId) return
 
+    const trimmedNameEn = nameEn.trim()
+    const trimmedContentEn = contentEn.trim()
+    const trimmedDescriptionEn = descriptionEn.trim()
+
     onConfirm({
       name: trimmedName,
+      nameEn: trimmedNameEn || undefined,
       description: description.trim() || undefined,
+      descriptionEn: trimmedDescriptionEn || undefined,
       content: trimmedContent,
+      contentEn: trimmedContentEn || undefined,
       categoryId,
       localImage,
       remoteImageUrl,
@@ -400,6 +426,40 @@ export function PromptEditModal({
       }
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {/* Tab buttons */}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+          <button
+            onClick={() => setActiveTab('zh')}
+            style={{
+              padding: '6px 12px',
+              background: activeTab === 'zh' ? '#171717' : '#f8f8f8',
+              border: '1px solid #E5E5E5',
+              borderRadius: '4px',
+              fontSize: '12px',
+              fontWeight: 500,
+              color: activeTab === 'zh' ? '#fff' : '#171717',
+              cursor: 'pointer',
+            }}
+          >
+            中
+          </button>
+          <button
+            onClick={() => setActiveTab('en')}
+            style={{
+              padding: '6px 12px',
+              background: activeTab === 'en' ? '#171717' : '#f8f8f8',
+              border: '1px solid #E5E5E5',
+              borderRadius: '4px',
+              fontSize: '12px',
+              fontWeight: 500,
+              color: activeTab === 'en' ? '#fff' : '#171717',
+              cursor: 'pointer',
+            }}
+          >
+            EN
+          </button>
+        </div>
+
         {/* Name */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <label
@@ -411,10 +471,16 @@ export function PromptEditModal({
             名称
           </label>
           <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="提示词名称"
-            autoFocus
+            value={activeTab === 'zh' ? name : nameEn}
+            onChange={(e) => {
+              if (activeTab === 'zh') {
+                setName(e.target.value)
+              } else {
+                setNameEn(e.target.value)
+              }
+            }}
+            placeholder={activeTab === 'zh' ? '提示词名称' : 'Prompt name (English)'}
+            autoFocus={activeTab === 'zh'}
             style={{
               width: '100%',
               padding: '10px 12px',
@@ -438,9 +504,15 @@ export function PromptEditModal({
             描述（选填）
           </label>
           <input
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="简短描述，用于列表展示"
+            value={activeTab === 'zh' ? description : descriptionEn}
+            onChange={(e) => {
+              if (activeTab === 'zh') {
+                setDescription(e.target.value)
+              } else {
+                setDescriptionEn(e.target.value)
+              }
+            }}
+            placeholder={activeTab === 'zh' ? '简短描述，用于列表展示' : 'Short description for display'}
             style={{
               width: '100%',
               padding: '10px 12px',
@@ -464,9 +536,15 @@ export function PromptEditModal({
             内容
           </label>
           <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="提示词内容"
+            value={activeTab === 'zh' ? content : contentEn}
+            onChange={(e) => {
+              if (activeTab === 'zh') {
+                setContent(e.target.value)
+              } else {
+                setContentEn(e.target.value)
+              }
+            }}
+            placeholder={activeTab === 'zh' ? '提示词内容' : 'Prompt content (English)'}
             rows={8}
             style={{
               width: '100%',

@@ -1099,9 +1099,12 @@ export default function SidePanelApp() {
 
     const localPrompt: Omit<Prompt, 'id'> = {
       name: resourcePrompt.name,
+      nameEn: resourcePrompt.nameEn,
       content: resourcePrompt.content,
+      contentEn: resourcePrompt.contentEn,
       categoryId: targetCategoryId,
       description: resourcePrompt.description,
+      descriptionEn: resourcePrompt.descriptionEn,
       order: 0,
       remoteImageUrl: resourcePrompt.previewImage,
     }

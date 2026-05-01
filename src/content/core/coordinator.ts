@@ -110,6 +110,12 @@ class Coordinator {
     this.hoverButtonManager.start()
     console.log(LOG_PREFIX, 'ImageHoverButtonManager started')
 
+    // Create Injector BEFORE Detector if platform matches
+    // This ensures Injector is ready when Detector immediately finds input
+    if (this.platform) {
+      this.injector = new Injector()
+    }
+
     // Create universal detector for ALL pages (no platform restriction)
     this.detector = new Detector(
       UNIVERSAL_INPUT_CONFIG,
@@ -124,9 +130,6 @@ class Coordinator {
       console.log(LOG_PREFIX, 'No platform matched, but detector is active for input detection')
       return
     }
-
-    // Create Injector instance (UI injection happens in handleUniversalInputDetected)
-    this.injector = new Injector()
 
     console.log(LOG_PREFIX, 'Coordinator initialized for platform:', this.platform.name)
   }

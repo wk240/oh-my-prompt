@@ -16,6 +16,12 @@ export class Injector {
   private hostElement: HTMLElement | null = null
   private shadowRoot: ShadowRoot | null = null
   private reactRoot: Root | null = null
+  private anchorObserver: MutationObserver | null = null
+  private pendingInjection: {
+    inputElement: HTMLElement
+    config: UIInjectionConfig
+    inserter: InsertStrategy
+  } | null = null
 
   isInjected(): boolean {
     return this.hostElement !== null && document.contains(this.hostElement)
@@ -27,13 +33,72 @@ export class Injector {
     inserter: InsertStrategy
   ): void {
     this.remove()
+    this.stopAnchorObserver()
 
     const anchor = document.querySelector<HTMLElement>(config.anchorSelector)
     if (!anchor) {
-      console.warn(LOG_PREFIX, 'Anchor not found:', config.anchorSelector)
+      console.warn(LOG_PREFIX, 'Anchor not found:', config.anchorSelector, '- waiting for anchor to appear...')
+      this.waitForAnchor(inputElement, config, inserter)
       return
     }
 
+    this.performInjection(inputElement, config, inserter, anchor)
+  }
+
+  /**
+   * Wait for anchor element to appear using MutationObserver
+   */
+  private waitForAnchor(
+    inputElement: HTMLElement,
+    config: UIInjectionConfig,
+    inserter: InsertStrategy
+  ): void {
+    this.pendingInjection = { inputElement, config, inserter }
+
+    this.anchorObserver = new MutationObserver(() => {
+      const anchor = document.querySelector<HTMLElement>(config.anchorSelector)
+      if (anchor && this.pendingInjection) {
+        console.log(LOG_PREFIX, 'Anchor appeared:', config.anchorSelector)
+        this.stopAnchorObserver()
+        this.performInjection(
+          this.pendingInjection.inputElement,
+          this.pendingInjection.config,
+          this.pendingInjection.inserter,
+          anchor
+        )
+        this.pendingInjection = null
+      }
+    })
+
+    this.anchorObserver.observe(document.body, {
+      childList: true,
+      subtree: true,
+    })
+
+    // Timeout after 10 seconds
+    setTimeout(() => {
+      if (this.pendingInjection) {
+        console.warn(LOG_PREFIX, 'Anchor wait timeout for:', config.anchorSelector)
+        this.stopAnchorObserver()
+        this.pendingInjection = null
+      }
+    }, 10000)
+  }
+
+  private stopAnchorObserver(): void {
+    this.anchorObserver?.disconnect()
+    this.anchorObserver = null
+  }
+
+  /**
+   * Perform the actual UI injection
+   */
+  private performInjection(
+    inputElement: HTMLElement,
+    config: UIInjectionConfig,
+    inserter: InsertStrategy,
+    anchor: HTMLElement
+  ): void {
     this.hostElement = document.createElement('span')
     this.hostElement.id = HOST_ID
     this.hostElement.setAttribute('data-testid', 'oh-my-prompt-trigger')
@@ -79,6 +144,8 @@ export class Injector {
   }
 
   remove(): void {
+    this.stopAnchorObserver()
+    this.pendingInjection = null
     if (this.reactRoot) {
       this.reactRoot.unmount()
       this.reactRoot = null

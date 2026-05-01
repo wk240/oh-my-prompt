@@ -1,13 +1,14 @@
 import { MessageType, MessageResponse } from '../shared/messages'
 import type { StorageSchema, SyncSettings, UserData, VisionApiConfig, InsertPromptPayload, InsertResultPayload, SaveTemporaryPromptPayload, Prompt } from '../shared/types'
 import { StorageManager } from '../lib/storage'
-import { saveFolderHandle, getFolderHandle, checkFolderPermission, requestFolderPermission } from '../lib/sync/indexeddb'
+import { saveFolderHandle, getFolderHandle } from '../lib/sync/indexeddb'
 import { getSyncStatus, triggerSync, restorePermission, initialSync } from '../lib/sync/sync-manager'
 import { syncApiConfigToFolder } from '../lib/sync/api-config-sync'
 import { checkForUpdate, getUpdateStatus, clearUpdateStatus, type UpdateStatus } from '../lib/version-checker'
 import { executeVisionApiCall, classifyApiError, getLanguagePreference } from '../lib/vision-api'
 import { asyncCompressImageFromUrl } from '../lib/image-utils'
-import { IMAGE_DIR_NAME, ALLOWED_IMAGE_EXTENSIONS, CAPTURED_IMAGE_STORAGE_KEY, VISION_API_CONFIG_STORAGE_KEY } from '../shared/constants'
+import { CAPTURED_IMAGE_STORAGE_KEY, VISION_API_CONFIG_STORAGE_KEY } from '../shared/constants'
+import { sendToOffscreen } from '../lib/offscreen-manager'
 import '../lib/migrations/register' // Register all migrations
 
 console.log('[Oh My Prompt] Service Worker started')
@@ -227,60 +228,14 @@ chrome.runtime.onMessage.addListener(
         return true // Required for async response
 
       case MessageType.SAVE_IMAGE:
-        // Save image to folder (content script cannot access FileSystemDirectoryHandle cross-origin)
-        // Note: ArrayBuffer cannot be passed cross-origin, so we use plain number array
+        // Save image to folder via offscreen document (better permission handling)
         const saveImagePayload = message.payload as { promptId: string; data: number[]; originalFilename?: string }
         if (!saveImagePayload || !saveImagePayload.promptId || !saveImagePayload.data) {
           sendResponse({ success: false, error: 'Invalid payload' })
           return true
         }
         console.log('[Oh My Prompt] SAVE_IMAGE: promptId:', saveImagePayload.promptId, 'data array length:', saveImagePayload.data.length)
-        getFolderHandle()
-          .then(async (handle) => {
-            if (!handle) {
-              return { success: false, error: 'FOLDER_NOT_CONFIGURED' }
-            }
-            // Check permission
-            const permission = await checkFolderPermission(handle, 'readwrite')
-            if (permission === 'denied') {
-              return { success: false, error: 'PERMISSION_DENIED' }
-            }
-            if (permission === 'prompt') {
-              const restored = await requestFolderPermission(handle, 'readwrite')
-              if (restored !== 'granted') {
-                return { success: false, error: 'PERMISSION_DENIED' }
-              }
-            }
-            // Get extension
-            const ext = saveImagePayload.originalFilename?.split('.').pop()?.toLowerCase() || 'jpg'
-            const finalExt = ALLOWED_IMAGE_EXTENSIONS.includes(ext) ? (ext === 'jpeg' ? 'jpg' : ext) : 'jpg'
-            // Create images directory and save file
-            try {
-              const imagesDir = await handle.getDirectoryHandle(IMAGE_DIR_NAME, { create: true })
-              const filename = `${saveImagePayload.promptId}.${finalExt}`
-              const fileHandle = await imagesDir.getFileHandle(filename, { create: true })
-              // Convert plain array to Uint8Array and create Blob
-              const uint8Array = new Uint8Array(saveImagePayload.data)
-              const mimeType = finalExt === 'png' ? 'image/png'
-                : finalExt === 'webp' ? 'image/webp'
-                : finalExt === 'gif' ? 'image/gif'
-                : 'image/jpeg'
-              const imageBlob = new Blob([uint8Array], { type: mimeType })
-              console.log('[Oh My Prompt] Writing blob, size:', imageBlob.size, 'type:', imageBlob.type, 'uint8Array length:', uint8Array.length)
-              const writable = await fileHandle.createWritable()
-              await writable.write(imageBlob)
-              await writable.close()
-              const relativePath = `${IMAGE_DIR_NAME}/${filename}`
-              console.log('[Oh My Prompt] Image saved via service worker:', relativePath)
-              return { success: true, data: { relativePath } }
-            } catch (dirError) {
-              console.error('[Oh My Prompt] Save image failed:', dirError)
-              if (dirError instanceof Error && dirError.name === 'NotFoundError') {
-                return { success: false, error: 'FOLDER_NOT_FOUND' }
-              }
-              return { success: false, error: 'WRITE_FAILED' }
-            }
-          })
+        sendToOffscreen(MessageType.OFFSCREEN_SAVE_IMAGE, saveImagePayload)
           .then(result => sendResponse(result as MessageResponse))
           .catch(error => {
             console.error('[Oh My Prompt] SAVE_IMAGE error:', error)
@@ -289,34 +244,13 @@ chrome.runtime.onMessage.addListener(
         return true // Required for async response
 
       case MessageType.READ_IMAGE:
-        // Read image from folder and return as data array (content script cannot access FileSystemDirectoryHandle cross-origin)
+        // Read image from folder via offscreen document
         const readImagePayload = message.payload as { relativePath: string }
         if (!readImagePayload || !readImagePayload.relativePath) {
           sendResponse({ success: false, error: 'Invalid payload' })
           return true
         }
-        getFolderHandle()
-          .then(async (handle) => {
-            if (!handle) {
-              return { success: false, error: 'FOLDER_NOT_CONFIGURED' }
-            }
-            try {
-              const imagesDir = await handle.getDirectoryHandle(IMAGE_DIR_NAME)
-              const filename = readImagePayload.relativePath.split('/').pop() || readImagePayload.relativePath
-              const fileHandle = await imagesDir.getFileHandle(filename)
-              const file = await fileHandle.getFile()
-              // Convert blob to plain array for cross-origin messaging
-              const arrayBuffer = await file.arrayBuffer()
-              const uint8Array = new Uint8Array(arrayBuffer)
-              const dataArray = Array.from(uint8Array)
-              const mimeType = file.type || 'image/jpeg'
-              console.log('[Oh My Prompt] Image read via service worker:', filename, 'size:', file.size, 'type:', mimeType)
-              return { success: true, data: { dataArray, mimeType } }
-            } catch (error) {
-              console.warn('[Oh My Prompt] Read image failed:', readImagePayload.relativePath, error)
-              return { success: false, error: 'FILE_NOT_FOUND' }
-            }
-          })
+        sendToOffscreen(MessageType.OFFSCREEN_READ_IMAGE, readImagePayload)
           .then(result => sendResponse(result as MessageResponse))
           .catch(error => {
             console.error('[Oh My Prompt] READ_IMAGE error:', error)
@@ -325,34 +259,13 @@ chrome.runtime.onMessage.addListener(
         return true // Required for async response
 
       case MessageType.DELETE_IMAGE:
-        // Delete image from folder (content script cannot access FileSystemDirectoryHandle cross-origin)
+        // Delete image from folder via offscreen document
         const deleteImagePayload = message.payload as { promptId: string }
         if (!deleteImagePayload || !deleteImagePayload.promptId) {
           sendResponse({ success: false, error: 'Invalid payload' })
           return true
         }
-        getFolderHandle()
-          .then(async (handle) => {
-            if (!handle) {
-              return { success: false, error: 'FOLDER_NOT_CONFIGURED' }
-            }
-            try {
-              const imagesDir = await handle.getDirectoryHandle(IMAGE_DIR_NAME)
-              for (const ext of ALLOWED_IMAGE_EXTENSIONS) {
-                const filename = `${deleteImagePayload.promptId}.${ext}`
-                try {
-                  await imagesDir.removeEntry(filename)
-                  console.log('[Oh My Prompt] Image deleted via service worker:', filename)
-                } catch {
-                  // File doesn't exist with this extension, try next
-                }
-              }
-              return { success: true }
-            } catch {
-              // images directory doesn't exist - nothing to delete
-              return { success: true }
-            }
-          })
+        sendToOffscreen(MessageType.OFFSCREEN_DELETE_IMAGE, deleteImagePayload)
           .then(result => sendResponse(result as MessageResponse))
           .catch(error => {
             console.error('[Oh My Prompt] DELETE_IMAGE error:', error)
@@ -679,44 +592,32 @@ chrome.runtime.onMessage.addListener(
             let localImageSaved = false
             if (savePayload.imageUrl) {
               try {
-                const folderHandle = await getFolderHandle()
-                if (folderHandle) {
-                  // Check permission
-                  const permission = await checkFolderPermission(folderHandle, 'readwrite')
-                  if (permission === 'granted' || permission === 'prompt') {
-                    // Request permission if needed
-                    const actualPermission = permission === 'prompt'
-                      ? await requestFolderPermission(folderHandle, 'readwrite')
-                      : permission
+                // Check if folder is configured via offscreen document
+                const permResult = await sendToOffscreen<{ hasFolder: boolean; permission?: 'granted' | 'prompt' | 'denied' }>(MessageType.OFFSCREEN_CHECK_PERMISSION)
+                if (permResult.success && permResult.data?.permission === 'granted') {
+                  // Download image
+                  console.log('[Oh My Prompt] Downloading image for local save:', savePayload.imageUrl)
+                  const imageResponse = await fetch(savePayload.imageUrl)
+                  if (imageResponse.ok) {
+                    const imageBlob = await imageResponse.blob()
+                    const arrayBuffer = await imageBlob.arrayBuffer()
+                    const uint8Array = new Uint8Array(arrayBuffer)
+                    const dataArray = Array.from(uint8Array)
 
-                    if (actualPermission === 'granted') {
-                      // Download image
-                      console.log('[Oh My Prompt] Downloading image for local save:', savePayload.imageUrl)
-                      const imageResponse = await fetch(savePayload.imageUrl)
-                      if (imageResponse.ok) {
-                        const imageBlob = await imageResponse.blob()
+                    // Determine extension
+                    const ext = savePayload.imageUrl.split('.').pop()?.toLowerCase() || 'jpg'
 
-                        // Determine extension
-                        const ext = savePayload.imageUrl.split('.').pop()?.toLowerCase() || 'jpg'
-                        const finalExt = ALLOWED_IMAGE_EXTENSIONS.includes(ext)
-                          ? (ext === 'jpeg' ? 'jpg' : ext)
-                          : 'jpg'
+                    // Save via offscreen document
+                    const saveResult = await sendToOffscreen<{ relativePath: string }>(MessageType.OFFSCREEN_SAVE_IMAGE, {
+                      promptId: newPrompt.id,
+                      data: dataArray,
+                      originalFilename: `image.${ext}`
+                    })
 
-                        // Save to images directory
-                        const imagesDir = await folderHandle.getDirectoryHandle(IMAGE_DIR_NAME, { create: true })
-                        const filename = `${newPrompt.id}.${finalExt}`
-                        const fileHandle = await imagesDir.getFileHandle(filename, { create: true })
-
-                        // Write image data
-                        const writable = await fileHandle.createWritable()
-                        await writable.write(imageBlob)
-                        await writable.close()
-
-                        // Update prompt with local image path
-                        newPrompt.localImage = `${IMAGE_DIR_NAME}/${filename}`
-                        localImageSaved = true
-                        console.log('[Oh My Prompt] Image saved locally:', newPrompt.localImage)
-                      }
+                    if (saveResult.success && saveResult.data?.relativePath) {
+                      newPrompt.localImage = saveResult.data.relativePath
+                      localImageSaved = true
+                      console.log('[Oh My Prompt] Image saved locally:', newPrompt.localImage)
                     }
                   }
                 }
@@ -855,6 +756,11 @@ chrome.runtime.onMessage.addListener(
         return true // Required for async response
 
       default:
+        // Skip OFFSCREEN_* messages - they are handled by offscreen document
+        if (message.type.startsWith('OFFSCREEN_')) {
+          // Don't respond, let offscreen document handle it
+          return false
+        }
         sendResponse({ success: false, error: `Unknown message type: ${message.type}` })
     }
 

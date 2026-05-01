@@ -17,7 +17,8 @@ export interface BackupVersion {
  */
 export async function backupToFolder(
   userData: UserData,
-  handle: FileSystemDirectoryHandle
+  handle: FileSystemDirectoryHandle,
+  version?: string
 ): Promise<void> {
   try {
     const fileHandle = await handle.getFileHandle(BACKUP_FILE_NAME, { create: true })
@@ -25,8 +26,11 @@ export async function backupToFolder(
 
     const contentHash = await computeUserDataHash(userData)
 
+    // Use provided version or try to get from manifest (may not work in offscreen)
+    const manifestVersion = version || (typeof chrome !== 'undefined' && chrome.runtime?.getManifest?.()?.version) || '1.0.0'
+
     const backupFile = {
-      version: chrome.runtime.getManifest().version,
+      version: manifestVersion,
       userData: {
         prompts: userData.prompts,
         categories: userData.categories
@@ -56,7 +60,8 @@ export interface SyncResult {
  */
 export async function syncToLocalFolder(
   userData: UserData,
-  handle: FileSystemDirectoryHandle
+  handle: FileSystemDirectoryHandle,
+  version?: string
 ): Promise<SyncResult> {
   try {
     const contentHash = await computeUserDataHash(userData)
@@ -64,8 +69,11 @@ export async function syncToLocalFolder(
     const fileHandle = await handle.getFileHandle(BACKUP_FILE_NAME, { create: true })
     const writable = await fileHandle.createWritable()
 
+    // Use provided version or try to get from manifest (may not work in offscreen)
+    const manifestVersion = version || (typeof chrome !== 'undefined' && chrome.runtime?.getManifest?.()?.version) || '1.0.0'
+
     const backupFile = {
-      version: chrome.runtime.getManifest().version,
+      version: manifestVersion,
       userData: {
         prompts: userData.prompts,
         categories: userData.categories

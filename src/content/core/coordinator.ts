@@ -18,6 +18,7 @@ import { claudeAiConfig } from '../platforms/claude-ai/config'
 import { geminiConfig } from '../platforms/gemini/config'
 import { liblibConfig } from '../platforms/liblib/config'
 import { jimengConfig } from '../platforms/jimeng/config'
+import { TaskQueueManager } from './task-queue-manager'
 
 // Register platform configurations
 registerPlatform(lovartConfig)
@@ -62,6 +63,13 @@ class Coordinator {
     this.hoverButtonManager = ImageHoverButtonManager.getInstance()
     this.hoverButtonManager.start()
     console.log(LOG_PREFIX, 'ImageHoverButtonManager started')
+
+    // Initialize TaskQueueManager (load API config)
+    TaskQueueManager.getInstance()
+    console.log(LOG_PREFIX, 'TaskQueueManager initialized')
+
+    // Note: BatchPanelManager is created on-demand when first task is added
+    // No need to pre-create it here
 
     // Exit early if no platform matched - no UI injection needed
     if (!this.platform) {

@@ -110,6 +110,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       return true
 
     default:
+      // Skip non-OFFSCREEN_* messages - they are handled by service worker
+      if (!message.type.startsWith('OFFSCREEN_')) {
+        // Don't respond, let service worker handle it
+        return false
+      }
       sendResponse({ success: false, error: `Unknown message type: ${message.type}` })
   }
 

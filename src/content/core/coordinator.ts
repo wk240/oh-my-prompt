@@ -37,6 +37,7 @@ class Coordinator {
   private injector: Injector | null = null
   private hoverButtonManager: ImageHoverButtonManager | null = null
   private platform: ReturnType<typeof matchPlatform>
+  private sidePanelPort: chrome.runtime.Port | null = null
 
   constructor() {
     this.platform = matchPlatform(window.location.href)
@@ -51,6 +52,9 @@ class Coordinator {
 
     // Setup message listener FIRST - always needed for vision modal on any page
     this.setupMessageListener()
+
+    // Setup Port connection listener for SidePanel
+    this.setupPortListener()
 
     // Ping service worker to verify connection
     this.pingServiceWorker()
@@ -81,10 +85,69 @@ class Coordinator {
       this.handleInputDetected.bind(this, inserter)
     )
 
+    // Set up status change callback for Port connection
+    this.detector.setStatusChangedCallback(this.handleInputStatusChanged.bind(this))
+
     // Start detector
     this.detector.start()
 
     console.log(LOG_PREFIX, 'Coordinator initialized for platform:', this.platform.name)
+  }
+
+  /**
+   * Setup Port connection listener for SidePanel real-time communication
+   */
+  private setupPortListener(): void {
+    chrome.runtime.onConnect.addListener((port) => {
+      if (port.name === 'sidepanel-connection') {
+        console.log(LOG_PREFIX, 'SidePanel Port connected')
+        this.sidePanelPort = port
+
+        // Handle messages from SidePanel
+        port.onMessage.addListener((message) => {
+          if (message.type === MessageType.CHECK_INPUT_PORT) {
+            // Respond with current input status
+            const hasInput = this.detector?.getInputElement() !== null
+            port.postMessage({
+              type: MessageType.INPUT_STATUS_CHANGED,
+              hasInput
+            })
+          }
+        })
+
+        // Handle disconnection (tab closed, refreshed, or SidePanel closed)
+        port.onDisconnect.addListener(() => {
+          console.log(LOG_PREFIX, 'SidePanel Port disconnected')
+          this.sidePanelPort = null
+        })
+
+        // Send initial status immediately
+        const hasInput = this.detector?.getInputElement() !== null
+        port.postMessage({
+          type: MessageType.INPUT_STATUS_CHANGED,
+          hasInput
+        })
+      }
+    })
+  }
+
+  /**
+   * Handle input status changes and notify SidePanel via Port
+   */
+  private handleInputStatusChanged(hasInput: boolean): void {
+    console.log(LOG_PREFIX, 'Input status changed:', hasInput)
+    if (this.sidePanelPort) {
+      try {
+        this.sidePanelPort.postMessage({
+          type: MessageType.INPUT_STATUS_CHANGED,
+          hasInput
+        })
+      } catch (error) {
+        // Port may be disconnected, ignore error
+        console.warn(LOG_PREFIX, 'Failed to send status via Port:', error)
+        this.sidePanelPort = null
+      }
+    }
   }
 
   /**
@@ -154,6 +217,13 @@ class Coordinator {
         return true
       }
 
+      // Handle PING from sidepanel (connection check)
+      if (message.type === MessageType.PING) {
+        console.log(LOG_PREFIX, 'PING received, responding...')
+        sendResponse({ success: true })
+        return true
+      }
+
       // Handle prompt insertion from service worker
       if (message.type === MessageType.INSERT_PROMPT_TO_CS) {
         console.log(LOG_PREFIX, 'Received INSERT_PROMPT_TO_CS')
@@ -219,7 +289,8 @@ class Coordinator {
         return true // Required for async sendResponse
       }
 
-      return true // Required for async sendResponse
+      // Unhandled message types - return false to indicate no async response
+      return false
     })
   }
 

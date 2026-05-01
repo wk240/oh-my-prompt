@@ -49,6 +49,11 @@ export enum MessageType {
   CHECK_INPUT_AVAILABILITY = 'CHECK_INPUT_AVAILABILITY',  // SP → CS: Query if input element is available
   INPUT_AVAILABILITY_RESPONSE = 'INPUT_AVAILABILITY_RESPONSE',  // CS → SP: Response with availability status
 
+  // Port-based connection (SidePanel ↔ Content Script)
+  SIDEPANEL_CONNECT = 'SIDEPANEL_CONNECT',  // SP → CS: Establish Port connection
+  INPUT_STATUS_CHANGED = 'INPUT_STATUS_CHANGED',  // CS → SP: Notify input status change (hasInput: boolean)
+  CHECK_INPUT_PORT = 'CHECK_INPUT_PORT',  // SP → CS: Request input check via Port
+
   // Offscreen Document: File system operations (SW → Offscreen)
   OFFSCREEN_PING = 'OFFSCREEN_PING',                   // Ping offscreen document for readiness check
   OFFSCREEN_SYNC = 'OFFSCREEN_SYNC',                     // Sync user data to folder

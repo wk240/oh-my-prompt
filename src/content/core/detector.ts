@@ -15,6 +15,7 @@ export class Detector {
   private inputElement: HTMLElement | null = null
   private config: InputDetectionConfig
   private onDetected: (element: HTMLElement) => void
+  private onStatusChanged: ((hasInput: boolean) => void) | null = null
   private healthCheckInterval: ReturnType<typeof setInterval> | undefined
 
   // History API interception
@@ -28,6 +29,13 @@ export class Detector {
   ) {
     this.config = config
     this.onDetected = onDetected
+  }
+
+  /**
+   * Set callback for input status changes (used by Port connection)
+   */
+  setStatusChangedCallback(callback: (hasInput: boolean) => void): void {
+    this.onStatusChanged = callback
   }
 
   start(): void {
@@ -93,6 +101,7 @@ export class Detector {
   }
 
   private tryDetect(): void {
+    const previousElement = this.inputElement
     for (const selector of this.config.selectors) {
       const element = document.querySelector<HTMLElement>(selector)
       if (element && this.isValidInput(element)) {
@@ -101,7 +110,18 @@ export class Detector {
           console.log(LOG_PREFIX, 'Input detected:', selector)
           this.onDetected(element)
         }
+        // Notify status change if callback is set
+        if (this.onStatusChanged && previousElement === null) {
+          this.onStatusChanged(true)
+        }
         return
+      }
+    }
+    // No input found - clear and notify if previously had input
+    if (this.inputElement !== null) {
+      this.inputElement = null
+      if (this.onStatusChanged) {
+        this.onStatusChanged(false)
       }
     }
   }

@@ -22,7 +22,8 @@ function BatchProgressPanel() {
   const [showToast, setShowToast] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
   const dragOffset = useRef({ x: 0, y: 0 })
-  const modalRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const positionRef = useRef(position)
 
   const tasks = useTaskQueueStore(state => state.tasks)
   const isPanelOpen = useTaskQueueStore(state => state.isPanelOpen)
@@ -109,20 +110,34 @@ function BatchProgressPanel() {
   }, [position])
 
   useEffect(() => {
+    // Keep positionRef in sync with position state (for minimize/expand operations)
+    positionRef.current = position
+  }, [position])
+
+  useEffect(() => {
     if (!isDragging) return
 
     const handleMouseMove = (e: MouseEvent) => {
-      setPosition({
+      const newPosition = {
         x: e.clientX - dragOffset.current.x,
         y: e.clientY - dragOffset.current.y
-      })
+      }
+      // Update position ref for use in handleMouseUp
+      positionRef.current = newPosition
+      // Directly update DOM style for smooth drag (avoids React re-render on every mousemove)
+      if (panelRef.current) {
+        panelRef.current.style.left = `${newPosition.x}px`
+        panelRef.current.style.top = `${newPosition.y}px`
+      }
     }
 
     const handleMouseUp = () => {
       setIsDragging(false)
+      // Sync state with final position
+      setPosition(positionRef.current)
       // Save expanded position when dragging ends in expanded state
       if (!isMinimized) {
-        setExpandedPosition(position)
+        setExpandedPosition(positionRef.current)
       }
     }
 
@@ -133,7 +148,7 @@ function BatchProgressPanel() {
       window.removeEventListener('mousemove', handleMouseMove)
       window.removeEventListener('mouseup', handleMouseUp)
     }
-  }, [isDragging, isMinimized, position])
+  }, [isDragging, isMinimized])
 
   /**
    * Handle ESC key to close
@@ -160,7 +175,7 @@ function BatchProgressPanel() {
   return (
     <div className="panel-overlay">
       <div
-        ref={modalRef}
+        ref={panelRef}
         className={`panel-card ${isMinimized ? 'minimized' : ''}`}
         style={{
           position: 'fixed',
@@ -187,15 +202,15 @@ function BatchProgressPanel() {
           <div className="panel-header-actions">
             {isMinimized ? (
               <>
-                <button className="header-btn" onClick={handleClose} title="关闭">
+                <button className="header-btn" onClick={handleClose} aria-label="关闭">
                   <X size={14} />
                 </button>
-                <button className="header-btn" onClick={handleExpand} title="展开">
+                <button className="header-btn" onClick={handleExpand} aria-label="展开">
                   <Maximize2 size={14} />
                 </button>
               </>
             ) : (
-              <button className="header-btn" onClick={handleMinimize} title="最小化">
+              <button className="header-btn" onClick={handleMinimize} aria-label="最小化">
                 <Minimize2 size={14} />
               </button>
             )}
@@ -232,11 +247,11 @@ function BatchProgressPanel() {
         {/* Footer actions (only when not minimized) */}
         {!isMinimized && tasks.length > 0 && (
           <div className="panel-footer">
-            <button className="footer-btn" onClick={handleRetryAllFailed} disabled={stats.failed === 0}>
+            <button className="footer-btn" onClick={handleRetryAllFailed} disabled={stats.failed === 0} aria-label="重试所有失败任务">
               <RefreshCw size={14} />
               重试失败
             </button>
-            <button className="footer-btn" onClick={handleClearCompleted} disabled={stats.success === 0 && stats.failed === 0}>
+            <button className="footer-btn" onClick={handleClearCompleted} disabled={stats.success === 0 && stats.failed === 0} aria-label="清除所有已完成任务">
               <Trash2 size={14} />
               清除已完成
             </button>

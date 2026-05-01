@@ -9,8 +9,10 @@
 
 - ✅ **v1.0 MVP** — Phases 1-4 (shipped 2026-04-16)
 - ✅ **v1.1.0 网络提示词数据源接入** — Phases 5-7 (shipped 2026-04-19)
-- 🚧 **v1.2.0 在线搜索功能** — Phase 8 (in progress)
-- ✅ **v1.3.0 Image to Prompt** — Phases 9-12 (complete 2026-04-28)
+- ⏸️ **v1.2.0 在线搜索功能** — Phase 8 (deferred)
+- ✅ **v1.2.x 双语支持与图片功能** — Integrated into v1.2.1/v1.2.0 releases (shipped 2026-04-27)
+- ✅ **v1.3.0 Image to Prompt** — Phases 9-12 (shipped 2026-04-28)
+- 🚧 **v1.3.1** — Release preparation (in progress)
 
 ---
 
@@ -39,9 +41,11 @@
 
 </details>
 
-### 🚧 v1.2.0 在线搜索功能 (In Progress)
+### ⏸️ v1.2.0 在线搜索功能 (Deferred)
 
 **Milestone Goal:** 集成 prompts.chat API，用户可在线搜索、浏览、收藏网络提示词
+
+**Status:** Deferred at milestone planning. Focus shifted to v1.3.0 Image to Prompt feature.
 
 #### Phase 8: Search & Collect Features
 **Goal**: 用户可搜索并收藏网络提示词到本地
@@ -159,7 +163,7 @@ Plans:
 | 5. Provider Foundation | v1.1.0 | 4/4 | Complete | 2026-04-19 |
 | 6. Network Cache Layer | v1.1.0 | 4/4 | Complete | 2026-04-19 |
 | 7. Dropdown Online Library UI | v1.1.0 | 5/5 | Complete | 2026-04-19 |
-| 8. Search & Collect Features | v1.2.0 | 0/5 | Ready for execution | - |
+| 8. Search & Collect Features | v1.2.0 | 0/5 | Deferred | - |
 | 9. Context Menu Foundation | v1.3.0 | 2/2 | Complete | 2026-04-28 |
 | 10. API Key Management | v1.3.0 | 3/3 | Complete | 2026-04-28 |
 | 11. Vision API Integration | v1.3.0 | 4/4 | Complete | 2026-04-28 |
@@ -167,4 +171,4 @@ Plans:
 
 ---
 
-*Roadmap updated: 2026-04-28 — v1.3.0 milestone complete (Phases 9-12)*
+*Roadmap updated: 2026-05-01 — v1.3.1 release preparation, v1.2.0 search deferred*

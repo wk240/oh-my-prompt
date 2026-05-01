@@ -449,9 +449,10 @@ export async function executeVisionApiCall(
   // If external signal provided, abort when it triggers
   if (signal) {
     if (signal.aborted) {
-      // Already aborted before we started
+      // Already aborted before we started - abort internal controller and throw AbortError
       clearTimeout(timeoutId)
-      throw new Error('timeout')
+      abortController.abort() // Abort internal controller so downstream check works
+      throw new DOMException('Aborted before API call', 'AbortError')
     }
     signal.addEventListener('abort', () => abortController.abort())
   }

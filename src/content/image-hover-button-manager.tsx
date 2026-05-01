@@ -472,26 +472,32 @@ export class ImageHoverButtonManager {
   private handleButtonClick(imageUrl: string): void {
     console.log(LOG_PREFIX, 'Hover button clicked')
 
-    const queueManager = TaskQueueManager.getInstance()
-    const batchPanelManager = BatchPanelManager.getInstance()
+    try {
+      const queueManager = TaskQueueManager.getInstance()
+      const batchPanelManager = BatchPanelManager.getInstance()
 
-    // Check if queue has tasks
-    if (!queueManager.isEmpty()) {
-      // Multi-task mode: add to queue
-      const task = queueManager.addTask(imageUrl)
+      // Check if queue has tasks
+      if (!queueManager.isEmpty()) {
+        // Multi-task mode: add to queue
+        const task = queueManager.addTask(imageUrl)
 
-      if (task === null) {
-        // Queue is full, show toast
-        this.showToast('队列已满，请等待任务完成')
-        return
+        if (task === null) {
+          // Queue is full, show toast
+          this.showToast('队列已满，请等待任务完成')
+          return
+        }
+
+        // Ensure batch panel is open
+        batchPanelManager.ensureOpen()
+      } else {
+        // Single-task mode: use VisionModal
+        const visionManager = VisionModalManager.getInstance()
+        visionManager.create(imageUrl)
       }
-
-      // Ensure batch panel is open
-      batchPanelManager.ensureOpen()
-    } else {
-      // Single-task mode: use VisionModal
-      const visionManager = VisionModalManager.getInstance()
-      visionManager.create(imageUrl)
+    } catch (error) {
+      console.error(LOG_PREFIX, 'Queue operation failed:', error)
+      // Fallback to single-task mode
+      VisionModalManager.getInstance().create(imageUrl)
     }
 
     // Hide button after click

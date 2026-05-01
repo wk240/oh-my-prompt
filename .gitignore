@@ -9,3 +9,4 @@ tests/
 playwright-report
 test-results
 .claude/worktrees/
+.gstack/

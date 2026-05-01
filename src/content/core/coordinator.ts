@@ -19,6 +19,8 @@ import { claudeAiConfig } from '../platforms/claude-ai/config'
 import { geminiConfig } from '../platforms/gemini/config'
 import { liblibConfig } from '../platforms/liblib/config'
 import { jimengConfig } from '../platforms/jimeng/config'
+import { xingliuConfig } from '../platforms/xingliu/config'
+import { kimiConfig } from '../platforms/kimi/config'
 
 // Register platform configurations
 registerPlatform(lovartConfig)
@@ -27,6 +29,8 @@ registerPlatform(claudeAiConfig)
 registerPlatform(geminiConfig)
 registerPlatform(liblibConfig)
 registerPlatform(jimengConfig)
+registerPlatform(xingliuConfig)
+registerPlatform(kimiConfig)
 
 const LOG_PREFIX = '[Oh My Prompt]'
 

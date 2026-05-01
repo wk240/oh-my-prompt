@@ -9,6 +9,7 @@ import { Injector } from './injector'
 import { createDefaultInserter } from '../platforms/base/default-strategies'
 import { MessageType } from '../../shared/messages'
 import type { InsertResultPayload } from '../../shared/types'
+import type { InputDetectionConfig } from '../platforms/base/types'
 import { usePromptStore } from '../../lib/store'
 import { VisionModalManager } from '../vision-modal-manager'
 import { ImageHoverButtonManager } from '../image-hover-button-manager'
@@ -28,6 +29,24 @@ registerPlatform(liblibConfig)
 registerPlatform(jimengConfig)
 
 const LOG_PREFIX = '[Oh My Prompt]'
+
+/**
+ * Universal input detection config - works on any page with contenteditable or textarea
+ */
+const UNIVERSAL_INPUT_CONFIG: InputDetectionConfig = {
+  selectors: [
+    'div[contenteditable="true"][role="textbox"]',
+    'div[contenteditable="true"]',
+    'textarea[placeholder*="message"]',
+    'textarea[placeholder*="prompt"]',
+    'textarea[placeholder*="输入"]',
+    'textarea[placeholder*="描述"]',
+    'textarea',
+    '[data-lexical-editor="true"]',
+    '.ProseMirror[contenteditable="true"]',
+  ],
+  debounceMs: 100,
+}
 
 /**
  * Coordinator class manages content script lifecycle
@@ -67,29 +86,23 @@ class Coordinator {
     this.hoverButtonManager.start()
     console.log(LOG_PREFIX, 'ImageHoverButtonManager started')
 
+    // Create universal detector for ALL pages (no platform restriction)
+    this.detector = new Detector(
+      UNIVERSAL_INPUT_CONFIG,
+      this.handleUniversalInputDetected.bind(this)
+    )
+    this.detector.setStatusChangedCallback(this.handleInputStatusChanged.bind(this))
+    this.detector.start()
+    console.log(LOG_PREFIX, 'Universal detector started')
+
     // Exit early if no platform matched - no UI injection needed
     if (!this.platform) {
-      console.log(LOG_PREFIX, 'No platform matched, but vision modal handler ready')
+      console.log(LOG_PREFIX, 'No platform matched, but detector is active for input detection')
       return
     }
 
-    // Create inserter (use platform's custom strategy or default)
-    const inserter = this.platform.strategies?.inserter ?? createDefaultInserter()
-
-    // Create Injector instance
+    // Create Injector instance (UI injection happens in handleUniversalInputDetected)
     this.injector = new Injector()
-
-    // Create Detector instance with platform's inputDetection config
-    this.detector = new Detector(
-      this.platform.inputDetection,
-      this.handleInputDetected.bind(this, inserter)
-    )
-
-    // Set up status change callback for Port connection
-    this.detector.setStatusChangedCallback(this.handleInputStatusChanged.bind(this))
-
-    // Start detector
-    this.detector.start()
 
     console.log(LOG_PREFIX, 'Coordinator initialized for platform:', this.platform.name)
   }
@@ -151,20 +164,26 @@ class Coordinator {
   }
 
   /**
-   * Handle input element detection
-   * Inject UI when platform input is found
+   * Handle universal input element detection (all pages)
+   * Inject UI only if platform matches
    */
-  private handleInputDetected(
-    inserter: ReturnType<typeof createDefaultInserter>,
-    inputElement: HTMLElement
-  ): void {
-    if (!this.injector || !this.platform) return
+  private handleUniversalInputDetected(inputElement: HTMLElement): void {
+    console.log(LOG_PREFIX, 'Universal input detected:', inputElement)
+
+    // Only inject UI if platform matches
+    if (!this.platform || !this.injector) {
+      console.log(LOG_PREFIX, 'No platform match or injector, skipping UI injection')
+      return
+    }
+
+    const inserter = this.platform.strategies?.inserter ?? createDefaultInserter()
 
     if (this.injector.isInjected()) {
       console.log(LOG_PREFIX, 'Cleaning up existing UI before re-injection')
+      this.injector.remove()
     }
 
-    console.log(LOG_PREFIX, 'Injecting UI near input element')
+    console.log(LOG_PREFIX, 'Injecting UI near input element for platform:', this.platform.name)
 
     this.injector.inject(
       inputElement,

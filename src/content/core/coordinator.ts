@@ -21,6 +21,7 @@ import { liblibConfig } from '../platforms/liblib/config'
 import { jimengConfig } from '../platforms/jimeng/config'
 import { xingliuConfig } from '../platforms/xingliu/config'
 import { kimiConfig } from '../platforms/kimi/config'
+import { TaskQueueManager } from './task-queue-manager'
 
 // Register platform configurations
 registerPlatform(lovartConfig)
@@ -113,6 +114,13 @@ class Coordinator {
     this.hoverButtonManager = ImageHoverButtonManager.getInstance()
     this.hoverButtonManager.start()
     console.log(LOG_PREFIX, 'ImageHoverButtonManager started')
+
+// Initialize TaskQueueManager (load API config)
+    TaskQueueManager.getInstance()
+    console.log(LOG_PREFIX, 'TaskQueueManager initialized')
+
+    // Note: BatchPanelManager is created on-demand when first task is added
+    // No need to pre-create it here
 
     // Create Injector BEFORE Detector if platform matches
     // This ensures Injector is ready when Detector immediately finds input

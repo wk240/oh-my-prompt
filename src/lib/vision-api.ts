@@ -373,13 +373,15 @@ function getFullEndpoint(baseUrl: string, apiFormat: 'openai' | 'anthropic'): st
  * @param config - VisionApiConfig from storage
  * @param imageData - Base64 data URL (preferred) or HTTP URL
  * @param format - 'url' or 'base64' (default 'base64')
+ * @param signal - Optional external AbortSignal for user-initiated cancellation
  * @returns VisionApiResultData with bilingual prompts and JSON details
  * @throws Error on API failure
  */
 export async function executeVisionApiCall(
   config: VisionApiConfig,
   imageData: string,
-  format: 'url' | 'base64' = 'base64'
+  format: 'url' | 'base64' = 'base64',
+  signal?: AbortSignal
 ): Promise<VisionApiResultData> {
   // SECURITY: Validate baseUrl starts with https:// (T-11-02)
   if (!config.baseUrl.startsWith('https://')) {
@@ -440,9 +442,20 @@ export async function executeVisionApiCall(
     : logRequestBody
   console.log('[Oh My Prompt] Vision API request body:', truncatedLog)
 
-  // Execute with AbortController timeout
+  // Execute with AbortController timeout - merge with external signal if provided
   const abortController = new AbortController()
   const timeoutId = setTimeout(() => abortController.abort(), API_TIMEOUT_MS)
+
+  // If external signal provided, abort when it triggers
+  if (signal) {
+    if (signal.aborted) {
+      // Already aborted before we started - abort internal controller and throw AbortError
+      clearTimeout(timeoutId)
+      abortController.abort() // Abort internal controller so downstream check works
+      throw new DOMException('Aborted before API call', 'AbortError')
+    }
+    signal.addEventListener('abort', () => abortController.abort())
+  }
 
   console.log('[Oh My Prompt] Vision API fetch starting...')
 

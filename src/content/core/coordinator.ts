@@ -32,20 +32,44 @@ const LOG_PREFIX = '[Oh My Prompt]'
 
 /**
  * Universal input detection config - works on any page with contenteditable or textarea
+ * Uses relaxed validation: accept textarea/input even if hidden (offset=0)
  */
 const UNIVERSAL_INPUT_CONFIG: InputDetectionConfig = {
   selectors: [
+    // Priority: specific patterns first, then generic
     'div[contenteditable="true"][role="textbox"]',
     'div[contenteditable="true"]',
     'textarea[placeholder*="message"]',
     'textarea[placeholder*="prompt"]',
     'textarea[placeholder*="输入"]',
     'textarea[placeholder*="描述"]',
-    'textarea',
+    'textarea[placeholder*="chat"]',
+    'textarea[id*="chat"]',
+    'textarea[id*="input"]',
+    'textarea[class*="chat"]',
+    'textarea[class*="input"]',
+    'textarea',  // Generic fallback
     '[data-lexical-editor="true"]',
     '.ProseMirror[contenteditable="true"]',
+    'input[type="text"][placeholder*="message"]',
+    'input[type="text"][placeholder*="prompt"]',
   ],
   debounceMs: 100,
+  // Relaxed validation: accept textarea/input regardless of visibility
+  validate: (element: HTMLElement) => {
+    // Always accept textarea and input[type="text"]
+    if (element instanceof HTMLTextAreaElement) {
+      return true
+    }
+    if (element instanceof HTMLInputElement && element.type === 'text') {
+      return true
+    }
+    // For contenteditable, still check visibility (avoid hidden containers)
+    if (element.isContentEditable) {
+      return element.offsetWidth > 0 && element.offsetHeight > 0
+    }
+    return false
+  },
 }
 
 /**

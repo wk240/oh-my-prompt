@@ -25,6 +25,14 @@ export class BatchPanelManager {
   private reactRoot: Root | null = null
 
   /**
+   * Private constructor - singleton pattern
+   * Use getInstance() to get the singleton instance
+   */
+  private constructor() {
+    // Singleton - use getInstance() instead
+  }
+
+  /**
    * Get singleton instance
    */
   static getInstance(): BatchPanelManager {
@@ -38,38 +46,43 @@ export class BatchPanelManager {
    * Create panel in current page
    */
   create(): void {
-    // Remove existing instance if present (singleton)
-    this.destroy()
+    try {
+      // Remove existing instance if present (singleton)
+      this.destroy()
 
-    // Create host element
-    this.hostElement = document.createElement('div')
-    this.hostElement.id = HOST_ID
+      // Create host element
+      this.hostElement = document.createElement('div')
+      this.hostElement.id = HOST_ID
 
-    // Attach Shadow DOM for style isolation (closed mode for security)
-    this.shadowRoot = this.hostElement.attachShadow({ mode: 'closed' })
+      // Attach Shadow DOM for style isolation (closed mode for security)
+      this.shadowRoot = this.hostElement.attachShadow({ mode: 'closed' })
 
-    // Inject styles
-    const styleElement = document.createElement('style')
-    styleElement.textContent = getBatchPanelStyles()
-    this.shadowRoot.appendChild(styleElement)
+      // Inject styles
+      const styleElement = document.createElement('style')
+      styleElement.textContent = getBatchPanelStyles()
+      this.shadowRoot.appendChild(styleElement)
 
-    // Create panel root for React
-    const panelRoot = document.createElement('div')
-    panelRoot.id = 'panel-root'
-    this.shadowRoot.appendChild(panelRoot)
+      // Create panel root for React
+      const panelRoot = document.createElement('div')
+      panelRoot.id = 'panel-root'
+      this.shadowRoot.appendChild(panelRoot)
 
-    // Mount to body
-    document.body.appendChild(this.hostElement)
+      // Mount to body
+      document.body.appendChild(this.hostElement)
 
-    // Mount React component
-    this.reactRoot = createRoot(panelRoot)
-    this.reactRoot.render(
-      <ErrorBoundary>
-        <BatchProgressPanel />
-      </ErrorBoundary>
-    )
+      // Mount React component
+      this.reactRoot = createRoot(panelRoot)
+      this.reactRoot.render(
+        <ErrorBoundary>
+          <BatchProgressPanel />
+        </ErrorBoundary>
+      )
 
-    console.log(LOG_PREFIX, 'Batch panel created')
+      console.log(LOG_PREFIX, 'Batch panel created')
+    } catch (error) {
+      console.error(LOG_PREFIX, 'Failed to create batch panel:', error)
+      this.destroy() // Ensure cleanup on failure
+    }
   }
 
   /**

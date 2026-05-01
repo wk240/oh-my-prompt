@@ -61,13 +61,13 @@ function TaskCard({ task, onRemove, onRetry }: TaskCardProps) {
   /**
    * Toggle expand/collapse
    */
-  const handleToggleExpand = () => {
+  const handleToggleExpand = useCallback(() => {
     if (isExpanded) {
       setExpandedTask(null)
     } else {
       setExpandedTask(task.id)
     }
-  }
+  }, [isExpanded, setExpandedTask, task.id])
 
   /**
    * Copy prompt to clipboard
@@ -132,7 +132,7 @@ function TaskCard({ task, onRemove, onRetry }: TaskCardProps) {
       {/* Thumbnail */}
       <div className="task-thumbnail">
         {task.thumbnailUrl ? (
-          <img src={task.thumbnailUrl} alt="Task" />
+          <img src={task.thumbnailUrl} alt="Task" loading="lazy" />
         ) : task.imageUrl ? (
           <img src={task.imageUrl} alt="Task" loading="lazy" />
         ) : (
@@ -204,7 +204,7 @@ function TaskCard({ task, onRemove, onRetry }: TaskCardProps) {
 
         {/* Expand/Collapse (success only) */}
         {task.status === 'success' && (
-          <button className="action-btn expand" onClick={handleToggleExpand}>
+          <button className="action-btn expand" onClick={handleToggleExpand} aria-expanded={isExpanded}>
             {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
         )}

@@ -11,6 +11,7 @@ import { TriggerButton } from '../components/TriggerButton'
 
 const LOG_PREFIX = '[Oh My Prompt]'
 const HOST_ID = 'oh-my-prompt-host'
+const TOOLTIP_ID = 'oh-my-prompt-tooltip'
 
 export class Injector {
   private hostElement: HTMLElement | null = null
@@ -22,6 +23,8 @@ export class Injector {
     config: UIInjectionConfig
     inserter: InsertStrategy
   } | null = null
+  private tooltipElement: HTMLDivElement | null = null
+  private tooltipObserver: MutationObserver | null = null
 
   isInjected(): boolean {
     return this.hostElement !== null && document.contains(this.hostElement)
@@ -91,6 +94,55 @@ export class Injector {
   }
 
   /**
+   * Create tooltip element at document.body level
+   */
+  private createTooltip(): void {
+    if (this.tooltipElement) return
+
+    this.tooltipElement = document.createElement('div')
+    this.tooltipElement.id = TOOLTIP_ID
+    this.tooltipElement.style.cssText = `
+      position: fixed;
+      background: #1f1f1f;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 6px 10px;
+      border-radius: 6px;
+      white-space: nowrap;
+      z-index: 2147483647;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    `
+    this.tooltipElement.textContent = 'Oh, My Prompt'
+    document.body.appendChild(this.tooltipElement)
+
+    // Listen for tooltip events from shadow DOM
+    this.tooltipObserver = new MutationObserver(() => {
+      const host = this.hostElement
+      if (!host) return
+
+      const showAttr = host.getAttribute('data-tooltip-show')
+      if (showAttr === 'true') {
+        const rect = host.getBoundingClientRect()
+        this.tooltipElement!.style.left = `${rect.left + rect.width / 2}px`
+        this.tooltipElement!.style.top = `${rect.top - 8}px`
+        this.tooltipElement!.style.transform = 'translate(-50%, -100%)'
+        this.tooltipElement!.style.opacity = '1'
+      } else {
+        this.tooltipElement!.style.opacity = '0'
+      }
+    })
+
+    this.tooltipObserver.observe(this.hostElement!, {
+      attributes: true,
+      attributeFilter: ['data-tooltip-show', 'data-tooltip-position'],
+    })
+  }
+
+  /**
    * Perform the actual UI injection
    */
   private performInjection(
@@ -140,12 +192,19 @@ export class Injector {
       )
     }
 
+    // Create tooltip at document.body level (outside Shadow DOM)
+    this.createTooltip()
+
     console.log(LOG_PREFIX, 'UI injected at', config.position, 'of', config.anchorSelector)
   }
 
   remove(): void {
     this.stopAnchorObserver()
     this.pendingInjection = null
+    this.tooltipObserver?.disconnect()
+    this.tooltipObserver = null
+    this.tooltipElement?.remove()
+    this.tooltipElement = null
     if (this.reactRoot) {
       this.reactRoot.unmount()
       this.reactRoot = null
@@ -167,12 +226,6 @@ export class Injector {
         box-sizing: border-box;
       }
 
-      .trigger-button-wrapper {
-        display: inline-flex;
-        position: relative;
-        vertical-align: middle;
-      }
-
       .trigger-button {
         display: inline-flex;
         align-items: center;
@@ -181,35 +234,21 @@ export class Injector {
         border: none;
         padding: 0;
         cursor: pointer;
-        position: relative;
+        border-radius: 20px;
+        min-width: 32px;
+        min-height: 32px;
+        transition: background-color 0.15s ease;
+      }
+
+      .trigger-button:hover {
+        background: rgba(0, 0, 0, 0.05);
       }
 
       .trigger-icon {
         display: block;
-      }
-
-      .trigger-tooltip {
-        position: absolute;
-        bottom: calc(100% + 8px);
-        left: 50%;
-        transform: translateX(-50%);
-        background: #1f1f1f;
-        color: #fff;
-        font-size: 12px;
-        font-weight: 500;
-        padding: 6px 10px;
-        border-radius: 6px;
-        white-space: nowrap;
-        opacity: 0;
-        visibility: hidden;
-        transition: opacity 0.15s, visibility 0.15s;
-        z-index: 1000;
-        pointer-events: none;
-      }
-
-      .trigger-button:hover .trigger-tooltip {
-        opacity: 1;
-        visibility: visible;
+        width: 20px;
+        height: 20px;
+        color: inherit;
       }
     `
   }

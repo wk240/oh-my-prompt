@@ -23,7 +23,7 @@ export const chatgptConfig: PlatformConfig = {
   },
 
   uiInjection: {
-    anchorSelector: '[data-testid="composer-footer-actions"]',
-    position: 'prepend',
+    anchorSelector: '[data-testid="composer-plus-btn"]',
+    position: 'before',
   },
 }

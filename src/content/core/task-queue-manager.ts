@@ -265,11 +265,12 @@ export class TaskQueueManager {
         throw new Error('API未配置')
       }
 
-      // Call Vision API
+      // Call Vision API (pass abort signal for cancellation support)
       const result = await executeVisionApiCall(
         this.apiConfig,
         task.imageUrl,
-        'url'  // Use URL format
+        'url',  // Use URL format
+        abortController.signal  // Pass abort signal
       )
 
       // Check if aborted
@@ -301,9 +302,15 @@ export class TaskQueueManager {
       console.error(LOG_PREFIX, 'Task failed:', task.id, errorPayload.message)
 
     } finally {
-      // Cleanup
-      this.abortControllers.delete(task.id)
-      this.runningCount--
+      // Cleanup - only decrement if not aborted (aborted tasks already decremented in removeTask)
+      if (abortController.signal.aborted) {
+        // Task was aborted via removeTask, just clean up the controller entry
+        this.abortControllers.delete(task.id)
+      } else {
+        // Normal completion - full cleanup
+        this.abortControllers.delete(task.id)
+        this.runningCount--
+      }
 
       // Start next task
       this.tryStartNext()

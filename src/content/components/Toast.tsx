@@ -15,12 +15,17 @@ function Toast({ message, duration = 3000, onClose }: ToastProps) {
   const [isVisible, setIsVisible] = useState(true)
 
   useEffect(() => {
+    let closeTimer: ReturnType<typeof setTimeout> | null = null
+
     const timer = setTimeout(() => {
       setIsVisible(false)
-      setTimeout(onClose, 300)  // Wait for fade-out animation
+      closeTimer = setTimeout(onClose, 300)  // Wait for fade-out animation
     }, duration)
 
-    return () => clearTimeout(timer)
+    return () => {
+      clearTimeout(timer)
+      if (closeTimer) clearTimeout(closeTimer)
+    }
   }, [duration, onClose])
 
   return (

@@ -6,7 +6,7 @@
 import { useState, useEffect, useCallback, useMemo, Suspense, lazy, useRef } from 'react'
   import type { Prompt, Category, ResourcePrompt, UpdateStatus } from '../shared/types'
   import { truncateText, sortCategoriesByOrder, sortPromptsByOrder, sortProviderCategoriesByOrder, sortResourcePromptsByCategoryOrder } from '../shared/utils'
-  import { Sparkles, Palette, Shapes, FolderOpen, Layers, Sparkle, Brush, GripVertical, Database, ArrowLeft, Sun, Frame, Paintbrush, Image, ArrowUpCircle, Plus, Pencil, Trash2, ExternalLink, ArrowUpRight, Bookmark, AlertTriangle, Settings, Loader2, Clock } from 'lucide-react'
+  import { Sparkles, Palette, Shapes, FolderOpen, Layers, Sparkle, Brush, GripVertical, Database, ArrowLeft, Sun, Frame, Paintbrush, Image, ArrowUpCircle, Plus, Pencil, Trash2, ExternalLink, ArrowUpRight, Bookmark, AlertTriangle, Settings, Loader2, Clock, CheckCircle } from 'lucide-react'
   import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core'
   import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
   import { CSS } from '@dnd-kit/utilities'
@@ -575,6 +575,7 @@ export default function SidePanelApp() {
   const [inputStatus, setInputStatus] = useState<InputStatus>('checking')
   const [currentTabId, setCurrentTabId] = useState<number | null>(null)
   const [checkingSiteName, setCheckingSiteName] = useState<string>('')
+  const [connectedSiteName, setConnectedSiteName] = useState<string>('')
 
   // Port reference for managing connection
   const currentPortRef = useRef<chrome.runtime.Port | null>(null)
@@ -667,6 +668,13 @@ export default function SidePanelApp() {
       currentPortRef.current = port
       console.log('[Oh My Prompt] SidePanel: Port connected to tab', tabId)
 
+      // Get tab URL to set connected site name
+      chrome.tabs.get(tabId).then((tab) => {
+        if (tab && tab.url) {
+          setConnectedSiteName(getSiteNameFromUrl(tab.url))
+        }
+      })
+
       // Handle incoming messages
       port.onMessage.addListener((message) => {
         if (message.type === MessageType.INPUT_STATUS_CHANGED) {
@@ -689,6 +697,7 @@ export default function SidePanelApp() {
           console.log('[Oh My Prompt] SidePanel: Port disconnected from tab', tabId)
         }
         currentPortRef.current = null
+        setConnectedSiteName('')
 
         // Check if disconnected due to tab close or just page navigation
         chrome.tabs.get(tabId).then((tab) => {
@@ -711,6 +720,7 @@ export default function SidePanelApp() {
           // Tab no longer exists
           setInputStatus('unavailable')
           setCurrentTabId(null)
+          setConnectedSiteName('')
           findAvailableTabRef.current()
         })
       })
@@ -1705,6 +1715,12 @@ export default function SidePanelApp() {
             <span className="banner-text">
               {checkingSiteName ? `正在连接 ${checkingSiteName}...` : '正在检测页面...'}
             </span>
+          </div>
+        )}
+        {inputStatus === 'available' && connectedSiteName && (
+          <div className="input-status-banner connected">
+            <CheckCircle style={{ width: 14, height: 14, color: '#16a34a' }} />
+            <span className="banner-text">已连接 {connectedSiteName}</span>
           </div>
         )}
         {inputStatus === 'unavailable' && (

@@ -373,6 +373,15 @@
   color: #9a3412;
 }
 
+.input-status-banner.connected {
+  background: #f0fdf4;
+  border-bottom: 1px solid #86efac;
+}
+
+.input-status-banner.connected .banner-text {
+  color: #16a34a;
+}
+
 .spin-animation {
   animation: spin 1s linear infinite;
 }

@@ -1,10 +1,11 @@
 /**
  * TaskCard - Individual task display in BatchProgressPanel
- * Horizontal layout: thumbnail (80x80) + status/actions
+ * Success: Full prompt display with copy button at bottom
+ * Failed/Running: Compact single-row layout
  */
 
 import { useState, useCallback } from 'react'
-import { Check, X, RefreshCw, Loader2, Copy } from 'lucide-react'
+import { Check, X, Loader2 } from 'lucide-react'
 import type { QueueTask } from '@/content/core/task-queue-manager'
 
 type LanguageType = 'zh' | 'en'
@@ -66,51 +67,92 @@ function TaskCard({ task, onRemove, onRetry }: TaskCardProps) {
   }, [getCurrentPrompt])
 
   /**
-   * Render status icon and text
+   * Render success state - full prompt display
    */
-  const renderStatus = () => {
-    switch (task.status) {
-      case 'pending':
-        return (
-          <div className="task-status pending">
-            <span className="status-dot" style={{ background: '#9CA3AF' }} />
-            <span className="status-text">等待中</span>
-          </div>
-        )
-      case 'running':
-        return (
-          <div className="task-status running">
-            <Loader2 className="status-icon spinning" size={16} />
-            <span className="status-text">分析中...</span>
-            <div className="progress-bar">
-              <div className="progress-fill" />
-            </div>
-          </div>
-        )
-      case 'success':
-        return (
-          <div className="task-status success">
-            <Check className="status-icon" size={16} style={{ color: '#22c55e' }} />
-            <span className="status-text">完成</span>
-          </div>
-        )
-      case 'failed':
-        return (
-          <div className="task-status failed">
-            <X className="status-icon" size={16} style={{ color: '#ef4444' }} />
-            <span className="status-text">失败</span>
-            <span className="error-message">{task.error || '未知错误'}</span>
-          </div>
-        )
-      default:
-        return null
-    }
-  }
+  const renderSuccessCard = () => (
+    <div className="task-card-success">
+      {/* Top row: thumbnail + status + remove button */}
+      <div className="task-header-row">
+        <div className="task-thumbnail-small">
+          {task.thumbnailUrl ? (
+            <img src={task.thumbnailUrl} alt="Task" loading="lazy" />
+          ) : task.imageUrl ? (
+            <img src={task.imageUrl} alt="Task" loading="lazy" />
+          ) : (
+            <div className="thumbnail-placeholder">无图片</div>
+          )}
+        </div>
+        <div className="task-status-row">
+          <Check className="status-icon" size={16} style={{ color: '#22c55e' }} />
+          <span className="status-text">完成</span>
+          {task.savedToTemporary ? (
+            <span className="save-status success">已保存到临时库</span>
+          ) : task.saveError ? (
+            <span className="save-status error">{task.saveError}</span>
+          ) : (
+            <span className="save-status pending">保存中...</span>
+          )}
+        </div>
+        <div className="task-header-actions">
+          <button className="text-btn remove-btn" onClick={() => onRemove(task.id)}>
+            移除
+          </button>
+        </div>
+      </div>
 
-  return (
-    <div className="task-card">
-      {/* Thumbnail */}
-      <div className="task-thumbnail">
+      {/* Prompt area - full width */}
+      <div className="prompt-display">
+        {getCurrentPrompt()}
+      </div>
+
+      {/* Bottom row: language/format toggle + copy button */}
+      <div className="task-footer-row">
+        <div className="toggle-groups">
+          <div className="toggle-group">
+            <button
+              className={`toggle-btn ${language === 'zh' ? 'active' : ''}`}
+              onClick={() => setLanguage('zh')}
+            >
+              中
+            </button>
+            <button
+              className={`toggle-btn ${language === 'en' ? 'active' : ''}`}
+              onClick={() => setLanguage('en')}
+            >
+              EN
+            </button>
+          </div>
+          <div className="toggle-group">
+            <button
+              className={`toggle-btn ${format === 'natural' ? 'active' : ''}`}
+              onClick={() => setFormat('natural')}
+            >
+              自然
+            </button>
+            <button
+              className={`toggle-btn ${format === 'json' ? 'active' : ''}`}
+              onClick={() => setFormat('json')}
+            >
+              JSON
+            </button>
+          </div>
+        </div>
+        <button
+          className={`copy-btn-main ${isCopied ? 'copied' : ''}`}
+          onClick={handleCopy}
+        >
+          {isCopied ? '已复制' : '复制'}
+        </button>
+      </div>
+    </div>
+  )
+
+  /**
+   * Render compact state - pending/running/failed
+   */
+  const renderCompactCard = () => (
+    <div className="task-card-compact">
+      <div className="task-thumbnail-small">
         {task.thumbnailUrl ? (
           <img src={task.thumbnailUrl} alt="Task" loading="lazy" />
         ) : task.imageUrl ? (
@@ -119,78 +161,62 @@ function TaskCard({ task, onRemove, onRetry }: TaskCardProps) {
           <div className="thumbnail-placeholder">无图片</div>
         )}
       </div>
-
-      {/* Status area */}
-      <div className="task-content">
-        {renderStatus()}
-
-        {/* Details (success only) */}
-        {task.status === 'success' && task.result && (
-          <div className="task-details">
-            {/* Prompt preview with copy button */}
-            <div className="prompt-preview-wrapper">
-              <div className="prompt-preview">
-                {getCurrentPrompt()}
-              </div>
-              <button
-                className={`copy-btn ${isCopied ? 'copied' : ''}`}
-                onClick={handleCopy}
-              >
-                {isCopied ? <Check size={14} /> : <Copy size={14} />}
-              </button>
-            </div>
-
-            {/* Language/Format toggle at bottom */}
-            <div className="toggle-groups">
-              <div className="toggle-group">
-                <button
-                  className={`toggle-btn ${language === 'zh' ? 'active' : ''}`}
-                  onClick={() => setLanguage('zh')}
-                >
-                  中
-                </button>
-                <button
-                  className={`toggle-btn ${language === 'en' ? 'active' : ''}`}
-                  onClick={() => setLanguage('en')}
-                >
-                  EN
-                </button>
-              </div>
-              <div className="toggle-group">
-                <button
-                  className={`toggle-btn ${format === 'natural' ? 'active' : ''}`}
-                  onClick={() => setFormat('natural')}
-                >
-                  自然语言
-                </button>
-                <button
-                  className={`toggle-btn ${format === 'json' ? 'active' : ''}`}
-                  onClick={() => setFormat('json')}
-                >
-                  JSON
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+      <div className="task-status-row">
+        {renderStatusIcon()}
       </div>
-
-      {/* Actions */}
-      <div className="task-actions">
-        {/* Remove button */}
-        <button className="action-btn remove" onClick={() => onRemove(task.id)}>
-          <X size={14} />
-        </button>
-
-        {/* Retry (failed only) */}
+      <div className="task-compact-actions">
         {task.status === 'failed' && (
-          <button className="action-btn retry" onClick={() => onRetry(task.id)}>
-            <RefreshCw size={14} />
+          <button className="text-btn retry-btn" onClick={() => onRetry(task.id)}>
+            重试
           </button>
         )}
+        <button className="text-btn remove-btn" onClick={() => onRemove(task.id)}>
+          移除
+        </button>
       </div>
     </div>
   )
+
+  /**
+   * Render status icon for compact view
+   */
+  const renderStatusIcon = () => {
+    switch (task.status) {
+      case 'pending':
+        return (
+          <>
+            <span className="status-dot pending" />
+            <span className="status-text">等待中</span>
+          </>
+        )
+      case 'running':
+        return (
+          <>
+            <Loader2 className="status-icon spinning" size={16} />
+            <span className="status-text">分析中...</span>
+            <div className="progress-bar">
+              <div className="progress-fill" />
+            </div>
+          </>
+        )
+      case 'failed':
+        return (
+          <>
+            <X className="status-icon" size={16} style={{ color: '#ef4444' }} />
+            <span className="status-text">失败</span>
+            <span className="error-text">{task.error || '未知错误'}</span>
+          </>
+        )
+      default:
+        return null
+    }
+  }
+
+  // Render based on status
+  if (task.status === 'success') {
+    return renderSuccessCard()
+  }
+  return renderCompactCard()
 }
 
 export default TaskCard

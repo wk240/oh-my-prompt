@@ -3,7 +3,7 @@
  * Shows task list with overall stats and global actions
  */
 
-import { useCallback, useState, useRef, useEffect } from 'react'
+import { useCallback, useState, useRef, useEffect, useMemo } from 'react'
 import { Minimize2, Maximize2, X, Trash2, RefreshCw } from 'lucide-react'
 import TaskCard from './TaskCard'
 import { useTaskQueueStore } from '@/content/core/task-queue-store'
@@ -16,8 +16,15 @@ const MINIMIZED_WIDTH = 200
 
 function BatchProgressPanel() {
   const [isMinimized, setIsMinimized] = useState(false)
-  const [position, setPosition] = useState({ x: window.innerWidth - 420, y: 20 })
-  const [expandedPosition, setExpandedPosition] = useState({ x: window.innerWidth - 420, y: 20 })
+  // Lazy initialize position to avoid accessing window during SSR/hydration
+  const [position, setPosition] = useState(() => ({
+    x: typeof window !== 'undefined' ? window.innerWidth - 420 : 0,
+    y: 20
+  }))
+  const [expandedPosition, setExpandedPosition] = useState(() => ({
+    x: typeof window !== 'undefined' ? window.innerWidth - 420 : 0,
+    y: 20
+  }))
   const [isDragging, setIsDragging] = useState(false)
   const [showToast, setShowToast] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
@@ -28,7 +35,13 @@ function BatchProgressPanel() {
   const tasks = useTaskQueueStore(state => state.tasks)
   const isPanelOpen = useTaskQueueStore(state => state.isPanelOpen)
   const setPanelOpen = useTaskQueueStore(state => state.setPanelOpen)
-  const stats = useTaskQueueStore(state => state.getStats())
+  // Compute stats from tasks using useMemo - only recalculates when tasks array changes
+  const stats = useMemo(() => ({
+    pending: tasks.filter(t => t.status === 'pending').length,
+    running: tasks.filter(t => t.status === 'running').length,
+    success: tasks.filter(t => t.status === 'success').length,
+    failed: tasks.filter(t => t.status === 'failed').length
+  }), [tasks])
 
   const queueManager = TaskQueueManager.getInstance()
 

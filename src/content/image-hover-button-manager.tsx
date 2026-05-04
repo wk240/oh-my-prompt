@@ -8,9 +8,10 @@
  */
 
 import { createRoot, type Root } from 'react-dom/client'
-import { VisionModalManager } from './vision-modal-manager'
 import HoverButton from './components/HoverButton'
 import { MessageType } from '@/shared/messages'
+import { TaskQueueManager } from './core/task-queue-manager'
+import { BatchPanelManager } from './batch-panel-manager'
 
 const LOG_PREFIX = '[Oh My Prompt]'
 
@@ -465,16 +466,84 @@ export class ImageHoverButtonManager {
   }
 
   /**
-   * Handle button click - open Vision Modal
+   * Handle button click - add to queue and show BatchProgressPanel
    */
   private handleButtonClick(imageUrl: string): void {
-    console.log(LOG_PREFIX, 'Hover button clicked, opening Vision Modal')
+    console.log(LOG_PREFIX, 'Hover button clicked')
 
-    const visionManager = VisionModalManager.getInstance()
-    visionManager.create(imageUrl)
+    try {
+      const queueManager = TaskQueueManager.getInstance()
+      const batchPanelManager = BatchPanelManager.getInstance()
+
+      // Always add to queue (batch mode)
+      const task = queueManager.addTask(imageUrl)
+
+      if (task === null) {
+        // Queue is full, show toast
+        this.showToast('队列已满，请等待任务完成')
+        return
+      }
+
+      // Ensure batch panel is open
+      batchPanelManager.ensureOpen()
+    } catch (error) {
+      console.error(LOG_PREFIX, 'Queue operation failed:', error)
+    }
 
     // Hide button after click
     this.hideButton()
+  }
+
+  /**
+   * Show toast notification
+   */
+  private showToast(message: string): void {
+    // Create toast in Shadow DOM
+    const toastContainer = document.createElement('div')
+    toastContainer.style.cssText = 'position: fixed; z-index: 2147483647;'
+
+    const shadow = toastContainer.attachShadow({ mode: 'closed' })
+
+    // Minimal toast styles
+    const style = document.createElement('style')
+    style.textContent = `
+      .toast {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(23, 23, 23, 0.9);
+        color: #fff;
+        padding: 10px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        opacity: 1;
+        transition: opacity 0.3s ease;
+        pointer-events: none;
+      }
+      .toast.fading {
+        opacity: 0;
+      }
+    `
+    shadow.appendChild(style)
+
+    const toastEl = document.createElement('div')
+    toastEl.className = 'toast'
+    toastEl.textContent = message
+    shadow.appendChild(toastEl)
+
+    document.body.appendChild(toastContainer)
+
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+      toastEl.classList.add('fading')
+      setTimeout(() => {
+        toastContainer.remove()
+      }, 300)
+    }, 3000)
   }
 
   /**

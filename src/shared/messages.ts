@@ -48,6 +48,27 @@ export enum MessageType {
   // Universal input detection
   CHECK_INPUT_AVAILABILITY = 'CHECK_INPUT_AVAILABILITY',  // SP → CS: Query if input element is available
   INPUT_AVAILABILITY_RESPONSE = 'INPUT_AVAILABILITY_RESPONSE',  // CS → SP: Response with availability status
+
+  // Port-based connection (SidePanel ↔ Content Script)
+  SIDEPANEL_CONNECT = 'SIDEPANEL_CONNECT',  // SP → CS: Establish Port connection
+  INPUT_STATUS_CHANGED = 'INPUT_STATUS_CHANGED',  // CS → SP: Notify input status change (hasInput: boolean)
+  CHECK_INPUT_PORT = 'CHECK_INPUT_PORT',  // SP → CS: Request input check via Port
+
+  // Offscreen Document: File system operations (SW → Offscreen)
+  OFFSCREEN_PING = 'OFFSCREEN_PING',                   // Ping offscreen document for readiness check
+  OFFSCREEN_SYNC = 'OFFSCREEN_SYNC',                     // Sync user data to folder
+  OFFSCREEN_BACKUP = 'OFFSCREEN_BACKUP',                  // Backup user data
+  OFFSCREEN_SAVE_IMAGE = 'OFFSCREEN_SAVE_IMAGE',          // Save image to folder
+  OFFSCREEN_READ_IMAGE = 'OFFSCREEN_READ_IMAGE',          // Read image from folder
+  OFFSCREEN_DELETE_IMAGE = 'OFFSCREEN_DELETE_IMAGE',      // Delete image from folder
+  OFFSCREEN_CHECK_PERMISSION = 'OFFSCREEN_CHECK_PERMISSION',  // Check folder permission status
+  OFFSCREEN_REQUEST_PERMISSION = 'OFFSCREEN_REQUEST_PERMISSION',  // Request folder permission
+  OFFSCREEN_GET_FOLDER_HANDLE = 'OFFSCREEN_GET_FOLDER_HANDLE',  // Get folder handle
+  OFFSCREEN_SAVE_FOLDER_HANDLE = 'OFFSCREEN_SAVE_FOLDER_HANDLE',  // Save folder handle
+  OFFSCREEN_LIST_VERSIONS = 'OFFSCREEN_LIST_VERSIONS',    // List backup versions
+  OFFSCREEN_READ_BACKUP = 'OFFSCREEN_READ_BACKUP',        // Read specific backup file
+  OFFSCREEN_SAVE_API_CONFIG = 'OFFSCREEN_SAVE_API_CONFIG',  // Save encrypted API config
+  OFFSCREEN_READ_API_CONFIG = 'OFFSCREEN_READ_API_CONFIG',  // Read encrypted API config
 }
 
 export interface Message<T = unknown> {

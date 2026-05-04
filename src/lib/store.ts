@@ -85,7 +85,7 @@ function debouncedSaveToStorage(
       try {
         const { prompts, categories } = getState()
         const version = chrome.runtime.getManifest().version
-        const response = await chrome.runtime.sendMessage({
+        const response = await sendMessageWithRetry<{ syncSuccess?: boolean }>({
           type: MessageType.SET_STORAGE,
           payload: {
             version,
@@ -93,8 +93,8 @@ function debouncedSaveToStorage(
           } as StorageSchema
         })
 
-        if (!response?.success) {
-          throw new Error(response?.error || 'Storage operation failed')
+        if (!response.success) {
+          throw new Error(response.error || 'Storage operation failed')
         }
 
         const result = { success: true, syncSuccess: response.data?.syncSuccess }
@@ -132,7 +132,7 @@ async function flushPendingSave(
     try {
       const { prompts, categories } = getState()
       const version = chrome.runtime.getManifest().version
-      const response = await chrome.runtime.sendMessage({
+      const response = await sendMessageWithRetry<{ syncSuccess?: boolean }>({
         type: MessageType.SET_STORAGE,
         payload: {
           version,
@@ -140,8 +140,8 @@ async function flushPendingSave(
         } as StorageSchema
       })
 
-      if (!response?.success) {
-        throw new Error(response?.error || 'Storage operation failed')
+      if (!response.success) {
+        throw new Error(response.error || 'Storage operation failed')
       }
 
       const result = { success: true, syncSuccess: response.data?.syncSuccess }
@@ -164,27 +164,90 @@ async function flushPendingSave(
 }
 
 /**
+ * Check if extension context is valid (MV3 idiomatic pattern)
+ * Returns false when extension has been reloaded/updated
+ */
+function isExtensionContextValid(): boolean {
+  return typeof chrome !== 'undefined' && chrome.runtime?.id !== undefined
+}
+
+/**
+ * Retry delays for transient errors (exponential backoff)
+ */
+const RETRY_DELAYS = [50, 150, 300] // 3 retries with increasing delays
+
+/**
+ * Send message to service worker with retry mechanism for transient errors
+ * Handles extension reload race conditions where context may be temporarily invalid
+ */
+async function sendMessageWithRetry<T>(
+  message: { type: MessageType; payload?: unknown },
+  maxRetries: number = 3
+): Promise<{ success: boolean; data?: T; error?: string }> {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    // Check extension context validity before each attempt
+    if (!isExtensionContextValid()) {
+      // Extension context invalidated (reload/update in progress)
+      // Wait and retry - context may become valid again
+      if (attempt < maxRetries - 1) {
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAYS[attempt]))
+        continue
+      }
+      return { success: false, error: 'Extension context invalidated - please refresh page' }
+    }
+
+    try {
+      const response = await chrome.runtime.sendMessage(message)
+
+      // Success - return response
+      if (response?.success) {
+        return response
+      }
+
+      // Known error types - don't retry
+      if (response?.error?.includes('Invalid payload') ||
+          response?.error?.includes('not found') ||
+          response?.error?.includes('Storage operation failed')) {
+        return response
+      }
+
+      // Unknown message type or transient error - retry
+      if (attempt < maxRetries - 1) {
+        console.warn(`[Oh My Prompt] Message attempt ${attempt + 1} failed: ${response?.error}, retrying...`)
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAYS[attempt]))
+        continue
+      }
+
+      return response
+    } catch (error) {
+      // Network-like errors or context invalidation - retry
+      const errorMsg = error instanceof Error ? error.message : String(error)
+      if (attempt < maxRetries - 1) {
+        console.warn(`[Oh My Prompt] Message attempt ${attempt + 1} error: ${errorMsg}, retrying...`)
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAYS[attempt]))
+        continue
+      }
+      return { success: false, error: errorMsg }
+    }
+  }
+
+  return { success: false, error: 'Max retries exceeded' }
+}
+
+/**
  * Send message to service worker for storage operations
  */
 async function sendStorageMessage(
   type: MessageType.GET_STORAGE | MessageType.SET_STORAGE,
   payload?: StorageSchema
 ): Promise<StorageSchema | undefined> {
-  try {
-    const response = await chrome.runtime.sendMessage({
-      type,
-      payload
-    })
+  const response = await sendMessageWithRetry<StorageSchema>({ type, payload })
 
-    if (!response?.success) {
-      throw new Error(response?.error || 'Storage operation failed')
-    }
-
-    return response.data
-  } catch (error) {
-    console.error('[Oh My Prompt] Storage message error:', error)
-    throw error
+  if (!response.success) {
+    throw new Error(response.error || 'Storage operation failed')
   }
+
+  return response.data
 }
 
 /**
@@ -303,8 +366,7 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
     const { prompts, categories } = get()
     try {
       const version = chrome.runtime.getManifest().version
-      // Send data to service worker - sync is handled by service worker
-      const response = await chrome.runtime.sendMessage({
+      const response = await sendMessageWithRetry<{ syncSuccess?: boolean }>({
         type: MessageType.SET_STORAGE,
         payload: {
           version,
@@ -312,11 +374,10 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
         } as StorageSchema
       })
 
-      if (!response?.success) {
-        throw new Error(response?.error || 'Storage operation failed')
+      if (!response.success) {
+        throw new Error(response.error || 'Storage operation failed')
       }
 
-      // Return sync status from service worker response
       return { success: true, syncSuccess: response.data?.syncSuccess }
     } catch (error) {
       console.error('[Oh My Prompt] Failed to save storage:', error)

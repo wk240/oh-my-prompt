@@ -4,57 +4,57 @@
  */
 
 import { useState, useEffect, useCallback, useMemo, Suspense, lazy, useRef } from 'react'
-import type { Prompt, Category, ResourcePrompt, UpdateStatus } from '../shared/types'
-import { truncateText, sortCategoriesByOrder, sortPromptsByOrder, sortProviderCategoriesByOrder, sortResourcePromptsByCategoryOrder } from '../shared/utils'
-import { Sparkles, Palette, Shapes, FolderOpen, Layers, Sparkle, Brush, GripVertical, Database, ArrowLeft, Sun, Frame, Paintbrush, Image, ArrowUpCircle, Plus, Pencil, Trash2, ExternalLink, ArrowUpRight, Bookmark, AlertTriangle, Settings, Loader2, Clock } from 'lucide-react'
-import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core'
-import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
-import { usePromptStore } from '../lib/store'
-import { getResourcePrompts, getResourceCategories } from '../lib/resource-library'
-import { MessageType } from '../shared/messages'
-import { STORAGE_KEY } from '../shared/constants'
-import { Tooltip } from '../content/components/Tooltip'
-import { ToastNotification } from './components/ToastNotification'
-import { queueImageLoad } from '../lib/sync/image-loader-queue'
-import { downloadImageFromUrl, saveImage } from '../lib/sync/image-sync'
+  import type { Prompt, Category, ResourcePrompt, UpdateStatus } from '../shared/types'
+  import { truncateText, sortCategoriesByOrder, sortPromptsByOrder, sortProviderCategoriesByOrder, sortResourcePromptsByCategoryOrder } from '../shared/utils'
+  import { Sparkles, Palette, Shapes, FolderOpen, Layers, Sparkle, Brush, GripVertical, Database, ArrowLeft, Sun, Frame, Paintbrush, Image, ArrowUpCircle, Plus, Pencil, Trash2, ExternalLink, ArrowUpRight, Bookmark, AlertTriangle, Settings, Loader2, Clock, CheckCircle } from 'lucide-react'
+  import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core'
+  import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
+  import { CSS } from '@dnd-kit/utilities'
+  import { usePromptStore } from '../lib/store'
+  import { getResourcePrompts, getResourceCategories } from '../lib/resource-library'
+  import { MessageType } from '../shared/messages'
+  import { STORAGE_KEY } from '../shared/constants'
+  import { Tooltip } from '../content/components/Tooltip'
+  import { ToastNotification } from './components/ToastNotification'
+  import { queueImageLoad } from '../lib/sync/image-loader-queue'
+  import { downloadImageFromUrl, saveImage } from '../lib/sync/image-sync'
 
-// Lazy load modal components
-const PromptPreviewModal = lazy(() => import('../content/components/PromptPreviewModal').then(m => ({ default: m.PromptPreviewModal })))
-const UpdateGuideModal = lazy(() => import('../content/components/UpdateGuideModal').then(m => ({ default: m.UpdateGuideModal })))
-const CategoryEditModal = lazy(() => import('../content/components/CategoryEditModal').then(m => ({ default: m.CategoryEditModal })))
-const DeleteConfirmModal = lazy(() => import('../content/components/DeleteConfirmModal').then(m => ({ default: m.DeleteConfirmModal })))
-const PromptEditModal = lazy(() => import('../content/components/PromptEditModal').then(m => ({ default: m.PromptEditModal })))
-const CategorySelectDialog = lazy(() => import('../content/components/CategorySelectDialog').then(m => ({ default: m.CategorySelectDialog })))
+  // Lazy load modal components
+  const PromptPreviewModal = lazy(() => import('../content/components/PromptPreviewModal').then(m => ({ default: m.PromptPreviewModal })))
+  const UpdateGuideModal = lazy(() => import('../content/components/UpdateGuideModal').then(m => ({ default: m.UpdateGuideModal })))
+  const CategoryEditModal = lazy(() => import('../content/components/CategoryEditModal').then(m => ({ default: m.CategoryEditModal })))
+  const DeleteConfirmModal = lazy(() => import('../content/components/DeleteConfirmModal').then(m => ({ default: m.DeleteConfirmModal })))
+  const PromptEditModal = lazy(() => import('../content/components/PromptEditModal').then(m => ({ default: m.PromptEditModal })))
+  const CategorySelectDialog = lazy(() => import('../content/components/CategorySelectDialog').then(m => ({ default: m.CategorySelectDialog })))
 
-// Icon mapping for categories
-const CATEGORY_ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
-  'cat-quality': Sparkles,
-  'cat-style': Palette,
-  'cat-lighting': Sun,
-  'cat-composition': Frame,
-  'cat-color': Paintbrush,
-  'cat-theme': Image,
-  'cat-medium': Layers,
-  all: FolderOpen,
-  design: Sparkle,
-  style: Brush,
-  other: Layers,
-}
+  // Icon mapping for categories
+  const CATEGORY_ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+    'cat-quality': Sparkles,
+    'cat-style': Palette,
+    'cat-lighting': Sun,
+    'cat-composition': Frame,
+    'cat-color': Paintbrush,
+    'cat-theme': Image,
+    'cat-medium': Layers,
+    all: FolderOpen,
+    design: Sparkle,
+    style: Brush,
+    other: Layers,
+  }
 
-const ICON_MAP: Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
-  design: Sparkles,
-  style: Palette,
-  default: Shapes,
-}
+  const ICON_MAP: Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
+    design: Sparkles,
+    style: Palette,
+    default: Shapes,
+  }
 
-// Fallback placeholder SVG for failed image loads
-const FALLBACK_IMAGE_SVG = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="60" height="40" viewBox="0 0 60 40"%3E%3Crect fill="%23f0f0f0" width="60" height="40"/%3E%3Ctext fill="%23999" font-family="sans-serif" font-size="8" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3ENo Image%3C/text%3E%3C/svg%3E'
+  // Fallback placeholder SVG for failed image loads
+  const FALLBACK_IMAGE_SVG = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="60" height="40" viewBox="0 0 60 40"%3E%3Crect fill="%23f0f0f0" width="60" height="40"/%3E%3Ctext fill="%23999" font-family="sans-serif" font-size="8" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3ENo Image%3C/text%3E%3C/svg%3E'
 
-// Hover preview constants (same as PromptPreviewModal)
-const PREVIEW_OFFSET = 16
-const PREVIEW_MAX_WIDTH = 720
-const PREVIEW_MAX_HEIGHT = 480
+  // Hover preview constants (same as PromptPreviewModal)
+  const PREVIEW_OFFSET = 16
+  const PREVIEW_MAX_WIDTH = 720
+  const PREVIEW_MAX_HEIGHT = 480
 
 // Sortable category item component
 function SortableCategoryItem({
@@ -570,11 +570,18 @@ export default function SidePanelApp() {
   const [loadedCount, setLoadedCount] = useState(50)
   const [visionEnabled, setVisionEnabled] = useState(true)
 
-  // Input availability detection (universal - works on any page with input)
+  // Input availability detection (Port-based real-time connection)
   type InputStatus = 'checking' | 'available' | 'unavailable'
   const [inputStatus, setInputStatus] = useState<InputStatus>('checking')
   const [currentTabId, setCurrentTabId] = useState<number | null>(null)
   const [checkingSiteName, setCheckingSiteName] = useState<string>('')
+  const [connectedSiteName, setConnectedSiteName] = useState<string>('')
+
+  // Port reference for managing connection
+  const currentPortRef = useRef<chrome.runtime.Port | null>(null)
+
+  // Ref for findAvailableTab to avoid circular dependency in useCallback
+  const findAvailableTabRef = useRef<() => void>(() => {})
 
   // Helper function to check if a URL is a special page (no content script)
   const isSpecialPage = useCallback((url: string): boolean => {
@@ -585,30 +592,23 @@ export default function SidePanelApp() {
   const getSiteNameFromUrl = useCallback((url: string): string => {
     try {
       const urlObj = new URL(url)
-      // Remove www. prefix and return hostname
       return urlObj.hostname.replace(/^www\./, '')
     } catch {
       return ''
     }
   }, [])
 
-  // Helper function to inject content script dynamically (for pages loaded before extension was enabled)
-  const injectContentScript = useCallback(async (tabId: number, url: string): Promise<boolean> => {
+  // Helper function to inject content script dynamically
+  const injectContentScript = useCallback(async (tabId: number): Promise<boolean> => {
     try {
-      // Get correct script path from manifest.json (compiled .js files, not source .ts)
       const manifest = chrome.runtime.getManifest()
       const contentScripts = manifest.content_scripts || []
-
-      // Determine which content script to inject based on URL
-      const isLovart = url.includes('lovart.ai')
       const targetScript = contentScripts.find(script =>
-        isLovart
-          ? script.matches?.some(m => m.includes('lovart.ai'))
-          : script.matches?.includes('<all_urls>')
+        script.matches?.includes('<all_urls>')
       )
 
       if (!targetScript?.js?.[0]) {
-        console.error('[Oh My Prompt] SidePanel: No matching content script found in manifest')
+        console.error('[Oh My Prompt] SidePanel: No content script found in manifest')
         return false
       }
 
@@ -619,9 +619,7 @@ export default function SidePanelApp() {
         target: { tabId },
         files: [scriptFile]
       })
-      // Wait for script to initialize
-      await new Promise(resolve => setTimeout(resolve, 500))
-      console.log('[Oh My Prompt] SidePanel: Content script injected successfully')
+      await new Promise(resolve => setTimeout(resolve, 300))
       return true
     } catch (error) {
       console.error('[Oh My Prompt] SidePanel: Failed to inject content script:', error)
@@ -629,130 +627,254 @@ export default function SidePanelApp() {
     }
   }, [])
 
-  // Helper function to check input availability on a tab with status updates
-  const checkInputOnTab = useCallback(async (tabId: number, retries: number, tabUrl?: string, onRetry?: (attempt: number) => void): Promise<boolean> => {
-    console.log('[Oh My Prompt] SidePanel: Starting checkInput on tab', tabId, 'with', retries, 'retries')
-    for (let i = 0; i < retries; i++) {
-      try {
-        if (i > 0) {
-          console.log('[Oh My Prompt] SidePanel: Waiting 500ms before retry', i + 1)
-          onRetry?.(i + 1)
-          await new Promise(resolve => setTimeout(resolve, 500))
-        }
-        console.log('[Oh My Prompt] SidePanel: Sending CHECK_INPUT_AVAILABILITY to tab', tabId)
-        const response = await chrome.tabs.sendMessage(tabId, {
-          type: MessageType.CHECK_INPUT_AVAILABILITY
-        })
-        console.log('[Oh My Prompt] SidePanel: Received response:', response)
-        if (response?.success && response.data?.hasInput) {
-          console.log('[Oh My Prompt] SidePanel: Input available!')
-          return true
-        }
-      } catch (error) {
-        console.log(`[Oh My Prompt] SidePanel: Message failed, retry ${i + 1}/${retries}`, error)
-        // If connection error and we have URL, try injecting content script on first failure
-        if (i === 0 && tabUrl && !isSpecialPage(tabUrl)) {
-          const injected = await injectContentScript(tabId, tabUrl)
-          if (injected) {
-            // Try again immediately after injection
-            try {
-              const response = await chrome.tabs.sendMessage(tabId, {
-                type: MessageType.CHECK_INPUT_AVAILABILITY
-              })
-              if (response?.success && response.data?.hasInput) {
-                console.log('[Oh My Prompt] SidePanel: Input available after injection!')
-                return true
-              }
-            } catch {
-              // Continue with normal retry loop
-            }
-          }
-        }
-      }
+  // Connect to a tab using Port (real-time communication)
+  const connectToTab = useCallback(async (tabId: number, retryCount = 0): Promise<boolean> => {
+    // Disconnect existing port first
+    if (currentPortRef.current) {
+      currentPortRef.current.disconnect()
+      currentPortRef.current = null
     }
-    return false
-  }, [isSpecialPage, injectContentScript])
 
-  // Check input availability for current active tab
-  // Unified handling - works on any page with input
-  const checkInputAvailability = useCallback(async () => {
-    console.log('[Oh My Prompt] SidePanel: Starting input availability check')
-    setInputStatus('checking')
-    setCheckingSiteName('')
-    // Reset currentTabId to ensure we don't use stale tab reference
+    // Clear currentTabId at the start to prevent stale references
     setCurrentTabId(null)
 
-    // First check active tab, then fallback to other tabs in the same window
+    // First check if content script is ready (Port requires content script listener)
+    try {
+      const checkResponse = await chrome.tabs.sendMessage(tabId, { type: MessageType.PING })
+      if (!checkResponse?.success) {
+        throw new Error('Content script not responding')
+      }
+    } catch (checkError) {
+      console.log('[Oh My Prompt] SidePanel: Content script not ready, injecting...', checkError)
+
+      // Inject content script if not ready
+      if (retryCount < 2) {
+        const injected = await injectContentScript(tabId)
+        if (injected) {
+          // Wait for content script to initialize Port listener
+          await new Promise(resolve => setTimeout(resolve, 300))
+          // Retry connection
+          return connectToTab(tabId, retryCount + 1)
+        }
+      }
+      console.error('[Oh My Prompt] SidePanel: Failed to establish content script')
+      // Connection failed - ensure currentTabId stays null
+      return false
+    }
+
+    try {
+      // Establish Port connection
+      const port = chrome.tabs.connect(tabId, { name: 'sidepanel-connection' })
+      currentPortRef.current = port
+      console.log('[Oh My Prompt] SidePanel: Port connected to tab', tabId)
+
+      // Get tab URL to set connected site name
+      chrome.tabs.get(tabId).then((tab) => {
+        if (tab && tab.url) {
+          setConnectedSiteName(getSiteNameFromUrl(tab.url))
+        }
+      })
+
+      // Handle incoming messages
+      port.onMessage.addListener((message) => {
+        if (message.type === MessageType.INPUT_STATUS_CHANGED) {
+          console.log('[Oh My Prompt] SidePanel: Received INPUT_STATUS_CHANGED:', message.hasInput)
+          if (message.hasInput) {
+            setInputStatus('available')
+            setCheckingSiteName('')
+          } else {
+            setInputStatus('unavailable')
+          }
+        }
+      })
+
+      // Handle disconnection (tab closed, refreshed, navigated)
+      port.onDisconnect.addListener(() => {
+        const lastError = chrome.runtime.lastError
+        if (lastError) {
+          console.log('[Oh My Prompt] SidePanel: Port disconnect with error:', lastError.message)
+        } else {
+          console.log('[Oh My Prompt] SidePanel: Port disconnected from tab', tabId)
+        }
+        currentPortRef.current = null
+        setConnectedSiteName('')
+
+        // Check if disconnected due to tab close or just page navigation
+        chrome.tabs.get(tabId).then((tab) => {
+          if (tab && tab.url && !isSpecialPage(tab.url)) {
+            // Tab still exists, try reconnect (page navigation)
+            console.log('[Oh My Prompt] SidePanel: Tab still exists, reconnecting...')
+            setCheckingSiteName(getSiteNameFromUrl(tab.url))
+            setInputStatus('checking')
+            // Wait for content script to reinitialize, then reconnect
+            setTimeout(() => {
+              if (tab.id) connectToTab(tab.id)
+            }, 500)
+          } else {
+            // Tab closed or became special page, find new tab
+            setInputStatus('unavailable')
+            setCurrentTabId(null)
+            findAvailableTabRef.current()
+          }
+        }).catch(() => {
+          // Tab no longer exists
+          setInputStatus('unavailable')
+          setCurrentTabId(null)
+          setConnectedSiteName('')
+          findAvailableTabRef.current()
+        })
+      })
+
+      // Request initial status
+      port.postMessage({ type: MessageType.CHECK_INPUT_PORT })
+      setCurrentTabId(tabId)
+      return true
+    } catch (error) {
+      console.error('[Oh My Prompt] SidePanel: Port connection failed:', error)
+      return false
+    }
+  }, [isSpecialPage, getSiteNameFromUrl, injectContentScript])
+
+  // Find an available tab to connect (fallback logic)
+  const findAvailableTab = useCallback(async () => {
+    console.log('[Oh My Prompt] SidePanel: Finding available tab...')
+    setInputStatus('checking')
+    setCheckingSiteName('')
+    setCurrentTabId(null)
+
     chrome.tabs.query({ active: true, currentWindow: true }, async (activeTabs) => {
       const activeTab = activeTabs[0]
-      console.log('[Oh My Prompt] SidePanel: Active tab:', activeTab?.id, activeTab?.url)
 
-      // If active tab is valid and not special page, check input availability
+      // Try active tab first
       if (activeTab?.id && activeTab?.url && !isSpecialPage(activeTab.url)) {
-        // Set site name for checking status display
         setCheckingSiteName(getSiteNameFromUrl(activeTab.url))
-        const hasInput = await checkInputOnTab(activeTab.id, 3, activeTab.url)
-        if (hasInput) {
-          setCurrentTabId(activeTab.id)
-          setInputStatus('available')
-          setCheckingSiteName('')
-          console.log('[Oh My Prompt] SidePanel: Input available on tab', activeTab.id)
-          return
+
+        // Try to connect via Port
+        const connected = await connectToTab(activeTab.id)
+        if (!connected) {
+          // Connection failed, try injecting content script first
+          const injected = await injectContentScript(activeTab.id)
+          if (injected) {
+            await connectToTab(activeTab.id)
+          }
         }
-        // Input not found on active tab, continue to search other tabs
-        console.log('[Oh My Prompt] SidePanel: Input not found on active tab, searching other tabs')
+        return
       }
 
-      // Active tab is special page, invalid, or has no input - find another tab in the same window
-      console.log('[Oh My Prompt] SidePanel: Searching for other tabs with input')
+      // Active tab not suitable, find other tabs
       chrome.tabs.query({ currentWindow: true }, async (allTabs) => {
-        // Find first non-special page tab (excluding active tab which we already checked)
         const candidateTabs = allTabs.filter(t =>
           t.id && t.url && !isSpecialPage(t.url) && t.id !== activeTab?.id
         )
 
-        console.log('[Oh My Prompt] SidePanel: Found', candidateTabs.length, 'candidate tabs')
         for (const tab of candidateTabs) {
           if (tab.id && tab.url) {
-            // Update site name for each candidate tab
             setCheckingSiteName(getSiteNameFromUrl(tab.url))
-            const hasInput = await checkInputOnTab(tab.id, 2, tab.url) // Fewer retries for fallback tabs
-            if (hasInput) {
-              console.log('[Oh My Prompt] SidePanel: Found tab with input:', tab.id, tab.url)
-              setCurrentTabId(tab.id)
-              setInputStatus('available')
-              setCheckingSiteName('')
+            const connected = await connectToTab(tab.id)
+            if (connected) {
+              console.log('[Oh My Prompt] SidePanel: Connected to fallback tab', tab.id)
               return
             }
           }
         }
 
         // No suitable tab found
-        console.log('[Oh My Prompt] SidePanel: No tab with input found in window')
+        console.log('[Oh My Prompt] SidePanel: No available tab found')
         setInputStatus('unavailable')
         setCurrentTabId(null)
         setCheckingSiteName('')
       })
     })
-  }, [isSpecialPage, checkInputOnTab, getSiteNameFromUrl])
+  }, [isSpecialPage, connectToTab, injectContentScript, getSiteNameFromUrl])
 
-  // Check current tab input availability on mount
-  useEffect(() => {
-    checkInputAvailability()
-  }, [checkInputAvailability])
+  // Update ref whenever findAvailableTab changes
+  findAvailableTabRef.current = findAvailableTab
 
-  // Re-check when tab is switched
+  // Initialize connection on mount
   useEffect(() => {
-    const handleTabActivated = () => {
-      console.log('[Oh My Prompt] SidePanel: Tab activated, re-checking input availability')
-      checkInputAvailability()
+    findAvailableTab()
+  }, [findAvailableTab])
+
+  // Re-connect when tab is activated (user switches tabs)
+  useEffect(() => {
+    const handleTabActivated = (activeInfo: chrome.tabs.TabActiveInfo) => {
+      console.log('[Oh My Prompt] SidePanel: Tab activated:', activeInfo.tabId)
+
+      // Disconnect existing port
+      if (currentPortRef.current) {
+        currentPortRef.current.disconnect()
+        currentPortRef.current = null
+      }
+
+      // Connect to new active tab
+      chrome.tabs.get(activeInfo.tabId).then(async (tab) => {
+        if (tab && tab.url && !isSpecialPage(tab.url)) {
+          setCheckingSiteName(getSiteNameFromUrl(tab.url))
+          setInputStatus('checking')
+          const connected = await connectToTab(activeInfo.tabId)
+          if (!connected) {
+            // Connection failed, find fallback tab
+            setInputStatus('unavailable')
+            findAvailableTabRef.current()
+          }
+        } else {
+          // Special page, find fallback
+          setInputStatus('unavailable')
+          setCurrentTabId(null)
+          findAvailableTabRef.current()
+        }
+      }).catch(() => {
+        setInputStatus('unavailable')
+        findAvailableTabRef.current()
+      })
     }
 
     chrome.tabs.onActivated.addListener(handleTabActivated)
-    return () => {
-      chrome.tabs.onActivated.removeListener(handleTabActivated)
+    return () => chrome.tabs.onActivated.removeListener(handleTabActivated)
+  }, [isSpecialPage, connectToTab, getSiteNameFromUrl])
+
+  // Handle tab removal (disconnect and find new tab)
+  useEffect(() => {
+    const handleTabRemoved = (tabId: number) => {
+      if (tabId === currentTabId) {
+        console.log('[Oh My Prompt] SidePanel: Connected tab removed:', tabId)
+        if (currentPortRef.current) {
+          currentPortRef.current.disconnect()
+          currentPortRef.current = null
+        }
+        setInputStatus('unavailable')
+        setCurrentTabId(null)
+        findAvailableTabRef.current()
+      }
     }
-  }, [checkInputAvailability])
+
+    chrome.tabs.onRemoved.addListener(handleTabRemoved)
+    return () => chrome.tabs.onRemoved.removeListener(handleTabRemoved)
+  }, [currentTabId])
+
+  // Handle tab URL updates (page navigation within same tab)
+  useEffect(() => {
+    const handleTabUpdated = (tabId: number, changeInfo: chrome.tabs.TabChangeInfo) => {
+      // Only handle url changes for connected tab
+      if (tabId === currentTabId && changeInfo.url) {
+        console.log('[Oh My Prompt] SidePanel: Connected tab URL changed:', changeInfo.url)
+
+        // Check if new URL is special page
+        if (isSpecialPage(changeInfo.url)) {
+          if (currentPortRef.current) {
+            currentPortRef.current.disconnect()
+            currentPortRef.current = null
+          }
+          setInputStatus('unavailable')
+          setCurrentTabId(null)
+          findAvailableTabRef.current()
+        }
+      }
+    }
+
+    chrome.tabs.onUpdated.addListener(handleTabUpdated)
+    return () => chrome.tabs.onUpdated.removeListener(handleTabUpdated)
+  }, [currentTabId, isSpecialPage])
 
   // Modal states
   const [modalStates, setModalStates] = useState({
@@ -996,7 +1118,7 @@ export default function SidePanelApp() {
           console.log('[Oh My Prompt] SidePanel: Tab no longer valid, triggering re-check')
           setInputStatus('unavailable')
           setCurrentTabId(null)
-          checkInputAvailability()
+          findAvailableTabRef.current()
           await navigator.clipboard.writeText(prompt.content)
           setToastMessage('已复制到剪贴板（页面已切换）')
           setTimeout(hideToast, 2000)
@@ -1024,7 +1146,7 @@ export default function SidePanelApp() {
         // Connection failed - trigger re-check and copy to clipboard as fallback
         setInputStatus('unavailable')
         setCurrentTabId(null)
-        checkInputAvailability()
+        findAvailableTabRef.current()
         try {
           await navigator.clipboard.writeText(prompt.content)
           setToastMessage('已复制到剪贴板')
@@ -1037,7 +1159,7 @@ export default function SidePanelApp() {
     }
     setSelectedPromptId(prompt.id)
     setTimeout(() => setSelectedPromptId(null), 2000)
-  }, [inputStatus, currentTabId, setToastMessage, hideToast, isSpecialPage, checkInputAvailability])
+  }, [inputStatus, currentTabId, setToastMessage, hideToast, isSpecialPage])
 
   // Handle resource prompt injection
   const handleInjectResource = useCallback(async (resourcePrompt: ResourcePrompt) => {
@@ -1054,7 +1176,7 @@ export default function SidePanelApp() {
         console.log('[Oh My Prompt] SidePanel: Tab no longer valid, triggering re-check')
         setInputStatus('unavailable')
         setCurrentTabId(null)
-        checkInputAvailability()
+        findAvailableTabRef.current()
         await navigator.clipboard.writeText(promptToInject)
         setToastMessage('已复制到剪贴板（页面已切换）')
         setTimeout(hideToast, 2000)
@@ -1078,7 +1200,7 @@ export default function SidePanelApp() {
       // Fallback to clipboard and trigger re-check
       setInputStatus('unavailable')
       setCurrentTabId(null)
-      checkInputAvailability()
+      findAvailableTabRef.current()
       try {
         await navigator.clipboard.writeText(promptToInject)
         setToastMessage('已复制到剪贴板')
@@ -1088,7 +1210,7 @@ export default function SidePanelApp() {
         setTimeout(hideToast, 2000)
       }
     }
-  }, [inputStatus, currentTabId, resourceLanguage, isSpecialPage, checkInputAvailability, setToastMessage, hideToast])
+  }, [inputStatus, currentTabId, resourceLanguage, isSpecialPage, setToastMessage, hideToast])
 
   // Check if resource prompt is collected
   const isPromptCollected = useCallback((resourcePrompt: ResourcePrompt): boolean => {
@@ -1593,6 +1715,12 @@ export default function SidePanelApp() {
             <span className="banner-text">
               {checkingSiteName ? `正在连接 ${checkingSiteName}...` : '正在检测页面...'}
             </span>
+          </div>
+        )}
+        {inputStatus === 'available' && connectedSiteName && (
+          <div className="input-status-banner connected">
+            <CheckCircle style={{ width: 14, height: 14, color: '#16a34a' }} />
+            <span className="banner-text">已连接 {connectedSiteName}</span>
           </div>
         )}
         {inputStatus === 'unavailable' && (

@@ -9,6 +9,7 @@ import { Injector } from './injector'
 import { createDefaultInserter } from '../platforms/base/default-strategies'
 import { MessageType } from '../../shared/messages'
 import type { InsertResultPayload } from '../../shared/types'
+import type { InputDetectionConfig } from '../platforms/base/types'
 import { usePromptStore } from '../../lib/store'
 import { VisionModalManager } from '../vision-modal-manager'
 import { ImageHoverButtonManager } from '../image-hover-button-manager'
@@ -18,6 +19,9 @@ import { claudeAiConfig } from '../platforms/claude-ai/config'
 import { geminiConfig } from '../platforms/gemini/config'
 import { liblibConfig } from '../platforms/liblib/config'
 import { jimengConfig } from '../platforms/jimeng/config'
+import { xingliuConfig } from '../platforms/xingliu/config'
+import { kimiConfig } from '../platforms/kimi/config'
+import { TaskQueueManager } from './task-queue-manager'
 
 // Register platform configurations
 registerPlatform(lovartConfig)
@@ -26,8 +30,52 @@ registerPlatform(claudeAiConfig)
 registerPlatform(geminiConfig)
 registerPlatform(liblibConfig)
 registerPlatform(jimengConfig)
+registerPlatform(xingliuConfig)
+registerPlatform(kimiConfig)
 
 const LOG_PREFIX = '[Oh My Prompt]'
+
+/**
+ * Universal input detection config - works on any page with contenteditable or textarea
+ * Uses relaxed validation: accept textarea/input even if hidden (offset=0)
+ */
+const UNIVERSAL_INPUT_CONFIG: InputDetectionConfig = {
+  selectors: [
+    // Priority: specific patterns first, then generic
+    'div[contenteditable="true"][role="textbox"]',
+    'div[contenteditable="true"]',
+    'textarea[placeholder*="message"]',
+    'textarea[placeholder*="prompt"]',
+    'textarea[placeholder*="输入"]',
+    'textarea[placeholder*="描述"]',
+    'textarea[placeholder*="chat"]',
+    'textarea[id*="chat"]',
+    'textarea[id*="input"]',
+    'textarea[class*="chat"]',
+    'textarea[class*="input"]',
+    'textarea',  // Generic fallback
+    '[data-lexical-editor="true"]',
+    '.ProseMirror[contenteditable="true"]',
+    'input[type="text"][placeholder*="message"]',
+    'input[type="text"][placeholder*="prompt"]',
+  ],
+  debounceMs: 100,
+  // Relaxed validation: accept textarea/input regardless of visibility
+  validate: (element: HTMLElement) => {
+    // Always accept textarea and input[type="text"]
+    if (element instanceof HTMLTextAreaElement) {
+      return true
+    }
+    if (element instanceof HTMLInputElement && element.type === 'text') {
+      return true
+    }
+    // For contenteditable, still check visibility (avoid hidden containers)
+    if (element.isContentEditable) {
+      return element.offsetWidth > 0 && element.offsetHeight > 0
+    }
+    return false
+  },
+}
 
 /**
  * Coordinator class manages content script lifecycle
@@ -37,6 +85,7 @@ class Coordinator {
   private injector: Injector | null = null
   private hoverButtonManager: ImageHoverButtonManager | null = null
   private platform: ReturnType<typeof matchPlatform>
+  private sidePanelPort: chrome.runtime.Port | null = null
 
   constructor() {
     this.platform = matchPlatform(window.location.href)
@@ -52,6 +101,9 @@ class Coordinator {
     // Setup message listener FIRST - always needed for vision modal on any page
     this.setupMessageListener()
 
+    // Setup Port connection listener for SidePanel
+    this.setupPortListener()
+
     // Ping service worker to verify connection
     this.pingServiceWorker()
 
@@ -63,45 +115,114 @@ class Coordinator {
     this.hoverButtonManager.start()
     console.log(LOG_PREFIX, 'ImageHoverButtonManager started')
 
-    // Exit early if no platform matched - no UI injection needed
-    if (!this.platform) {
-      console.log(LOG_PREFIX, 'No platform matched, but vision modal handler ready')
-      return
+// Initialize TaskQueueManager (load API config)
+    TaskQueueManager.getInstance()
+    console.log(LOG_PREFIX, 'TaskQueueManager initialized')
+
+    // Note: BatchPanelManager is created on-demand when first task is added
+    // No need to pre-create it here
+
+    // Create Injector BEFORE Detector if platform matches
+    // This ensures Injector is ready when Detector immediately finds input
+    if (this.platform) {
+      this.injector = new Injector()
     }
 
-    // Create inserter (use platform's custom strategy or default)
-    const inserter = this.platform.strategies?.inserter ?? createDefaultInserter()
-
-    // Create Injector instance
-    this.injector = new Injector()
-
-    // Create Detector instance with platform's inputDetection config
+    // Create universal detector for ALL pages (no platform restriction)
     this.detector = new Detector(
-      this.platform.inputDetection,
-      this.handleInputDetected.bind(this, inserter)
+      UNIVERSAL_INPUT_CONFIG,
+      this.handleUniversalInputDetected.bind(this)
     )
-
-    // Start detector
+    this.detector.setStatusChangedCallback(this.handleInputStatusChanged.bind(this))
     this.detector.start()
+    console.log(LOG_PREFIX, 'Universal detector started')
+
+    // Exit early if no platform matched - no UI injection needed
+    if (!this.platform) {
+      console.log(LOG_PREFIX, 'No platform matched, but detector is active for input detection')
+      return
+    }
 
     console.log(LOG_PREFIX, 'Coordinator initialized for platform:', this.platform.name)
   }
 
   /**
-   * Handle input element detection
-   * Inject UI when platform input is found
+   * Setup Port connection listener for SidePanel real-time communication
    */
-  private handleInputDetected(
-    inserter: ReturnType<typeof createDefaultInserter>,
-    inputElement: HTMLElement
-  ): void {
-    if (!this.injector || !this.platform) return
+  private setupPortListener(): void {
+    chrome.runtime.onConnect.addListener((port) => {
+      if (port.name === 'sidepanel-connection') {
+        console.log(LOG_PREFIX, 'SidePanel Port connected')
+        this.sidePanelPort = port
+
+        // Handle messages from SidePanel
+        port.onMessage.addListener((message) => {
+          if (message.type === MessageType.CHECK_INPUT_PORT) {
+            // Respond with current input status
+            const hasInput = this.detector?.getInputElement() !== null
+            port.postMessage({
+              type: MessageType.INPUT_STATUS_CHANGED,
+              hasInput
+            })
+          }
+        })
+
+        // Handle disconnection (tab closed, refreshed, or SidePanel closed)
+        port.onDisconnect.addListener(() => {
+          console.log(LOG_PREFIX, 'SidePanel Port disconnected')
+          this.sidePanelPort = null
+        })
+
+        // Send initial status immediately
+        const hasInput = this.detector?.getInputElement() !== null
+        port.postMessage({
+          type: MessageType.INPUT_STATUS_CHANGED,
+          hasInput
+        })
+      }
+    })
+  }
+
+  /**
+   * Handle input status changes and notify SidePanel via Port
+   */
+  private handleInputStatusChanged(hasInput: boolean): void {
+    console.log(LOG_PREFIX, 'Input status changed:', hasInput)
+    if (this.sidePanelPort) {
+      try {
+        this.sidePanelPort.postMessage({
+          type: MessageType.INPUT_STATUS_CHANGED,
+          hasInput
+        })
+      } catch (error) {
+        // Port may be disconnected, ignore error
+        console.warn(LOG_PREFIX, 'Failed to send status via Port:', error)
+        this.sidePanelPort = null
+      }
+    }
+  }
+
+  /**
+   * Handle universal input element detection (all pages)
+   * Inject UI only if platform matches
+   */
+  private handleUniversalInputDetected(inputElement: HTMLElement): void {
+    console.log(LOG_PREFIX, 'Universal input detected:', inputElement)
+
+    // Only inject UI if platform matches
+    if (!this.platform || !this.injector) {
+      console.log(LOG_PREFIX, 'No platform match or injector, skipping UI injection')
+      return
+    }
+
+    const inserter = this.platform.strategies?.inserter ?? createDefaultInserter()
 
     if (this.injector.isInjected()) {
       console.log(LOG_PREFIX, 'Cleaning up existing UI before re-injection')
+      this.injector.remove()
     }
 
-    console.log(LOG_PREFIX, 'Injecting UI near input element')
+    console.log(LOG_PREFIX, 'Injecting UI near input element for platform:', this.platform.name)
 
     this.injector.inject(
       inputElement,
@@ -151,6 +272,13 @@ class Coordinator {
         const hasInput = this.detector?.getInputElement() !== null
         console.log(LOG_PREFIX, 'CHECK_INPUT_AVAILABILITY response:', hasInput)
         sendResponse({ success: true, data: { hasInput } })
+        return true
+      }
+
+      // Handle PING from sidepanel (connection check)
+      if (message.type === MessageType.PING) {
+        console.log(LOG_PREFIX, 'PING received, responding...')
+        sendResponse({ success: true })
         return true
       }
 
@@ -219,7 +347,8 @@ class Coordinator {
         return true // Required for async sendResponse
       }
 
-      return true // Required for async sendResponse
+      // Unhandled message types - return false to indicate no async response
+      return false
     })
   }
 

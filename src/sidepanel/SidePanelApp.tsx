@@ -564,7 +564,6 @@ export default function SidePanelApp() {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all')
   const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null)
   const [isResourceLibrary, setIsResourceLibrary] = useState(false)
-  const [isTemporaryLibrary, setIsTemporaryLibrary] = useState(false)
   const [selectedResourceCategoryId, setSelectedResourceCategoryId] = useState<string>('all')
   const [resourceLanguage, setResourceLanguage] = useState<'zh' | 'en'>('zh')
   const [loadedCount, setLoadedCount] = useState(50)
@@ -1056,13 +1055,27 @@ export default function SidePanelApp() {
 
   const showCategoryDragHandles = sortableCategories.length >= 2
 
+  // Temporary prompts from store (independent storage, not in category system)
+  const displayTemporaryPrompts = useMemo(() => {
+    return sortPromptsByOrder(temporaryPrompts).map(p => ({
+      ...p,
+      name: resourceLanguage === 'en' && p.nameEn ? p.nameEn : p.name,
+      content: resourceLanguage === 'en' && p.contentEn ? p.contentEn : p.content,
+      description: resourceLanguage === 'en' && p.descriptionEn ? p.descriptionEn : p.description,
+    }))
+  }, [temporaryPrompts, resourceLanguage])
+
   // Filter prompts by category
   const filteredPrompts = useMemo(() => {
+    if (selectedCategoryId === 'temporary') {
+      // Temporary library: use displayTemporaryPrompts (already sorted in reverse order)
+      return displayTemporaryPrompts
+    }
     let result = selectedCategoryId === 'all'
       ? prompts
       : prompts.filter(p => p.categoryId === selectedCategoryId)
     return sortPromptsByOrder(result)
-  }, [prompts, selectedCategoryId])
+  }, [prompts, displayTemporaryPrompts, selectedCategoryId])
 
   const showPromptDragHandles = filteredPrompts.length >= 2
 
@@ -1075,16 +1088,6 @@ export default function SidePanelApp() {
       description: resourceLanguage === 'en' && p.descriptionEn ? p.descriptionEn : p.description,
     }))
   }, [filteredPrompts, resourceLanguage])
-
-  // Temporary prompts from store (independent storage, not in category system)
-  const displayTemporaryPrompts = useMemo(() => {
-    return sortPromptsByOrder(temporaryPrompts).map(p => ({
-      ...p,
-      name: resourceLanguage === 'en' && p.nameEn ? p.nameEn : p.name,
-      content: resourceLanguage === 'en' && p.contentEn ? p.contentEn : p.content,
-      description: resourceLanguage === 'en' && p.descriptionEn ? p.descriptionEn : p.description,
-    }))
-  }, [temporaryPrompts, resourceLanguage])
 
   // Filter resource prompts
   const filteredResourcePrompts = useMemo(() => {
@@ -1580,13 +1583,13 @@ export default function SidePanelApp() {
         {/* Sidebar */}
         <div className="side-panel-sidebar">
           <div className="sidebar-categories scrollbar-thin">
-          {isResourceLibrary || isTemporaryLibrary ? (
+          {isResourceLibrary ? (
             <>
               <button
                 className="sidebar-category-item"
                 onClick={() => {
                   setIsResourceLibrary(false)
-                  setIsTemporaryLibrary(false)
+                  setSelectedCategoryId('all')
                 }}
               >
                 <div className="sidebar-category-icon-wrapper">
@@ -1594,43 +1597,32 @@ export default function SidePanelApp() {
                 </div>
                 <span>返回</span>
               </button>
-              {/* Temporary library mode: show title */}
-              {isTemporaryLibrary && (
-                <button className="sidebar-category-item selected">
-                  <div className="sidebar-category-icon-wrapper">
-                    <Clock className="sidebar-category-icon" />
-                  </div>
-                  <span>临时提示词</span>
-                </button>
-              )}
               {/* Resource library mode: show categories */}
-              {isResourceLibrary && (
-                <>
+              <>
+                <button
+                  className={`sidebar-category-item ${selectedResourceCategoryId === 'all' ? 'selected' : ''}`}
+                  onClick={() => setSelectedResourceCategoryId('all')}
+                >
+                  <div className="sidebar-category-icon-wrapper">
+                    <Database className="sidebar-category-icon" />
+                  </div>
+                  <span>全部</span>
+                </button>
+                {sortProviderCategoriesByOrder(resourceCategories).map(category => (
                   <button
-                    className={`sidebar-category-item ${selectedResourceCategoryId === 'all' ? 'selected' : ''}`}
-                    onClick={() => setSelectedResourceCategoryId('all')}
+                    key={category.id}
+                    className={`sidebar-category-item ${selectedResourceCategoryId === category.id ? 'selected' : ''}`}
+                    onClick={() => setSelectedResourceCategoryId(category.id)}
                   >
                     <div className="sidebar-category-icon-wrapper">
-                      <Database className="sidebar-category-icon" />
+                      <Layers className="sidebar-category-icon" />
                     </div>
-                    <span>全部</span>
+                    <Tooltip content={category.name}>
+                      <span>{category.name}</span>
+                    </Tooltip>
                   </button>
-                  {sortProviderCategoriesByOrder(resourceCategories).map(category => (
-                    <button
-                      key={category.id}
-                      className={`sidebar-category-item ${selectedResourceCategoryId === category.id ? 'selected' : ''}`}
-                      onClick={() => setSelectedResourceCategoryId(category.id)}
-                    >
-                      <div className="sidebar-category-icon-wrapper">
-                        <Layers className="sidebar-category-icon" />
-                      </div>
-                      <Tooltip content={category.name}>
-                        <span>{category.name}</span>
-                      </Tooltip>
-                    </button>
-                  ))}
-                </>
-              )}
+                ))}
+              </>
             </>
           ) : (
             <>
@@ -1654,10 +1646,10 @@ export default function SidePanelApp() {
                 <span>资源库</span>
               </button>
 
-              {/* "临时库" entry */}
+              {/* "临时库" entry - as sidebar category item */}
               <button
-                className={`sidebar-category-item ${isTemporaryLibrary ? 'selected' : ''}`}
-                onClick={() => setIsTemporaryLibrary(true)}
+                className={`sidebar-category-item ${selectedCategoryId === 'temporary' ? 'selected' : ''}`}
+                onClick={() => setSelectedCategoryId('temporary')}
               >
                 <div className="sidebar-category-icon-wrapper">
                   <Clock className="sidebar-category-icon" />
@@ -1801,50 +1793,6 @@ export default function SidePanelApp() {
             <div className="empty-state">
               <div className="empty-message">加载中...</div>
             </div>
-          ) : isTemporaryLibrary ? (
-            // Temporary library view - list format with clear button
-            displayTemporaryPrompts.length === 0 ? (
-              <div className="empty-state">
-                <div className="empty-message">暂无临时提示词</div>
-              </div>
-            ) : (
-              <>
-                <DndContext collisionDetection={closestCenter} onDragEnd={handlePromptDragEnd}>
-                  <SortableContext
-                    items={displayTemporaryPrompts.map(p => p.id)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    {displayTemporaryPrompts.map(prompt => (
-                      <SortablePromptItem
-                        key={prompt.id}
-                        prompt={prompt}
-                        isSelected={selectedPromptId === prompt.id}
-                        onSelect={handleSelectPrompt}
-                        showDragHandle={displayTemporaryPrompts.length >= 2}
-                        onEdit={(p) => {
-                          setEditingItem('prompt', p)
-                          openModal('isPromptEdit')
-                        }}
-                        onDelete={(p) => {
-                          setEditingItem('deletingPrompt', p)
-                          openModal('isPromptDelete')
-                        }}
-                        canInject={inputStatus === 'available'}
-                      />
-                    ))}
-                  </SortableContext>
-                </DndContext>
-                {/* Clear all button in FAB position */}
-                <button
-                  className="fab-add-btn fab-clear-btn"
-                  onClick={() => openModal('isPromptDelete')}
-                  aria-label="清除临时库"
-                  title="清除临时库"
-                >
-                  <Trash2 style={{ width: 18, height: 18 }} />
-                </button>
-              </>
-            )
           ) : isResourceLibrary ? (
             paginatedResourcePrompts.length === 0 ? (
               <div className="empty-state">
@@ -1870,10 +1818,10 @@ export default function SidePanelApp() {
                 ))}
               </div>
             )
-          ) : displayPrompts.length === 0 ? (
+          ) : filteredPrompts.length === 0 ? (
             <div className="empty-state">
               <div className="empty-message">
-                {selectedCategoryId === 'all' ? '暂无提示词' : '该分类暂无提示词'}
+                {selectedCategoryId === 'all' ? '暂无提示词' : selectedCategoryId === 'temporary' ? '暂无临时提示词' : '该分类暂无提示词'}
               </div>
             </div>
           ) : (
@@ -1906,7 +1854,7 @@ export default function SidePanelApp() {
         </div>
 
         {/* FAB add button */}
-        {!isResourceLibrary && !isTemporaryLibrary && (
+        {!isResourceLibrary && selectedCategoryId !== 'temporary' && (
           <button
             className="fab-add-btn"
             onClick={() => openModal('isPromptAdd')}

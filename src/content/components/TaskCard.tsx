@@ -54,6 +54,22 @@ function TaskCard({ task, onRemove, onRetry }: TaskCardProps) {
   }, [task.result, language, format])
 
   /**
+   * Get title for status row (linked to language toggle)
+   */
+  const getTitle = useCallback(() => {
+    if (!task.result) return '完成'
+    const title = language === 'zh'
+      ? task.result.zh.title
+      : task.result.en.title
+    if (!title) return '完成'
+    // Truncate for compact display
+    const maxLen = language === 'zh' ? 20 : 30
+    return title.length > maxLen
+      ? title.substring(0, maxLen) + '...'
+      : title
+  }, [task.result, language])
+
+  /**
    * Copy prompt to clipboard
    */
   const handleCopy = useCallback(async () => {
@@ -84,7 +100,7 @@ function TaskCard({ task, onRemove, onRetry }: TaskCardProps) {
         </div>
         <div className="task-status-row">
           <Check className="status-icon" size={16} style={{ color: '#22c55e' }} />
-          <span className="status-text">完成</span>
+          <span className="status-text">{getTitle()}</span>
           {task.savedToTemporary ? (
             <span className="save-status success">已保存到临时库</span>
           ) : task.saveError ? (

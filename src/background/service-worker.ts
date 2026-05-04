@@ -571,8 +571,8 @@ chrome.runtime.onMessage.addListener(
             // Get or initialize temporary prompts array
             const temporaryPrompts = data.temporaryPrompts || []
 
-            // Calculate order (max order + 1 in temporary prompts)
-            const maxOrder = temporaryPrompts.length > 0 ? Math.max(...temporaryPrompts.map(p => p.order)) : -1
+            // Calculate order (min order - 1 for reverse sorting - newest first)
+            const minOrder = temporaryPrompts.length > 0 ? Math.min(...temporaryPrompts.map(p => p.order)) : 0
 
             // Add new prompt to temporary library - support bilingual content and description
             const newPrompt: Prompt = {
@@ -584,7 +584,7 @@ chrome.runtime.onMessage.addListener(
               description: savePayload.description, // Chinese analysis (optional)
               descriptionEn: savePayload.descriptionEn, // English analysis (optional)
               categoryId: 'temporary', // Special marker for temporary library
-              order: maxOrder + 1,
+              order: minOrder - 1,
               remoteImageUrl: savePayload.imageUrl // Optional source URL
             }
 
@@ -594,11 +594,37 @@ chrome.runtime.onMessage.addListener(
               try {
                 // Check if folder is configured via offscreen document
                 const permResult = await sendToOffscreen<{ hasFolder: boolean; permission?: 'granted' | 'prompt' | 'denied' }>(MessageType.OFFSCREEN_CHECK_PERMISSION)
-                if (permResult.success && permResult.data?.permission === 'granted') {
-                  // Download image
-                  console.log('[Oh My Prompt] Downloading image for local save:', savePayload.imageUrl)
+                console.log('[Oh My Prompt] Permission check result:', permResult)
+
+                let proceedWithSave = false
+
+                if (!permResult.success) {
+                  console.warn('[Oh My Prompt] Offscreen permission check failed:', permResult.error)
+                } else if (!permResult.data?.hasFolder) {
+                  console.log('[Oh My Prompt] No backup folder configured, skipping local image save')
+                } else if (permResult.data?.permission === 'prompt') {
+                  // Permission needs re-authorization - request via offscreen document
+                  console.log('[Oh My Prompt] Folder permission needs re-authorization, requesting...')
+                  const requestResult = await sendToOffscreen<{ permission: 'granted' | 'denied' }>(MessageType.OFFSCREEN_REQUEST_PERMISSION)
+                  if (!requestResult.success || requestResult.data?.permission !== 'granted') {
+                    console.warn('[Oh My Prompt] Permission request failed:', requestResult.error)
+                  } else {
+                    console.log('[Oh My Prompt] Permission granted after request')
+                    proceedWithSave = true
+                  }
+                } else if (permResult.data?.permission === 'granted') {
+                  proceedWithSave = true
+                } else {
+                  console.warn('[Oh My Prompt] Folder permission denied, skipping local image save')
+                }
+
+                // Download and save image if permission is granted
+                if (proceedWithSave) {
+                  console.log('[Oh My Prompt] Downloading image:', savePayload.imageUrl)
                   const imageResponse = await fetch(savePayload.imageUrl)
-                  if (imageResponse.ok) {
+                  if (!imageResponse.ok) {
+                    console.warn('[Oh My Prompt] Image download failed:', imageResponse.status, imageResponse.statusText)
+                  } else {
                     const imageBlob = await imageResponse.blob()
                     const arrayBuffer = await imageBlob.arrayBuffer()
                     const uint8Array = new Uint8Array(arrayBuffer)
@@ -614,7 +640,9 @@ chrome.runtime.onMessage.addListener(
                       originalFilename: `image.${ext}`
                     })
 
-                    if (saveResult.success && saveResult.data?.relativePath) {
+                    if (!saveResult.success) {
+                      console.warn('[Oh My Prompt] Offscreen save image failed:', saveResult.error)
+                    } else if (saveResult.data?.relativePath) {
                       newPrompt.localImage = saveResult.data.relativePath
                       localImageSaved = true
                       console.log('[Oh My Prompt] Image saved locally:', newPrompt.localImage)
@@ -624,8 +652,10 @@ chrome.runtime.onMessage.addListener(
               } catch (imageError) {
                 // Image save failed, but prompt is already saved
                 // Keep remoteImageUrl as fallback
-                console.warn('[Oh My Prompt] Image save failed:', imageError)
+                console.warn('[Oh My Prompt] Image save exception:', imageError)
               }
+            } else {
+              console.log('[Oh My Prompt] No imageUrl provided, skipping local image save')
             }
 
             // Add to temporary prompts array

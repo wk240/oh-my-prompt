@@ -294,6 +294,8 @@ function VisionModal({ imageUrl, tabId, onClose }: VisionModalProps) {
     const promptNameEn = generatePromptName(enPromptContent, enTitle)
     let localImageSaved = false
 
+    console.log('[Oh My Prompt] VisionModal: Saving to temporary library, imageUrl:', imageUrl?.substring(0, 50) + '...')
+
     try {
       const saveResponse = await chrome.runtime.sendMessage({
         type: MessageType.SAVE_TEMPORARY_PROMPT,
@@ -308,6 +310,7 @@ function VisionModal({ imageUrl, tabId, onClose }: VisionModalProps) {
           styleTags: fullData.zh_style_tags
         } as SaveTemporaryPromptPayload
       })
+      console.log('[Oh My Prompt] VisionModal: Save response:', saveResponse)
       localImageSaved = saveResponse?.data?.localImageSaved === true
     } catch (saveError) {
       console.error('[Oh My Prompt] Save to temporary failed:', saveError)

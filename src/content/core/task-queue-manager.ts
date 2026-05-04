@@ -1,9 +1,10 @@
+
 /**
  * TaskQueueManager - Multi-task queue for concurrent prompt conversion
  * Singleton pattern with max 10 tasks, max 5 concurrent
  */
 
-import type { VisionApiResultData, VisionApiErrorPayload } from '@/shared/types'
+import type { VisionApiResultData, VisionApiErrorPayload, SaveTemporaryPromptPayload } from '@/shared/types'
 import { MessageType } from '@/shared/messages'
 import { classifyApiError } from '@/lib/vision-api'
 import { useTaskQueueStore } from './task-queue-store'
@@ -11,6 +12,15 @@ import { generateThumbnail } from '@/lib/image-utils'
 
 // Console log prefix
 const LOG_PREFIX = '[Oh My Prompt TaskQueue]'
+
+/**
+ * Generate prompt name from content or title
+ */
+function generatePromptName(content: string, title?: string): string {
+  if (title) return title
+  // Use first 30 chars of content as name
+  return content.substring(0, 30).replace(/\n/g, ' ').trim() + '...'
+}
 
 // Task status enum
 export type TaskStatus = 'pending' | 'running' | 'success' | 'failed'
@@ -280,12 +290,16 @@ export class TaskQueueManager {
           throw new Error('API 返回数据格式异常')
         }
 
+        // Update task with success status
         store.updateTask(task.id, {
           status: 'success',
           result: resultData
         })
 
         console.log(LOG_PREFIX, 'Task success:', task.id)
+
+        // Auto-save to temporary library
+        await this.autoSaveToTemporary(task.id, resultData, task.imageUrl)
       } else {
         // API returned error
         const errorPayload = response.error as VisionApiErrorPayload | undefined
@@ -323,4 +337,45 @@ export class TaskQueueManager {
     }
   }
 
+  /**
+   * Auto-save successful task to temporary library
+   */
+  private async autoSaveToTemporary(taskId: string, result: VisionApiResultData, imageUrl: string): Promise<void> {
+    const store = useTaskQueueStore.getState()
+
+    try {
+      const promptName = generatePromptName(result.zh.prompt, result.zh.title)
+      const promptNameEn = generatePromptName(result.en.prompt, result.en.title)
+
+      const savePayload: SaveTemporaryPromptPayload = {
+        name: promptName,
+        nameEn: promptNameEn,
+        content: result.zh.prompt,
+        contentEn: result.en.prompt,
+        description: result.zh.analysis,
+        descriptionEn: result.en.analysis,
+        imageUrl: imageUrl,
+        styleTags: result.zh_style_tags
+      }
+
+      const saveResponse = await chrome.runtime.sendMessage({
+        type: MessageType.SAVE_TEMPORARY_PROMPT,
+        payload: savePayload
+      })
+
+      if (saveResponse?.success) {
+        store.updateTask(taskId, { savedToTemporary: true })
+        console.log(LOG_PREFIX, 'Auto-saved to temporary library:', taskId)
+      } else {
+        const saveError = saveResponse?.error || '保存失败'
+        store.updateTask(taskId, { savedToTemporary: false, saveError })
+        console.warn(LOG_PREFIX, 'Auto-save failed:', taskId, saveError)
+      }
+    } catch (error) {
+      const saveError = error instanceof Error ? error.message : '保存异常'
+      store.updateTask(taskId, { savedToTemporary: false, saveError })
+      console.error(LOG_PREFIX, 'Auto-save error:', taskId, error)
+    }
   }
+
+}

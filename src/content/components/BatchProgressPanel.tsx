@@ -402,37 +402,33 @@ export function getBatchPanelStyles(): string {
       gap: 8px;
     }
 
-    /* TaskCard */
-    .task-card {
+    /* === Success Card (Full Display) === */
+    .task-card-success {
       display: flex;
-      align-items: flex-start;
+      flex-direction: column;
       gap: 12px;
       padding: 12px;
-      background: #f8f8f8;
-      border-radius: 8px;
-      transition: all 0.2s ease;
-    }
-
-    .task-card:hover {
-      background: #f0f0f0;
-    }
-
-    .task-card.expanded {
       background: #ffffff;
       border: 1px solid #E5E5E5;
+      border-radius: 8px;
     }
 
-    /* Thumbnail */
-    .task-thumbnail {
-      width: 80px;
-      height: 80px;
+    .task-header-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .task-thumbnail-small {
+      width: 60px;
+      height: 60px;
       flex-shrink: 0;
       border-radius: 6px;
       overflow: hidden;
       background: #E5E5E5;
     }
 
-    .task-thumbnail img {
+    .task-thumbnail-small img {
       width: 100%;
       height: 100%;
       object-fit: cover;
@@ -444,31 +440,15 @@ export function getBatchPanelStyles(): string {
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 12px;
+      font-size: 11px;
       color: #9CA3AF;
     }
 
-    /* Content */
-    .task-content {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      min-width: 0;
-    }
-
-    /* Status */
-    .task-status {
+    .task-status-row {
       display: flex;
       align-items: center;
       gap: 8px;
-    }
-
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      flex-shrink: 0;
+      flex: 1;
     }
 
     .status-icon {
@@ -490,14 +470,113 @@ export function getBatchPanelStyles(): string {
       color: #171717;
     }
 
-    .result-preview {
+    .save-status {
       font-size: 12px;
-      color: #64748B;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      color: #22c55e;
     }
 
-    .error-message {
+    .save-status.error {
+      color: #ef4444;
+    }
+
+    .save-status.pending {
+      color: #9CA3AF;
+    }
+
+    .task-header-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    /* Prompt display area */
+    .prompt-display {
+      background: #f8f8f8;
+      border: 1px solid #E5E5E5;
+      border-radius: 8px;
+      padding: 14px;
+      font-size: 14px;
+      color: #333;
+      line-height: 1.5;
+      min-height: 100px;
+      white-space: pre-wrap;
+      overflow-y: auto;
+      max-height: 150px;
+    }
+
+    /* Footer row */
+    .task-footer-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .toggle-groups {
+      display: flex;
+      gap: 8px;
+    }
+
+    .toggle-group {
+      display: flex;
+      gap: 2px;
+      background: #f0f0f0;
+      padding: 3px;
+      border-radius: 6px;
+    }
+
+    .toggle-btn {
+      padding: 6px 12px;
+      border: none;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #64748B;
+      background: transparent;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .toggle-btn:hover {
+      color: #171717;
+    }
+
+    .toggle-btn.active {
+      background: #ffffff;
+      color: #171717;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+    }
+
+    /* === Compact Card (Pending/Running/Failed) === */
+    .task-card-compact {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: #f8f8f8;
+      border-radius: 8px;
+    }
+
+    .task-card-compact:hover {
+      background: #f0f0f0;
+    }
+
+    .task-compact-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .status-dot.pending {
+      background: #9CA3AF;
+    }
+
+    .error-text {
       font-size: 12px;
       color: #ef4444;
     }
@@ -523,130 +602,59 @@ export function getBatchPanelStyles(): string {
       100% { width: 20%; }
     }
 
-    /* Expanded details */
-    .task-details {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      padding-top: 8px;
-      border-top: 1px solid #E5E5E5;
-    }
-
-    /* Prompt preview with copy */
-    .prompt-preview-wrapper {
-      position: relative;
-    }
-
-    .prompt-preview {
-      background: #f8f8f8;
+    /* === Text Buttons === */
+    .text-btn {
+      padding: 6px 10px;
       border: 1px solid #E5E5E5;
       border-radius: 6px;
-      padding: 10px;
-      font-size: 13px;
-      color: #171717;
-      max-height: 100px;
-      overflow-y: auto;
-      white-space: pre-wrap;
-      line-height: 1.4;
-    }
-
-    .copy-btn {
-      position: absolute;
-      bottom: 6px;
-      right: 6px;
-      width: 24px;
-      height: 24px;
-      padding: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(255, 255, 255, 0.9);
-      border: 1px solid #E5E5E5;
-      border-radius: 4px;
-      cursor: pointer;
-      color: #64748B;
-      transition: all 0.15s ease;
-    }
-
-    .copy-btn:hover {
-      background: #ffffff;
-    }
-
-    .copy-btn.copied {
-      color: #22c55e;
-    }
-
-    /* Toggle groups */
-    .toggle-groups {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
-
-    .toggle-group {
-      display: flex;
-      gap: 2px;
-      background: #f0f0f0;
-      padding: 3px;
-      border-radius: 6px;
-    }
-
-    .toggle-btn {
-      padding: 5px 10px;
-      border: none;
-      border-radius: 4px;
+      background: transparent;
       font-size: 12px;
       font-weight: 500;
-      color: #64748B;
-      background: transparent;
+      color: #666;
       cursor: pointer;
       transition: all 0.15s ease;
     }
 
-    .toggle-btn:hover {
-      color: #171717;
-    }
-
-    .toggle-btn.active {
-      background: #ffffff;
-      color: #171717;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
-    }
-
-    /* Actions */
-    .task-actions {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      flex-shrink: 0;
-    }
-
-    .action-btn {
-      width: 24px;
-      height: 24px;
-      padding: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: transparent;
-      border: 1px solid #E5E5E5;
-      border-radius: 4px;
-      cursor: pointer;
-      color: #64748B;
-      transition: all 0.15s ease;
-    }
-
-    .action-btn:hover {
+    .text-btn:hover {
       background: #f8f8f8;
       color: #171717;
     }
 
-    .action-btn.retry:hover {
+    .remove-btn:hover {
+      color: #ef4444;
+      border-color: #ef4444;
+    }
+
+    .retry-btn {
+      border: 1px solid #22c55e;
       color: #22c55e;
     }
 
-    .action-btn.remove:hover {
-      color: #ef4444;
+    .retry-btn:hover {
+      background: #f0fdf4;
+    }
+
+    /* Copy button (main action) */
+    .copy-btn-main {
+      padding: 8px 16px;
+      border: 1px solid #171717;
+      border-radius: 6px;
+      background: #ffffff;
+      font-size: 13px;
+      font-weight: 500;
+      color: #171717;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .copy-btn-main:hover {
+      background: #f8f8f8;
+    }
+
+    .copy-btn-main.copied {
+      background: #22c55e;
+      border-color: #22c55e;
+      color: #fff;
     }
 
     /* Footer */
@@ -684,23 +692,23 @@ export function getBatchPanelStyles(): string {
 
     /* Scrollbar */
     .panel-content::-webkit-scrollbar,
-    .prompt-preview::-webkit-scrollbar {
+    .prompt-display::-webkit-scrollbar {
       width: 6px;
     }
 
     .panel-content::-webkit-scrollbar-track,
-    .prompt-preview::-webkit-scrollbar-track {
+    .prompt-display::-webkit-scrollbar-track {
       background: transparent;
     }
 
     .panel-content::-webkit-scrollbar-thumb,
-    .prompt-preview::-webkit-scrollbar-thumb {
+    .prompt-display::-webkit-scrollbar-thumb {
       background: #ddd;
       border-radius: 3px;
     }
 
     .panel-content::-webkit-scrollbar-thumb:hover,
-    .prompt-preview::-webkit-scrollbar-thumb:hover {
+    .prompt-display::-webkit-scrollbar-thumb:hover {
       background: #ccc;
     }
   `

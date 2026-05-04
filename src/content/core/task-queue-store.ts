@@ -9,7 +9,6 @@ import type { QueueTask, QueueStats } from './task-queue-manager'
 interface TaskQueueState {
   tasks: QueueTask[]
   isPanelOpen: boolean
-  expandedTaskId: string | null  // Only one task can be expanded at a time
 
   // Actions
   setTasks: (tasks: QueueTask[]) => void
@@ -18,7 +17,6 @@ interface TaskQueueState {
   clearCompleted: () => void
   clearAll: () => void
   setPanelOpen: (open: boolean) => void
-  setExpandedTask: (taskId: string | null) => void
 
   // Computed
   getStats: () => QueueStats
@@ -28,7 +26,6 @@ interface TaskQueueState {
 export const useTaskQueueStore = create<TaskQueueState>((set, get) => ({
   tasks: [],
   isPanelOpen: false,
-  expandedTaskId: null,
 
   setTasks: (tasks) => set({ tasks }),
 
@@ -37,20 +34,16 @@ export const useTaskQueueStore = create<TaskQueueState>((set, get) => ({
   })),
 
   removeTask: (taskId) => set((state) => ({
-    tasks: state.tasks.filter(t => t.id !== taskId),
-    expandedTaskId: state.expandedTaskId === taskId ? null : state.expandedTaskId
+    tasks: state.tasks.filter(t => t.id !== taskId)
   })),
 
   clearCompleted: () => set((state) => ({
-    tasks: state.tasks.filter(t => t.status === 'pending' || t.status === 'running'),
-    expandedTaskId: null
+    tasks: state.tasks.filter(t => t.status === 'pending' || t.status === 'running')
   })),
 
-  clearAll: () => set({ tasks: [], expandedTaskId: null }),
+  clearAll: () => set({ tasks: [] }),
 
   setPanelOpen: (open) => set({ isPanelOpen: open }),
-
-  setExpandedTask: (taskId) => set({ expandedTaskId: taskId }),
 
   getStats: () => {
     const tasks = get().tasks

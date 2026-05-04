@@ -24,6 +24,8 @@ export interface QueueTask {
   createdAt: number           // Timestamp when added
   result?: VisionApiResultData // Result on success
   error?: string              // Error message on failure
+  savedToTemporary?: boolean  // Auto-save status
+  saveError?: string          // Save error message
 }
 
 // Queue constraints

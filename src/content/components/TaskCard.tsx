@@ -4,9 +4,8 @@
  */
 
 import { useState, useCallback } from 'react'
-import { Check, X, RefreshCw, ChevronDown, ChevronUp, Loader2, Copy } from 'lucide-react'
+import { Check, X, RefreshCw, Loader2, Copy } from 'lucide-react'
 import type { QueueTask } from '@/content/core/task-queue-manager'
-import { useTaskQueueStore } from '@/content/core/task-queue-store'
 
 type LanguageType = 'zh' | 'en'
 type FormatType = 'natural' | 'json'
@@ -35,11 +34,6 @@ function TaskCard({ task, onRemove, onRetry }: TaskCardProps) {
   const [language, setLanguage] = useState<LanguageType>('zh')
   const [format, setFormat] = useState<FormatType>('natural')
 
-  const expandedTaskId = useTaskQueueStore(state => state.expandedTaskId)
-  const setExpandedTask = useTaskQueueStore(state => state.setExpandedTask)
-
-  const isExpanded = expandedTaskId === task.id
-
   /**
    * Get current prompt based on language and format
    */
@@ -57,17 +51,6 @@ function TaskCard({ task, onRemove, onRetry }: TaskCardProps) {
     }
     return JSON.stringify(task.result.json_prompt, null, 2)
   }, [task.result, language, format])
-
-  /**
-   * Toggle expand/collapse
-   */
-  const handleToggleExpand = useCallback(() => {
-    if (isExpanded) {
-      setExpandedTask(null)
-    } else {
-      setExpandedTask(task.id)
-    }
-  }, [isExpanded, setExpandedTask, task.id])
 
   /**
    * Copy prompt to clipboard
@@ -109,11 +92,6 @@ function TaskCard({ task, onRemove, onRetry }: TaskCardProps) {
           <div className="task-status success">
             <Check className="status-icon" size={16} style={{ color: '#22c55e' }} />
             <span className="status-text">完成</span>
-            {!isExpanded && task.result?.zh?.prompt && (
-              <span className="result-preview">
-                {task.result.zh.prompt.substring(0, 50)}...
-              </span>
-            )}
           </div>
         )
       case 'failed':
@@ -130,7 +108,7 @@ function TaskCard({ task, onRemove, onRetry }: TaskCardProps) {
   }
 
   return (
-    <div className={`task-card ${isExpanded ? 'expanded' : ''}`}>
+    <div className="task-card">
       {/* Thumbnail */}
       <div className="task-thumbnail">
         {task.thumbnailUrl ? (
@@ -146,8 +124,8 @@ function TaskCard({ task, onRemove, onRetry }: TaskCardProps) {
       <div className="task-content">
         {renderStatus()}
 
-        {/* Expanded details (success only) */}
-        {isExpanded && task.status === 'success' && task.result && (
+        {/* Details (success only) */}
+        {task.status === 'success' && task.result && (
           <div className="task-details">
             {/* Prompt preview with copy button */}
             <div className="prompt-preview-wrapper">
@@ -203,13 +181,6 @@ function TaskCard({ task, onRemove, onRetry }: TaskCardProps) {
         <button className="action-btn remove" onClick={() => onRemove(task.id)}>
           <X size={14} />
         </button>
-
-        {/* Expand/Collapse (success only) */}
-        {task.status === 'success' && (
-          <button className="action-btn expand" onClick={handleToggleExpand} aria-expanded={isExpanded}>
-            {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          </button>
-        )}
 
         {/* Retry (failed only) */}
         {task.status === 'failed' && (

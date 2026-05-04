@@ -123,3 +123,98 @@ export function extractBase64Data(dataUrl: string): string {
   // Return as-is if no prefix found
   return dataUrl
 }
+
+// Thumbnail dimensions for task queue display
+const THUMBNAIL_WIDTH = 80
+const THUMBNAIL_HEIGHT = 80
+
+/**
+ * Generate thumbnail from image URL (80x80, low quality for display)
+ * Used in BatchProgressPanel task cards
+ * @param imageUrl - HTTP URL of the image
+ * @returns Base64 encoded thumbnail string (data URL format), or null on failure
+ */
+export async function generateThumbnail(imageUrl: string): Promise<string | null> {
+  try {
+    // Fetch image data
+    const response = await fetch(imageUrl)
+    if (!response.ok) {
+      console.warn('[Oh My Prompt] Thumbnail fetch failed:', response.status)
+      return null
+    }
+
+    const blob = await response.blob()
+
+    // Validate MIME type
+    if (!SUPPORTED_MIME_TYPES.includes(blob.type)) {
+      console.warn('[Oh My Prompt] Thumbnail unsupported type:', blob.type)
+      return null
+    }
+
+    // Create ImageBitmap (works in content script context)
+    const imageBitmap = await createImageBitmap(blob)
+
+    // Calculate thumbnail dimensions preserving aspect ratio (fit within 80x80)
+    let width = imageBitmap.width
+    let height = imageBitmap.height
+    const ratio = Math.min(THUMBNAIL_WIDTH / width, THUMBNAIL_HEIGHT / height)
+    width = Math.floor(width * ratio)
+    height = Math.floor(height * ratio)
+
+    // Create canvas (use OffscreenCanvas if available, fallback to regular canvas)
+    let canvas: OffscreenCanvas | HTMLCanvasElement
+    let ctx: OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D | null
+
+    try {
+      // Try OffscreenCanvas first (works in service worker and modern browsers)
+      canvas = new OffscreenCanvas(width, height)
+      ctx = canvas.getContext('2d')
+    } catch {
+      // Fallback to regular canvas for older browsers
+      canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      ctx = canvas.getContext('2d')
+    }
+
+    if (!ctx) {
+      console.warn('[Oh My Prompt] Thumbnail canvas context failed')
+      return null
+    }
+
+    // Draw resized image
+    ctx.drawImage(imageBitmap, 0, 0, width, height)
+
+    // Convert to JPEG blob (low quality for small thumbnails)
+    let thumbnailBlob: Blob
+
+    if (canvas instanceof OffscreenCanvas) {
+      thumbnailBlob = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.5 })
+    } else {
+      // Regular canvas uses toBlob
+      thumbnailBlob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob(
+          (blob) => {
+            if (blob) resolve(blob)
+            else reject(new Error('Canvas toBlob failed'))
+          },
+          'image/jpeg',
+          0.5
+        )
+      })
+    }
+
+    // Convert blob to base64 data URL
+    const base64 = await blobToDataUrl(thumbnailBlob)
+
+    console.log('[Oh My Prompt] Thumbnail generated:', {
+      dimensions: `${width}x${height}`,
+      size: `${thumbnailBlob.size} bytes`
+    })
+
+    return base64
+  } catch (error) {
+    console.warn('[Oh My Prompt] Thumbnail generation failed:', error)
+    return null
+  }
+}

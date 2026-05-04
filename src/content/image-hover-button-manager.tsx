@@ -8,7 +8,6 @@
  */
 
 import { createRoot, type Root } from 'react-dom/client'
-import { VisionModalManager } from './vision-modal-manager'
 import HoverButton from './components/HoverButton'
 import { MessageType } from '@/shared/messages'
 import { TaskQueueManager } from './core/task-queue-manager'
@@ -467,7 +466,7 @@ export class ImageHoverButtonManager {
   }
 
   /**
-   * Handle button click - route to queue or VisionModal
+   * Handle button click - add to queue and show BatchProgressPanel
    */
   private handleButtonClick(imageUrl: string): void {
     console.log(LOG_PREFIX, 'Hover button clicked')
@@ -476,28 +475,19 @@ export class ImageHoverButtonManager {
       const queueManager = TaskQueueManager.getInstance()
       const batchPanelManager = BatchPanelManager.getInstance()
 
-      // Check if queue has tasks
-      if (!queueManager.isEmpty()) {
-        // Multi-task mode: add to queue
-        const task = queueManager.addTask(imageUrl)
+      // Always add to queue (batch mode)
+      const task = queueManager.addTask(imageUrl)
 
-        if (task === null) {
-          // Queue is full, show toast
-          this.showToast('队列已满，请等待任务完成')
-          return
-        }
-
-        // Ensure batch panel is open
-        batchPanelManager.ensureOpen()
-      } else {
-        // Single-task mode: use VisionModal
-        const visionManager = VisionModalManager.getInstance()
-        visionManager.create(imageUrl)
+      if (task === null) {
+        // Queue is full, show toast
+        this.showToast('队列已满，请等待任务完成')
+        return
       }
+
+      // Ensure batch panel is open
+      batchPanelManager.ensureOpen()
     } catch (error) {
       console.error(LOG_PREFIX, 'Queue operation failed:', error)
-      // Fallback to single-task mode
-      VisionModalManager.getInstance().create(imageUrl)
     }
 
     // Hide button after click

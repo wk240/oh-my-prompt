@@ -109,7 +109,7 @@ function TaskCard({ task, onRemove, onRetry }: TaskCardProps) {
           <div className="task-status success">
             <Check className="status-icon" size={16} style={{ color: '#22c55e' }} />
             <span className="status-text">完成</span>
-            {!isExpanded && task.result && (
+            {!isExpanded && task.result?.zh?.prompt && (
               <span className="result-preview">
                 {task.result.zh.prompt.substring(0, 50)}...
               </span>
@@ -124,6 +124,8 @@ function TaskCard({ task, onRemove, onRetry }: TaskCardProps) {
             <span className="error-message">{task.error || '未知错误'}</span>
           </div>
         )
+      default:
+        return null
     }
   }
 

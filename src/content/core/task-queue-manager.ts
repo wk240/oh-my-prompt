@@ -3,10 +3,11 @@
  * Singleton pattern with max 10 tasks, max 5 concurrent
  */
 
-import type { VisionApiResultData, VisionApiConfig } from '@/shared/types'
+import type { VisionApiResultData, VisionApiErrorPayload } from '@/shared/types'
 import { MessageType } from '@/shared/messages'
-import { executeVisionApiCall, classifyApiError } from '@/lib/vision-api'
+import { classifyApiError } from '@/lib/vision-api'
 import { useTaskQueueStore } from './task-queue-store'
+import { generateThumbnail } from '@/lib/image-utils'
 
 // Console log prefix
 const LOG_PREFIX = '[Oh My Prompt TaskQueue]'
@@ -53,7 +54,6 @@ export interface QueueStats {
 export class TaskQueueManager {
   private static instance: TaskQueueManager | null = null
   private runningCount = 0
-  private apiConfig: VisionApiConfig | null = null
   private abortControllers: Map<string, AbortController> = new Map()
 
   static getInstance(): TaskQueueManager {
@@ -64,22 +64,7 @@ export class TaskQueueManager {
   }
 
   private constructor() {
-    // Load API config on init
-    this.loadApiConfig()
-  }
-
-  /**
-   * Load API config from storage (via service worker)
-   */
-  private async loadApiConfig(): Promise<void> {
-    try {
-      const response = await chrome.runtime.sendMessage({ type: MessageType.GET_API_CONFIG })
-      if (response?.success && response.data) {
-        this.apiConfig = response.data
-      }
-    } catch (error) {
-      console.error(LOG_PREFIX, 'Failed to load API config:', error)
-    }
+    // No initialization needed - service worker handles API config
   }
 
   /**
@@ -110,10 +95,35 @@ export class TaskQueueManager {
 
     console.log(LOG_PREFIX, 'Task added to queue:', task.id)
 
+    // Generate thumbnail asynchronously (non-blocking)
+    this.generateThumbnailAsync(task.id, imageUrl)
+
     // Try to start immediately
     this.tryStartNext()
 
     return task
+  }
+
+  /**
+   * Generate thumbnail asynchronously and update task
+   * Non-blocking - thumbnail appears when ready
+   */
+  private async generateThumbnailAsync(taskId: string, imageUrl: string): Promise<void> {
+    try {
+      const thumbnailUrl = await generateThumbnail(imageUrl)
+      if (thumbnailUrl) {
+        const store = useTaskQueueStore.getState()
+        // Only update if task still exists
+        const task = store.getTask(taskId)
+        if (task) {
+          store.updateTask(taskId, { thumbnailUrl })
+          console.log(LOG_PREFIX, 'Thumbnail updated for task:', taskId)
+        }
+      }
+    } catch (error) {
+      // Thumbnail generation failed, task will show original image
+      console.warn(LOG_PREFIX, 'Thumbnail generation failed for task:', taskId, error)
+    }
   }
 
   /**
@@ -202,21 +212,6 @@ export class TaskQueueManager {
       return
     }
 
-    // Check API config
-    if (!this.apiConfig) {
-      // Try to reload config
-      this.loadApiConfig().then(() => {
-        if (!this.apiConfig) {
-          console.warn(LOG_PREFIX, 'API config not available')
-          // Mark all pending as failed
-          this.markPendingAsFailed('API未配置，请先在设置中配置API')
-        } else {
-          this.tryStartNext()
-        }
-      })
-      return
-    }
-
     // Find next pending task (earliest)
     const store = useTaskQueueStore.getState()
     const pendingTasks = store.tasks
@@ -252,39 +247,48 @@ export class TaskQueueManager {
   }
 
   /**
-   * Execute Vision API call for task
+   * Execute Vision API call for task via service worker (CORS bypass)
    */
   private async executeTask(task: QueueTask, abortController: AbortController): Promise<void> {
     const store = useTaskQueueStore.getState()
 
     try {
-      // Reload config to ensure fresh state
-      await this.loadApiConfig()
+      // Call Vision API via service worker (handles image compression and CORS bypass)
+      const response = await chrome.runtime.sendMessage({
+        type: MessageType.VISION_API_CALL,
+        payload: {
+          imageUrl: task.imageUrl,
+          retryCount: 0
+        }
+      })
 
-      if (!this.apiConfig) {
-        throw new Error('API未配置')
-      }
-
-      // Call Vision API (pass abort signal for cancellation support)
-      const result = await executeVisionApiCall(
-        this.apiConfig,
-        task.imageUrl,
-        'url',  // Use URL format
-        abortController.signal  // Pass abort signal
-      )
-
-      // Check if aborted
+      // Check if aborted during the call
       if (abortController.signal.aborted) {
         return
       }
 
-      // Success
-      store.updateTask(task.id, {
-        status: 'success',
-        result
-      })
+      if (!response) {
+        throw new Error('服务响应异常')
+      }
 
-      console.log(LOG_PREFIX, 'Task success:', task.id)
+      if (response.success) {
+        // Success - extract fullData from response
+        const resultData = response.data?.fullData as VisionApiResultData | undefined
+        if (!resultData) {
+          throw new Error('API 返回数据格式异常')
+        }
+
+        store.updateTask(task.id, {
+          status: 'success',
+          result: resultData
+        })
+
+        console.log(LOG_PREFIX, 'Task success:', task.id)
+      } else {
+        // API returned error
+        const errorPayload = response.error as VisionApiErrorPayload | undefined
+        throw new Error(errorPayload?.message || 'API 调用失败')
+      }
 
     } catch (error) {
       // Check if aborted
@@ -317,13 +321,4 @@ export class TaskQueueManager {
     }
   }
 
-  /**
-   * Mark all pending tasks as failed
-   */
-  private markPendingAsFailed(error: string): void {
-    const store = useTaskQueueStore.getState()
-    store.tasks
-      .filter(t => t.status === 'pending')
-      .forEach(t => store.updateTask(t.id, { status: 'failed', error }))
   }
-}

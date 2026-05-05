@@ -112,7 +112,7 @@ function SortableCategoryItem({
         )}
         <IconComponent className="sidebar-category-icon" />
       </div>
-      <Tooltip content={category.name}>
+      <Tooltip content={category.name} maxWidth={600}>
         <span className="sidebar-category-name">{category.name}</span>
       </Tooltip>
       <div className="category-action-buttons">
@@ -332,10 +332,10 @@ function SortablePromptItem({
         )
       )}
       <div className="prompt-item-text">
-        <Tooltip content={prompt.name}>
+        <Tooltip content={prompt.name} maxWidth={600}>
           <span className="prompt-item-name">{prompt.name}</span>
         </Tooltip>
-        <Tooltip content={prompt.description || prompt.content}>
+        <Tooltip content={prompt.description || prompt.content} maxWidth={600}>
           <span className="prompt-item-preview">{truncateText(prompt.description || prompt.content, 40)}</span>
         </Tooltip>
       </div>
@@ -507,10 +507,10 @@ function SidePanelNetworkCard({
             style={{ cursor: 'pointer' }}
           />
         )}
-      <Tooltip content={displayName}>
+      <Tooltip content={displayName} maxWidth={600}>
         <div className="network-card-name">{truncateText(displayName, 20)}</div>
       </Tooltip>
-      <Tooltip content={prompt.description || prompt.content}>
+      <Tooltip content={prompt.description || prompt.content} maxWidth={600}>
         <div className="network-card-category">{prompt.sourceCategory || 'Unknown'}</div>
       </Tooltip>
       {prompt.author && (
@@ -1617,7 +1617,7 @@ export default function SidePanelApp() {
                     <div className="sidebar-category-icon-wrapper">
                       <Layers className="sidebar-category-icon" />
                     </div>
-                    <Tooltip content={category.name}>
+                    <Tooltip content={category.name} maxWidth={600}>
                       <span>{category.name}</span>
                     </Tooltip>
                   </button>

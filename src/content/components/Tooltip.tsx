@@ -44,19 +44,35 @@ export function Tooltip({
 
     const rect = triggerRef.current.getBoundingClientRect()
     const tooltipOffset = 8
+    const viewportWidth = window.innerWidth
+
+    // Calculate ideal left position (centered on trigger)
+    let leftPos = rect.left + rect.width / 2
+
+    // Boundary detection: ensure tooltip doesn't exceed viewport
+    const halfWidth = maxWidth / 2
+    const minLeft = halfWidth + 8 // 8px margin from left edge
+    const maxLeft = viewportWidth - halfWidth - 8 // 8px margin from right edge
+
+    // Clamp position to viewport bounds
+    if (leftPos < minLeft) {
+      leftPos = minLeft
+    } else if (leftPos > maxLeft) {
+      leftPos = maxLeft
+    }
 
     if (placement === 'top') {
       setPosition({
         top: rect.top - tooltipOffset,
-        left: rect.left + rect.width / 2,
+        left: leftPos,
       })
     } else {
       setPosition({
         top: rect.bottom + tooltipOffset,
-        left: rect.left + rect.width / 2,
+        left: leftPos,
       })
     }
-  }, [placement])
+  }, [placement, maxWidth])
 
   const handleMouseEnter = useCallback(() => {
     timeoutRef.current = window.setTimeout(() => {

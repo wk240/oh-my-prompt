@@ -37,6 +37,7 @@ export interface SyncSettings {
   dismissedBackupWarning?: boolean // User dismissed the backup warning dialog
   resourceLanguage?: 'zh' | 'en' // Language preference for resource library, default 'zh'
   visionEnabled?: boolean // Vision modal (image-to-prompt) feature enabled, default true
+  visionDefaultFormat?: 'natural' | 'json' // Vision default save format
 }
 
 // New storage schema with nested structure
@@ -189,4 +190,5 @@ export interface SaveTemporaryPromptPayload {
   descriptionEn?: string // Description (English analysis)
   imageUrl?: string // Source image URL (optional, for reference)
   styleTags?: string[] // Style tags for reference (optional)
+  format?: 'natural' | 'json' // Save format marker
 }

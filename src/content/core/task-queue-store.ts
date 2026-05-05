@@ -8,7 +8,6 @@ import type { QueueTask, QueueStats } from './task-queue-manager'
 
 interface TaskQueueState {
   tasks: QueueTask[]
-  isPanelOpen: boolean
 
   // Actions
   setTasks: (tasks: QueueTask[]) => void
@@ -16,7 +15,6 @@ interface TaskQueueState {
   removeTask: (taskId: string) => void
   clearCompleted: () => void
   clearAll: () => void
-  setPanelOpen: (open: boolean) => void
 
   // Computed
   getStats: () => QueueStats
@@ -25,7 +23,6 @@ interface TaskQueueState {
 
 export const useTaskQueueStore = create<TaskQueueState>((set, get) => ({
   tasks: [],
-  isPanelOpen: false,
 
   setTasks: (tasks) => set({ tasks }),
 
@@ -42,8 +39,6 @@ export const useTaskQueueStore = create<TaskQueueState>((set, get) => ({
   })),
 
   clearAll: () => set({ tasks: [] }),
-
-  setPanelOpen: (open) => set({ isPanelOpen: open }),
 
   getStats: () => {
     const tasks = get().tasks

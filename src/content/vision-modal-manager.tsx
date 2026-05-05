@@ -363,7 +363,7 @@ export class VisionModalManager {
       .success-view {
         display: flex;
         flex-direction: column;
-        gap: 16px;
+        gap: 20px;
       }
 
       .prompt-section {
@@ -479,6 +479,8 @@ export class VisionModalManager {
         display: flex;
         flex-wrap: wrap;
         gap: 6px;
+        padding-top: 8px;
+        padding-bottom: 8px;
       }
 
       .style-tag {

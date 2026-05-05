@@ -34,6 +34,7 @@ export interface QueueTask {
   createdAt: number           // Timestamp when added
   result?: VisionApiResultData // Result on success
   error?: string              // Error message on failure
+  errorAction?: 'settings' | 'retry' | 'close' // Error action for UI guidance
   savedToTemporary?: boolean  // Auto-save status
   savedFormat?: 'natural' | 'json' // Format used when saving
   saveError?: string          // Save error message
@@ -166,7 +167,7 @@ export class TaskQueueManager {
    */
   retryTask(taskId: string): void {
     const store = useTaskQueueStore.getState()
-    store.updateTask(taskId, { status: 'pending', error: undefined })
+    store.updateTask(taskId, { status: 'pending', error: undefined, errorAction: undefined })
     console.log(LOG_PREFIX, 'Task retry:', taskId)
     this.tryStartNext()
   }
@@ -301,9 +302,19 @@ export class TaskQueueManager {
         // Auto-save to temporary library
         await this.autoSaveToTemporary(task.id, resultData, task.imageUrl)
       } else {
-        // API returned error
+        // API returned error - use pre-classified error payload from service worker
         const errorPayload = response.error as VisionApiErrorPayload | undefined
-        throw new Error(errorPayload?.message || 'API 调用失败')
+        const errorMessage = errorPayload?.message || 'API 调用失败'
+        const errorAction = errorPayload?.action || 'retry'
+
+        store.updateTask(task.id, {
+          status: 'failed',
+          error: errorMessage,
+          errorAction
+        })
+
+        console.error(LOG_PREFIX, 'Task failed:', task.id, errorMessage, 'action:', errorAction)
+        return // Exit early, no need to go through catch block
       }
 
     } catch (error) {
@@ -312,11 +323,12 @@ export class TaskQueueManager {
         return
       }
 
-      // Classify error
+      // Classify error (fallback for network exceptions not handled by service worker)
       const errorPayload = classifyApiError(error, 0)
       store.updateTask(task.id, {
         status: 'failed',
-        error: errorPayload.message
+        error: errorPayload.message,
+        errorAction: errorPayload.action
       })
 
       console.error(LOG_PREFIX, 'Task failed:', task.id, errorPayload.message)

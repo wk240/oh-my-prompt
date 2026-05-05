@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Loader2, Check, X, RefreshCw, Minimize2, Maximize2, Copy, Save } from 'lucide-react'
+import { Loader2, Check, X, RefreshCw, Minimize2, Maximize2, Copy, Save, Settings } from 'lucide-react'
 import type { VisionApiResultData, UpdateTemporaryPromptFormatPayload } from '@/shared/types'
 import { MessageType } from '@/shared/messages'
 import { useTaskQueueStore } from '@/content/core/task-queue-store'
@@ -412,14 +412,26 @@ function VisionModal({ onClose }: VisionModalProps) {
 
     // Failed status
     if (status === 'failed') {
+      const errorAction = selectedTask.errorAction
+
       return (
         <div className="error-view">
           <p className="error-message" role="alert">{error || '分析失败'}</p>
           <div className="action-buttons">
-            <button className="btn btn-primary" onClick={handleRetry}>
-              <RefreshCw />
-              重试
-            </button>
+            {errorAction === 'settings' && (
+              <button className="btn btn-primary" onClick={() => {
+                chrome.runtime.sendMessage({ type: MessageType.OPEN_API_CONFIG_PAGE })
+              }}>
+                <Settings />
+                去配置
+              </button>
+            )}
+            {(errorAction === 'retry' || !errorAction) && (
+              <button className="btn btn-primary" onClick={handleRetry}>
+                <RefreshCw />
+                重试
+              </button>
+            )}
             <button className="btn btn-outline" onClick={handleRemoveTask}>
               <X />
               移除

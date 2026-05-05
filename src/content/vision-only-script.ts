@@ -5,6 +5,7 @@
  */
 
 import { MessageType } from '@/shared/messages'
+import { TaskQueueManager } from './core/task-queue-manager'
 
 const LOG_PREFIX = '[Oh My Prompt]'
 
@@ -188,7 +189,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   // Vision Modal handling
   if (message.type === MessageType.OPEN_VISION_MODAL) {
-    const { imageUrl, tabId } = message.payload as { imageUrl: string; tabId?: number }
+    const { imageUrl } = message.payload as { imageUrl: string }
     console.log(LOG_PREFIX, 'Received OPEN_VISION_MODAL:', imageUrl.substring(0, 50) + '...')
 
     // Check if vision feature is enabled
@@ -206,7 +207,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           .then(({ VisionModalManager }) => {
             try {
               const manager = VisionModalManager.getInstance()
-              manager.create(imageUrl, tabId)
+              manager.create()
+              const taskQueueManager = TaskQueueManager.getInstance()
+              taskQueueManager.addTask(imageUrl)
               console.log(LOG_PREFIX, 'Vision modal created successfully')
               sendResponse({ success: true })
             } catch (error) {
@@ -225,7 +228,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           .then(({ VisionModalManager }) => {
             try {
               const manager = VisionModalManager.getInstance()
-              manager.create(imageUrl, tabId)
+              manager.create()
+              const taskQueueManager = TaskQueueManager.getInstance()
+              taskQueueManager.addTask(imageUrl)
               sendResponse({ success: true })
             } catch (error) {
               sendResponse({ success: false, error: 'Modal creation failed' })

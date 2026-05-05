@@ -343,18 +343,32 @@ export class TaskQueueManager {
     const store = useTaskQueueStore.getState()
 
     try {
+      // Get current format setting (default: natural)
+      const settingsResponse = await chrome.runtime.sendMessage({ type: MessageType.GET_STORAGE })
+      const format = settingsResponse?.data?.settings?.visionDefaultFormat || 'natural'
+
       const promptName = generatePromptName(result.zh.prompt, result.zh.title)
       const promptNameEn = generatePromptName(result.en.prompt, result.en.title)
+
+      // Build content based on format
+      const content = format === 'json'
+        ? JSON.stringify(result.zh_json || result.json_prompt)
+        : result.zh.prompt
+
+      const contentEn = format === 'json'
+        ? JSON.stringify(result.en_json || result.json_prompt)
+        : result.en.prompt
 
       const savePayload: SaveTemporaryPromptPayload = {
         name: promptName,
         nameEn: promptNameEn,
-        content: result.zh.prompt,
-        contentEn: result.en.prompt,
+        content,
+        contentEn,
         description: result.zh.analysis,
         descriptionEn: result.en.analysis,
         imageUrl: imageUrl,
-        styleTags: result.zh_style_tags
+        styleTags: result.zh_style_tags,
+        format // Save format marker
       }
 
       const saveResponse = await chrome.runtime.sendMessage({

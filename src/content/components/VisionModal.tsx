@@ -94,11 +94,19 @@ function VisionModal({ onClose }: VisionModalProps) {
    * Read settings.visionDefaultFormat on mount
    */
   useEffect(() => {
-    chrome.runtime.sendMessage({ type: MessageType.GET_STORAGE }, (response) => {
-      if (response?.success && response.data?.settings?.visionDefaultFormat) {
-        setFormat(response.data.settings.visionDefaultFormat)
-      }
-    })
+    try {
+      chrome.runtime.sendMessage({ type: MessageType.GET_STORAGE }, (response) => {
+        if (chrome.runtime.lastError) {
+          // Extension context may be invalidated - ignore
+          return
+        }
+        if (response?.success && response.data?.settings?.visionDefaultFormat) {
+          setFormat(response.data.settings.visionDefaultFormat)
+        }
+      })
+    } catch {
+      // Extension context invalidated - use default format
+    }
   }, [])
 
   /**
@@ -239,11 +247,16 @@ function VisionModal({ onClose }: VisionModalProps) {
    */
   const handleFormatChange = useCallback((newFormat: FormatType) => {
     setFormat(newFormat)
-    // Sync to settings via SET_SETTINGS_ONLY
-    chrome.runtime.sendMessage({
-      type: MessageType.SET_SETTINGS_ONLY,
-      payload: { settings: { visionDefaultFormat: newFormat } }
-    })
+    // Sync to settings via SET_SETTINGS_ONLY (fire-and-forget)
+    try {
+      chrome.runtime.sendMessage({
+        type: MessageType.SET_SETTINGS_ONLY,
+        payload: { settings: { visionDefaultFormat: newFormat } }
+      })
+    } catch {
+      // Extension context invalidated - ignore silently
+      // Settings will sync on next successful message
+    }
   }, [])
 
   /**

@@ -380,12 +380,8 @@ export function DropdownContainer({
     })))
   }, [rawResourcePrompts, resourceLanguage])
 
-  // Temporary prompts filter (prompts in '临时' category)
-  const temporaryPrompts = useMemo(() => {
-    const tempCategory = localCategories.find(c => c.name === '临时')
-    if (!tempCategory) return []
-    return localPrompts.filter(p => p.categoryId === tempCategory.id)
-  }, [localPrompts, localCategories])
+  // Temporary prompts from store (independent storage field)
+  const temporaryPrompts = usePromptStore((state) => state.temporaryPrompts)
 
   // Display temporary prompts with language transformation
   const displayTemporaryPrompts = useMemo(() => {

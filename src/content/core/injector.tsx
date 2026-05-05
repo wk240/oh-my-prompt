@@ -115,6 +115,7 @@ export class Injector {
       opacity: 0;
       transition: opacity 0.15s;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      isolation: isolate;
     `
     this.tooltipElement.textContent = 'Oh, My Prompt'
     document.body.appendChild(this.tooltipElement)
@@ -126,11 +127,18 @@ export class Injector {
 
       const showAttr = host.getAttribute('data-tooltip-show')
       if (showAttr === 'true') {
+        // Move tooltip to end of body to ensure highest DOM order
+        document.body.appendChild(this.tooltipElement!)
+
         const rect = host.getBoundingClientRect()
         this.tooltipElement!.style.left = `${rect.left + rect.width / 2}px`
-        this.tooltipElement!.style.top = `${rect.top - 8}px`
+        this.tooltipElement!.style.top = `${rect.top - 12}px`
         this.tooltipElement!.style.transform = 'translate(-50%, -100%)'
         this.tooltipElement!.style.opacity = '1'
+
+        // Check if tooltip is clipped by any overflow:hidden parent
+        // For fixed elements, check against viewport boundaries and potential overlays
+        this.ensureTooltipVisible()
       } else {
         this.tooltipElement!.style.opacity = '0'
       }
@@ -140,6 +148,55 @@ export class Injector {
       attributes: true,
       attributeFilter: ['data-tooltip-show', 'data-tooltip-position'],
     })
+  }
+
+  /**
+   * Find the highest z-index container on the page
+   */
+  private findTopmostContainer(): HTMLElement {
+    const candidates: HTMLElement[] = [document.body]
+
+    // Find elements with very high z-index (modal backdrops, overlays, etc.)
+    const allElements = document.querySelectorAll<HTMLElement>('*')
+    for (const el of allElements) {
+      const style = getComputedStyle(el)
+      const zIndex = parseInt(style.zIndex)
+      if (zIndex > 1000000 && style.position !== 'static') {
+        candidates.push(el)
+      }
+    }
+
+    // Sort by z-index descending, pick the highest
+    let topmost = document.body
+    let highestZ = 0
+    for (const el of candidates) {
+      const zIndex = parseInt(getComputedStyle(el).zIndex) || 0
+      if (zIndex >= highestZ) {
+        highestZ = zIndex
+        topmost = el
+      }
+    }
+
+    return topmost
+  }
+
+  /**
+   * Ensure tooltip is visible by moving it to the topmost container
+   */
+  private ensureTooltipVisible(): void {
+    if (!this.tooltipElement) return
+
+    // Find and attach to the topmost container on the page
+    const topmost = this.findTopmostContainer()
+
+    // If topmost is not body, append tooltip to it (or create a layer inside)
+    if (topmost !== document.body) {
+      // Append to the topmost container to ensure visibility
+      topmost.appendChild(this.tooltipElement!)
+    } else {
+      // Still ensure it's at the end of body
+      document.body.appendChild(this.tooltipElement!)
+    }
   }
 
   /**

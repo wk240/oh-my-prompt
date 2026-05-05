@@ -116,11 +116,13 @@ function VisionModal({ onClose }: VisionModalProps) {
   }, [])
 
   /**
-   * Start API call on mount
+   * Start API call when imageUrl becomes available
    */
   useEffect(() => {
-    requestApiCall(0)
-  }, [])
+    if (imageUrl) {
+      requestApiCall(0)
+    }
+  }, [imageUrl])
 
   /**
    * Get current prompt based on language and format

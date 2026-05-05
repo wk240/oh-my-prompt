@@ -52,7 +52,8 @@ export class StorageManager {
     return {
       showBuiltin: true,
       syncEnabled: false,
-      visionEnabled: true
+      visionEnabled: true,
+      visionDefaultFormat: 'natural' // 默认保存自然语言格式
     }
   }
 

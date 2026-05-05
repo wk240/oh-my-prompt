@@ -413,10 +413,41 @@ export function getBatchPanelStyles(): string {
       border-radius: 8px;
     }
 
-    .task-header-row {
+    /* Header section - thumbnail + 2-row info */
+    .task-header-section {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .task-info-column {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex: 1;
+      min-width: 0; /* Allow flex item to shrink for ellipsis */
+    }
+
+    /* Title row - single line with ellipsis */
+    .task-title-row {
       display: flex;
       align-items: center;
-      gap: 12px;
+    }
+
+    .task-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #171717;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Status row - inline with icon */
+    .task-status-inline {
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
     .task-thumbnail-small {
@@ -442,13 +473,6 @@ export function getBatchPanelStyles(): string {
       justify-content: center;
       font-size: 11px;
       color: #9CA3AF;
-    }
-
-    .task-status-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex: 1;
     }
 
     .status-icon {
@@ -483,9 +507,19 @@ export function getBatchPanelStyles(): string {
       color: #9CA3AF;
     }
 
+    /* Used by compact card */
+    .task-status-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+    }
+
     .task-header-actions {
       display: flex;
       gap: 8px;
+      flex-shrink: 0;
+      align-self: flex-start;
     }
 
     /* Prompt display area */

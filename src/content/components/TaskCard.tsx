@@ -54,19 +54,14 @@ function TaskCard({ task, onRemove, onRetry }: TaskCardProps) {
   }, [task.result, language, format])
 
   /**
-   * Get title for status row (linked to language toggle)
+   * Get title for display (no truncation - CSS handles ellipsis)
    */
   const getTitle = useCallback(() => {
     if (!task.result) return '完成'
     const title = language === 'zh'
       ? task.result.zh.title
       : task.result.en.title
-    if (!title) return '完成'
-    // Truncate for compact display
-    const maxLen = language === 'zh' ? 20 : 30
-    return title.length > maxLen
-      ? title.substring(0, maxLen) + '...'
-      : title
+    return title || '完成'
   }, [task.result, language])
 
   /**
@@ -87,8 +82,8 @@ function TaskCard({ task, onRemove, onRetry }: TaskCardProps) {
    */
   const renderSuccessCard = () => (
     <div className="task-card-success">
-      {/* Top row: thumbnail + status + remove button */}
-      <div className="task-header-row">
+      {/* Top section: thumbnail + title (2 rows) */}
+      <div className="task-header-section">
         <div className="task-thumbnail-small">
           {task.thumbnailUrl ? (
             <img src={task.thumbnailUrl} alt="Task" loading="lazy" />
@@ -98,16 +93,22 @@ function TaskCard({ task, onRemove, onRetry }: TaskCardProps) {
             <div className="thumbnail-placeholder">无图片</div>
           )}
         </div>
-        <div className="task-status-row">
-          <Check className="status-icon" size={16} style={{ color: '#22c55e' }} />
-          <span className="status-text">{getTitle()}</span>
-          {task.savedToTemporary ? (
-            <span className="save-status success">已保存到临时库</span>
-          ) : task.saveError ? (
-            <span className="save-status error">{task.saveError}</span>
-          ) : (
-            <span className="save-status pending">保存中...</span>
-          )}
+        <div className="task-info-column">
+          {/* Title row - single line with ellipsis */}
+          <div className="task-title-row">
+            <span className="task-title">{getTitle()}</span>
+          </div>
+          {/* Status row - success icon + save status */}
+          <div className="task-status-inline">
+            <Check className="status-icon" size={14} style={{ color: '#22c55e' }} />
+            {task.savedToTemporary ? (
+              <span className="save-status success">已保存到临时库</span>
+            ) : task.saveError ? (
+              <span className="save-status error">{task.saveError}</span>
+            ) : (
+              <span className="save-status pending">保存中...</span>
+            )}
+          </div>
         </div>
         <div className="task-header-actions">
           <button className="text-btn remove-btn" onClick={() => onRemove(task.id)}>

@@ -135,7 +135,7 @@ export class VisionModalManager {
       /* Modal card - floating box with fixed positioning */
       .modal-card {
         position: fixed;
-        width: 480px;
+        width: 600px;
         height: 700px;
         max-width: 90vw;
         max-height: 700px;
@@ -212,35 +212,134 @@ export class VisionModalManager {
         color: #64748B;
       }
 
-      /* Minimized content */
-      .minimized-content {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 8px 16px;
-        gap: 12px;
-      }
-
       .modal-logo-icon {
         width: 18px;
         height: 18px;
         flex-shrink: 0;
       }
 
-      .minimized-status {
-        font-size: 13px;
-        color: #64748B;
+      /* Main content area - left/right split */
+      .modal-body {
+        display: flex;
         flex: 1;
+        overflow: hidden;
       }
 
-      .expand-btn {
+      /* Left sidebar - task list */
+      .task-sidebar {
+        width: 120px;
+        background: #fafafa;
+        border-right: 1px solid #E5E5E5;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      .task-list-container {
+        flex: 1;
+        overflow-y: auto;
+        padding: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      /* Task list item */
+      .task-list-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 8px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        border: 2px solid transparent;
+      }
+
+      .task-list-item:hover {
+        background: #f0f0f0;
+      }
+
+      .task-list-item.selected {
+        border-color: #3b82f6;
+        background: #f0f7ff;
+      }
+
+      .task-thumbnail {
+        width: 60px;
+        height: 60px;
+        border-radius: 6px;
+        overflow: hidden;
+        background: #E5E5E5;
+      }
+
+      .task-thumbnail img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .thumbnail-placeholder {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        color: #9CA3AF;
+      }
+
+      .task-status-center {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 4px 0;
+      }
+
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
         flex-shrink: 0;
       }
 
-      /* Modal content */
-      .modal-content {
-        padding: 16px;
+      .status-dot.pending {
+        background: #9CA3AF;
+      }
+
+      .status-icon {
+        flex-shrink: 0;
+      }
+
+      .status-icon.spinning {
+        animation: spin 1s linear infinite;
+        color: #171717;
+      }
+
+      .status-icon.success {
+        color: #22c55e;
+      }
+
+      .status-icon.failed {
+        color: #ef4444;
+      }
+
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+
+      /* Right content area */
+      .task-content {
         flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      .task-content-inner {
+        flex: 1;
+        padding: 16px;
         overflow-y: auto;
       }
 
@@ -260,11 +359,6 @@ export class VisionModalManager {
         color: #64748B;
       }
 
-      @keyframes spin {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
-      }
-
       .loading-text {
         font-size: 14px;
         color: #64748B;
@@ -277,13 +371,6 @@ export class VisionModalManager {
         gap: 16px;
       }
 
-      .success-label {
-        font-size: 14px;
-        font-weight: 500;
-        color: #171717;
-      }
-
-      /* Prompt section with header */
       .prompt-section {
         display: flex;
         flex-direction: column;
@@ -302,18 +389,6 @@ export class VisionModalManager {
         color: #171717;
       }
 
-      .prompt-header-label-en {
-        font-size: 13px;
-        font-weight: 500;
-        color: #64748B;
-      }
-
-      .prompt-header-divider {
-        font-size: 13px;
-        color: #9CA3AF;
-      }
-
-      /* Prompt preview wrapper with copy button */
       .prompt-preview-wrapper {
         position: relative;
       }
@@ -377,238 +452,11 @@ export class VisionModalManager {
         margin-bottom: 6px;
       }
 
-      /* Prompt title */
       .prompt-title {
         font-size: 16px;
         font-weight: 600;
         color: #171717;
         margin-bottom: 8px;
-      }
-
-      /* Action buttons */
-      .action-buttons {
-        display: flex;
-        gap: 8px;
-      }
-
-      .btn {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 10px 16px;
-        border-radius: 8px;
-        font-size: 14px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: background 0.15s ease, border-color 0.15s ease;
-      }
-
-      .btn-primary {
-        background: #171717;
-        border: 1px solid #171717;
-        color: #ffffff;
-      }
-
-      .btn-primary:hover {
-        background: rgba(23, 23, 23, 0.9);
-        border-color: rgba(23, 23, 23, 0.9);
-      }
-
-      .btn-outline {
-        background: #ffffff;
-        border: 1px solid #E5E5E5;
-        color: #171717;
-      }
-
-      .btn-outline:hover {
-        background: #f8f8f8;
-        border-color: #d0d0d0;
-      }
-
-      .btn svg {
-        width: 16px;
-        height: 16px;
-      }
-
-      /* Error view */
-      .error-view {
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-      }
-
-      .error-message {
-        font-size: 14px;
-        color: #ef4444;
-      }
-
-      /* Feedback view */
-      .feedback-view {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-      }
-
-      .feedback-success {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        color: #22c55e;
-      }
-
-      .feedback-success svg {
-        width: 16px;
-        height: 16px;
-      }
-
-      .feedback-text {
-        font-size: 14px;
-      }
-
-      .feedback-hint {
-        font-size: 12px;
-        color: #64748B;
-      }
-
-      /* Close session button - text button in feedback view */
-      .close-session-btn {
-        padding: 0;
-        border: none;
-        background: transparent;
-        font-size: 13px;
-        color: #64748B;
-        cursor: pointer;
-        text-decoration: none;
-        transition: color 0.15s ease;
-        margin-top: 4px;
-      }
-
-      .close-session-btn:hover {
-        color: #171717;
-      }
-
-      /* Config view - API configuration form */
-      .config-view {
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-      }
-
-      .config-description {
-        font-size: 14px;
-        color: #64748B;
-        line-height: 1.5;
-      }
-
-      .config-form {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-      }
-
-      .config-field {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-      }
-
-      .config-label {
-        font-size: 12px;
-        font-weight: 500;
-        color: #171717;
-      }
-
-      .config-input {
-        width: 100%;
-        padding: 10px 12px;
-        border: 1px solid #E5E5E5;
-        border-radius: 8px;
-        font-size: 14px;
-        color: #171717;
-        box-sizing: border-box;
-        transition: border-color 0.15s ease;
-      }
-
-      .config-input:focus {
-        outline: none;
-        border-color: #171717;
-      }
-
-      .config-input::placeholder {
-        color: #9CA3AF;
-      }
-
-      /* Scrollbar styling */
-      .prompt-preview::-webkit-scrollbar,
-      .modal-content::-webkit-scrollbar {
-        width: 6px;
-      }
-
-      .prompt-preview::-webkit-scrollbar-track,
-      .modal-content::-webkit-scrollbar-track {
-        background: transparent;
-      }
-
-      .prompt-preview::-webkit-scrollbar-thumb,
-      .modal-content::-webkit-scrollbar-thumb {
-        background: #ddd;
-        border-radius: 3px;
-      }
-
-      .prompt-preview::-webkit-scrollbar-thumb:hover,
-      .modal-content::-webkit-scrollbar-thumb:hover {
-        background: #ccc;
-      }
-
-      /* Tab buttons - bottom footer layout */
-      .modal-footer {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 12px 16px;
-        border-top: 1px solid #E5E5E5;
-        gap: 12px;
-      }
-
-      .tab-buttons {
-        display: flex;
-        gap: 4px;
-        background: #f0f0f0;
-        padding: 4px;
-        border-radius: 6px;
-      }
-
-      .tab-btn {
-        padding: 6px 12px;
-        border: none;
-        border-radius: 4px;
-        font-size: 13px;
-        font-weight: 500;
-        color: #64748B;
-        background: transparent;
-        cursor: pointer;
-        transition: all 0.15s ease;
-      }
-
-      .tab-btn:hover {
-        color: #171717;
-      }
-
-      .tab-btn.active {
-        background: #ffffff;
-        color: #171717;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
-      }
-
-      /* Tab content container */
-      .tab-content {
-        min-height: 150px;
-      }
-
-      .prompt-tab {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
       }
 
       /* Analysis section */
@@ -686,25 +534,112 @@ export class VisionModalManager {
         word-break: break-word;
       }
 
-      /* Confidence section */
-      .confidence-section {
+      /* Error view */
+      .error-view {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .error-message {
+        font-size: 14px;
+        color: #ef4444;
+      }
+
+      /* Action buttons */
+      .action-buttons {
+        display: flex;
+        gap: 8px;
+      }
+
+      .btn {
         display: flex;
         align-items: center;
         gap: 8px;
-        padding: 8px 0;
-      }
-
-      .confidence-label {
-        font-size: 12px;
-        color: #64748B;
+        padding: 10px 16px;
+        border-radius: 8px;
+        font-size: 14px;
         font-weight: 500;
+        cursor: pointer;
+        transition: background 0.15s ease, border-color 0.15s ease;
       }
 
-      .confidence-label.low {
-        color: #f59e0b;
+      .btn-primary {
+        background: #171717;
+        border: 1px solid #171717;
+        color: #ffffff;
       }
 
-      /* Toggle groups for language + format switching */
+      .btn-primary:hover {
+        background: rgba(23, 23, 23, 0.9);
+        border-color: rgba(23, 23, 23, 0.9);
+      }
+
+      .btn-outline {
+        background: #ffffff;
+        border: 1px solid #E5E5E5;
+        color: #171717;
+      }
+
+      .btn-outline:hover {
+        background: #f8f8f8;
+        border-color: #d0d0d0;
+      }
+
+      .btn svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      /* Feedback view */
+      .feedback-view {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .feedback-success {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #22c55e;
+      }
+
+      .feedback-success svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      .feedback-text {
+        font-size: 14px;
+      }
+
+      .close-session-btn {
+        padding: 0;
+        border: none;
+        background: transparent;
+        font-size: 13px;
+        color: #64748B;
+        cursor: pointer;
+        text-decoration: none;
+        transition: color 0.15s ease;
+        margin-top: 4px;
+      }
+
+      .close-session-btn:hover {
+        color: #171717;
+      }
+
+      /* Modal footer */
+      .modal-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        border-top: 1px solid #E5E5E5;
+        gap: 12px;
+      }
+
       .toggle-groups {
         display: flex;
         gap: 8px;
@@ -739,6 +674,47 @@ export class VisionModalManager {
         background: #ffffff;
         color: #171717;
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+      }
+
+      /* Minimized content */
+      .minimized-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 16px;
+        gap: 12px;
+      }
+
+      .minimized-status {
+        font-size: 13px;
+        color: #64748B;
+        flex: 1;
+      }
+
+      /* Scrollbar styling */
+      .prompt-preview::-webkit-scrollbar,
+      .task-content-inner::-webkit-scrollbar,
+      .task-list-container::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .prompt-preview::-webkit-scrollbar-track,
+      .task-content-inner::-webkit-scrollbar-track,
+      .task-list-container::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      .prompt-preview::-webkit-scrollbar-thumb,
+      .task-content-inner::-webkit-scrollbar-thumb,
+      .task-list-container::-webkit-scrollbar-thumb {
+        background: #ddd;
+        border-radius: 3px;
+      }
+
+      .prompt-preview::-webkit-scrollbar-thumb:hover,
+      .task-content-inner::-webkit-scrollbar-thumb:hover,
+      .task-list-container::-webkit-scrollbar-thumb:hover {
+        background: #ccc;
       }
     `
   }

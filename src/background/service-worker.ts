@@ -1,5 +1,5 @@
 import { MessageType, MessageResponse } from '../shared/messages'
-import type { StorageSchema, SyncSettings, UserData, VisionApiConfig, InsertPromptPayload, InsertResultPayload, SaveTemporaryPromptPayload, Prompt } from '../shared/types'
+import type { StorageSchema, SyncSettings, UserData, VisionApiConfig, InsertPromptPayload, InsertResultPayload, SaveTemporaryPromptPayload, UpdateTemporaryPromptFormatPayload, Prompt } from '../shared/types'
 import { StorageManager } from '../lib/storage'
 import { saveFolderHandle, getFolderHandle } from '../lib/sync/indexeddb'
 import { getSyncStatus, triggerSync, restorePermission, initialSync } from '../lib/sync/sync-manager'
@@ -691,6 +691,94 @@ chrome.runtime.onMessage.addListener(
           })
         return true // Required for async response
 
+      // Update temporary prompt format (re-save with different format)
+      case MessageType.UPDATE_TEMPORARY_PROMPT_FORMAT:
+        const updatePayload = message.payload as UpdateTemporaryPromptFormatPayload
+        if (!updatePayload || !updatePayload.taskId || !updatePayload.result) {
+          sendResponse({ success: false, error: 'Invalid payload: taskId and result required' })
+          return true
+        }
+
+        storageManager.getData()
+          .then(async (data) => {
+            // Get current temporary prompts
+            const temporaryPrompts = data.temporaryPrompts || []
+            const result = updatePayload.result
+            const newFormat = updatePayload.newFormat
+
+            // Generate prompt name from content or title
+            const promptName = result.zh.title || result.zh.prompt.substring(0, 30).replace(/\n/g, ' ').trim() + '...'
+            const promptNameEn = result.en.title || result.en.prompt.substring(0, 30).replace(/\n/g, ' ').trim() + '...'
+
+            // Build content based on new format
+            const content = newFormat === 'json'
+              ? JSON.stringify(result.zh_json || result.json_prompt)
+              : result.zh.prompt
+
+            const contentEn = newFormat === 'json'
+              ? JSON.stringify(result.en_json || result.json_prompt)
+              : result.en.prompt
+
+            // Find and update the existing prompt by matching imageUrl or create new entry
+            // Since temporary prompts don't store taskId, we match by imageUrl
+            const existingIndex = updatePayload.imageUrl
+              ? temporaryPrompts.findIndex(p => p.remoteImageUrl === updatePayload.imageUrl)
+              : -1
+
+            if (existingIndex >= 0) {
+              // Update existing prompt
+              temporaryPrompts[existingIndex] = {
+                ...temporaryPrompts[existingIndex],
+                content,
+                contentEn,
+                description: result.zh.analysis,
+                descriptionEn: result.en.analysis,
+              }
+              console.log('[Oh My Prompt] Updated temporary prompt format:', updatePayload.taskId, 'to', newFormat)
+            } else {
+              // Create new prompt entry (fallback)
+              const newPrompt: Prompt = {
+                id: crypto.randomUUID(),
+                name: promptName,
+                nameEn: promptNameEn,
+                content,
+                contentEn,
+                description: result.zh.analysis,
+                descriptionEn: result.en.analysis,
+                categoryId: 'temporary',
+                order: temporaryPrompts.length > 0 ? Math.min(...temporaryPrompts.map(p => p.order)) - 1 : 0,
+                remoteImageUrl: updatePayload.imageUrl
+              }
+              temporaryPrompts.push(newPrompt)
+              console.log('[Oh My Prompt] Created new temporary prompt:', updatePayload.taskId, 'format:', newFormat)
+            }
+
+            // Save to storage
+            const version = chrome.runtime.getManifest().version
+            await storageManager.saveData({
+              version,
+              userData: data.userData,
+              settings: data.settings,
+              temporaryPrompts
+            })
+
+            // Broadcast REFRESH_DATA
+            chrome.tabs.query({ url: ['*://lovart.ai/*', '*://*.lovart.ai/*'] }, (tabs) => {
+              tabs.forEach(tab => {
+                if (tab.id !== undefined && tab.id >= 0) {
+                  chrome.tabs.sendMessage(tab.id, { type: MessageType.REFRESH_DATA })
+                }
+              })
+            })
+
+            sendResponse({ success: true })
+          })
+          .catch((error) => {
+            console.error('[Oh My Prompt] UPDATE_TEMPORARY_PROMPT_FORMAT error:', error)
+            sendResponse({ success: false, error: 'Storage save failed' })
+          })
+        return true // Required for async response
+
       // Clear all temporary prompts
       case MessageType.CLEAR_TEMPORARY_PROMPTS:
         storageManager.getData()
@@ -759,14 +847,18 @@ chrome.runtime.onMessage.addListener(
 
             // Save to storage
             const version = chrome.runtime.getManifest().version
+            const userData = { prompts, categories: data.userData.categories }
             await storageManager.saveData({
               version,
-              userData: { prompts, categories: data.userData.categories },
+              userData,
               settings: data.settings,
               temporaryPrompts
             })
 
             console.log('[Oh My Prompt] Transferred prompt to category:', promptToTransfer.name, '→', transferPayload.targetCategoryId)
+
+            // Trigger auto-sync (same pattern as SET_STORAGE)
+            triggerSync(userData).catch(err => console.warn('[Oh My Prompt] Sync after transfer failed:', err))
 
             // Broadcast REFRESH_DATA to all Lovart tabs
             chrome.tabs.query({ url: ['*://lovart.ai/*', '*://*.lovart.ai/*'] }, (tabs) => {

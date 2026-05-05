@@ -35,6 +35,7 @@ export interface QueueTask {
   result?: VisionApiResultData // Result on success
   error?: string              // Error message on failure
   savedToTemporary?: boolean  // Auto-save status
+  savedFormat?: 'natural' | 'json' // Format used when saving
   saveError?: string          // Save error message
 }
 
@@ -377,8 +378,8 @@ export class TaskQueueManager {
       })
 
       if (saveResponse?.success) {
-        store.updateTask(taskId, { savedToTemporary: true })
-        console.log(LOG_PREFIX, 'Auto-saved to temporary library:', taskId)
+        store.updateTask(taskId, { savedToTemporary: true, savedFormat: format })
+        console.log(LOG_PREFIX, 'Auto-saved to temporary library:', taskId, 'format:', format)
       } else {
         const saveError = saveResponse?.error || '保存失败'
         store.updateTask(taskId, { savedToTemporary: false, saveError })

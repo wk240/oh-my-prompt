@@ -192,3 +192,11 @@ export interface SaveTemporaryPromptPayload {
   styleTags?: string[] // Style tags for reference (optional)
   format?: 'natural' | 'json' // Save format marker
 }
+
+// Update temporary prompt format payload
+export interface UpdateTemporaryPromptFormatPayload {
+  taskId: string // Task ID to identify the prompt
+  imageUrl: string // Source image URL
+  result: VisionApiResultData // Vision API result data
+  newFormat: 'natural' | 'json' // New format to save
+}

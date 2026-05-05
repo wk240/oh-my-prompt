@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Loader2, Check, X, RefreshCw, Minimize2, Maximize2, Copy } from 'lucide-react'
-import type { VisionApiResultData } from '@/shared/types'
+import { Loader2, Check, X, RefreshCw, Minimize2, Maximize2, Copy, Save } from 'lucide-react'
+import type { VisionApiResultData, UpdateTemporaryPromptFormatPayload } from '@/shared/types'
 import { MessageType } from '@/shared/messages'
 import { useTaskQueueStore } from '@/content/core/task-queue-store'
 import type { QueueTask } from '@/content/core/task-queue-manager'
@@ -81,6 +81,10 @@ function VisionModal({ onClose }: VisionModalProps) {
 
   // Copy state for prompt copy button
   const [isPromptCopied, setIsPromptCopied] = useState(false)
+
+  // Resave state for format change
+  const [isResaving, setIsResaving] = useState(false)
+  const [resaveSuccess, setResaveSuccess] = useState<boolean | null>(null)
 
   /**
    * Get language preference from storage on mount
@@ -247,6 +251,8 @@ function VisionModal({ onClose }: VisionModalProps) {
    */
   const handleFormatChange = useCallback((newFormat: FormatType) => {
     setFormat(newFormat)
+    // Reset resave state when format changes
+    setResaveSuccess(null)
     // Sync to settings via SET_SETTINGS_ONLY (fire-and-forget)
     try {
       chrome.runtime.sendMessage({
@@ -258,6 +264,54 @@ function VisionModal({ onClose }: VisionModalProps) {
       // Settings will sync on next successful message
     }
   }, [])
+
+  /**
+   * Check if resave button should be shown
+   * Show when: task is saved, and current format differs from saved format
+   */
+  const shouldShowResave = useCallback(() => {
+    if (!selectedTask?.savedToTemporary) return false
+    if (!selectedTask.savedFormat) return false
+    return selectedTask.savedFormat !== format
+  }, [selectedTask, format])
+
+  /**
+   * Handle resave with new format
+   */
+  const handleResave = useCallback(async () => {
+    if (!selectedTask?.result || !selectedTaskId) return
+
+    setIsResaving(true)
+    setResaveSuccess(null)
+
+    try {
+      const payload: UpdateTemporaryPromptFormatPayload = {
+        taskId: selectedTaskId,
+        imageUrl: selectedTask.imageUrl,
+        result: selectedTask.result,
+        newFormat: format
+      }
+
+      const response = await chrome.runtime.sendMessage({
+        type: MessageType.UPDATE_TEMPORARY_PROMPT_FORMAT,
+        payload
+      })
+
+      if (response?.success) {
+        setResaveSuccess(true)
+        // Update task's savedFormat in store
+        useTaskQueueStore.getState().updateTask(selectedTaskId, { savedFormat: format })
+        // Auto-hide success message after 1.5s
+        setTimeout(() => setResaveSuccess(null), 1500)
+      } else {
+        setResaveSuccess(false)
+      }
+    } catch {
+      setResaveSuccess(false)
+    } finally {
+      setIsResaving(false)
+    }
+  }, [selectedTask, selectedTaskId, format])
 
   /**
    * Render JSON prompt as key-value list
@@ -619,6 +673,27 @@ function VisionModal({ onClose }: VisionModalProps) {
                       </button>
                     </div>
                   </div>
+                  {/* Resave button - show when format differs from saved format */}
+                  {shouldShowResave() && (
+                    <button
+                      className="btn btn-primary"
+                      onClick={handleResave}
+                      disabled={isResaving}
+                    >
+                      {isResaving ? (
+                        <Loader2 className="spinning" />
+                      ) : resaveSuccess === true ? (
+                        <Check />
+                      ) : (
+                        <Save />
+                      )}
+                      {isResaving
+                        ? '保存中...'
+                        : resaveSuccess === true
+                          ? '已更新'
+                          : `重新保存为${format === 'json' ? 'JSON' : '自然语言'}`}
+                    </button>
+                  )}
                   <button className="btn btn-outline" onClick={handleCopyPrompt}>
                     <Copy />
                     复制

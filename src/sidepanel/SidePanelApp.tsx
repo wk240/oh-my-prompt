@@ -305,24 +305,6 @@ function SortablePromptItem({
           }
         }}
       >
-        {prompt.localImage && (
-          imageUrl ? (
-            <img
-              src={imageUrl}
-              alt={prompt.name}
-              className="prompt-item-thumbnail"
-              onError={(e) => { e.currentTarget.src = FALLBACK_IMAGE_SVG }}
-              onMouseEnter={handleImageMouseEnter}
-              onMouseMove={handleImageMouseMove}
-              onMouseLeave={handleImageMouseLeave}
-              style={{ cursor: 'pointer' }}
-            />
-          ) : (
-            <div className="prompt-item-thumbnail prompt-item-thumbnail-loading">
-              <Shapes style={{ width: 16, height: 16, color: '#64748B' }} />
-            </div>
-          )
-        )}
       <div className="prompt-item-icon-wrapper">
         {showDragHandle && (
           <div className="prompt-item-drag-handle" {...attributes} {...listeners}>
@@ -331,6 +313,24 @@ function SortablePromptItem({
         )}
         <IconComponent className="prompt-item-icon" />
       </div>
+      {prompt.localImage && (
+        imageUrl ? (
+          <img
+            src={imageUrl}
+            alt={prompt.name}
+            className="prompt-item-thumbnail"
+            onError={(e) => { e.currentTarget.src = FALLBACK_IMAGE_SVG }}
+            onMouseEnter={handleImageMouseEnter}
+            onMouseMove={handleImageMouseMove}
+            onMouseLeave={handleImageMouseLeave}
+            style={{ cursor: 'pointer' }}
+          />
+        ) : (
+          <div className="prompt-item-thumbnail prompt-item-thumbnail-loading">
+            <Shapes style={{ width: 16, height: 16, color: '#64748B' }} />
+          </div>
+        )
+      )}
       <div className="prompt-item-text">
         <Tooltip content={prompt.name}>
           <span className="prompt-item-name">{prompt.name}</span>

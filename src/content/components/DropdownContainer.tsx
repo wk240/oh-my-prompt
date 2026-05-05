@@ -252,14 +252,7 @@ function SortableDropdownItem({
         }
       }}
     >
-      {/* Thumbnail - 60x40 image preview, lazy-loaded with Intersection Observer */}
-      {prompt.localImage && (
-        <PromptThumbnail
-          relativePath={prompt.localImage}
-          promptName={prompt.name}
-          onClick={onThumbnailClick ? () => onThumbnailClick(prompt) : undefined}
-        />
-      )}
+      {/* Icon wrapper with drag handle - left side */}
       <div className="dropdown-item-icon-wrapper">
         {showDragHandle && (
           <div className="dropdown-item-drag-handle" {...attributes} {...listeners}>
@@ -268,6 +261,14 @@ function SortableDropdownItem({
         )}
         <IconComponent className="dropdown-item-icon" />
       </div>
+      {/* Thumbnail - 60x40 image preview, lazy-loaded with Intersection Observer */}
+      {prompt.localImage && (
+        <PromptThumbnail
+          relativePath={prompt.localImage}
+          promptName={prompt.name}
+          onClick={onThumbnailClick ? () => onThumbnailClick(prompt) : undefined}
+        />
+      )}
       <div className="dropdown-item-text">
         <Tooltip content={prompt.name}>
           <span className="dropdown-item-name">{prompt.name}</span>

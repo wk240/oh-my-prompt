@@ -1,40 +1,16 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Loader2, Check, X, RefreshCw, Settings, Minimize2, Maximize2, Copy } from 'lucide-react'
-import { MessageType } from '@/shared/messages'
-import type { VisionApiErrorPayload, VisionApiResultData, InsertPromptPayload, SaveTemporaryPromptPayload } from '@/shared/types'
-
-/**
- * VisionModal state machine
- */
-type VisionModalState =
-  | 'loading'      // API call in progress
-  | 'success'      // Prompt preview, awaiting confirmation
-  | 'error'        // Error display
-  | 'confirming'   // Processing confirmation
-  | 'feedback'     // Success feedback before auto-close
+import { Loader2, Check, X, RefreshCw, Minimize2, Maximize2, Copy } from 'lucide-react'
+import type { VisionApiResultData } from '@/shared/types'
+import { useTaskQueueStore } from '@/content/core/task-queue-store'
+import type { QueueTask } from '@/content/core/task-queue-manager'
+import { TaskQueueManager } from '@/content/core/task-queue-manager'
+import TaskListItem from './TaskListItem'
 
 type LanguageType = 'zh' | 'en'
 type FormatType = 'natural' | 'json'
 
 interface VisionModalProps {
-  imageUrl: string
-  tabId?: number
   onClose: () => void
-}
-
-/**
- * Generate prompt name from title or content
- * Uses title if available, otherwise first 30 chars + timestamp
- */
-function generatePromptName(prompt: string, title?: string): string {
-  if (title) {
-    const timestamp = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-    return `${title} (${timestamp})`
-  }
-  const firstLine = prompt.split('\n')[0] || prompt
-  const truncated = firstLine.substring(0, 30).trim()
-  const timestamp = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-  return `${truncated}... (${timestamp})`
 }
 
 /**
@@ -63,311 +39,85 @@ function getStoredLanguagePreference(): 'zh' | 'en' {
 }
 
 /**
- * VisionModal - In-page modal for image-to-prompt conversion
- * Supports: API call, prompt preview with 3-Tab layout (中文/英文/JSON), insertion/clipboard
- * Note: API configuration is handled in settings.html (opened via OPEN_SETTINGS_PAGE)
+ * VisionModal - Left-right layout modal for multi-task prompt conversion
+ * Left: Task list with thumbnails and status
+ * Right: Prompt preview based on selected task
+ *
+ * Subscribe mode: Component subscribes to useTaskQueueStore for task list
+ * manages selectedTaskId internally for switching content
  */
-function VisionModal({ imageUrl, tabId, onClose }: VisionModalProps) {
-  const [state, setState] = useState<VisionModalState>('loading')
-  const [fullData, setFullData] = useState<VisionApiResultData | null>(null)
-  const [errorMessage, setErrorMessage] = useState<string>('')
-  const [errorAction, setErrorAction] = useState<'settings' | 'retry' | 'close'>('close')
-  const [retryCount, setRetryCount] = useState(0)
-  const [feedbackMessage, setFeedbackMessage] = useState<string>('')
-  const [isLovartPage, setIsLovartPage] = useState(false)
+function VisionModal({ onClose }: VisionModalProps) {
+  // Subscribe to task queue store
+  const tasks = useTaskQueueStore(state => state.tasks)
+  const getStats = useTaskQueueStore(state => state.getStats)
+
+  // Task queue manager instance
+  const taskQueueManager = TaskQueueManager.getInstance()
+
+  // Internal selected task ID state
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
+
+  // Derive selected task from tasks
+  const selectedTask: QueueTask | undefined = selectedTaskId
+    ? tasks.find(t => t.id === selectedTaskId)
+    : tasks[0] // Default to first task if no selection
+
+  // Language and format toggles
   const [language, setLanguage] = useState<LanguageType>('zh')
   const [format, setFormat] = useState<FormatType>('natural')
 
   // Draggable & minimizable state
   const [isMinimized, setIsMinimized] = useState(false)
-  const [position, setPosition] = useState({ x: window.innerWidth - 500, y: 20 }) // Position from left/top
-  const [expandedPosition, setExpandedPosition] = useState({ x: window.innerWidth - 500, y: 20 }) // Store position when expanded
+  const [position, setPosition] = useState({ x: window.innerWidth - 620, y: 20 })
+  const [expandedPosition, setExpandedPosition] = useState({ x: window.innerWidth - 620, y: 20 })
   const [isDragging, setIsDragging] = useState(false)
   const dragOffset = useRef({ x: 0, y: 0 })
   const modalRef = useRef<HTMLDivElement>(null)
 
   // Modal dimensions
-  const EXPANDED_WIDTH = 480
+  const EXPANDED_WIDTH = 600
   const MINIMIZED_WIDTH = 200
 
+  // Copy state for prompt copy button
+  const [isPromptCopied, setIsPromptCopied] = useState(false)
+
   /**
-   * Check if current page is Lovart and get language preference
+   * Get language preference from storage on mount
    */
   useEffect(() => {
-    const lovartPattern = /^https?:\/\/(?:[^/]*\.)?lovart\.ai(?:\/|$)/
-    setIsLovartPage(lovartPattern.test(window.location.href))
-
-    // Get stored language preference and set default
     const pref = getStoredLanguagePreference()
     setLanguage(pref)
   }, [])
 
   /**
-   * Start API call on mount
+   * Auto-select first task when tasks change
    */
   useEffect(() => {
-    requestApiCall(0)
-  }, [])
+    if (tasks.length > 0 && !selectedTaskId) {
+      setSelectedTaskId(tasks[0].id)
+    }
+    // If selected task was removed, switch to first task
+    if (selectedTaskId && !tasks.find(t => t.id === selectedTaskId)) {
+      setSelectedTaskId(tasks[0]?.id || null)
+    }
+  }, [tasks, selectedTaskId])
 
   /**
-   * Get current prompt based on language and format
-   */
-  const getCurrentPrompt = useCallback(() => {
-    if (!fullData) return ''
-    if (format === 'natural') {
-      return language === 'zh' ? fullData.zh.prompt : fullData.en.prompt
-    }
-    // JSON format - use zh_json or en_json if available, fallback to json_prompt
-    if (language === 'zh' && fullData.zh_json) {
-      return JSON.stringify(fullData.zh_json, null, 2)
-    }
-    if (language === 'en' && fullData.en_json) {
-      return JSON.stringify(fullData.en_json, null, 2)
-    }
-    // Fallback to legacy json_prompt
-    return JSON.stringify(fullData.json_prompt, null, 2)
-  }, [fullData, language, format])
-
-  /**
-   * Request Vision API call via service worker (uses host_permissions for CORS bypass)
-   */
-  const requestApiCall = useCallback(async (count: number) => {
-    setState('loading')
-    setRetryCount(count)
-    setFullData(null)
-
-    console.log('[Oh My Prompt] requestApiCall: imageUrl=', imageUrl, 'retryCount=', count)
-
-    try {
-      const response = await chrome.runtime.sendMessage({
-        type: MessageType.VISION_API_CALL,
-        payload: { imageUrl, retryCount: count }
-      })
-
-      console.log('[Oh My Prompt] Vision API response:', response)
-
-      if (!response) {
-        setErrorMessage('服务响应异常')
-        setErrorAction('retry')
-        setState('error')
-        return
-      }
-
-      if (response.success) {
-        const fullDataResult = response.data.fullData as VisionApiResultData | undefined
-        if (fullDataResult) {
-          setFullData(fullDataResult)
-        } else {
-          // Fallback: if fullData not available, create minimal structure
-          const fallbackData: VisionApiResultData = {
-            zh: { title: '', prompt: response.data.prompt || '', analysis: '' },
-            en: { title: '', prompt: response.data.prompt || '', analysis: '' },
-            zh_style_tags: [],
-            en_style_tags: [],
-            zh_json: {
-              主体: '',
-              动作姿态: '',
-              细节外观: '',
-              环境背景: '',
-              光影氛围: '',
-              风格镜头: '',
-              色彩: [],
-              材质: [],
-              宽高比: ''
-            },
-            en_json: {
-              subject: '',
-              action_pose: '',
-              details_appearance: '',
-              environment_background: '',
-              lighting_atmosphere: '',
-              style_camera: '',
-              colors: [],
-              materials: [],
-              aspect_ratio: ''
-            },
-            json_prompt: {
-              subject: '',
-              action_pose: '',
-              details_appearance: '',
-              environment_background: '',
-              lighting_atmosphere: '',
-              style_camera: '',
-              colors: [],
-              materials: [],
-              aspect_ratio: ''
-            },
-            confidence: 0.5
-          }
-          setFullData(fallbackData)
-        }
-        setState('success')
-      } else {
-        const error = response.error as VisionApiErrorPayload | undefined
-        setErrorMessage(error?.message || '发生未知错误')
-        setErrorAction(error?.action || 'close')
-        setState('error')
-      }
-    } catch (err) {
-      console.error('[Oh My Prompt] Vision API call error:', err)
-      setErrorMessage('请求失败，请重试')
-      setErrorAction('retry')
-      setState('error')
-    }
-  }, [imageUrl])
-
-  /**
-   * Handle retry
-   */
-  const handleRetry = () => {
-    requestApiCall(retryCount + 1)
-  }
-
-  /**
-   * Open API config page via service worker (content script cannot use chrome.tabs)
-   */
-  const handleOpenSettings = () => {
-    chrome.runtime.sendMessage({ type: MessageType.OPEN_API_CONFIG_PAGE })
-    onClose()
-  }
-
-  /**
-   * Handle confirmation - insert/copy + save + feedback
-   */
-  const handleConfirm = async () => {
-    const currentPrompt = getCurrentPrompt()
-    if (!currentPrompt || !fullData) {
-      setState('error')
-      setErrorMessage('没有可用的提示词')
-      setErrorAction('close')
-      return
-    }
-
-    setState('confirming')
-
-    // Step 1: Insert to Lovart or copy to clipboard
-    let insertSuccess = false
-    let clipboardSuccess = false
-
-    if (isLovartPage && tabId) {
-      try {
-        const response = await chrome.runtime.sendMessage({
-          type: MessageType.INSERT_PROMPT,
-          payload: {
-            prompt: currentPrompt,
-            tabId: tabId
-          } as InsertPromptPayload
-        })
-
-        insertSuccess = response?.success === true
-
-        if (!insertSuccess) {
-          clipboardSuccess = await copyToClipboard(currentPrompt)
-        }
-      } catch (error) {
-        console.error('[Oh My Prompt] INSERT_PROMPT error:', error)
-        clipboardSuccess = await copyToClipboard(currentPrompt)
-      }
-    } else {
-      clipboardSuccess = await copyToClipboard(currentPrompt)
-    }
-
-    // Step 2: Save to '临时' category with bilingual content and image
-    // Always save Chinese as primary content, English as contentEn (regardless of current selection)
-    const contentToSave = format === 'json'
-      ? (fullData.zh_json ? JSON.stringify(fullData.zh_json, null, 2) : JSON.stringify(fullData.json_prompt, null, 2))
-      : fullData.zh.prompt
-    const contentEnToSave = format === 'json'
-      ? (fullData.en_json ? JSON.stringify(fullData.en_json, null, 2) : JSON.stringify(fullData.json_prompt, null, 2))
-      : fullData.en.prompt
-
-    // Use title for name if available (generate both Chinese and English names)
-    const zhTitle = fullData.zh.title || undefined
-    const enTitle = fullData.en.title || undefined
-    const zhPromptContent = format === 'json'
-      ? (fullData.zh_json ? JSON.stringify(fullData.zh_json) : JSON.stringify(fullData.json_prompt))
-      : fullData.zh.prompt
-    const enPromptContent = format === 'json'
-      ? (fullData.en_json ? JSON.stringify(fullData.en_json) : JSON.stringify(fullData.json_prompt))
-      : fullData.en.prompt
-    const promptName = generatePromptName(zhPromptContent, zhTitle)
-    const promptNameEn = generatePromptName(enPromptContent, enTitle)
-    let localImageSaved = false
-
-    console.log('[Oh My Prompt] VisionModal: Saving to temporary library, imageUrl:', imageUrl?.substring(0, 50) + '...')
-
-    try {
-      const saveResponse = await chrome.runtime.sendMessage({
-        type: MessageType.SAVE_TEMPORARY_PROMPT,
-        payload: {
-          name: promptName,
-          nameEn: promptNameEn,
-          content: contentToSave,
-          contentEn: contentEnToSave,
-          description: fullData.zh.analysis,
-          descriptionEn: fullData.en.analysis,
-          imageUrl: imageUrl,
-          styleTags: fullData.zh_style_tags
-        } as SaveTemporaryPromptPayload
-      })
-      console.log('[Oh My Prompt] VisionModal: Save response:', saveResponse)
-      localImageSaved = saveResponse?.data?.localImageSaved === true
-    } catch (saveError) {
-      console.error('[Oh My Prompt] Save to temporary failed:', saveError)
-    }
-
-    // Step 3: Show feedback
-    let feedback = ''
-    const imageStatus = localImageSaved ? '图片已保存' : '图片URL已记录'
-    if (insertSuccess) {
-      feedback = `已插入Lovart输入框，已保存到临时库 (${imageStatus})`
-    } else if (clipboardSuccess) {
-      feedback = `已复制到剪贴板，已保存到临时库 (${imageStatus})`
-    } else {
-      feedback = `插入失败，请手动粘贴。已保存到临时库 (${imageStatus})`
-    }
-
-    setFeedbackMessage(feedback)
-    setState('feedback')
-  }
-
-  /**
-   * Handle minimize - adjust position to keep right edge fixed
-   */
-  const handleMinimize = useCallback(() => {
-    // Store current expanded position
-    setExpandedPosition(position)
-    // Calculate new position: shift left by (expandedWidth - minimizedWidth)
-    // This keeps the right edge at the same position
-    const newLeft = position.x + (EXPANDED_WIDTH - MINIMIZED_WIDTH)
-    setPosition({ x: newLeft, y: position.y })
-    setIsMinimized(true)
-  }, [position])
-
-  /**
-   * Handle expand - restore to original expanded position
-   */
-  const handleExpand = useCallback(() => {
-    setIsMinimized(false)
-    // Restore to stored expanded position
-    setPosition(expandedPosition)
-  }, [expandedPosition])
-
-  /**
-   * Handle ESC key
+   * Handle ESC key - close and clear all tasks
    */
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        taskQueueManager.clearAll()
         onClose()
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onClose])
+  }, [onClose, taskQueueManager])
 
   /**
-   * Drag handlers - mouse down on header starts drag (both minimized and expanded)
+   * Drag handlers - mouse down on header starts drag
    */
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
@@ -402,24 +152,89 @@ function VisionModal({ imageUrl, tabId, onClose }: VisionModalProps) {
   }, [isDragging])
 
   /**
-   * Render JSON prompt as key-value list (supports bilingual JSON)
+   * Handle minimize - adjust position to keep right edge fixed
    */
-  const renderJsonPrompt = () => {
-    if (!fullData) return null
+  const handleMinimize = useCallback(() => {
+    setExpandedPosition(position)
+    const newLeft = position.x + (EXPANDED_WIDTH - MINIMIZED_WIDTH)
+    setPosition({ x: newLeft, y: position.y })
+    setIsMinimized(true)
+  }, [position])
 
-    // Use zh_json or en_json based on language, fallback to json_prompt
-    const jsonPrompt = language === 'zh' && fullData.zh_json
-      ? fullData.zh_json
-      : language === 'en' && fullData.en_json
-        ? fullData.en_json
-        : fullData.json_prompt
+  /**
+   * Handle expand - restore to original expanded position
+   */
+  const handleExpand = useCallback(() => {
+    setIsMinimized(false)
+    setPosition(expandedPosition)
+  }, [expandedPosition])
 
-    // Chinese baseline keys
+  /**
+   * Get current prompt based on language and format
+   */
+  const getCurrentPrompt = useCallback(() => {
+    const result = selectedTask?.result
+    if (!result) return ''
+
+    if (format === 'natural') {
+      return language === 'zh' ? result.zh.prompt : result.en.prompt
+    }
+
+    // JSON format
+    if (language === 'zh' && result.zh_json) {
+      return JSON.stringify(result.zh_json, null, 2)
+    }
+    if (language === 'en' && result.en_json) {
+      return JSON.stringify(result.en_json, null, 2)
+    }
+    return JSON.stringify(result.json_prompt, null, 2)
+  }, [selectedTask?.result, language, format])
+
+  /**
+   * Copy current prompt to clipboard
+   */
+  const handleCopyPrompt = useCallback(async () => {
+    const currentPrompt = getCurrentPrompt()
+    if (!currentPrompt) return
+
+    const success = await copyToClipboard(currentPrompt)
+    if (success) {
+      setIsPromptCopied(true)
+      setTimeout(() => setIsPromptCopied(false), 1500)
+    }
+  }, [getCurrentPrompt])
+
+  /**
+   * Retry failed task
+   */
+  const handleRetry = useCallback(() => {
+    if (selectedTaskId) {
+      taskQueueManager.retryTask(selectedTaskId)
+    }
+  }, [selectedTaskId, taskQueueManager])
+
+  /**
+   * Remove failed task
+   */
+  const handleRemoveTask = useCallback(() => {
+    if (selectedTaskId) {
+      taskQueueManager.removeTask(selectedTaskId)
+    }
+  }, [selectedTaskId, taskQueueManager])
+
+  /**
+   * Render JSON prompt as key-value list
+   */
+  const renderJsonPrompt = (result: VisionApiResultData) => {
+    const jsonPrompt = language === 'zh' && result.zh_json
+      ? result.zh_json
+      : language === 'en' && result.en_json
+        ? result.en_json
+        : result.json_prompt
+
     const zhBaselineKeys = ['主体', '动作姿态', '细节外观', '环境背景', '光影氛围', '风格镜头', '色彩', '材质', '宽高比']
-    // English baseline keys
     const enBaselineKeys = ['subject', 'action_pose', 'details_appearance', 'environment_background', 'lighting_atmosphere', 'style_camera', 'colors', 'materials', 'aspect_ratio']
 
-    // Detect which baseline keys to use based on actual keys in jsonPrompt
     const hasZhKeys = Object.keys(jsonPrompt).some(k => zhBaselineKeys.includes(k))
     const baselineKeys = hasZhKeys ? zhBaselineKeys : enBaselineKeys
 
@@ -436,7 +251,6 @@ function VisionModal({ imageUrl, tabId, onClose }: VisionModalProps) {
             </div>
           )
         })}
-        {/* Additional fields */}
         {Object.keys(jsonPrompt)
           .filter(key => !baselineKeys.includes(key))
           .map(key => {
@@ -470,22 +284,193 @@ function VisionModal({ imageUrl, tabId, onClose }: VisionModalProps) {
     )
   }
 
-  // Copy state for prompt copy button
-  const [isPromptCopied, setIsPromptCopied] = useState(false)
+  /**
+   * Render right content based on selected task status
+   */
+  const renderRightContent = () => {
+    // No task selected
+    if (!selectedTask) {
+      return (
+        <div className="loading-view">
+          <p className="loading-text">暂无任务</p>
+        </div>
+      )
+    }
+
+    const { status, result, error } = selectedTask
+
+    // Pending status
+    if (status === 'pending') {
+      return (
+        <div className="loading-view">
+          <Loader2 className="loading-spinner" />
+          <p className="loading-text">等待分析中...</p>
+        </div>
+      )
+    }
+
+    // Running status
+    if (status === 'running') {
+      return (
+        <div className="loading-view">
+          <Loader2 className="loading-spinner" />
+          <p className="loading-text">正在分析图片...</p>
+        </div>
+      )
+    }
+
+    // Failed status
+    if (status === 'failed') {
+      return (
+        <div className="error-view">
+          <p className="error-message" role="alert">{error || '分析失败'}</p>
+          <div className="action-buttons">
+            <button className="btn btn-primary" onClick={handleRetry}>
+              <RefreshCw />
+              重试
+            </button>
+            <button className="btn btn-outline" onClick={handleRemoveTask}>
+              <X />
+              移除
+            </button>
+          </div>
+        </div>
+      )
+    }
+
+    // Success status - show prompt preview
+    if (status === 'success' && result) {
+      return (
+        <div className="success-view">
+          {/* Title */}
+          {language === 'zh' && result.zh.title && (
+            <div className="prompt-title">{result.zh.title}</div>
+          )}
+          {language === 'en' && result.en.title && (
+            <div className="prompt-title">{result.en.title}</div>
+          )}
+
+          {/* Content based on format */}
+          <div className="tab-content">
+            {format === 'natural' && (
+              <div className="prompt-tab">
+                {language === 'zh' && (
+                  <>
+                    <div className="prompt-preview-wrapper">
+                      <div className="prompt-preview">
+                        <p className="prompt-label">提示词:</p>
+                        {result.zh.prompt}
+                      </div>
+                      <button
+                        className={`prompt-copy-btn ${isPromptCopied ? 'copied' : ''}`}
+                        onClick={handleCopyPrompt}
+                        aria-label="复制提示词"
+                      >
+                        {isPromptCopied ? <Check /> : <Copy />}
+                      </button>
+                    </div>
+                    {result.zh.analysis && (
+                      <div className="analysis-section">
+                        <p className="analysis-label">分析说明:</p>
+                        <p className="analysis-text">{result.zh.analysis}</p>
+                      </div>
+                    )}
+                    {renderStyleTags(result.zh_style_tags)}
+                  </>
+                )}
+                {language === 'en' && (
+                  <>
+                    <div className="prompt-preview-wrapper">
+                      <div className="prompt-preview">
+                        <p className="prompt-label">Prompt:</p>
+                        {result.en.prompt}
+                      </div>
+                      <button
+                        className={`prompt-copy-btn ${isPromptCopied ? 'copied' : ''}`}
+                        onClick={handleCopyPrompt}
+                        aria-label="Copy prompt"
+                      >
+                        {isPromptCopied ? <Check /> : <Copy />}
+                      </button>
+                    </div>
+                    {result.en.analysis && (
+                      <div className="analysis-section">
+                        <p className="analysis-label">Analysis:</p>
+                        <p className="analysis-text">{result.en.analysis}</p>
+                      </div>
+                    )}
+                    {renderStyleTags(result.en_style_tags)}
+                  </>
+                )}
+              </div>
+            )}
+
+            {format === 'json' && (
+              <div className="json-tab">
+                <div className="prompt-preview-wrapper">
+                  {renderJsonPrompt(result)}
+                  <button
+                    className={`prompt-copy-btn ${isPromptCopied ? 'copied' : ''}`}
+                    onClick={handleCopyPrompt}
+                    aria-label="复制JSON"
+                  >
+                    {isPromptCopied ? <Check /> : <Copy />}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Save status indicator */}
+          {selectedTask.savedToTemporary && (
+            <p className="feedback-text" style={{ color: '#22c55e', fontSize: '12px', marginTop: '8px' }}>
+              已自动保存到临时库
+            </p>
+          )}
+          {selectedTask.saveError && (
+            <p className="feedback-text" style={{ color: '#ef4444', fontSize: '12px', marginTop: '8px' }}>
+              保存失败: {selectedTask.saveError}
+            </p>
+          )}
+        </div>
+      )
+    }
+
+    // Unknown status fallback
+    return (
+      <div className="loading-view">
+        <p className="loading-text">未知状态</p>
+      </div>
+    )
+  }
 
   /**
-   * Copy current prompt to clipboard
+   * Render minimized status stats
    */
-  const handleCopyPrompt = useCallback(async () => {
-    const currentPrompt = getCurrentPrompt()
-    if (!currentPrompt) return
+  const renderMinimizedStats = () => {
+    const stats = getStats()
+    const parts: string[] = []
 
-    const success = await copyToClipboard(currentPrompt)
-    if (success) {
-      setIsPromptCopied(true)
-      setTimeout(() => setIsPromptCopied(false), 1500)
+    if (stats.success > 0) parts.push(`${stats.success}✓`)
+    if (stats.failed > 0) parts.push(`${stats.failed}✗`)
+    if (stats.running > 0) parts.push(`${stats.running}⟳`)
+
+    return parts.join(' / ') || '无任务'
+  }
+
+  /**
+   * Determine header brand text based on task status
+   */
+  const getHeaderBrandText = () => {
+    if (isMinimized) return renderMinimizedStats()
+
+    // Check if any task is running
+    if (tasks.some(t => t.status === 'running')) {
+      return '分析中...'
     }
-  }, [getCurrentPrompt])
+
+    return 'Oh My Prompt'
+  }
 
   return (
     <div className="modal-overlay">
@@ -508,14 +493,15 @@ function VisionModal({ imageUrl, tabId, onClose }: VisionModalProps) {
         >
           <>
             <img className="modal-logo-icon" src={chrome.runtime.getURL('assets/icon-128.png')} alt="Oh My Prompt" />
-            <span className="modal-brand">
-              {state === 'loading' ? '分析中...' : 'Oh My Prompt'}
-            </span>
+            <span className="modal-brand">{getHeaderBrandText()}</span>
           </>
           <div className="modal-header-actions">
             {isMinimized ? (
               <>
-                <button className="modal-action-btn" onClick={onClose} aria-label="关闭">
+                <button className="modal-action-btn" onClick={() => {
+                  taskQueueManager.clearAll()
+                  onClose()
+                }} aria-label="关闭">
                   <X />
                 </button>
                 <button
@@ -540,190 +526,69 @@ function VisionModal({ imageUrl, tabId, onClose }: VisionModalProps) {
 
         {/* Content - only show when not minimized */}
         {!isMinimized && (
-          <div className="modal-content">
-            {/* Loading state */}
-            {state === 'loading' && (
-              <div className="loading-view">
-                <Loader2 className="loading-spinner" />
-                <p className="loading-text">正在分析图片...</p>
-              </div>
-            )}
-
-            {/* Success state - language + format toggle layout */}
-            {state === 'success' && fullData && (
-              <div className="success-view">
-                {/* Prompt section */}
-                <div className="prompt-section">
-                </div>
-                {/* Content based on format */}
-                <div className="tab-content">
-                  {/* Natural language format */}
-                  {format === 'natural' && (
-                    <div className="prompt-tab">
-                      {/* Chinese natural language */}
-                      {language === 'zh' && (
-                        <>
-                          {fullData.zh.title && (
-                            <div className="prompt-title">{fullData.zh.title}</div>
-                          )}
-                          <div className="prompt-preview-wrapper">
-                            <div className="prompt-preview">
-                              <p className="prompt-label">提示词:</p>
-                              {fullData.zh.prompt}
-                            </div>
-                            <button
-                              className={`prompt-copy-btn ${isPromptCopied ? 'copied' : ''}`}
-                              onClick={handleCopyPrompt}
-                              aria-label="复制提示词"
-                            >
-                              {isPromptCopied ? <Check /> : <Copy />}
-                            </button>
-                          </div>
-                          {fullData.zh.analysis && (
-                            <div className="analysis-section">
-                              <p className="analysis-label">分析说明:</p>
-                              <p className="analysis-text">{fullData.zh.analysis}</p>
-                            </div>
-                          )}
-                          {renderStyleTags(fullData.zh_style_tags)}
-                        </>
-                      )}
-                      {/* English natural language */}
-                      {language === 'en' && (
-                        <>
-                          {fullData.en.title && (
-                            <div className="prompt-title">{fullData.en.title}</div>
-                          )}
-                          <div className="prompt-preview-wrapper">
-                            <div className="prompt-preview">
-                              <p className="prompt-label">Prompt:</p>
-                              {fullData.en.prompt}
-                            </div>
-                            <button
-                              className={`prompt-copy-btn ${isPromptCopied ? 'copied' : ''}`}
-                              onClick={handleCopyPrompt}
-                              aria-label="Copy prompt"
-                            >
-                              {isPromptCopied ? <Check /> : <Copy />}
-                            </button>
-                          </div>
-                          {fullData.en.analysis && (
-                            <div className="analysis-section">
-                              <p className="analysis-label">Analysis:</p>
-                              <p className="analysis-text">{fullData.en.analysis}</p>
-                            </div>
-                          )}
-                          {renderStyleTags(fullData.en_style_tags)}
-                        </>
-                      )}
-                    </div>
-                  )}
-
-                  {/* JSON format */}
-                  {format === 'json' && (
-                    <div className="json-tab">
-                      <div className="prompt-preview-wrapper">
-                        {renderJsonPrompt()}
-                        <button
-                          className={`prompt-copy-btn ${isPromptCopied ? 'copied' : ''}`}
-                          onClick={handleCopyPrompt}
-                          aria-label="复制JSON"
-                        >
-                          {isPromptCopied ? <Check /> : <Copy />}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Confirming state */}
-            {state === 'confirming' && (
-              <div className="loading-view">
-                <Loader2 className="loading-spinner" />
-                <p className="loading-text">正在处理...</p>
-              </div>
-            )}
-
-            {/* Feedback state */}
-            {state === 'feedback' && (
-              <div className="feedback-view">
-                <div className="feedback-success">
-                  <Check />
-                  <p className="feedback-text">{feedbackMessage}</p>
-                </div>
-                <button className="close-session-btn" onClick={onClose}>
-                  关闭本次会话
-                </button>
-              </div>
-            )}
-
-            {/* Error state */}
-            {state === 'error' && (
-              <div className="error-view">
-                <p className="error-message" role="alert">{errorMessage}</p>
-                <div className="action-buttons">
-                  {errorAction === 'settings' && (
-                    <button className="btn btn-primary" onClick={handleOpenSettings}>
-                      <Settings />
-                      配置API
-                    </button>
-                  )}
-                  {errorAction === 'retry' && (
-                    <button className="btn btn-primary" onClick={handleRetry}>
-                      <RefreshCw />
-                      重试
-                    </button>
-                  )}
-                  <button className="btn btn-outline" onClick={onClose}>
-                    <X />
-                    关闭
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Fixed footer - only show in success state when not minimized */}
-        {!isMinimized && state === 'success' && fullData && (
-          <div className="modal-footer">
-            <div className="toggle-groups">
-              {/* Language toggle */}
-              <div className="toggle-group">
-                <button
-                  className={`toggle-btn ${language === 'zh' ? 'active' : ''}`}
-                  onClick={() => setLanguage('zh')}
-                >
-                  中
-                </button>
-                <button
-                  className={`toggle-btn ${language === 'en' ? 'active' : ''}`}
-                  onClick={() => setLanguage('en')}
-                >
-                  EN
-                </button>
-              </div>
-              {/* Format toggle */}
-              <div className="toggle-group">
-                <button
-                  className={`toggle-btn ${format === 'natural' ? 'active' : ''}`}
-                  onClick={() => setFormat('natural')}
-                >
-                  自然语言
-                </button>
-                <button
-                  className={`toggle-btn ${format === 'json' ? 'active' : ''}`}
-                  onClick={() => setFormat('json')}
-                >
-                  JSON
-                </button>
+          <div className="modal-body">
+            {/* Left sidebar - task list */}
+            <div className="task-sidebar">
+              <div className="task-list-container">
+                {tasks.map(task => (
+                  <TaskListItem
+                    key={task.id}
+                    task={task}
+                    isSelected={task.id === selectedTaskId}
+                    onClick={() => setSelectedTaskId(task.id)}
+                  />
+                ))}
               </div>
             </div>
-            <button className="btn btn-primary" onClick={handleConfirm}>
-              暂存到OMP
-            </button>
+
+            {/* Right content area */}
+            <div className="task-content">
+              <div className="task-content-inner">
+                {renderRightContent()}
+              </div>
+
+              {/* Footer - only show in success state with result */}
+              {selectedTask?.status === 'success' && selectedTask.result && (
+                <div className="modal-footer">
+                  <div className="toggle-groups">
+                    {/* Language toggle */}
+                    <div className="toggle-group">
+                      <button
+                        className={`toggle-btn ${language === 'zh' ? 'active' : ''}`}
+                        onClick={() => setLanguage('zh')}
+                      >
+                        中
+                      </button>
+                      <button
+                        className={`toggle-btn ${language === 'en' ? 'active' : ''}`}
+                        onClick={() => setLanguage('en')}
+                      >
+                        EN
+                      </button>
+                    </div>
+                    {/* Format toggle */}
+                    <div className="toggle-group">
+                      <button
+                        className={`toggle-btn ${format === 'natural' ? 'active' : ''}`}
+                        onClick={() => setFormat('natural')}
+                      >
+                        自然语言
+                      </button>
+                      <button
+                        className={`toggle-btn ${format === 'json' ? 'active' : ''}`}
+                        onClick={() => setFormat('json')}
+                      >
+                        JSON
+                      </button>
+                    </div>
+                  </div>
+                  <button className="btn btn-outline" onClick={handleCopyPrompt}>
+                    <Copy />
+                    复制
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

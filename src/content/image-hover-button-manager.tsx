@@ -11,7 +11,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import HoverButton from './components/HoverButton'
 import { MessageType } from '@/shared/messages'
 import { TaskQueueManager } from './core/task-queue-manager'
-import { BatchPanelManager } from './batch-panel-manager'
+import { VisionModalManager } from './vision-modal-manager'
 
 const LOG_PREFIX = '[Oh My Prompt]'
 
@@ -466,16 +466,19 @@ export class ImageHoverButtonManager {
   }
 
   /**
-   * Handle button click - add to queue and show BatchProgressPanel
+   * Handle button click - add to queue and show VisionModal
    */
   private handleButtonClick(imageUrl: string): void {
     console.log(LOG_PREFIX, 'Hover button clicked')
 
     try {
       const queueManager = TaskQueueManager.getInstance()
-      const batchPanelManager = BatchPanelManager.getInstance()
+      const visionModalManager = VisionModalManager.getInstance()
 
-      // Always add to queue (batch mode)
+      // Ensure modal is open first
+      visionModalManager.create()
+
+      // Add task to queue
       const task = queueManager.addTask(imageUrl)
 
       if (task === null) {
@@ -483,9 +486,6 @@ export class ImageHoverButtonManager {
         this.showToast('队列已满，请等待任务完成')
         return
       }
-
-      // Ensure batch panel is open
-      batchPanelManager.ensureOpen()
     } catch (error) {
       console.error(LOG_PREFIX, 'Queue operation failed:', error)
     }

@@ -103,7 +103,6 @@ export class TaskQueueManager {
 
     // Add to store
     store.setTasks([...currentTasks, task])
-    store.setPanelOpen(true)
 
     console.log(LOG_PREFIX, 'Task added to queue:', task.id)
 

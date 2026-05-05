@@ -6,6 +6,7 @@ import { syncToLocalFolder, readFromLocalFolder, selectSyncFolder } from './file
 import type { BackupVersion } from './file-sync'
 import { MessageType } from '../../shared/messages'
 import { ensureOffscreenDocument, sendToOffscreen } from '../offscreen-manager'
+import { readApiConfigFromFolder } from './api-config-sync'
 
 export interface SyncStatus {
   enabled: boolean
@@ -105,6 +106,46 @@ export async function triggerSync(backupData: FullBackupData): Promise<{ success
       await storageManager.updateSettings({ hasUnsyncedChanges: true })
       return { success: false, error: { type: 'write_failed', message: '同步失败，请稍后重试' } }
     }
+  }
+}
+
+/**
+ * Restore API config from encrypted file in folder
+ * Called when user selects a folder or on plugin startup
+ * Returns true if config was restored, false otherwise
+ */
+export async function restoreApiConfigFromFolder(): Promise<boolean> {
+  console.log('[Oh My Prompt] restoreApiConfigFromFolder: Starting...')
+
+  try {
+    // Check if API config already exists in storage
+    const apiConfigResult = await chrome.storage.local.get(VISION_API_CONFIG_STORAGE_KEY)
+    if (apiConfigResult[VISION_API_CONFIG_STORAGE_KEY]) {
+      console.log('[Oh My Prompt] restoreApiConfigFromFolder: API config already in storage, skipping')
+      return false
+    }
+
+    // Get folder handle
+    const handle = await getFolderHandle()
+    if (!handle) {
+      console.log('[Oh My Prompt] restoreApiConfigFromFolder: No folder configured')
+      return false
+    }
+
+    // Try to read encrypted config from folder (direct read, not via offscreen)
+    const config = await readApiConfigFromFolder(handle)
+    if (!config) {
+      console.log('[Oh My Prompt] restoreApiConfigFromFolder: No encrypted config in folder')
+      return false
+    }
+
+    // Save to storage
+    await chrome.storage.local.set({ [VISION_API_CONFIG_STORAGE_KEY]: config })
+    console.log('[Oh My Prompt] restoreApiConfigFromFolder: API config restored successfully')
+    return true
+  } catch (error) {
+    console.warn('[Oh My Prompt] restoreApiConfigFromFolder: Failed:', error)
+    return false
   }
 }
 
@@ -243,6 +284,8 @@ export async function enableSync(): Promise<EnableSyncResult> {
         syncEnabled: true,
         lastSyncTime: Date.now()
       })
+      // Restore API config from folder if not in storage
+      await restoreApiConfigFromFolder()
       return { success: true }
     } catch (error) {
       console.error('[Oh My Prompt] Reuse existing folder failed:', error)
@@ -302,6 +345,9 @@ export async function enableSync(): Promise<EnableSyncResult> {
     await storageManager.updateSettings({
       syncEnabled: true
     })
+
+    // Restore API config from folder if not in storage
+    await restoreApiConfigFromFolder()
 
     return { success: true, existingBackup: existingBackupInfo }
   } catch (error) {
@@ -375,6 +421,9 @@ export async function changeSyncFolder(): Promise<{ success: boolean; error?: st
       syncEnabled: true,
       lastSyncTime: Date.now()
     })
+
+    // Restore API config from folder if not in storage
+    await restoreApiConfigFromFolder()
 
     return { success: true, existingBackup: existingBackupInfo }
   } catch (error) {

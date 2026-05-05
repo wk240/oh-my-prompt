@@ -266,13 +266,27 @@ export class ImageHoverButtonManager {
         }
       }
 
+      // Handle picture elements: find the img inside
+      if (el.tagName === 'PICTURE') {
+        const img = el.querySelector('img')
+        if (img) {
+          const rect = img.getBoundingClientRect()
+          if (rect.width >= MIN_WIDTH && rect.height >= MIN_HEIGHT) {
+            if (DEBUG_HOVER_BUTTON) {
+              console.log(LOG_PREFIX, 'Found image in PICTURE element')
+            }
+            return img
+          }
+        }
+      }
+
       // Handle covered images: check if this element contains a large image
       // (Some sites overlay transparent divs on images for hover effects)
-      if (el.tagName === 'DIV') {
+      if (el.tagName === 'DIV' || el.tagName === 'A' || el.tagName === 'SPAN') {
         const containedImg = this.findLargeImageInContainer(el as HTMLElement)
         if (containedImg) {
           if (DEBUG_HOVER_BUTTON) {
-            console.log(LOG_PREFIX, 'Found covered image in DIV:', containedImg.src?.slice(0, 50))
+            console.log(LOG_PREFIX, 'Found covered image in element:', containedImg.src?.slice(0, 50))
           }
           return containedImg
         }
@@ -575,7 +589,45 @@ export class ImageHoverButtonManager {
       }
     }
 
-    // Priority 2: data-src (lazy loading)
+    // Priority 2: Check parent <picture> element's <source> srcset
+    const picture = img.closest('picture')
+    if (picture) {
+      const sources = picture.querySelectorAll('source')
+      for (const source of sources) {
+        const srcset = source.srcset
+        if (srcset) {
+          const parsed = srcset.split(',').map(s => {
+            const parts = s.trim().split(' ')
+            return { url: parts[0], size: parts[1] || '1x' }
+          })
+          const sorted = parsed.sort((a, b) => {
+            const aNum = parseFloat(a.size) || 1
+            const bNum = parseFloat(b.size) || 1
+            return bNum - aNum
+          })
+          if (sorted[0]?.url && sorted[0].url.startsWith('http')) {
+            if (DEBUG_HOVER_BUTTON) {
+              console.log(LOG_PREFIX, 'Found URL from picture > source:', sorted[0].url.slice(0, 50))
+            }
+            return sorted[0].url
+          }
+        }
+      }
+    }
+
+    // Priority 3: Pinterest-specific attributes
+    const pinterestAttrs = ['data-pin-url', 'data-pin-media', 'data-original', 'data-srcset']
+    for (const attr of pinterestAttrs) {
+      const value = img.getAttribute(attr)
+      if (value && value.startsWith('http')) {
+        if (DEBUG_HOVER_BUTTON) {
+          console.log(LOG_PREFIX, 'Found URL from Pinterest attr:', attr, value.slice(0, 50))
+        }
+        return value
+      }
+    }
+
+    // Priority 4: data-src (lazy loading)
     if (img.dataset.src) {
       if (img.dataset.src.startsWith('http')) return img.dataset.src
       try {
@@ -585,10 +637,16 @@ export class ImageHoverButtonManager {
       }
     }
 
-    // Priority 3: src attribute
+    // Priority 5: src attribute
     if (img.src) {
       if (img.src.startsWith('http')) return img.src
-      if (img.src.startsWith('data:')) return null // Skip data URLs
+      if (img.src.startsWith('data:')) {
+        // Skip data URLs but log for debugging
+        if (DEBUG_HOVER_BUTTON) {
+          console.log(LOG_PREFIX, 'Skipping data URL, checking other attributes')
+        }
+        return null
+      }
       try {
         return new URL(img.src, window.location.origin).href
       } catch {

@@ -671,6 +671,39 @@ export class VisionModalManager {
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
       }
 
+      /* Footer action button - matches toggle-btn height */
+      .footer-btn {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 10px;
+        border-radius: 4px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        border: none;
+      }
+
+      .footer-btn-primary {
+        background: #171717;
+        color: #ffffff;
+      }
+
+      .footer-btn-primary:hover {
+        background: rgba(23, 23, 23, 0.9);
+      }
+
+      .footer-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .footer-btn svg {
+        width: 14px;
+        height: 14px;
+      }
+
       /* Minimized content */
       .minimized-content {
         display: flex;

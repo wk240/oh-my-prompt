@@ -676,7 +676,7 @@ function VisionModal({ onClose }: VisionModalProps) {
                   {/* Resave button - show when format differs from saved format */}
                   {shouldShowResave() && (
                     <button
-                      className="btn btn-primary"
+                      className="footer-btn footer-btn-primary"
                       onClick={handleResave}
                       disabled={isResaving}
                     >
@@ -694,10 +694,6 @@ function VisionModal({ onClose }: VisionModalProps) {
                           : `重新保存为${format === 'json' ? 'JSON' : '自然语言'}`}
                     </button>
                   )}
-                  <button className="btn btn-outline" onClick={handleCopyPrompt}>
-                    <Copy />
-                    复制
-                  </button>
                 </div>
               )}
             </div>

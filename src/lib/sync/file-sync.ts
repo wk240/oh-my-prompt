@@ -1,22 +1,28 @@
-import type { Prompt, Category, UserData } from '../../shared/types'
+import type { Prompt, Category } from '../../shared/types'
 import { BACKUP_FILE_NAME, BACKUP_HISTORY_PREFIX, BACKUP_HISTORY_PATTERN, MAX_BACKUP_HISTORY } from '../../shared/constants'
-import { computeUserDataHash } from './hash'
+import { computeBackupDataHash, type BackupData } from './hash'
+
+// Full backup data structure including temporary prompts
+export interface FullBackupData extends BackupData {
+  temporaryPrompts: Prompt[]
+}
 
 export interface BackupVersion {
   filename: string
   backupTime: string
   promptCount: number
   categoryCount: number
+  temporaryPromptCount: number // Temporary library prompt count
   isLatest: boolean
   contentHash?: string
 }
 
 /**
- * Backup user data to local folder with fixed filename
+ * Backup full data (including temporary prompts) to local folder with fixed filename
  * Used by refresh button for quick backup before reload
  */
 export async function backupToFolder(
-  userData: UserData,
+  backupData: FullBackupData,
   handle: FileSystemDirectoryHandle,
   version?: string
 ): Promise<void> {
@@ -24,7 +30,7 @@ export async function backupToFolder(
     const fileHandle = await handle.getFileHandle(BACKUP_FILE_NAME, { create: true })
     const writable = await fileHandle.createWritable()
 
-    const contentHash = await computeUserDataHash(userData)
+    const contentHash = await computeBackupDataHash(backupData)
 
     // Use provided version or try to get from manifest (may not work in offscreen)
     const manifestVersion = version || (typeof chrome !== 'undefined' && chrome.runtime?.getManifest?.()?.version) || '1.0.0'
@@ -32,9 +38,10 @@ export async function backupToFolder(
     const backupFile = {
       version: manifestVersion,
       userData: {
-        prompts: userData.prompts,
-        categories: userData.categories
+        prompts: backupData.prompts,
+        categories: backupData.categories
       },
+      temporaryPrompts: backupData.temporaryPrompts, // Include temporary library
       backupTime: new Date().toISOString(),
       contentHash
     }
@@ -42,7 +49,7 @@ export async function backupToFolder(
     await writable.write(JSON.stringify(backupFile, null, 2))
     await writable.close()
 
-    console.log('[Oh My Prompt] Backup saved:', BACKUP_FILE_NAME)
+    console.log('[Oh My Prompt] Backup saved:', BACKUP_FILE_NAME, 'temporaryPrompts:', backupData.temporaryPrompts.length)
   } catch (error) {
     console.error('[Oh My Prompt] Failed to backup:', error)
     throw error
@@ -54,17 +61,17 @@ export interface SyncResult {
 }
 
 /**
- * Sync user data to local folder (uses same file as backup)
+ * Sync full data (including temporary prompts) to local folder (uses same file as backup)
  * Also creates history backup (only if content changed) and cleans up old versions
  * Returns SyncResult indicating whether a new history backup was created
  */
 export async function syncToLocalFolder(
-  userData: UserData,
+  backupData: FullBackupData,
   handle: FileSystemDirectoryHandle,
   version?: string
 ): Promise<SyncResult> {
   try {
-    const contentHash = await computeUserDataHash(userData)
+    const contentHash = await computeBackupDataHash(backupData)
 
     const fileHandle = await handle.getFileHandle(BACKUP_FILE_NAME, { create: true })
     const writable = await fileHandle.createWritable()
@@ -75,9 +82,10 @@ export async function syncToLocalFolder(
     const backupFile = {
       version: manifestVersion,
       userData: {
-        prompts: userData.prompts,
-        categories: userData.categories
+        prompts: backupData.prompts,
+        categories: backupData.categories
       },
+      temporaryPrompts: backupData.temporaryPrompts, // Include temporary library
       backupTime: new Date().toISOString(),
       contentHash
     }
@@ -85,7 +93,7 @@ export async function syncToLocalFolder(
     await writable.write(JSON.stringify(backupFile, null, 2))
     await writable.close()
 
-    console.log('[Oh My Prompt] Synced to local folder:', BACKUP_FILE_NAME)
+    console.log('[Oh My Prompt] Synced to local folder:', BACKUP_FILE_NAME, 'temporaryPrompts:', backupData.temporaryPrompts.length)
 
     // Create history backup only if content changed
     const hashExists = await checkHashExistsInHistory(handle, contentHash)
@@ -106,19 +114,19 @@ export async function syncToLocalFolder(
 }
 
 /**
- * Read user data from local folder
+ * Read full backup data (including temporary prompts) from local folder
  * Returns null if file doesn't exist or is invalid
  */
 export async function readFromLocalFolder(
   handle: FileSystemDirectoryHandle
-): Promise<UserData | null> {
+): Promise<FullBackupData | null> {
   try {
     const fileHandle = await handle.getFileHandle(BACKUP_FILE_NAME)
     const file = await fileHandle.getFile()
     const content = await file.text()
     const parsed = JSON.parse(content)
 
-    // Validate structure - supports both new format (userData) and legacy format
+    // Validate structure - supports both new format (userData + temporaryPrompts) and legacy format
     if (parsed.userData && typeof parsed.userData === 'object') {
       const userData = parsed.userData as { prompts: unknown; categories: unknown }
       if (!Array.isArray(userData.prompts) || !Array.isArray(userData.categories)) {
@@ -127,7 +135,8 @@ export async function readFromLocalFolder(
       }
       return {
         prompts: userData.prompts as Prompt[],
-        categories: userData.categories as Category[]
+        categories: userData.categories as Category[],
+        temporaryPrompts: parsed.temporaryPrompts || [] // Include temporary library
       }
     }
 
@@ -139,7 +148,8 @@ export async function readFromLocalFolder(
 
     return {
       prompts: parsed.prompts as Prompt[],
-      categories: parsed.categories as Category[]
+      categories: parsed.categories as Category[],
+      temporaryPrompts: [] // No temporary prompts in legacy format
     }
   } catch (error) {
     console.warn('[Oh My Prompt] Failed to read local file:', error)
@@ -292,6 +302,7 @@ export async function listBackupVersions(handle: FileSystemDirectoryHandle): Pro
         backupTime: parsed.backupTime || '',
         promptCount: parsed.userData?.prompts?.length || 0,
         categoryCount: parsed.userData?.categories?.length || 0,
+        temporaryPromptCount: parsed.temporaryPrompts?.length || 0, // Include temporary count
         isLatest: true,
         contentHash: parsed.contentHash
       })
@@ -316,6 +327,7 @@ export async function listBackupVersions(handle: FileSystemDirectoryHandle): Pro
             backupTime: parsed.backupTime || '',
             promptCount: parsed.userData?.prompts?.length || 0,
             categoryCount: parsed.userData?.categories?.length || 0,
+            temporaryPromptCount: parsed.temporaryPrompts?.length || 0, // Include temporary count
             isLatest: false,
             contentHash: parsed.contentHash
           })
@@ -335,12 +347,12 @@ export async function listBackupVersions(handle: FileSystemDirectoryHandle): Pro
 }
 
 /**
- * Read specific backup file and return UserData
+ * Read specific backup file and return full backup data (including temporary prompts)
  */
 export async function readBackupFile(
   handle: FileSystemDirectoryHandle,
   filename: string
-): Promise<UserData | null> {
+): Promise<FullBackupData | null> {
   try {
     const fileHandle = await handle.getFileHandle(filename)
     const file = await fileHandle.getFile()
@@ -355,7 +367,8 @@ export async function readBackupFile(
       }
       return {
         prompts: userData.prompts as Prompt[],
-        categories: userData.categories as Category[]
+        categories: userData.categories as Category[],
+        temporaryPrompts: parsed.temporaryPrompts || [] // Include temporary library
       }
     }
 
@@ -366,7 +379,8 @@ export async function readBackupFile(
 
     return {
       prompts: parsed.prompts as Prompt[],
-      categories: parsed.categories as Category[]
+      categories: parsed.categories as Category[],
+      temporaryPrompts: [] // No temporary prompts in legacy format
     }
   } catch (error) {
     console.warn('[Oh My Prompt] Failed to read backup file:', error)

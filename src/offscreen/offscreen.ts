@@ -9,7 +9,8 @@
  */
 
 import { MessageType, MessageResponse } from '../shared/messages'
-import type { UserData, VisionApiConfig } from '../shared/types'
+import type { VisionApiConfig } from '../shared/types'
+import type { FullBackupData } from '../lib/sync/file-sync'
 import { getFolderHandle, saveFolderHandle, checkFolderPermission, requestFolderPermission } from '../lib/sync/indexeddb'
 import { syncToLocalFolder, listBackupVersions, readBackupFile } from '../lib/sync/file-sync'
 import { syncApiConfigToFolder, readApiConfigFromFolder } from '../lib/sync/api-config-sync'
@@ -27,13 +28,13 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       return false
 
     case MessageType.OFFSCREEN_SYNC:
-      handleSync(message.payload as { userData: UserData; version: string })
+      handleSync(message.payload as { backupData: FullBackupData; version: string })
         .then(result => sendResponse(result))
         .catch(error => sendResponse({ success: false, error: String(error) }))
       return true
 
     case MessageType.OFFSCREEN_BACKUP:
-      handleBackup(message.payload as { userData: UserData; version: string })
+      handleBackup(message.payload as { backupData: FullBackupData; version: string })
         .then(result => sendResponse(result))
         .catch(error => sendResponse({ success: false, error: String(error) }))
       return true
@@ -123,7 +124,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
 // Handler functions
 
-async function handleSync(payload: { userData: UserData; version: string }): Promise<MessageResponse> {
+async function handleSync(payload: { backupData: FullBackupData; version: string }): Promise<MessageResponse> {
   const handle = await getFolderHandle()
   if (!handle) {
     return { success: false, error: 'FOLDER_NOT_CONFIGURED' }
@@ -140,7 +141,7 @@ async function handleSync(payload: { userData: UserData; version: string }): Pro
   }
 
   try {
-    await syncToLocalFolder(payload.userData, handle, payload.version)
+    await syncToLocalFolder(payload.backupData, handle, payload.version)
     return { success: true } as MessageResponse
   } catch (error) {
     console.error('[Oh My Prompt] Offscreen sync failed:', error)
@@ -148,7 +149,7 @@ async function handleSync(payload: { userData: UserData; version: string }): Pro
   }
 }
 
-async function handleBackup(payload: { userData: UserData; version: string }): Promise<MessageResponse> {
+async function handleBackup(payload: { backupData: FullBackupData; version: string }): Promise<MessageResponse> {
   const handle = await getFolderHandle()
   if (!handle) {
     return { success: false, error: 'FOLDER_NOT_CONFIGURED' }
@@ -164,7 +165,7 @@ async function handleBackup(payload: { userData: UserData; version: string }): P
   }
 
   try {
-    await syncToLocalFolder(payload.userData, handle, payload.version)
+    await syncToLocalFolder(payload.backupData, handle, payload.version)
     return { success: true } as MessageResponse
   } catch (error) {
     console.error('[Oh My Prompt] Offscreen backup failed:', error)

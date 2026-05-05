@@ -1,5 +1,5 @@
 import { MessageType, MessageResponse } from '../shared/messages'
-import type { StorageSchema, SyncSettings, UserData, VisionApiConfig, InsertPromptPayload, InsertResultPayload, SaveTemporaryPromptPayload, UpdateTemporaryPromptFormatPayload, Prompt } from '../shared/types'
+import type { StorageSchema, SyncSettings, VisionApiConfig, InsertPromptPayload, InsertResultPayload, SaveTemporaryPromptPayload, UpdateTemporaryPromptFormatPayload, Prompt } from '../shared/types'
 import { StorageManager } from '../lib/storage'
 import { saveFolderHandle, getFolderHandle } from '../lib/sync/indexeddb'
 import { getSyncStatus, triggerSync, restorePermission, initialSync } from '../lib/sync/sync-manager'
@@ -109,12 +109,17 @@ chrome.runtime.onMessage.addListener(
               _migrationComplete: payload._migrationComplete ?? existingData._migrationComplete
             }
 
-            return storageManager.saveData(mergedData).then(() => mergedData.userData)
+            return storageManager.saveData(mergedData).then(() => mergedData)
           })
-          .then((userData: UserData) => {
+          .then((savedData: StorageSchema) => {
             console.log('[Oh My Prompt] SET_STORAGE: Save successful')
-            // Trigger sync and wait for completion before responding
-            return triggerSync(userData).then(syncResult => {
+            // Trigger sync with full backup data (including temporary prompts)
+            const backupData = {
+              prompts: savedData.userData.prompts,
+              categories: savedData.userData.categories,
+              temporaryPrompts: savedData.temporaryPrompts || []
+            }
+            return triggerSync(backupData).then(syncResult => {
               if (!syncResult.success) {
                 console.warn('[Oh My Prompt] Sync failed:', syncResult.error?.type, syncResult.error?.message)
 
@@ -858,8 +863,13 @@ chrome.runtime.onMessage.addListener(
 
             console.log('[Oh My Prompt] Transferred prompt to category:', promptToTransfer.name, '→', transferPayload.targetCategoryId)
 
-            // Trigger auto-sync (same pattern as SET_STORAGE)
-            triggerSync(userData).catch(err => console.warn('[Oh My Prompt] Sync after transfer failed:', err))
+            // Trigger auto-sync with full backup data
+            const backupData = {
+              prompts,
+              categories: data.userData.categories,
+              temporaryPrompts
+            }
+            triggerSync(backupData).catch(err => console.warn('[Oh My Prompt] Sync after transfer failed:', err))
 
             // Broadcast REFRESH_DATA to all Lovart tabs
             chrome.tabs.query({ url: ['*://lovart.ai/*', '*://*.lovart.ai/*'] }, (tabs) => {

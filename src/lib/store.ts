@@ -61,7 +61,7 @@ let pendingSaveResolve: ((value: { success: boolean; syncSuccess?: boolean; erro
  * @returns Promise that resolves when the save completes
  */
 function debouncedSaveToStorage(
-  getState: () => { prompts: Prompt[]; categories: Category[] },
+  getState: () => { prompts: Prompt[]; categories: Category[]; temporaryPrompts: Prompt[] },
   delay: number = 300
 ): Promise<{ success: boolean; syncSuccess?: boolean; error?: string }> {
   // Clear existing timeout
@@ -83,13 +83,14 @@ function debouncedSaveToStorage(
     saveTimeout = setTimeout(async () => {
       saveTimeout = null
       try {
-        const { prompts, categories } = getState()
+        const { prompts, categories, temporaryPrompts } = getState()
         const version = chrome.runtime.getManifest().version
         const response = await sendMessageWithRetry<{ syncSuccess?: boolean }>({
           type: MessageType.SET_STORAGE,
           payload: {
             version,
-            userData: { prompts, categories }
+            userData: { prompts, categories },
+            temporaryPrompts // Include temporary library in storage
           } as StorageSchema
         })
 
@@ -119,7 +120,7 @@ function debouncedSaveToStorage(
  * Used before popup closes to ensure data is saved
  */
 async function flushPendingSave(
-  getState: () => { prompts: Prompt[]; categories: Category[] }
+  getState: () => { prompts: Prompt[]; categories: Category[]; temporaryPrompts: Prompt[] }
 ): Promise<{ success: boolean; syncSuccess?: boolean; error?: string }> {
   // Clear the timeout if there's a pending save
   if (saveTimeout) {
@@ -130,13 +131,14 @@ async function flushPendingSave(
   // If there's a pending promise, execute the save immediately
   if (pendingSaveResolve) {
     try {
-      const { prompts, categories } = getState()
+      const { prompts, categories, temporaryPrompts } = getState()
       const version = chrome.runtime.getManifest().version
       const response = await sendMessageWithRetry<{ syncSuccess?: boolean }>({
         type: MessageType.SET_STORAGE,
         payload: {
           version,
-          userData: { prompts, categories }
+          userData: { prompts, categories },
+          temporaryPrompts // Include temporary library in storage
         } as StorageSchema
       })
 
@@ -363,14 +365,15 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
   },
 
   saveToStorage: async () => {
-    const { prompts, categories } = get()
+    const { prompts, categories, temporaryPrompts } = get()
     try {
       const version = chrome.runtime.getManifest().version
       const response = await sendMessageWithRetry<{ syncSuccess?: boolean }>({
         type: MessageType.SET_STORAGE,
         payload: {
           version,
-          userData: { prompts, categories }
+          userData: { prompts, categories },
+          temporaryPrompts // Include temporary library in storage
         } as StorageSchema
       })
 

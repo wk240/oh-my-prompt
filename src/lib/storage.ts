@@ -4,7 +4,7 @@
  * error handling, and migration integration.
  */
 
-import type { StorageSchema, UserData, SyncSettings } from '../shared/types'
+import type { StorageSchema, UserData, SyncSettings, Prompt } from '../shared/types'
 import { STORAGE_KEY } from '../shared/constants'
 import { BUILT_IN_CATEGORIES, BUILT_IN_PROMPTS } from '../data/built-in-data'
 import { migrate, isLegacyFormat } from './migrations/index'
@@ -180,6 +180,23 @@ export class StorageManager {
   async getSettings(): Promise<SyncSettings> {
     const data = await this.getData()
     return data.settings
+  }
+
+  /**
+   * Update temporary prompts library
+   */
+  async updateTemporaryPrompts(temporaryPrompts: Prompt[]): Promise<void> {
+    const data = await this.getData()
+    data.temporaryPrompts = temporaryPrompts
+    await this.saveData(data)
+  }
+
+  /**
+   * Get temporary prompts library
+   */
+  async getTemporaryPrompts(): Promise<Prompt[]> {
+    const data = await this.getData()
+    return data.temporaryPrompts || []
   }
 }
 

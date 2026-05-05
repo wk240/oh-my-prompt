@@ -466,7 +466,7 @@ export class ImageHoverButtonManager {
   }
 
   /**
-   * Handle button click - add to queue and show BatchProgressPanel
+   * Handle button click - add to queue and show VisionModal
    */
   private handleButtonClick(imageUrl: string): void {
     console.log(LOG_PREFIX, 'Hover button clicked')

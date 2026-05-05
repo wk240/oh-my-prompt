@@ -119,9 +119,6 @@ class Coordinator {
     TaskQueueManager.getInstance()
     console.log(LOG_PREFIX, 'TaskQueueManager initialized')
 
-    // Note: BatchPanelManager is created on-demand when first task is added
-    // No need to pre-create it here
-
     // Create Injector BEFORE Detector if platform matches
     // This ensures Injector is ready when Detector immediately finds input
     if (this.platform) {

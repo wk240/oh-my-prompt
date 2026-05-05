@@ -130,7 +130,7 @@ const THUMBNAIL_HEIGHT = 80
 
 /**
  * Generate thumbnail from image URL (80x80, low quality for display)
- * Used in BatchProgressPanel task cards
+ * Used in VisionModal task sidebar
  * @param imageUrl - HTTP URL of the image
  * @returns Base64 encoded thumbnail string (data URL format), or null on failure
  */

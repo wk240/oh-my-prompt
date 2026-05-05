@@ -105,6 +105,7 @@ chrome.runtime.onMessage.addListener(
               version: payload.version,
               userData: payload.userData,
               settings: mergedSettings,
+              temporaryPrompts: payload.temporaryPrompts ?? existingData.temporaryPrompts,
               _migrationComplete: payload._migrationComplete ?? existingData._migrationComplete
             }
 

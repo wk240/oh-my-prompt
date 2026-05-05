@@ -963,10 +963,21 @@ export function DropdownContainer({
     // Check if deleting a temporary prompt
     const isTemporaryPrompt = temporaryPrompts.some(p => p.id === editingStates.deletingPrompt!.id)
     if (isTemporaryPrompt) {
-      // Remove from temporary library (local state only, no storage sync)
+      // Delete from temporary library
+      const updatedTemporaryPrompts = temporaryPrompts.filter(p => p.id !== editingStates.deletingPrompt!.id)
+      usePromptStore.setState({ temporaryPrompts: updatedTemporaryPrompts })
+      // Persist via service worker (settings preserved by merge)
+      chrome.runtime.sendMessage({
+        type: MessageType.SET_STORAGE,
+        payload: {
+          version: chrome.runtime.getManifest().version,
+          userData: { prompts: usePromptStore.getState().prompts, categories: usePromptStore.getState().categories },
+          temporaryPrompts: updatedTemporaryPrompts
+        }
+      })
       setModalStates(prev => ({ ...prev, isPromptDelete: false }))
       clearEditingItem('deletingPrompt')
-      // Note: temporary prompts are not persisted, just clear from local state
+      showToast('提示词已删除')
       return
     }
     usePromptStore.getState().deletePrompt(editingStates.deletingPrompt.id)

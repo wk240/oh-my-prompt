@@ -1444,13 +1444,12 @@ export default function SidePanelApp() {
       const updatedTemporaryPrompts = temporaryPrompts.filter(p => p.id !== editingStates.deletingPrompt!.id)
       // Update store locally
       usePromptStore.setState({ temporaryPrompts: updatedTemporaryPrompts })
-      // Persist via service worker
+      // Persist via service worker (settings preserved by merge)
       chrome.runtime.sendMessage({
         type: MessageType.SET_STORAGE,
         payload: {
           version: chrome.runtime.getManifest().version,
           userData: { prompts, categories },
-          settings: usePromptStore.getState().temporaryPrompts,
           temporaryPrompts: updatedTemporaryPrompts
         }
       })

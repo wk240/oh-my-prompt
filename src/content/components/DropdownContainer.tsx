@@ -960,11 +960,35 @@ export function DropdownContainer({
 
   const handleDeletePrompt = useCallback(() => {
     if (!editingStates.deletingPrompt) return
+    // Check if deleting a temporary prompt
+    const isTemporaryPrompt = temporaryPrompts.some(p => p.id === editingStates.deletingPrompt!.id)
+    if (isTemporaryPrompt) {
+      // Remove from temporary library (local state only, no storage sync)
+      setModalStates(prev => ({ ...prev, isPromptDelete: false }))
+      clearEditingItem('deletingPrompt')
+      // Note: temporary prompts are not persisted, just clear from local state
+      return
+    }
     usePromptStore.getState().deletePrompt(editingStates.deletingPrompt.id)
     setLocalPrompts(prev => prev.filter(p => p.id !== editingStates.deletingPrompt!.id))
     clearEditingItem('deletingPrompt')
     showToast('提示词已删除')
-  }, [editingStates.deletingPrompt])
+  }, [editingStates.deletingPrompt, temporaryPrompts])
+
+  // Handle transfer temporary prompt to category
+  const handleTransferTemporaryPrompt = useCallback((categoryId: string) => {
+    if (!editingStates.prompt) return
+    usePromptStore.getState().transferTemporaryPrompt(editingStates.prompt.id, categoryId)
+    clearEditingItem('prompt')
+    showToast('已转移到分类')
+  }, [editingStates.prompt])
+
+  // Check if currently editing a temporary prompt
+  const isEditingTemporaryPrompt = useMemo(() => {
+    if (!editingStates.prompt) return false
+    const promptId = editingStates.prompt.id
+    return temporaryPrompts.some(p => p.id === promptId)
+  }, [editingStates.prompt, temporaryPrompts])
 
   // Handle first-time backup warning actions
   const handleBackupWarningSelectFolder = useCallback(async () => {
@@ -1611,6 +1635,8 @@ export function DropdownContainer({
         mode="edit"
         prompt={editingStates.prompt ?? undefined}
         categories={sortableCategories}
+        isTemporary={isEditingTemporaryPrompt}
+        onTransfer={handleTransferTemporaryPrompt}
         onConfirm={handleUpdatePrompt}
       />
       <DeleteConfirmModal

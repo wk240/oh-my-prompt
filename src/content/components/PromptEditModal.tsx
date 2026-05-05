@@ -131,7 +131,6 @@ export function PromptEditModal({
         setName(prompt.name)
         setDescription(prompt.description || '')
         setContent(prompt.content)
-        setCategoryId(prompt.categoryId)
         // Initialize English fields from existing prompt
         setNameEn(prompt.nameEn || '')
         setDescriptionEn(prompt.descriptionEn || '')
@@ -154,6 +153,14 @@ export function PromptEditModal({
             })
         } else {
           setImagePreviewUrl(undefined)
+        }
+        // categoryId: use defaultCategoryId for temporary prompts (prompt.categoryId='temporary' is virtual)
+        // For regular prompts, use prompt.categoryId or defaultCategoryId fallback
+        const isTemporaryPrompt = prompt.categoryId === 'temporary'
+        if (isTemporaryPrompt) {
+          setCategoryId(defaultCategoryId || categories[0]?.id || '')
+        } else {
+          setCategoryId(prompt.categoryId || defaultCategoryId || categories[0]?.id || '')
         }
       } else {
         setName('')

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Loader2, Check, X, RefreshCw, Minimize2, Maximize2, Copy } from 'lucide-react'
 import type { VisionApiResultData } from '@/shared/types'
+import { MessageType } from '@/shared/messages'
 import { useTaskQueueStore } from '@/content/core/task-queue-store'
 import type { QueueTask } from '@/content/core/task-queue-manager'
 import { TaskQueueManager } from '@/content/core/task-queue-manager'
@@ -87,6 +88,17 @@ function VisionModal({ onClose }: VisionModalProps) {
   useEffect(() => {
     const pref = getStoredLanguagePreference()
     setLanguage(pref)
+  }, [])
+
+  /**
+   * Read settings.visionDefaultFormat on mount
+   */
+  useEffect(() => {
+    chrome.runtime.sendMessage({ type: MessageType.GET_STORAGE }, (response) => {
+      if (response?.success && response.data?.settings?.visionDefaultFormat) {
+        setFormat(response.data.settings.visionDefaultFormat)
+      }
+    })
   }, [])
 
   /**
@@ -221,6 +233,18 @@ function VisionModal({ onClose }: VisionModalProps) {
       taskQueueManager.removeTask(selectedTaskId)
     }
   }, [selectedTaskId, taskQueueManager])
+
+  /**
+   * Handle format change - sync to settings
+   */
+  const handleFormatChange = useCallback((newFormat: FormatType) => {
+    setFormat(newFormat)
+    // Sync to settings via SET_SETTINGS_ONLY
+    chrome.runtime.sendMessage({
+      type: MessageType.SET_SETTINGS_ONLY,
+      payload: { settings: { visionDefaultFormat: newFormat } }
+    })
+  }, [])
 
   /**
    * Render JSON prompt as key-value list
@@ -570,13 +594,13 @@ function VisionModal({ onClose }: VisionModalProps) {
                     <div className="toggle-group">
                       <button
                         className={`toggle-btn ${format === 'natural' ? 'active' : ''}`}
-                        onClick={() => setFormat('natural')}
+                        onClick={() => handleFormatChange('natural')}
                       >
                         自然语言
                       </button>
                       <button
                         className={`toggle-btn ${format === 'json' ? 'active' : ''}`}
-                        onClick={() => setFormat('json')}
+                        onClick={() => handleFormatChange('json')}
                       >
                         JSON
                       </button>

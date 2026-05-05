@@ -499,6 +499,17 @@ export class VisionModalManager {
         gap: 8px;
       }
 
+      /* Prompt tab - natural language format */
+      .tab-content {
+        /* Container for tab panels */
+      }
+
+      .prompt-tab {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
       .json-details {
         display: flex;
         flex-direction: column;

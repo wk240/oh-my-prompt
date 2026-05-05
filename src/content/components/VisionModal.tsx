@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Loader2, Check, X, RefreshCw, Settings, Minimize2, Maximize2, Copy } from 'lucide-react'
 import { MessageType } from '@/shared/messages'
-import type { VisionApiErrorPayload, VisionApiResultData, InsertPromptPayload, SaveTemporaryPromptPayload } from '@/shared/types'
+import type { VisionApiErrorPayload, VisionApiResultData, SaveTemporaryPromptPayload } from '@/shared/types'
+import { useTaskQueueStore } from '@/content/core/task-queue-store'
+import type { QueueTask } from '@/content/core/task-queue-manager'
 
 /**
  * VisionModal state machine
@@ -17,8 +19,6 @@ type LanguageType = 'zh' | 'en'
 type FormatType = 'natural' | 'json'
 
 interface VisionModalProps {
-  imageUrl: string
-  tabId?: number
   onClose: () => void
 }
 
@@ -66,15 +66,32 @@ function getStoredLanguagePreference(): 'zh' | 'en' {
  * VisionModal - In-page modal for image-to-prompt conversion
  * Supports: API call, prompt preview with 3-Tab layout (中文/英文/JSON), insertion/clipboard
  * Note: API configuration is handled in settings.html (opened via OPEN_SETTINGS_PAGE)
+ *
+ * Subscribe mode: Component subscribes to useTaskQueueStore for task list
+ * manages selectedTaskId internally for switching content
  */
-function VisionModal({ imageUrl, tabId, onClose }: VisionModalProps) {
+function VisionModal({ onClose }: VisionModalProps) {
+  // Subscribe to task queue store
+  const tasks = useTaskQueueStore(state => state.tasks)
+  // Note: updateTask, removeTask will be used in Task 6 for task management
+
+  // Internal selected task ID state (will be used for task switching in Task 6)
+  const [selectedTaskId] = useState<string | null>(null)
+
+  // Derive selected task from tasks
+  const selectedTask: QueueTask | undefined = selectedTaskId
+    ? tasks.find(t => t.id === selectedTaskId)
+    : tasks[0] // Default to first task if no selection
+
+  // Derive imageUrl from selected task
+  const imageUrl = selectedTask?.imageUrl || ''
+
   const [state, setState] = useState<VisionModalState>('loading')
   const [fullData, setFullData] = useState<VisionApiResultData | null>(null)
   const [errorMessage, setErrorMessage] = useState<string>('')
   const [errorAction, setErrorAction] = useState<'settings' | 'retry' | 'close'>('close')
   const [retryCount, setRetryCount] = useState(0)
   const [feedbackMessage, setFeedbackMessage] = useState<string>('')
-  const [isLovartPage, setIsLovartPage] = useState(false)
   const [language, setLanguage] = useState<LanguageType>('zh')
   const [format, setFormat] = useState<FormatType>('natural')
 
@@ -91,13 +108,9 @@ function VisionModal({ imageUrl, tabId, onClose }: VisionModalProps) {
   const MINIMIZED_WIDTH = 200
 
   /**
-   * Check if current page is Lovart and get language preference
+   * Get language preference from storage on mount
    */
   useEffect(() => {
-    const lovartPattern = /^https?:\/\/(?:[^/]*\.)?lovart\.ai(?:\/|$)/
-    setIsLovartPage(lovartPattern.test(window.location.href))
-
-    // Get stored language preference and set default
     const pref = getStoredLanguagePreference()
     setLanguage(pref)
   }, [])
@@ -245,32 +258,8 @@ function VisionModal({ imageUrl, tabId, onClose }: VisionModalProps) {
 
     setState('confirming')
 
-    // Step 1: Insert to Lovart or copy to clipboard
-    let insertSuccess = false
-    let clipboardSuccess = false
-
-    if (isLovartPage && tabId) {
-      try {
-        const response = await chrome.runtime.sendMessage({
-          type: MessageType.INSERT_PROMPT,
-          payload: {
-            prompt: currentPrompt,
-            tabId: tabId
-          } as InsertPromptPayload
-        })
-
-        insertSuccess = response?.success === true
-
-        if (!insertSuccess) {
-          clipboardSuccess = await copyToClipboard(currentPrompt)
-        }
-      } catch (error) {
-        console.error('[Oh My Prompt] INSERT_PROMPT error:', error)
-        clipboardSuccess = await copyToClipboard(currentPrompt)
-      }
-    } else {
-      clipboardSuccess = await copyToClipboard(currentPrompt)
-    }
+    // Step 1: Copy to clipboard (Lovart insertion removed - use clipboard only)
+    const clipboardSuccess = await copyToClipboard(currentPrompt)
 
     // Step 2: Save to '临时' category with bilingual content and image
     // Always save Chinese as primary content, English as contentEn (regardless of current selection)
@@ -319,12 +308,10 @@ function VisionModal({ imageUrl, tabId, onClose }: VisionModalProps) {
     // Step 3: Show feedback
     let feedback = ''
     const imageStatus = localImageSaved ? '图片已保存' : '图片URL已记录'
-    if (insertSuccess) {
-      feedback = `已插入Lovart输入框，已保存到临时库 (${imageStatus})`
-    } else if (clipboardSuccess) {
+    if (clipboardSuccess) {
       feedback = `已复制到剪贴板，已保存到临时库 (${imageStatus})`
     } else {
-      feedback = `插入失败，请手动粘贴。已保存到临时库 (${imageStatus})`
+      feedback = `复制失败，请手动粘贴。已保存到临时库 (${imageStatus})`
     }
 
     setFeedbackMessage(feedback)

@@ -37,10 +37,9 @@ export class VisionModalManager {
 
   /**
    * Create modal in current page
-   * @param imageUrl - The image URL to process
-   * @param tabId - Optional tab ID for Lovart insertion
+   * VisionModal subscribes to useTaskQueueStore internally
    */
-  create(imageUrl: string, tabId?: number): void {
+  create(): void {
     // Remove existing instance if present (singleton)
     this.destroy()
 
@@ -68,15 +67,11 @@ export class VisionModalManager {
     this.reactRoot = createRoot(modalRoot)
     this.reactRoot.render(
       <ErrorBoundary>
-        <VisionModal
-          imageUrl={imageUrl}
-          tabId={tabId}
-          onClose={this.destroy.bind(this)}
-        />
+        <VisionModal onClose={this.destroy.bind(this)} />
       </ErrorBoundary>
     )
 
-    console.log(LOG_PREFIX, 'Vision modal created for image:', imageUrl.substring(0, 50) + '...')
+    console.log(LOG_PREFIX, 'Vision modal created (subscribe mode)')
   }
 
   /**

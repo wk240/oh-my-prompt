@@ -16,7 +16,9 @@ export const lovartConfig: PlatformConfig = {
 
   inputDetection: {
     selectors: [
-      // Agent image generator input (new)
+      // Video agent input (contenteditable)
+      '[data-testid="video-prompt-input"]',
+      // Image agent input (textarea)
       '#agent-image-generator-prompt',
       // Main chat input (existing)
       '[data-testid="agent-message-input"]',
@@ -32,8 +34,14 @@ export const lovartConfig: PlatformConfig = {
     customButton: LovartButton,
   },
 
-  // Secondary injection for agent image generator
+  // Secondary injections for agent areas (video and image)
   secondaryInjections: [
+    {
+      inputSelector: '[data-testid="video-prompt-input"]',
+      anchorSelector: '[data-testid="agent-mode-switch-trigger"]',
+      position: 'before',
+      customButton: LovartButton,
+    },
     {
       inputSelector: '#agent-image-generator-prompt',
       anchorSelector: '[data-testid="agent-mode-switch-trigger"]',

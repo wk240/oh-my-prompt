@@ -6,7 +6,7 @@
   
   [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
   [![Chrome Extension](https://img.shields.io/badge/Chrome-Manifest%20V3-green.svg)]()
-  [![Version](https://img.shields.io/badge/Version-1.3.0-orange.svg)]()
+  [![Version](https://img.shields.io/badge/Version-1.3.1-orange.svg)]()
   [![Made for Lovart](https://img.shields.io/badge/Made%20for-Lovart%20AI-purple.svg)]()
   
   🌐 [官方网站](https://oh-my-prompt.com/) | 📦 [下载安装](https://github.com/wk240/oh-my-prompt/releases)
@@ -23,9 +23,8 @@
 | 功能 | 说明 |
 |------|------|
 | 🚀 **一键插入** | 保存常用提示词，下次创作时一键插入，无需重复输入 |
+| 🖼️ **图片转提示词** | 鼠标悬停任意图片，一键生成双语提示词（需配置 API） |
 | 📁 **分类管理** | 按用途分组管理提示词，支持拖拽排序 |
-| 🔄 **自动备份** | 本地文件夹自动同步，保留历史版本 |
-| 📥 **导入导出** | JSON 格式数据迁移，方便备份和分享 |
 | 🎨 **资源库** | 内置优质提示词模板，一键使用社区精选内容 |
 
 **一句话说清楚：** 把常用提示词保存起来，下次创作时一键插入，不再重复输入相同内容。
@@ -34,7 +33,7 @@
 
 ## 🎯 解决什么痛点？
 
-每次在 Lovart 创作时，你是否也在重复输入：
+每次在 Lovart、星流、ChatGPT 等设计平台创作时，你是否也在重复输入：
 - ✅ 自己积累的优质提示词模板
 - ✅ 常用的风格描述：「扁平化设计」「赛博朋克风格」「水彩插画」
 - ✅ 技术参数：「高清渲染」「4K分辨率」「光影细腻」
@@ -100,6 +99,18 @@ npm run build
 - **版本历史**：查看历史备份文件列表
 - **恢复数据**：从任意历史版本一键恢复
 
+### 3、图片转提示词
+
+**前提条件**：需先配置 Vision API（在扩展设置页面配置 API Key）
+
+使用步骤：
+1. 在任意网站浏览图片
+2. 鼠标悬停在图片上，出现 ✨ 按钮
+3. 点击按钮 → 弹出分析窗口
+4. 等待分析完成 → 查看生成的提示词
+5. 可切换语言（中/EN）和格式（自然语言/JSON）
+6. 提示词自动保存到临时库
+
 ---
 
 ## ❓ 常见问题 FAQ
@@ -152,11 +163,27 @@ npm run build
 3. 解压后，在 `chrome://extensions/` 点击扩展的「重新加载」按钮
 </details>
 
----
+<details>
+<summary><strong>Q: 图片转提示词功能如何配置 API？</strong></summary>
 
-## 🔑 关键词 | Keywords
+需要配置 Vision API 才能使用此功能：
+1. 点击扩展图标打开设置页面
+2. 进入「API 配置」页面
+3. 填写 API Base URL、API Key、模型名称
+4. 选择 API 格式（OpenAI 格式或 Anthropic 格式）
+5. 保存配置后即可使用
 
-`Lovart AI` `Prompt Manager` `Chrome Extension` `提示词管理` `AI设计工具` `Prompt Template` `提示词模板` `Manifest V3` `浏览器扩展` `AI创作助手` `Prompt Library` `提示词库`
+支持的服务：Claude API、OpenAI GPT-4V、或其他兼容服务。
+</details>
+
+<details>
+<summary><strong>Q: 为什么有些图片看不到转提示词按钮？</strong></summary>
+
+按钮只在满足以下条件时显示：
+- 图片尺寸至少 100×100 像素
+- 图片有有效的 URL（非 data URL）
+- Vision 功能在设置中已启用（默认启用）
+</details>
 
 ---
 

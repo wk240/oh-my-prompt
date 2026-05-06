@@ -18,7 +18,7 @@ import { useState, useEffect, useCallback, useMemo, Suspense, lazy, useRef } fro
   import { ToastNotification } from './components/ToastNotification'
   import { queueImageLoad } from '../lib/sync/image-loader-queue'
   import { downloadImageFromUrl, saveImage } from '../lib/sync/image-sync'
-  import { getFolderHandle, requestFolderPermission } from '../lib/sync/indexeddb'
+  import { getFolderHandle } from '../lib/sync/indexeddb'
   import { manualSync } from '../lib/sync/sync-manager'
 
   // Lazy load modal components
@@ -572,6 +572,8 @@ export default function SidePanelApp() {
   const [visionEnabled, setVisionEnabled] = useState(true)
   // Permission restore status for auto-restore on Sidepanel open
   const [permissionRestoreStatus, setPermissionRestoreStatus] = useState<'idle' | 'restoring' | 'restored' | 'failed'>('idle')
+  // Sync status for permission restore and UI
+  const [status, setStatus] = useState<{ hasFolder: boolean; permissionStatus?: 'granted' | 'prompt' | 'denied'; hasUnsyncedChanges?: boolean; dismissedBackupWarning?: boolean } | null>(null)
 
   // Input availability detection (Port-based real-time connection)
   type InputStatus = 'checking' | 'available' | 'unavailable'
@@ -983,11 +985,12 @@ export default function SidePanelApp() {
     })
   }, [])
 
-  // Check for unsynced changes to show backup reminder
+  // Check for unsynced changes to show backup reminder and get permission status
   useEffect(() => {
     chrome.runtime.sendMessage({ type: MessageType.GET_SYNC_STATUS }, (response) => {
       if (response?.success && response.data) {
         const syncStatus = response.data
+        setStatus(syncStatus)
         if (syncStatus.hasUnsyncedChanges) {
           setModalStates(prev => ({ ...prev, showBackupReminder: true }))
         }
@@ -1002,6 +1005,50 @@ export default function SidePanelApp() {
       }
     })
   }, [prompts.length])
+
+  // Auto-restore folder permission on Sidepanel open
+  // This runs when user clicks extension icon - valid user gesture for requestPermission()
+  useEffect(() => {
+    const restorePermission = async () => {
+      // Skip if already in progress or completed
+      if (permissionRestoreStatus !== 'idle') {
+        return
+      }
+      // Only restore if folder exists and permission is 'prompt' (not yet authorized in this context)
+      if (!status?.hasFolder || status?.permissionStatus !== 'prompt') {
+        return
+      }
+
+      console.log('[Oh My Prompt] SidePanel: Permission auto-restore triggered')
+      setPermissionRestoreStatus('restoring')
+
+      const handle = await getFolderHandle()
+      if (!handle) {
+        console.warn('[Oh My Prompt] SidePanel: No folder handle found')
+        setPermissionRestoreStatus('failed')
+        return
+      }
+
+      try {
+        const permission = await handle.requestPermission({ mode: 'readwrite' })
+
+        if (permission === 'granted') {
+          console.log('[Oh My Prompt] SidePanel: Permission restored successfully')
+          setPermissionRestoreStatus('restored')
+          // Trigger sync after permission restored
+          manualSync().catch(err => console.warn('[Oh My Prompt] Auto-sync after permission restore failed:', err))
+        } else {
+          console.warn('[Oh My Prompt] SidePanel: Permission restore failed:', permission)
+          setPermissionRestoreStatus('failed')
+        }
+      } catch (error) {
+        console.warn('[Oh My Prompt] SidePanel: Permission request threw error:', error)
+        setPermissionRestoreStatus('failed')
+      }
+    }
+
+    restorePermission()
+  }, [status?.hasFolder, status?.permissionStatus, permissionRestoreStatus])
 
   // Listen for storage changes to detect sync failures
   useEffect(() => {

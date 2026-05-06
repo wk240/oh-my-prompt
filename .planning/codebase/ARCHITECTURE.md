@@ -1,229 +1,180 @@
 # Architecture
 
-**Analysis Date:** 2026/04/28
+**Analysis Date:** 2026/05/06
 
 ## Pattern Overview
 
-**Overall:** Chrome Extension Three-Context Architecture
+**Overall:** Platform-Configured Content Script with Shadow DOM Isolation
 
 **Key Characteristics:**
-- Storage-First: All state derives from `chrome.storage.local` via single key `prompt_script_data`
-- Shadow DOM Isolation: Content script UI isolated from host page CSS
-- Message-Based Communication: Cross-context coordination via `chrome.runtime.sendMessage`
-- Singleton Storage Manager: Centralized persistence layer with migration handling
-- Debounced Storage Writes: Batch rapid state changes with 300ms debounce in Zustand store
+- Multi-platform matching via URL patterns (domain, pathname, regex)
+- Strategy pattern for platform-specific input insertion (Lexical, ProseMirror, native)
+- Shadow DOM isolation for content script UI (no host page CSS conflicts)
+- Message-based communication across extension contexts
+- Debounced storage sync with retry mechanism for context invalidation
+- Offscreen document for File System Access API (Service Worker cannot request permissions)
 
 ## Layers
 
 **Content Script Layer:**
-- Purpose: Run on Lovart.ai pages, inject dropdown UI, handle prompt insertion
+- Purpose: Runs on all URLs, detects input elements, injects dropdown UI, handles Vision modal
 - Location: `src/content/`
-- Contains: Input detection, UI injection, dropdown components, insertion handlers
-- Depends on: Service worker for storage operations (via messages), host page DOM
-- Used by: User interaction on Lovart platform
-- Communication: Receives `REFRESH_DATA`, `SYNC_FAILED` from service worker
-- Key files:
-  - `src/content/content-script.ts` - Entry point, coordinates components
-  - `src/content/input-detector.ts` - MutationObserver for Lovart input (SPA detection)
-  - `src/content/ui-injector.tsx` - Shadow DOM container + React mount
-  - `src/content/insert-handler.ts` - Prompt text insertion (Lexical compatible)
-  - `src/content/components/DropdownContainer.tsx` - Main dropdown UI (62KB, largest file)
+- Contains: Platform matching, input detection, React dropdown, Vision modal, image hover button
+- Depends on: Platform configs, chrome.runtime.sendMessage for storage, Zustand store (in-memory state)
+- Used by: Injected into web pages by manifest
 
-**Background Layer (Service Worker):**
-- Purpose: Message routing, storage operations, sync orchestration, version checking
-- Location: `src/background/`
-- Contains: Service worker with message handler switch (25+ message types)
-- Depends on: chrome.storage.local, IndexedDB, File System Access API, GitHub API
-- Used by: Content scripts and popup via `chrome.runtime.sendMessage`
-- Communication: Responds with `{ success: boolean, data?: T, error?: string }`
-- Key files:
-  - `src/background/service-worker.ts` - Message routing (400+ lines)
+**Background Service Worker:**
+- Purpose: Message routing, storage operations, version check, context menu, API calls
+- Location: `src/background/service-worker.ts`
+- Contains: Message handlers for 25+ MessageType enums, context menu setup, side panel behavior
+- Depends on: chrome.storage.local, StorageManager, sync-manager, vision-api, offscreen-manager
+- Used by: Content scripts, popup pages via chrome.runtime.sendMessage
 
-**Popup Layer:**
-- Purpose: Extension popup UI for backup management and settings
-- Location: `src/popup/`
-- Contains: React app with Tailwind styling, Radix UI dialogs, Zustand store
-- Depends on: Service worker for storage, Zustand for local state management
-- Used by: User clicking extension icon
-- Communication: Sends `GET_SYNC_STATUS`, `CHECK_UPDATE`, `BACKUP_TO_FOLDER`, etc.
-- Key files:
-  - `src/popup/backup.html` - Entry HTML (manifest `action.default_popup`)
-  - `src/popup/BackupApp.tsx` - Main popup component (21KB)
+**Popup/Sidepanel Layer:**
+- Purpose: Extension UI for prompt/category management, settings, backup operations
+- Location: `src/popup/`, `src/sidepanel/`
+- Contains: React apps with Zustand store, Tailwind styling, Radix UI dialogs
+- Depends on: chrome.storage.local, chrome.runtime.sendMessage, chrome.tabs
+- Used by: User via extension icon click, context menu actions
 
-**Shared Layer:**
-- Purpose: Cross-context types, constants, utilities
-- Location: `src/shared/`
-- Contains: TypeScript interfaces, MessageType enum, constants, utility functions
-- Depends on: Nothing (pure TypeScript)
-- Used by: All three contexts
-- Key files:
-  - `src/shared/types.ts` - Prompt, Category, StorageSchema, SyncSettings, UpdateStatus
-  - `src/shared/messages.ts` - MessageType enum (25 message types)
-  - `src/shared/constants.ts` - STORAGE_KEY, PLATFORM_DOMAIN, backup patterns
-  - `src/shared/utils.ts` - sortPromptsByOrder, truncateText
-
-**Library Layer:**
-- Purpose: Business logic, state management, sync operations, migrations
-- Location: `src/lib/`
-- Contains: StorageManager, Zustand store, sync modules, import/export, migrations
-- Depends on: Chrome APIs, shared types
-- Used by: Popup, service worker (content script uses messages instead)
-- Key files:
-  - `src/lib/store.ts` - Zustand store with CRUD operations (475 lines)
-  - `src/lib/storage.ts` - StorageManager singleton (185 lines)
-  - `src/lib/sync/sync-manager.ts` - Sync orchestration (340 lines)
-  - `src/lib/sync/file-sync.ts` - File System Access API operations (370 lines)
-  - `src/lib/sync/indexeddb.ts` - Folder handle persistence
-  - `src/lib/sync/hash.ts` - Content deduplication for backup history
-  - `src/lib/version-checker.ts` - GitHub API version check
-  - `src/lib/import-export.ts` - JSON validation and merge
+**Offscreen Document:**
+- Purpose: File System Access API operations (requires DOM context for permissions)
+- Location: `src/offscreen/offscreen.ts`
+- Contains: File sync, image save/read/delete, permission check/request, API config encryption
+- Depends on: FileSystemDirectoryHandle from IndexedDB, Web Crypto API for encryption
+- Used by: Service worker via `sendToOffscreen()` function
 
 ## Data Flow
 
-**Storage Read Flow:**
-1. Popup/Content calls `usePromptStore.getState().loadFromStorage()` or sends `GET_STORAGE` message
-2. Service worker calls `StorageManager.getData()`
-3. StorageManager reads from `chrome.storage.local` key `prompt_script_data`
-4. Migration applied if legacy format detected (`isLegacyFormat()` check)
-5. Schema validated for required fields (`userData`, `settings`)
-6. Data returned to caller, Zustand state updated (popup) or message response sent (content)
-
-**Storage Write Flow:**
-1. User action triggers Zustand store CRUD operation
-2. Store updates local state immediately
-3. `saveToStorage()` or `debouncedSaveToStorage()` called (300ms debounce for rapid changes)
-4. Message `SET_STORAGE` sent to service worker with `userData` payload
-5. Service worker merges with existing settings, saves to `chrome.storage.local`
-6. Service worker calls `triggerSync(userData)` if sync enabled
-7. Sync writes to local folder via File System Access API (with content hash deduplication)
-8. Response returned with `{ syncSuccess: boolean }` for UI feedback
-
 **Prompt Insertion Flow:**
-1. User clicks prompt in dropdown on Lovart.ai
-2. `DropdownContainer` calls `InsertHandler.insertPrompt(inputElement, content)`
-3. Handler checks element type (form control vs contenteditable)
-4. For Lexical editor: Uses `document.execCommand('insertText', false, text)`
-5. Dispatches `input` and `change` events for Lovart recognition
-6. Calls native value setter for React tracking (form controls)
-7. Fallback DOM manipulation if execCommand fails
 
-**Sync Flow:**
-1. `saveToStorage()` completes in popup
-2. Service worker calls `triggerSync(userData)`
-3. Check `syncEnabled` in settings - if false, mark `hasUnsyncedChanges: true`
-4. Get folder handle from IndexedDB
-5. Compute content hash via `computeUserDataHash()`
-6. Write `omps-latest.json` with version, userData, backupTime, contentHash
-7. Create history backup (`omps-backup-{timestamp}.json`) only if hash changed
-8. Cleanup old backups exceeding 100 limit
-9. Update `lastSyncTime`, clear `hasUnsyncedChanges`
-10. If sync fails: Set `hasUnsyncedChanges: true`, broadcast `SYNC_FAILED`
+1. User clicks dropdown item in content script
+2. Dropdown calls `inserter.insert(inputElement, promptText)` 
+3. Inserter uses `execCommand('insertText')` for rich editors or native value setter for form controls
+4. Events dispatched: `input`, `change`, `beforeinput` (for React tracking)
+5. Prompt inserted into host page input field
+
+**Storage Sync Flow:**
+
+1. User modifies prompt/category in popup or content script
+2. Zustand store `saveToStorage()` called (debounced 300ms)
+3. `chrome.runtime.sendMessage({ type: SET_STORAGE })` to service worker
+4. Service worker merges settings, saves to chrome.storage.local
+5. `triggerSync()` called if syncEnabled
+6. Service worker routes to offscreen document for file operations
+7. Offscreen document writes JSON backup to user folder
+
+**Vision API Flow:**
+
+1. User right-clicks image → context menu
+2. Service worker receives `contextMenus.onClicked`
+3. Service worker sends `OPEN_VISION_MODAL` to content script
+4. VisionModalManager creates Shadow DOM modal
+5. TaskQueueManager adds task, calls `VISION_API_CALL` to service worker
+6. Service worker compresses image, calls configured Vision API
+7. Result returned, saved to temporary library
+8. User can transfer to category or insert to input
 
 **State Management:**
-- Zustand store (`usePromptStore`) manages prompts, categories, selectedCategoryId
-- Storage as single source of truth
-- Store synced to storage after each CRUD operation
-- Debounced saves (300ms) batch rapid changes during drag reorder
-- `flushSave()` ensures data saved before popup closes
-- `migratePromptOrders()` assigns order field if missing (backward compatibility)
+- Zustand store in popup/sidepanel: `usePromptStore` with prompts, categories, temporaryPrompts
+- Zustand store in content script: `useTaskQueueStore` for Vision API task queue
+- Debounced save pattern: `debouncedSaveToStorage()` batches rapid updates
+- Retry mechanism: `sendMessageWithRetry()` handles extension context invalidation (3 retries)
 
 ## Key Abstractions
 
-**StorageSchema:**
-- Purpose: Root data structure for all extension data
-- Structure: `{ version, userData: { prompts, categories }, settings: SyncSettings, _migrationComplete }`
-- Location: `src/shared/types.ts`
-- Pattern: Single-key storage (`prompt_script_data`)
+**PlatformConfig:**
+- Purpose: Defines platform-specific matching and UI injection
+- Examples: `src/content/platforms/lovart/config.ts`, `src/content/platforms/chatgpt/config.ts`
+- Pattern: URL patterns + input selectors + UI anchor + optional inserter strategy
+- Structure:
+  ```typescript
+  interface PlatformConfig {
+    id: string
+    name: string
+    urlPatterns: UrlPattern[]  // domain, pathname, regex
+    inputDetection: InputDetectionConfig  // selectors, debounceMs, validate
+    uiInjection: UIInjectionConfig  // anchorSelector, position, customButton
+    strategies?: { inserter?: InsertStrategy }
+  }
+  ```
 
-**MessageType:**
-- Purpose: Type-safe cross-context communication
-- Enum: 25 message types (PING, GET_STORAGE, SET_STORAGE, INSERT_PROMPT, BACKUP_TO_FOLDER, SAVE_IMAGE, READ_IMAGE, DELETE_IMAGE, GET_FOLDER_HANDLE, SAVE_FOLDER_HANDLE, GET_SYNC_STATUS, SET_UNSYNCED_FLAG, SYNC_FAILED, OPEN_BACKUP_PAGE, REFRESH_DATA, CHECK_UPDATE, GET_UPDATE_STATUS, CLEAR_UPDATE_STATUS, OPEN_EXTENSIONS, EXPORT_DATA, DISMISS_BACKUP_WARNING, RESTORE_PERMISSION, SET_SETTINGS_ONLY)
-- Pattern: Request/response with `{ success, data?, error? }`
+**InsertStrategy:**
+- Purpose: Platform-specific prompt insertion (handles Lexical, ProseMirror, native editors)
+- Examples: `DefaultInserter` (most platforms), `LovartInserter` (Lexical)
+- Pattern: Interface with `insert(element, text)` and `clear(element)` methods
+- Implementation: `execCommand('insertText')` + native value setter + event dispatch
 
-**StorageManager Singleton:**
-- Purpose: Centralized storage operations with migration handling
-- Location: `src/lib/storage.ts`
-- Pattern: `getInstance()`, `getData()` (handles migration), `saveData()`, `updateSettings()`, `updateUserData()`
-- Handles: First install (initialize), legacy format migration, version update
-
-**InsertHandler Class:**
-- Purpose: React/Lexical-compatible text insertion
-- Location: `src/content/insert-handler.ts`
-- Pattern: `execCommand('insertText')` + native value setter + event dispatch
-- Handles: HTMLInputElement, HTMLTextAreaElement, contenteditable (Lexical)
-
-**InputDetector Class:**
-- Purpose: MutationObserver for detecting Lovart input element in SPA
-- Location: `src/content/input-detector.ts`
-- Pattern: Debounced detection (100ms), history API interception for SPA navigation, periodic health check (30s)
-- Selectors: `[data-testid="agent-message-input"]`, `[data-lexical-editor="true"]`
-
-**UIInjector Class:**
-- Purpose: Shadow DOM container for CSS isolation from host page
-- Location: `src/content/ui-injector.tsx`
-- Pattern: Create host element, attach Shadow DOM, inject inline styles via `getStyles()`, mount React root
-- Insertion: BEFORE `[data-testid="agent-input-bottom-more-button"]`
+**StorageManager:**
+- Purpose: Singleton for chrome.storage.local operations with migration support
+- Examples: `src/lib/storage.ts`
+- Pattern: getInstance() singleton, getData()/saveData() with legacy migration
+- Handles: Empty storage (first install), legacy format migration, version mismatch
 
 **SyncManager:**
-- Purpose: Orchestrate local folder backup sync
-- Location: `src/lib/sync/sync-manager.ts`
-- Pattern: `triggerSync()` after storage writes, `enableSync()`, `disableSync()`, `restorePermission()`, `getBackupVersions()`, `restoreFromBackup()`
+- Purpose: Local folder backup sync orchestration
+- Examples: `src/lib/sync/sync-manager.ts`
+- Pattern: triggerSync() → offscreen → file operations, permission management
+- Features: Permission restore, version history, backup restore
 
 ## Entry Points
 
 **Content Script Entry:**
-- Location: `src/content/content-script.ts`
-- Triggers: Lovart page load (manifest `content_scripts` matches)
-- Responsibilities: Initialize InputDetector, UIInjector, handle `REFRESH_DATA`/`SYNC_FAILED` messages, cleanup on unload
+- Location: `src/content/core/coordinator.ts`
+- Triggers: Manifest `<all_urls>` match pattern, runs at `document_idle`
+- Responsibilities: Platform matching, Detector/Injector setup, message listener, Port connection, Vision modal lifecycle
 
 **Service Worker Entry:**
 - Location: `src/background/service-worker.ts`
-- Triggers: Extension install/update, browser start, messages received
-- Responsibilities: Message routing (25+ handlers), storage ops, sync triggering, version checking, image save/read/delete
+- Triggers: Extension install/start, message listener, context menu click
+- Responsibilities: Message routing (25+ handlers), context menu creation, initial sync, side panel behavior
 
 **Popup Entry:**
-- Location: `src/popup/backup.html` -> `src/popup/backup.tsx` -> `BackupApp.tsx`
-- Triggers: Extension icon click (manifest `action.default_popup`)
-- Responsibilities: Sync status display, folder selection, backup history, restore operations, update checking
+- Location: `src/popup/backup.tsx`, `src/popup/settings.tsx`, etc.
+- Triggers: Extension icon click (opens side panel), context menu "settings" action
+- Responsibilities: Prompt CRUD, category management, backup operations, settings
+
+**Offscreen Entry:**
+- Location: `src/offscreen/offscreen.ts`
+- Triggers: Service worker calls `ensureOffscreenDocument()`
+- Responsibilities: File sync, image operations, permission requests, API config encryption
 
 ## Error Handling
 
-**Strategy:** Console logging with `[Oh My Prompt]` prefix, graceful fallbacks
+**Strategy:** Classified error types with user-friendly messages
 
 **Patterns:**
-- Storage errors: Return default data WITHOUT persisting (transient error handling)
-- Message handlers: `return true` for async `sendResponse` (Chrome requirement)
-- Response format: `{ success: false, error: 'message' }` for failures
-- Insert errors: Return boolean `false`, log to console
-- Sync errors: Set `hasUnsyncedChanges: true`, broadcast `SYNC_FAILED` to content scripts
-- Migration errors: Throw with step version info for debugging
+- Vision API errors classified by `classifyApiError()`: `invalid_key`, `network`, `rate_limit`, `unsupported_image`, `timeout`
+- Each error type maps to UI action: `settings`, `retry`, `close`
+- Sync errors: `permission_lost`, `folder_lost`, `write_failed`, `unknown`
+- Storage errors: Graceful fallback to defaults without persisting (data loss risk noted in logs)
+- Message retry: 3 retries with exponential backoff (50ms, 150ms, 300ms) for context invalidation
 
 **Error Boundaries:**
-- Content script: `ErrorBoundary` component wraps `DropdownApp` (`src/content/components/ErrorBoundary.tsx`)
-- Popup: Error states in UI with retry buttons
+- React ErrorBoundary in VisionModalManager wraps VisionModal component
+- Catches rendering errors in Shadow DOM
 
 ## Cross-Cutting Concerns
 
-**Logging:** `[Oh My Prompt]` prefix throughout all contexts for easy console filtering
+**Logging:** 
+- Prefix: `[Oh My Prompt]` for easy filtering
+- Vision API: Logs baseUrl, modelName, image size - NEVER apiKey
 
 **Validation:**
-- TypeScript strict mode
-- Import validation: `validateImportData()` in `src/lib/import-export.ts`
-- Legacy format detection: `isLegacyFormat()` in `src/lib/migrations/index.ts`
-- Storage validation: Check `userData`, `settings` fields in `getData()`
-- Backup file validation in `readBackupFile()`
+- Vision API: HTTPS required for baseUrl, HTTP/HTTPS for imageUrl
+- Image size: 5MB limit (`MAX_IMAGE_SIZE`)
+- File extension: jpg, jpeg, png, webp, gif allowed
 
-**Migration:**
-- Registry pattern in `src/lib/migrations/`
-- `registerMigration()` for adding version handlers
-- Version comparison via `semverCompare()` (major.minor)
-- `_migrationComplete` flag prevents re-migration
+**Authentication:**
+- Vision API key stored locally, encrypted for backup
+- No remote auth service - user self-manages API keys
 
-**CSS Isolation:**
-- Content script: Shadow DOM with inline styles (`UIInjector.getStyles()`, 750+ lines of CSS)
-- Dropdown portal: `mousedown.preventDefault()` preserves input focus
-- Popup: Tailwind CSS (no isolation needed, separate extension context)
+**Security:**
+- API key never logged (rule T-11-01)
+- HTTPS enforced for Vision API endpoints (rule T-11-02)
+- Shadow DOM closed mode for Vision modal (style isolation + security)
+- API config encrypted with AES-GCM before backup
 
 ---
 
-*Architecture analysis: 2026/04/28*
+*Architecture analysis: 2026/05/06*

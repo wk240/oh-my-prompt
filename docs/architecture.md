@@ -8,7 +8,7 @@
 
 **Core Value:** 保存常用提示词，创作时一键插入，不再重复输入。
 
-**Supported Platforms:** Lovart、ChatGPT、Claude.ai、Gemini、LibLib、即梦（可扩展）
+**Supported Platforms:** Lovart、ChatGPT、Claude.ai、Gemini、LibLib、即梦、Kimi、星流（可扩展）
 
 ## System Architecture
 
@@ -149,4 +149,4 @@ Message types defined in `src/shared/messages.ts` (MessageType enum).
 
 ---
 
-*Last updated: 2026-04-30*
+*Last updated: 2026-05-06*

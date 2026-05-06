@@ -139,6 +139,8 @@ strategies: {
 | Gemini | Rich text | `DefaultInserter` |
 | LibLib | textarea | `DefaultInserter` |
 | 即梦 | textarea | `DefaultInserter` |
+| Kimi | Lexical | `LovartInserter` |
+| 星流 | Lexical | `LovartInserter` |
 
 查看 `src/content/platforms/*/` 目录了解具体实现。
 
@@ -162,4 +164,4 @@ Content Script 使用 Shadow DOM 隔离，不应有 CSS 冲突。如有问题，
 
 ---
 
-*Last updated: 2026-04-30*
+*Last updated: 2026-05-06*

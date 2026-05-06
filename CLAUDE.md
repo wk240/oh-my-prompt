@@ -7,14 +7,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Oh My Prompt**
 
-一个Chrome浏览器插件，用于在AI设计/绘图平台的输入框中一键插入预设的提示词模板。支持多平台（Lovart、ChatGPT、Claude.ai、Gemini等），用户通过输入框旁的下拉菜单选择提示词，提示词按用途分类管理，支持内置编辑和数据导入导出。
+一个Chrome浏览器插件，用于在AI设计/绘图平台的输入框中一键插入预设的提示词模板。支持多平台（Lovart、ChatGPT、Claude.ai、Gemini、Kimi、星流等），用户通过输入框旁的下拉菜单选择提示词，提示词按用途分类管理，支持内置编辑和数据导入导出。
 
 **Core Value:** 一键插入预设提示词，提升创作效率。
 
 ### Constraints
 
 - **Tech stack:** Chrome Extension (Manifest V3) — 现代Chrome插件标准
-- **平台支持:** 多平台架构，当前支持 Lovart、ChatGPT、Claude.ai、Gemini、LibLib、即梦
+- **平台支持:** 多平台架构，当前支持 Lovart、ChatGPT、Claude.ai、Gemini、LibLib、即梦、Kimi、星流
 - **数据存储:** chrome.storage.local 本地存储，容量有限制
 - **浏览器支持:** Chrome/Edge/Brave等Chromium系浏览器
 <!-- GSD:project-end -->
@@ -92,6 +92,8 @@ src/
 │   │   ├── gemini/         # Gemini
 │   │   ├── liblib/         # LibLib (国内)
 │   │   ├── jimeng/         # 即梦 (国内)
+│   │   ├── kimi/           # Kimi (Lexical)
+│   │   ├── xingliu/        # 星流 (Lexical)
 │   │   └── ...             # More platforms
 │   │
 │   ├── components/         # Dropdown UI React components

@@ -61,3 +61,22 @@
 - Sidepanel universal input detection
 
 ---
+
+## v1.3.1 Stability & Polish (In Progress: 2026-05-06)
+
+**Branch:** release/v1.3.1
+
+**Key changes (20+ commits since v1.3.0.0):**
+
+- Vision modal UI improvements: format selection, resave button, layout fixes
+- Prompt edit modal: auto-stick preview to viewport edge
+- Temporary library: single prompt deletion fix, included in local backup
+- Hover button: improved Pinterest image detection
+- Settings UI: reordered items (local backup first, vision API second)
+- Style polish: trigger button icon, VisionModal spacing, language toggle borders
+- New platforms: Kimi, 星流 (Lexical editor support)
+- Codebase docs: CONCERNS.md updated, platform lists synchronized
+
+---
+
+*Last updated: 2026-05-06*

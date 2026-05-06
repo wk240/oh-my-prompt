@@ -12,6 +12,7 @@ import HoverButton from './components/HoverButton'
 import { MessageType } from '@/shared/messages'
 import { TaskQueueManager } from './core/task-queue-manager'
 import { VisionModalManager } from './vision-modal-manager'
+import { isFileUrl, imageElementToBase64 } from '@/lib/file-image-utils'
 
 const LOG_PREFIX = '[Oh My Prompt]'
 
@@ -482,7 +483,7 @@ export class ImageHoverButtonManager {
   /**
    * Handle button click - add to queue and show VisionModal
    */
-  private handleButtonClick(imageUrl: string): void {
+  private async handleButtonClick(imageUrl: string): Promise<void> {
     console.log(LOG_PREFIX, 'Hover button clicked')
 
     try {
@@ -492,13 +493,35 @@ export class ImageHoverButtonManager {
       // Ensure modal is open first
       visionModalManager.create()
 
-      // Add task to queue
-      const task = queueManager.addTask(imageUrl)
+      // Handle file:// URLs - convert to base64 in content script context
+      // Service worker cannot fetch file:// URLs due to Chrome security model
+      if (isFileUrl(imageUrl)) {
+        console.log(LOG_PREFIX, 'Detected file:// URL, converting to base64')
 
-      if (task === null) {
-        // Queue is full, show toast
-        this.showToast('队列已满，请等待任务完成')
-        return
+        // Try to convert from the current image element (already loaded)
+        const base64Data = this.currentImg ? imageElementToBase64(this.currentImg) : null
+
+        if (base64Data) {
+          console.log(LOG_PREFIX, 'Successfully converted file:// image to base64')
+          // Add task with base64 data
+          const task = queueManager.addTask('', base64Data)
+          if (task === null) {
+            this.showToast('队列已满，请等待任务完成')
+            return
+          }
+        } else {
+          // Failed to convert - show error
+          console.warn(LOG_PREFIX, 'Failed to convert file:// image to base64')
+          this.showToast('无法读取本地图片，请尝试其他图片')
+          return
+        }
+      } else {
+        // Normal HTTP URL - add to queue directly
+        const task = queueManager.addTask(imageUrl)
+        if (task === null) {
+          this.showToast('队列已满，请等待任务完成')
+          return
+        }
       }
     } catch (error) {
       console.error(LOG_PREFIX, 'Queue operation failed:', error)

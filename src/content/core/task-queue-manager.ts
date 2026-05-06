@@ -28,7 +28,8 @@ export type TaskStatus = 'pending' | 'running' | 'success' | 'failed'
 // Queue task interface
 export interface QueueTask {
   id: string                  // crypto.randomUUID()
-  imageUrl: string            // Image URL
+  imageUrl: string            // Image URL (empty if base64Data provided)
+  base64Data?: string         // Base64 data URL (for file:// images that cannot be fetched by service worker)
   thumbnailUrl?: string       // Thumbnail (compressed base64 for display)
   status: TaskStatus
   createdAt: number           // Timestamp when added
@@ -84,8 +85,10 @@ export class TaskQueueManager {
   /**
    * Add task to queue
    * Returns null if queue is full
+   * @param imageUrl - HTTP URL of the image (empty string if base64Data provided)
+   * @param base64Data - Base64 data URL (for file:// images converted by content script)
    */
-  addTask(imageUrl: string): QueueTask | null {
+  addTask(imageUrl: string, base64Data?: string): QueueTask | null {
     const store = useTaskQueueStore.getState()
     const currentTasks = store.tasks
 
@@ -99,6 +102,7 @@ export class TaskQueueManager {
     const task: QueueTask = {
       id: crypto.randomUUID(),
       imageUrl,
+      base64Data,
       status: 'pending',
       createdAt: Date.now()
     }
@@ -106,10 +110,15 @@ export class TaskQueueManager {
     // Add to store
     store.setTasks([...currentTasks, task])
 
-    console.log(LOG_PREFIX, 'Task added to queue:', task.id)
+    console.log(LOG_PREFIX, 'Task added to queue:', task.id, base64Data ? '(base64)' : '(url)')
 
     // Generate thumbnail asynchronously (non-blocking)
-    this.generateThumbnailAsync(task.id, imageUrl)
+    // For base64 data, use it directly as thumbnail
+    if (base64Data) {
+      store.updateTask(task.id, { thumbnailUrl: base64Data })
+    } else {
+      this.generateThumbnailAsync(task.id, imageUrl)
+    }
 
     // Try to start immediately
     this.tryStartNext()
@@ -266,11 +275,14 @@ export class TaskQueueManager {
     const store = useTaskQueueStore.getState()
 
     try {
-      // Call Vision API via service worker (handles image compression and CORS bypass)
+      // Call Vision API via service worker
+      // Service worker handles image compression and CORS bypass
+      // For file:// images, we pass base64Data directly (skip URL validation)
       const response = await chrome.runtime.sendMessage({
         type: MessageType.VISION_API_CALL,
         payload: {
           imageUrl: task.imageUrl,
+          base64Data: task.base64Data, // Pass base64 data for file:// images
           retryCount: 0
         }
       })

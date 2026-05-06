@@ -493,17 +493,27 @@ chrome.runtime.onMessage.addListener(
       // Phase 11: Vision API call handler (VISION-01, VISION-02)
       // Now compresses image to base64 before sending to API
       case MessageType.VISION_API_CALL:
-        const visionCallPayload = message.payload as { imageUrl: string; retryCount?: number }
-        if (!visionCallPayload || !visionCallPayload.imageUrl) {
-          sendResponse({ success: false, error: { type: 'network', message: '无效的图片URL', action: 'close' } })
+        const visionCallPayload = message.payload as { imageUrl: string; base64Data?: string; retryCount?: number }
+        if (!visionCallPayload || (!visionCallPayload.imageUrl && !visionCallPayload.base64Data)) {
+          sendResponse({ success: false, error: { type: 'network', message: '无效的图片数据', action: 'close' } })
           return true
         }
 
-        // SECURITY: Validate imageUrl starts with http/https (T-11-03)
-        const imageUrl = visionCallPayload.imageUrl
-        if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
-          sendResponse({ success: false, error: { type: 'unsupported_image', message: '图片URL格式无效', action: 'close' } })
-          return true
+        // SECURITY: Validate imageUrl if provided (skip validation for base64Data)
+        // file:// URLs cannot be fetched by service workers - content scripts convert them to base64
+        const imageUrl = visionCallPayload.imageUrl || ''
+        const base64Data = visionCallPayload.base64Data
+
+        // If base64Data is provided, use it directly (skip URL validation and compression)
+        // This handles file:// images converted by content scripts
+        if (base64Data) {
+          console.log('[Oh My Prompt] VISION_API_CALL: Using base64 data directly (file:// image converted by content script)')
+        } else {
+          // SECURITY: Validate imageUrl starts with http/https (T-11-03)
+          if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+            sendResponse({ success: false, error: { type: 'unsupported_image', message: '图片URL格式无效', action: 'close' } })
+            return true
+          }
         }
 
         // Get API config from storage
@@ -518,17 +528,24 @@ chrome.runtime.onMessage.addListener(
               return
             }
 
-            // Compress image to base64 (reduces payload size for large images)
             const retryCount = visionCallPayload.retryCount || 0
             console.log('[Oh My Prompt] VISION_API_CALL: baseUrl=', config.baseUrl, 'modelName=', config.modelName, 'retryCount=', retryCount)
-            console.log('[Oh My Prompt] Compressing image from URL...')
 
             try {
-              // Step 1: Compress image to base64
-              const base64Image = await asyncCompressImageFromUrl(imageUrl)
-              console.log('[Oh My Prompt] Image compressed successfully')
+              let base64Image: string
 
-              // Step 2: Execute Vision API call with base64 data (returns structured result)
+              if (base64Data) {
+                // Use base64 data directly (from content script conversion)
+                base64Image = base64Data
+                console.log('[Oh My Prompt] Using pre-converted base64 data')
+              } else {
+                // Compress image from URL to base64 (reduces payload size for large images)
+                console.log('[Oh My Prompt] Compressing image from URL...')
+                base64Image = await asyncCompressImageFromUrl(imageUrl)
+                console.log('[Oh My Prompt] Image compressed successfully')
+              }
+
+              // Execute Vision API call with base64 data (returns structured result)
               const resultData = await executeVisionApiCall(config, base64Image, 'base64')
               // Get language preference for primary prompt selection
               const languagePreference = await getLanguagePreference()

@@ -25,8 +25,9 @@ export const xingliuConfig: PlatformConfig = {
   },
 
   uiInjection: {
-    // Inject before the upload button in the bottom toolbar
-    anchorSelector: '[data-testid="agent-upload-button"]',
+    // Support both layouts: old layout has upload-button, new layout has attachment-button
+    // querySelector returns first matching element, enabling fallback behavior
+    anchorSelector: '[data-testid="agent-upload-button"], [data-testid="agent-attachment-button"]',
     position: 'before',
     customButton: LovartButton,
   },

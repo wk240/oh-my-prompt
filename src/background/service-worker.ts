@@ -1,5 +1,5 @@
 import { MessageType, MessageResponse } from '../shared/messages'
-import type { StorageSchema, SyncSettings, UserData, VisionApiConfig, InsertPromptPayload, InsertResultPayload, SaveTemporaryPromptPayload, Prompt } from '../shared/types'
+import type { StorageSchema, SyncSettings, VisionApiConfig, InsertPromptPayload, InsertResultPayload, SaveTemporaryPromptPayload, UpdateTemporaryPromptFormatPayload, Prompt } from '../shared/types'
 import { StorageManager } from '../lib/storage'
 import { saveFolderHandle, getFolderHandle } from '../lib/sync/indexeddb'
 import { getSyncStatus, triggerSync, restorePermission, initialSync } from '../lib/sync/sync-manager'
@@ -105,15 +105,21 @@ chrome.runtime.onMessage.addListener(
               version: payload.version,
               userData: payload.userData,
               settings: mergedSettings,
+              temporaryPrompts: payload.temporaryPrompts ?? existingData.temporaryPrompts,
               _migrationComplete: payload._migrationComplete ?? existingData._migrationComplete
             }
 
-            return storageManager.saveData(mergedData).then(() => mergedData.userData)
+            return storageManager.saveData(mergedData).then(() => mergedData)
           })
-          .then((userData: UserData) => {
+          .then((savedData: StorageSchema) => {
             console.log('[Oh My Prompt] SET_STORAGE: Save successful')
-            // Trigger sync and wait for completion before responding
-            return triggerSync(userData).then(syncResult => {
+            // Trigger sync with full backup data (including temporary prompts)
+            const backupData = {
+              prompts: savedData.userData.prompts,
+              categories: savedData.userData.categories,
+              temporaryPrompts: savedData.temporaryPrompts || []
+            }
+            return triggerSync(backupData).then(syncResult => {
               if (!syncResult.success) {
                 console.warn('[Oh My Prompt] Sync failed:', syncResult.error?.type, syncResult.error?.message)
 
@@ -571,8 +577,8 @@ chrome.runtime.onMessage.addListener(
             // Get or initialize temporary prompts array
             const temporaryPrompts = data.temporaryPrompts || []
 
-            // Calculate order (max order + 1 in temporary prompts)
-            const maxOrder = temporaryPrompts.length > 0 ? Math.max(...temporaryPrompts.map(p => p.order)) : -1
+            // Calculate order (min order - 1 for reverse sorting - newest first)
+            const minOrder = temporaryPrompts.length > 0 ? Math.min(...temporaryPrompts.map(p => p.order)) : 0
 
             // Add new prompt to temporary library - support bilingual content and description
             const newPrompt: Prompt = {
@@ -584,7 +590,7 @@ chrome.runtime.onMessage.addListener(
               description: savePayload.description, // Chinese analysis (optional)
               descriptionEn: savePayload.descriptionEn, // English analysis (optional)
               categoryId: 'temporary', // Special marker for temporary library
-              order: maxOrder + 1,
+              order: minOrder - 1,
               remoteImageUrl: savePayload.imageUrl // Optional source URL
             }
 
@@ -594,11 +600,37 @@ chrome.runtime.onMessage.addListener(
               try {
                 // Check if folder is configured via offscreen document
                 const permResult = await sendToOffscreen<{ hasFolder: boolean; permission?: 'granted' | 'prompt' | 'denied' }>(MessageType.OFFSCREEN_CHECK_PERMISSION)
-                if (permResult.success && permResult.data?.permission === 'granted') {
-                  // Download image
-                  console.log('[Oh My Prompt] Downloading image for local save:', savePayload.imageUrl)
+                console.log('[Oh My Prompt] Permission check result:', permResult)
+
+                let proceedWithSave = false
+
+                if (!permResult.success) {
+                  console.warn('[Oh My Prompt] Offscreen permission check failed:', permResult.error)
+                } else if (!permResult.data?.hasFolder) {
+                  console.log('[Oh My Prompt] No backup folder configured, skipping local image save')
+                } else if (permResult.data?.permission === 'prompt') {
+                  // Permission needs re-authorization - request via offscreen document
+                  console.log('[Oh My Prompt] Folder permission needs re-authorization, requesting...')
+                  const requestResult = await sendToOffscreen<{ permission: 'granted' | 'denied' }>(MessageType.OFFSCREEN_REQUEST_PERMISSION)
+                  if (!requestResult.success || requestResult.data?.permission !== 'granted') {
+                    console.warn('[Oh My Prompt] Permission request failed:', requestResult.error)
+                  } else {
+                    console.log('[Oh My Prompt] Permission granted after request')
+                    proceedWithSave = true
+                  }
+                } else if (permResult.data?.permission === 'granted') {
+                  proceedWithSave = true
+                } else {
+                  console.warn('[Oh My Prompt] Folder permission denied, skipping local image save')
+                }
+
+                // Download and save image if permission is granted
+                if (proceedWithSave) {
+                  console.log('[Oh My Prompt] Downloading image:', savePayload.imageUrl)
                   const imageResponse = await fetch(savePayload.imageUrl)
-                  if (imageResponse.ok) {
+                  if (!imageResponse.ok) {
+                    console.warn('[Oh My Prompt] Image download failed:', imageResponse.status, imageResponse.statusText)
+                  } else {
                     const imageBlob = await imageResponse.blob()
                     const arrayBuffer = await imageBlob.arrayBuffer()
                     const uint8Array = new Uint8Array(arrayBuffer)
@@ -614,7 +646,9 @@ chrome.runtime.onMessage.addListener(
                       originalFilename: `image.${ext}`
                     })
 
-                    if (saveResult.success && saveResult.data?.relativePath) {
+                    if (!saveResult.success) {
+                      console.warn('[Oh My Prompt] Offscreen save image failed:', saveResult.error)
+                    } else if (saveResult.data?.relativePath) {
                       newPrompt.localImage = saveResult.data.relativePath
                       localImageSaved = true
                       console.log('[Oh My Prompt] Image saved locally:', newPrompt.localImage)
@@ -624,8 +658,10 @@ chrome.runtime.onMessage.addListener(
               } catch (imageError) {
                 // Image save failed, but prompt is already saved
                 // Keep remoteImageUrl as fallback
-                console.warn('[Oh My Prompt] Image save failed:', imageError)
+                console.warn('[Oh My Prompt] Image save exception:', imageError)
               }
+            } else {
+              console.log('[Oh My Prompt] No imageUrl provided, skipping local image save')
             }
 
             // Add to temporary prompts array
@@ -657,6 +693,94 @@ chrome.runtime.onMessage.addListener(
           })
           .catch((error) => {
             console.error('[Oh My Prompt] SAVE_TEMPORARY_PROMPT error:', error)
+            sendResponse({ success: false, error: 'Storage save failed' })
+          })
+        return true // Required for async response
+
+      // Update temporary prompt format (re-save with different format)
+      case MessageType.UPDATE_TEMPORARY_PROMPT_FORMAT:
+        const updatePayload = message.payload as UpdateTemporaryPromptFormatPayload
+        if (!updatePayload || !updatePayload.taskId || !updatePayload.result) {
+          sendResponse({ success: false, error: 'Invalid payload: taskId and result required' })
+          return true
+        }
+
+        storageManager.getData()
+          .then(async (data) => {
+            // Get current temporary prompts
+            const temporaryPrompts = data.temporaryPrompts || []
+            const result = updatePayload.result
+            const newFormat = updatePayload.newFormat
+
+            // Generate prompt name from content or title
+            const promptName = result.zh.title || result.zh.prompt.substring(0, 30).replace(/\n/g, ' ').trim() + '...'
+            const promptNameEn = result.en.title || result.en.prompt.substring(0, 30).replace(/\n/g, ' ').trim() + '...'
+
+            // Build content based on new format
+            const content = newFormat === 'json'
+              ? JSON.stringify(result.zh_json || result.json_prompt)
+              : result.zh.prompt
+
+            const contentEn = newFormat === 'json'
+              ? JSON.stringify(result.en_json || result.json_prompt)
+              : result.en.prompt
+
+            // Find and update the existing prompt by matching imageUrl or create new entry
+            // Since temporary prompts don't store taskId, we match by imageUrl
+            const existingIndex = updatePayload.imageUrl
+              ? temporaryPrompts.findIndex(p => p.remoteImageUrl === updatePayload.imageUrl)
+              : -1
+
+            if (existingIndex >= 0) {
+              // Update existing prompt
+              temporaryPrompts[existingIndex] = {
+                ...temporaryPrompts[existingIndex],
+                content,
+                contentEn,
+                description: result.zh.analysis,
+                descriptionEn: result.en.analysis,
+              }
+              console.log('[Oh My Prompt] Updated temporary prompt format:', updatePayload.taskId, 'to', newFormat)
+            } else {
+              // Create new prompt entry (fallback)
+              const newPrompt: Prompt = {
+                id: crypto.randomUUID(),
+                name: promptName,
+                nameEn: promptNameEn,
+                content,
+                contentEn,
+                description: result.zh.analysis,
+                descriptionEn: result.en.analysis,
+                categoryId: 'temporary',
+                order: temporaryPrompts.length > 0 ? Math.min(...temporaryPrompts.map(p => p.order)) - 1 : 0,
+                remoteImageUrl: updatePayload.imageUrl
+              }
+              temporaryPrompts.push(newPrompt)
+              console.log('[Oh My Prompt] Created new temporary prompt:', updatePayload.taskId, 'format:', newFormat)
+            }
+
+            // Save to storage
+            const version = chrome.runtime.getManifest().version
+            await storageManager.saveData({
+              version,
+              userData: data.userData,
+              settings: data.settings,
+              temporaryPrompts
+            })
+
+            // Broadcast REFRESH_DATA
+            chrome.tabs.query({ url: ['*://lovart.ai/*', '*://*.lovart.ai/*'] }, (tabs) => {
+              tabs.forEach(tab => {
+                if (tab.id !== undefined && tab.id >= 0) {
+                  chrome.tabs.sendMessage(tab.id, { type: MessageType.REFRESH_DATA })
+                }
+              })
+            })
+
+            sendResponse({ success: true })
+          })
+          .catch((error) => {
+            console.error('[Oh My Prompt] UPDATE_TEMPORARY_PROMPT_FORMAT error:', error)
             sendResponse({ success: false, error: 'Storage save failed' })
           })
         return true // Required for async response
@@ -729,14 +853,23 @@ chrome.runtime.onMessage.addListener(
 
             // Save to storage
             const version = chrome.runtime.getManifest().version
+            const userData = { prompts, categories: data.userData.categories }
             await storageManager.saveData({
               version,
-              userData: { prompts, categories: data.userData.categories },
+              userData,
               settings: data.settings,
               temporaryPrompts
             })
 
             console.log('[Oh My Prompt] Transferred prompt to category:', promptToTransfer.name, '→', transferPayload.targetCategoryId)
+
+            // Trigger auto-sync with full backup data
+            const backupData = {
+              prompts,
+              categories: data.userData.categories,
+              temporaryPrompts
+            }
+            triggerSync(backupData).catch(err => console.warn('[Oh My Prompt] Sync after transfer failed:', err))
 
             // Broadcast REFRESH_DATA to all Lovart tabs
             chrome.tabs.query({ url: ['*://lovart.ai/*', '*://*.lovart.ai/*'] }, (tabs) => {

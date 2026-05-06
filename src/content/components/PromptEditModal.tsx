@@ -131,7 +131,6 @@ export function PromptEditModal({
         setName(prompt.name)
         setDescription(prompt.description || '')
         setContent(prompt.content)
-        setCategoryId(prompt.categoryId)
         // Initialize English fields from existing prompt
         setNameEn(prompt.nameEn || '')
         setDescriptionEn(prompt.descriptionEn || '')
@@ -154,6 +153,14 @@ export function PromptEditModal({
             })
         } else {
           setImagePreviewUrl(undefined)
+        }
+        // categoryId: use defaultCategoryId for temporary prompts (prompt.categoryId='temporary' is virtual)
+        // For regular prompts, use prompt.categoryId or defaultCategoryId fallback
+        const isTemporaryPrompt = prompt.categoryId === 'temporary'
+        if (isTemporaryPrompt) {
+          setCategoryId(defaultCategoryId || categories[0]?.id || '')
+        } else {
+          setCategoryId(prompt.categoryId || defaultCategoryId || categories[0]?.id || '')
         }
       } else {
         setName('')
@@ -347,18 +354,30 @@ export function PromptEditModal({
   const isValid = name.trim() && content.trim() && categoryId
 
   // Preview element - rendered via portal to document.body
-  // Auto-stick to top if preview would exceed viewport top boundary
+  // Auto-stick to top/left if preview would exceed viewport boundaries
   const previewHeight = PREVIEW_MAX_HEIGHT + 32 + 16 // max height + padding + extra
+  const previewWidth = PREVIEW_MAX_WIDTH + 32 // max width + padding
+
+  // Check if preview would exceed viewport boundaries
   const previewTopPosition = imagePreviewMousePos.y - PREVIEW_OFFSET - previewHeight
   const shouldStickToTop = previewTopPosition < 0
+
+  // Calculate left position: preview width to the left of cursor
+  const previewLeftEdge = imagePreviewMousePos.x - PREVIEW_OFFSET - previewWidth
+  const shouldStickToLeft = previewLeftEdge < 0
 
   const previewElement = showImagePreview && imagePreviewUrl ? (
     <div
       style={{
         position: 'fixed',
-        left: imagePreviewMousePos.x - PREVIEW_OFFSET,
+        // Horizontal positioning: stick to left edge if would exceed, else follow cursor
+        left: shouldStickToLeft ? PREVIEW_OFFSET : imagePreviewMousePos.x - PREVIEW_OFFSET,
+        // Vertical positioning: stick to top if would exceed, else follow cursor
         top: shouldStickToTop ? PREVIEW_OFFSET : imagePreviewMousePos.y - PREVIEW_OFFSET,
-        transform: shouldStickToTop ? 'translateX(-100%)' : 'translate(-100%, -100%)',
+        // Transform adjustments based on sticky state
+        transform: shouldStickToLeft
+          ? shouldStickToTop ? 'none' : 'translateY(-100%)'
+          : shouldStickToTop ? 'translateX(-100%)' : 'translate(-100%, -100%)',
         zIndex: 2147483647,
         background: '#ffffff',
         borderRadius: '12px',

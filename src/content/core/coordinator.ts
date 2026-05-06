@@ -119,9 +119,6 @@ class Coordinator {
     TaskQueueManager.getInstance()
     console.log(LOG_PREFIX, 'TaskQueueManager initialized')
 
-    // Note: BatchPanelManager is created on-demand when first task is added
-    // No need to pre-create it here
-
     // Create Injector BEFORE Detector if platform matches
     // This ensures Injector is ready when Detector immediately finds input
     if (this.platform) {
@@ -317,7 +314,7 @@ class Coordinator {
 
       // Handle Vision Modal open request
       if (message.type === MessageType.OPEN_VISION_MODAL) {
-        const { imageUrl, tabId } = message.payload as { imageUrl: string; tabId?: number }
+        const { imageUrl } = message.payload as { imageUrl: string }
 
         console.log(LOG_PREFIX, 'Received OPEN_VISION_MODAL:', imageUrl.substring(0, 50) + '...')
 
@@ -331,15 +328,19 @@ class Coordinator {
               return
             }
 
-            // Vision enabled, create modal
+            // Vision enabled, create modal and add task
             const manager = VisionModalManager.getInstance()
-            manager.create(imageUrl, tabId)
+            manager.create()
+            const taskQueueManager = TaskQueueManager.getInstance()
+            taskQueueManager.addTask(imageUrl)
             sendResponse({ success: true })
           } else {
             // Failed to get settings, default to enabled
             console.warn(LOG_PREFIX, 'Failed to get settings, defaulting to enabled')
             const manager = VisionModalManager.getInstance()
-            manager.create(imageUrl, tabId)
+            manager.create()
+            const taskQueueManager = TaskQueueManager.getInstance()
+            taskQueueManager.addTask(imageUrl)
             sendResponse({ success: true })
           }
         })

@@ -37,10 +37,9 @@ export class VisionModalManager {
 
   /**
    * Create modal in current page
-   * @param imageUrl - The image URL to process
-   * @param tabId - Optional tab ID for Lovart insertion
+   * VisionModal subscribes to useTaskQueueStore internally
    */
-  create(imageUrl: string, tabId?: number): void {
+  create(): void {
     // Remove existing instance if present (singleton)
     this.destroy()
 
@@ -68,15 +67,11 @@ export class VisionModalManager {
     this.reactRoot = createRoot(modalRoot)
     this.reactRoot.render(
       <ErrorBoundary>
-        <VisionModal
-          imageUrl={imageUrl}
-          tabId={tabId}
-          onClose={this.destroy.bind(this)}
-        />
+        <VisionModal onClose={this.destroy.bind(this)} />
       </ErrorBoundary>
     )
 
-    console.log(LOG_PREFIX, 'Vision modal created for image:', imageUrl.substring(0, 50) + '...')
+    console.log(LOG_PREFIX, 'Vision modal created (subscribe mode)')
   }
 
   /**
@@ -135,7 +130,7 @@ export class VisionModalManager {
       /* Modal card - floating box with fixed positioning */
       .modal-card {
         position: fixed;
-        width: 480px;
+        width: 600px;
         height: 700px;
         max-width: 90vw;
         max-height: 700px;
@@ -212,35 +207,134 @@ export class VisionModalManager {
         color: #64748B;
       }
 
-      /* Minimized content */
-      .minimized-content {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 8px 16px;
-        gap: 12px;
-      }
-
       .modal-logo-icon {
         width: 18px;
         height: 18px;
         flex-shrink: 0;
       }
 
-      .minimized-status {
-        font-size: 13px;
-        color: #64748B;
+      /* Main content area - left/right split */
+      .modal-body {
+        display: flex;
         flex: 1;
+        overflow: hidden;
       }
 
-      .expand-btn {
+      /* Left sidebar - task list */
+      .task-sidebar {
+        width: 120px;
+        background: #fafafa;
+        border-right: 1px solid #E5E5E5;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      .task-list-container {
+        flex: 1;
+        overflow-y: auto;
+        padding: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      /* Task list item */
+      .task-list-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 8px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        border: 2px solid transparent;
+      }
+
+      .task-list-item:hover {
+        background: #f0f0f0;
+      }
+
+      .task-list-item.selected {
+        border-color: #3b82f6;
+        background: #f0f7ff;
+      }
+
+      .task-thumbnail {
+        width: 60px;
+        height: 60px;
+        border-radius: 6px;
+        overflow: hidden;
+        background: #E5E5E5;
+      }
+
+      .task-thumbnail img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .thumbnail-placeholder {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        color: #9CA3AF;
+      }
+
+      .task-status-center {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 4px 0;
+      }
+
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
         flex-shrink: 0;
       }
 
-      /* Modal content */
-      .modal-content {
-        padding: 16px;
+      .status-dot.pending {
+        background: #9CA3AF;
+      }
+
+      .status-icon {
+        flex-shrink: 0;
+      }
+
+      .status-icon.spinning {
+        animation: spin 1s linear infinite;
+        color: #171717;
+      }
+
+      .status-icon.success {
+        color: #22c55e;
+      }
+
+      .status-icon.failed {
+        color: #ef4444;
+      }
+
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+
+      /* Right content area */
+      .task-content {
         flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      .task-content-inner {
+        flex: 1;
+        padding: 16px;
         overflow-y: auto;
       }
 
@@ -260,11 +354,6 @@ export class VisionModalManager {
         color: #64748B;
       }
 
-      @keyframes spin {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
-      }
-
       .loading-text {
         font-size: 14px;
         color: #64748B;
@@ -274,16 +363,9 @@ export class VisionModalManager {
       .success-view {
         display: flex;
         flex-direction: column;
-        gap: 16px;
+        gap: 20px;
       }
 
-      .success-label {
-        font-size: 14px;
-        font-weight: 500;
-        color: #171717;
-      }
-
-      /* Prompt section with header */
       .prompt-section {
         display: flex;
         flex-direction: column;
@@ -302,18 +384,6 @@ export class VisionModalManager {
         color: #171717;
       }
 
-      .prompt-header-label-en {
-        font-size: 13px;
-        font-weight: 500;
-        color: #64748B;
-      }
-
-      .prompt-header-divider {
-        font-size: 13px;
-        color: #9CA3AF;
-      }
-
-      /* Prompt preview wrapper with copy button */
       .prompt-preview-wrapper {
         position: relative;
       }
@@ -377,12 +447,111 @@ export class VisionModalManager {
         margin-bottom: 6px;
       }
 
-      /* Prompt title */
       .prompt-title {
         font-size: 16px;
         font-weight: 600;
         color: #171717;
         margin-bottom: 8px;
+      }
+
+      /* Analysis section */
+      .analysis-section {
+        background: #fafafa;
+        padding: 12px;
+        border-radius: 6px;
+      }
+
+      .analysis-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #64748B;
+        margin-bottom: 6px;
+      }
+
+      .analysis-text {
+        font-size: 13px;
+        color: #525252;
+        line-height: 1.4;
+      }
+
+      /* Style tags - chips */
+      .style-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding-top: 8px;
+        padding-bottom: 8px;
+      }
+
+      .style-tag {
+        padding: 4px 10px;
+        background: #f0f0f0;
+        border-radius: 12px;
+        font-size: 12px;
+        color: #171717;
+        font-weight: 500;
+      }
+
+      /* JSON tab details */
+      .json-tab {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      /* Prompt tab - natural language format */
+      .tab-content {
+        /* Container for tab panels */
+      }
+
+      .prompt-tab {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .json-details {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .json-row {
+        display: flex;
+        gap: 8px;
+        padding: 6px 0;
+        border-bottom: 1px solid #f0f0f0;
+      }
+
+      .json-row:last-child {
+        border-bottom: none;
+      }
+
+      .json-key {
+        font-size: 12px;
+        font-weight: 600;
+        color: #64748B;
+        min-width: 140px;
+        flex-shrink: 0;
+      }
+
+      .json-value {
+        font-size: 13px;
+        color: #171717;
+        flex: 1;
+        word-break: break-word;
+      }
+
+      /* Error view */
+      .error-view {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .error-message {
+        font-size: 14px;
+        color: #ef4444;
       }
 
       /* Action buttons */
@@ -430,18 +599,6 @@ export class VisionModalManager {
         height: 16px;
       }
 
-      /* Error view */
-      .error-view {
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-      }
-
-      .error-message {
-        font-size: 14px;
-        color: #ef4444;
-      }
-
       /* Feedback view */
       .feedback-view {
         display: flex;
@@ -465,12 +622,6 @@ export class VisionModalManager {
         font-size: 14px;
       }
 
-      .feedback-hint {
-        font-size: 12px;
-        color: #64748B;
-      }
-
-      /* Close session button - text button in feedback view */
       .close-session-btn {
         padding: 0;
         border: none;
@@ -487,80 +638,7 @@ export class VisionModalManager {
         color: #171717;
       }
 
-      /* Config view - API configuration form */
-      .config-view {
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-      }
-
-      .config-description {
-        font-size: 14px;
-        color: #64748B;
-        line-height: 1.5;
-      }
-
-      .config-form {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-      }
-
-      .config-field {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-      }
-
-      .config-label {
-        font-size: 12px;
-        font-weight: 500;
-        color: #171717;
-      }
-
-      .config-input {
-        width: 100%;
-        padding: 10px 12px;
-        border: 1px solid #E5E5E5;
-        border-radius: 8px;
-        font-size: 14px;
-        color: #171717;
-        box-sizing: border-box;
-        transition: border-color 0.15s ease;
-      }
-
-      .config-input:focus {
-        outline: none;
-        border-color: #171717;
-      }
-
-      .config-input::placeholder {
-        color: #9CA3AF;
-      }
-
-      /* Scrollbar styling */
-      .prompt-preview::-webkit-scrollbar,
-      .modal-content::-webkit-scrollbar {
-        width: 6px;
-      }
-
-      .prompt-preview::-webkit-scrollbar-track,
-      .modal-content::-webkit-scrollbar-track {
-        background: transparent;
-      }
-
-      .prompt-preview::-webkit-scrollbar-thumb,
-      .modal-content::-webkit-scrollbar-thumb {
-        background: #ddd;
-        border-radius: 3px;
-      }
-
-      .prompt-preview::-webkit-scrollbar-thumb:hover,
-      .modal-content::-webkit-scrollbar-thumb:hover {
-        background: #ccc;
-      }
-
-      /* Tab buttons - bottom footer layout */
+      /* Modal footer */
       .modal-footer {
         display: flex;
         justify-content: space-between;
@@ -570,141 +648,6 @@ export class VisionModalManager {
         gap: 12px;
       }
 
-      .tab-buttons {
-        display: flex;
-        gap: 4px;
-        background: #f0f0f0;
-        padding: 4px;
-        border-radius: 6px;
-      }
-
-      .tab-btn {
-        padding: 6px 12px;
-        border: none;
-        border-radius: 4px;
-        font-size: 13px;
-        font-weight: 500;
-        color: #64748B;
-        background: transparent;
-        cursor: pointer;
-        transition: all 0.15s ease;
-      }
-
-      .tab-btn:hover {
-        color: #171717;
-      }
-
-      .tab-btn.active {
-        background: #ffffff;
-        color: #171717;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
-      }
-
-      /* Tab content container */
-      .tab-content {
-        min-height: 150px;
-      }
-
-      .prompt-tab {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-      }
-
-      /* Analysis section */
-      .analysis-section {
-        background: #fafafa;
-        padding: 12px;
-        border-radius: 6px;
-      }
-
-      .analysis-label {
-        font-size: 12px;
-        font-weight: 600;
-        color: #64748B;
-        margin-bottom: 6px;
-      }
-
-      .analysis-text {
-        font-size: 13px;
-        color: #525252;
-        line-height: 1.4;
-      }
-
-      /* Style tags - chips */
-      .style-tags {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-      }
-
-      .style-tag {
-        padding: 4px 10px;
-        background: #f0f0f0;
-        border-radius: 12px;
-        font-size: 12px;
-        color: #171717;
-        font-weight: 500;
-      }
-
-      /* JSON tab details */
-      .json-tab {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
-
-      .json-details {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-      }
-
-      .json-row {
-        display: flex;
-        gap: 8px;
-        padding: 6px 0;
-        border-bottom: 1px solid #f0f0f0;
-      }
-
-      .json-row:last-child {
-        border-bottom: none;
-      }
-
-      .json-key {
-        font-size: 12px;
-        font-weight: 600;
-        color: #64748B;
-        min-width: 140px;
-        flex-shrink: 0;
-      }
-
-      .json-value {
-        font-size: 13px;
-        color: #171717;
-        flex: 1;
-        word-break: break-word;
-      }
-
-      /* Confidence section */
-      .confidence-section {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 0;
-      }
-
-      .confidence-label {
-        font-size: 12px;
-        color: #64748B;
-        font-weight: 500;
-      }
-
-      .confidence-label.low {
-        color: #f59e0b;
-      }
-
-      /* Toggle groups for language + format switching */
       .toggle-groups {
         display: flex;
         gap: 8px;
@@ -739,6 +682,80 @@ export class VisionModalManager {
         background: #ffffff;
         color: #171717;
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+      }
+
+      /* Footer action button - matches toggle-btn height */
+      .footer-btn {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 10px;
+        border-radius: 4px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        border: none;
+      }
+
+      .footer-btn-primary {
+        background: #171717;
+        color: #ffffff;
+      }
+
+      .footer-btn-primary:hover {
+        background: rgba(23, 23, 23, 0.9);
+      }
+
+      .footer-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .footer-btn svg {
+        width: 14px;
+        height: 14px;
+      }
+
+      /* Minimized content */
+      .minimized-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 16px;
+        gap: 12px;
+      }
+
+      .minimized-status {
+        font-size: 13px;
+        color: #64748B;
+        flex: 1;
+      }
+
+      /* Scrollbar styling */
+      .prompt-preview::-webkit-scrollbar,
+      .task-content-inner::-webkit-scrollbar,
+      .task-list-container::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .prompt-preview::-webkit-scrollbar-track,
+      .task-content-inner::-webkit-scrollbar-track,
+      .task-list-container::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      .prompt-preview::-webkit-scrollbar-thumb,
+      .task-content-inner::-webkit-scrollbar-thumb,
+      .task-list-container::-webkit-scrollbar-thumb {
+        background: #ddd;
+        border-radius: 3px;
+      }
+
+      .prompt-preview::-webkit-scrollbar-thumb:hover,
+      .task-content-inner::-webkit-scrollbar-thumb:hover,
+      .task-list-container::-webkit-scrollbar-thumb:hover {
+        background: #ccc;
       }
     `
   }

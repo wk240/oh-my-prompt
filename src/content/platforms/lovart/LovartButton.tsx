@@ -1,6 +1,7 @@
 /**
  * LovartButton - Lovart-native styled trigger button
  * Extracts Lovart visual styles at runtime for UI coordination
+ * Uses host element attributes to trigger tooltip outside Shadow DOM
  */
 
 import { useState, useEffect } from 'react'
@@ -20,7 +21,6 @@ interface LovartButtonProps {
 export function LovartButton({ isOpen, onClick }: LovartButtonProps) {
   const [style, setStyle] = useState<LovartStyleConfig>(DEFAULT_STYLE)
   const [iconColor, setIconColor] = useState<string>(DEFAULT_STYLE.color)
-  const [isHovered, setIsHovered] = useState(false)
   const [isActive, setIsActive] = useState(false)
 
   // Extract Lovart styles on mount
@@ -46,24 +46,81 @@ export function LovartButton({ isOpen, onClick }: LovartButtonProps) {
   }
 
   // Compute background color based on hover/active state
-  const getBackgroundColor = () => {
+  const getBackgroundColor = (isHovered: boolean) => {
     if (isActive) return style.activeBackgroundColor
     if (isHovered) return style.hoverBackgroundColor
     return style.backgroundColor
   }
 
+  // Update tooltip visibility via host element attribute (external tooltip mechanism)
+  const handleMouseEnter = () => {
+    const host = document.querySelector('[data-testid="oh-my-prompt-trigger"]')
+    if (host) host.setAttribute('data-tooltip-show', 'true')
+  }
+
+  const handleMouseLeave = () => {
+    const host = document.querySelector('[data-testid="oh-my-prompt-trigger"]')
+    if (host) host.setAttribute('data-tooltip-show', 'false')
+    setIsActive(false)
+  }
+
+  return (
+    <LovartButtonInner
+      isOpen={isOpen}
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onMouseDown={() => setIsActive(true)}
+      onMouseUp={() => setIsActive(false)}
+      style={style}
+      iconColor={iconColor}
+      getBackgroundColor={getBackgroundColor}
+    />
+  )
+}
+
+// Inner component to track hover state for background color
+function LovartButtonInner({
+  isOpen,
+  onClick,
+  onKeyDown,
+  onMouseEnter,
+  onMouseLeave,
+  onMouseDown,
+  onMouseUp,
+  style,
+  iconColor,
+  getBackgroundColor,
+}: {
+  isOpen: boolean
+  onClick: (e: React.MouseEvent) => void
+  onKeyDown: (e: React.KeyboardEvent) => void
+  onMouseEnter: () => void
+  onMouseLeave: () => void
+  onMouseDown: () => void
+  onMouseUp: () => void
+  style: LovartStyleConfig
+  iconColor: string
+  getBackgroundColor: (isHovered: boolean) => string
+}) {
+  const [isHovered, setIsHovered] = useState(false)
+
   return (
     <button
       className="lovart-trigger-button"
-      onClick={handleClick}
-      onKeyDown={handleKeyDown}
-      onMouseEnter={() => setIsHovered(true)}
+      onClick={onClick}
+      onKeyDown={onKeyDown}
+      onMouseEnter={() => {
+        setIsHovered(true)
+        onMouseEnter()
+      }}
       onMouseLeave={() => {
         setIsHovered(false)
-        setIsActive(false)
+        onMouseLeave()
       }}
-      onMouseDown={() => setIsActive(true)}
-      onMouseUp={() => setIsActive(false)}
+      onMouseDown={onMouseDown}
+      onMouseUp={onMouseUp}
       role="button"
       tabIndex={0}
       aria-label="Oh, My Prompt"
@@ -74,14 +131,13 @@ export function LovartButton({ isOpen, onClick }: LovartButtonProps) {
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: getBackgroundColor(),
+        backgroundColor: getBackgroundColor(isHovered),
         borderRadius: style.borderRadius,
         boxShadow: style.boxShadow,
         color: iconColor,
         cursor: 'pointer',
         border: 'none',
         transition: 'background-color 150ms',
-        position: 'relative',
       }}
     >
       <svg
@@ -98,27 +154,6 @@ export function LovartButton({ isOpen, onClick }: LovartButtonProps) {
           fillOpacity="0.9"
         />
       </svg>
-      {isHovered && (
-        <span
-          style={{
-            position: 'absolute',
-            bottom: 'calc(100% + 8px)',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            background: '#1f1f1f',
-            color: '#fff',
-            fontSize: '12px',
-            fontWeight: '500',
-            padding: '6px 10px',
-            borderRadius: '6px',
-            whiteSpace: 'nowrap',
-            zIndex: 1000,
-            pointerEvents: 'none',
-          }}
-        >
-          Oh, My Prompt
-        </span>
-      )}
     </button>
   )
 }

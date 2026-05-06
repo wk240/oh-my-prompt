@@ -252,14 +252,7 @@ function SortableDropdownItem({
         }
       }}
     >
-      {/* Thumbnail - 60x40 image preview, lazy-loaded with Intersection Observer */}
-      {prompt.localImage && (
-        <PromptThumbnail
-          relativePath={prompt.localImage}
-          promptName={prompt.name}
-          onClick={onThumbnailClick ? () => onThumbnailClick(prompt) : undefined}
-        />
-      )}
+      {/* Icon wrapper with drag handle - left side */}
       <div className="dropdown-item-icon-wrapper">
         {showDragHandle && (
           <div className="dropdown-item-drag-handle" {...attributes} {...listeners}>
@@ -268,6 +261,14 @@ function SortableDropdownItem({
         )}
         <IconComponent className="dropdown-item-icon" />
       </div>
+      {/* Thumbnail - 60x40 image preview, lazy-loaded with Intersection Observer */}
+      {prompt.localImage && (
+        <PromptThumbnail
+          relativePath={prompt.localImage}
+          promptName={prompt.name}
+          onClick={onThumbnailClick ? () => onThumbnailClick(prompt) : undefined}
+        />
+      )}
       <div className="dropdown-item-text">
         <Tooltip content={prompt.name}>
           <span className="dropdown-item-name">{prompt.name}</span>
@@ -332,8 +333,6 @@ export function DropdownContainer({
 
   // Resource library state (loaded from local JSON)
   const [isResourceLibrary, setIsResourceLibrary] = useState(false)
-  // Temporary library state
-  const [isTemporaryLibrary, setIsTemporaryLibrary] = useState(false)
   const [resourcePrompts, setResourcePrompts] = useState<ResourcePrompt[]>([])
   const [rawResourcePrompts] = useState<ResourcePrompt[]>(getResourcePrompts())
   const [resourceCategories] = useState<ResourceCategory[]>(getResourceCategories())
@@ -381,12 +380,8 @@ export function DropdownContainer({
     })))
   }, [rawResourcePrompts, resourceLanguage])
 
-  // Temporary prompts filter (prompts in '临时' category)
-  const temporaryPrompts = useMemo(() => {
-    const tempCategory = localCategories.find(c => c.name === '临时')
-    if (!tempCategory) return []
-    return localPrompts.filter(p => p.categoryId === tempCategory.id)
-  }, [localPrompts, localCategories])
+  // Temporary prompts from store (independent storage field)
+  const temporaryPrompts = usePromptStore((state) => state.temporaryPrompts)
 
   // Display temporary prompts with language transformation
   const displayTemporaryPrompts = useMemo(() => {
@@ -733,11 +728,14 @@ export function DropdownContainer({
     let result: Prompt[]
     if (selectedCategoryId === 'all') {
       result = displayPrompts
+    } else if (selectedCategoryId === 'temporary') {
+      // Temporary library: use displayTemporaryPrompts (already sorted in reverse order)
+      return displayTemporaryPrompts
     } else {
       result = displayPrompts.filter((p) => p.categoryId === selectedCategoryId)
     }
     return sortPromptsByOrder(result)
-  }, [displayPrompts, selectedCategoryId])
+  }, [displayPrompts, displayTemporaryPrompts, selectedCategoryId])
 
   const showDragHandles = filteredPrompts.length >= 2
 
@@ -962,11 +960,46 @@ export function DropdownContainer({
 
   const handleDeletePrompt = useCallback(() => {
     if (!editingStates.deletingPrompt) return
+    // Check if deleting a temporary prompt
+    const isTemporaryPrompt = temporaryPrompts.some(p => p.id === editingStates.deletingPrompt!.id)
+    if (isTemporaryPrompt) {
+      // Delete from temporary library
+      const updatedTemporaryPrompts = temporaryPrompts.filter(p => p.id !== editingStates.deletingPrompt!.id)
+      usePromptStore.setState({ temporaryPrompts: updatedTemporaryPrompts })
+      // Persist via service worker (settings preserved by merge)
+      chrome.runtime.sendMessage({
+        type: MessageType.SET_STORAGE,
+        payload: {
+          version: chrome.runtime.getManifest().version,
+          userData: { prompts: usePromptStore.getState().prompts, categories: usePromptStore.getState().categories },
+          temporaryPrompts: updatedTemporaryPrompts
+        }
+      })
+      setModalStates(prev => ({ ...prev, isPromptDelete: false }))
+      clearEditingItem('deletingPrompt')
+      showToast('提示词已删除')
+      return
+    }
     usePromptStore.getState().deletePrompt(editingStates.deletingPrompt.id)
     setLocalPrompts(prev => prev.filter(p => p.id !== editingStates.deletingPrompt!.id))
     clearEditingItem('deletingPrompt')
     showToast('提示词已删除')
-  }, [editingStates.deletingPrompt])
+  }, [editingStates.deletingPrompt, temporaryPrompts])
+
+  // Handle transfer temporary prompt to category
+  const handleTransferTemporaryPrompt = useCallback((categoryId: string) => {
+    if (!editingStates.prompt) return
+    usePromptStore.getState().transferTemporaryPrompt(editingStates.prompt.id, categoryId)
+    clearEditingItem('prompt')
+    showToast('已转移到分类')
+  }, [editingStates.prompt])
+
+  // Check if currently editing a temporary prompt
+  const isEditingTemporaryPrompt = useMemo(() => {
+    if (!editingStates.prompt) return false
+    const promptId = editingStates.prompt.id
+    return temporaryPrompts.some(p => p.id === promptId)
+  }, [editingStates.prompt, temporaryPrompts])
 
   // Handle first-time backup warning actions
   const handleBackupWarningSelectFolder = useCallback(async () => {
@@ -1123,14 +1156,14 @@ export function DropdownContainer({
       >
       <div className="dropdown-sidebar">
         <div className="sidebar-categories">
-          {isResourceLibrary || isTemporaryLibrary ? (
+          {isResourceLibrary ? (
             <>
               {/* Back to local categories */}
               <button
                 className="sidebar-category-item"
                 onClick={() => {
                   setIsResourceLibrary(false)
-                  setIsTemporaryLibrary(false)
+                  setSelectedCategoryId('all')
                 }}
                 aria-label="返回本地分类"
               >
@@ -1139,40 +1172,29 @@ export function DropdownContainer({
                 </div>
                 <span>返回</span>
               </button>
-              {/* Temporary library mode: show title */}
-              {isTemporaryLibrary && (
-                <button className="sidebar-category-item selected">
-                  <div className="sidebar-category-icon-wrapper">
-                    <Clock className="sidebar-category-icon" />
-                  </div>
-                  <span>临时提示词</span>
-                </button>
-              )}
               {/* Resource library mode: show categories */}
-              {isResourceLibrary && (
-                <>
-                  {/* "全部" ResourceCategory entry */}
-                  <button
-                    className={`sidebar-category-item ${selectedResourceCategoryId === 'all' ? 'selected' : ''}`}
-                    onClick={() => setSelectedResourceCategoryId('all')}
-                    aria-label="全部资源提示词"
-                  >
-                    <div className="sidebar-category-icon-wrapper">
-                      <Database className="sidebar-category-icon" />
-                    </div>
-                    <span>全部</span>
-                  </button>
-                  {/* ResourceCategory list */}
-                  {sortProviderCategoriesByOrder(resourceCategories).map((category) => (
-                    <ProviderCategoryItem
-                      key={category.id}
-                      category={category}
-                      isSelected={selectedResourceCategoryId === category.id}
-                      onSelect={setSelectedResourceCategoryId}
-                    />
-                  ))}
-                </>
-              )}
+              <>
+                {/* "全部" ResourceCategory entry */}
+                <button
+                  className={`sidebar-category-item ${selectedResourceCategoryId === 'all' ? 'selected' : ''}`}
+                  onClick={() => setSelectedResourceCategoryId('all')}
+                  aria-label="全部资源提示词"
+                >
+                  <div className="sidebar-category-icon-wrapper">
+                    <Database className="sidebar-category-icon" />
+                  </div>
+                  <span>全部</span>
+                </button>
+                {/* ResourceCategory list */}
+                {sortProviderCategoriesByOrder(resourceCategories).map((category) => (
+                  <ProviderCategoryItem
+                    key={category.id}
+                    category={category}
+                    isSelected={selectedResourceCategoryId === category.id}
+                    onSelect={setSelectedResourceCategoryId}
+                  />
+                ))}
+              </>
             </>
           ) : (
             <>
@@ -1202,10 +1224,10 @@ export function DropdownContainer({
                 <span>资源库</span>
               </button>
 
-              {/* "临时库" entry */}
+              {/* "临时库" entry - as sidebar category item */}
               <button
-                className={`sidebar-category-item ${isTemporaryLibrary ? 'selected' : ''}`}
-                onClick={() => setIsTemporaryLibrary(true)}
+                className={`sidebar-category-item ${selectedCategoryId === 'temporary' ? 'selected' : ''}`}
+                onClick={() => setSelectedCategoryId('temporary')}
                 aria-label="临时库"
               >
                 <div className="sidebar-category-icon-wrapper">
@@ -1400,45 +1422,6 @@ export function DropdownContainer({
             <div className="empty-state">
               <div className="empty-message">加载中...</div>
             </div>
-          ) : isTemporaryLibrary ? (
-            // Temporary library view - list format
-            displayTemporaryPrompts.length === 0 ? (
-              <div className="empty-state">
-                <div className="empty-message">暂无临时提示词</div>
-              </div>
-            ) : (
-              <div className="dropdown-items">
-                <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                  <SortableContext
-                    items={displayTemporaryPrompts.map(p => p.id)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    {displayTemporaryPrompts.map((prompt, index) => (
-                      <SortableDropdownItem
-                        key={prompt.id}
-                        prompt={prompt}
-                        isLast={index === displayTemporaryPrompts.length - 1}
-                        isSelected={selectedPromptId === prompt.id}
-                        onSelect={onSelect}
-                        showDragHandle={displayTemporaryPrompts.length >= 2}
-                        onThumbnailClick={(p) => {
-                          setEditingItem('userPrompt', p)
-                          openModal('isUserPreview')
-                        }}
-                        onEdit={(p) => {
-                          setEditingItem('prompt', p)
-                          openModal('isPromptEdit')
-                        }}
-                        onDelete={(p) => {
-                          setEditingItem('deletingPrompt', p)
-                          openModal('isPromptDelete')
-                        }}
-                      />
-                    ))}
-                  </SortableContext>
-                </DndContext>
-              </div>
-            )
           ) : isResourceLibrary ? (
             paginatedResourcePrompts.length === 0 ? (
               <div className="empty-state">
@@ -1471,7 +1454,7 @@ export function DropdownContainer({
           ) : filteredPrompts.length === 0 ? (
             <div className="empty-state">
               <div className="empty-message">
-                {selectedCategoryId === 'all' ? '暂无提示词，点击下方按钮添加' : '该分类暂无提示词'}
+                {selectedCategoryId === 'all' ? '暂无提示词，点击下方按钮添加' : selectedCategoryId === 'temporary' ? '暂无临时提示词' : '该分类暂无提示词'}
               </div>
             </div>
           ) : (
@@ -1494,7 +1477,8 @@ export function DropdownContainer({
                         openModal('isUserPreview')
                       }}
                       onEdit={(p) => {
-                        setEditingItem('prompt', p)
+                        const originalPrompt = localPrompts.find(lp => lp.id === p.id) || p
+                        setEditingItem('prompt', originalPrompt)
                         openModal('isPromptEdit')
                       }}
                       onDelete={(p) => {
@@ -1509,7 +1493,7 @@ export function DropdownContainer({
           )}
         </div>
         {/* FAB add prompt button */}
-            {!isResourceLibrary && !isTemporaryLibrary && (
+            {!isResourceLibrary && selectedCategoryId !== 'temporary' && (
               <button
                 className="fab-add-prompt"
                 onClick={() => openModal('isPromptAdd')}
@@ -1663,6 +1647,8 @@ export function DropdownContainer({
         mode="edit"
         prompt={editingStates.prompt ?? undefined}
         categories={sortableCategories}
+        isTemporary={isEditingTemporaryPrompt}
+        onTransfer={handleTransferTemporaryPrompt}
         onConfirm={handleUpdatePrompt}
       />
       <DeleteConfirmModal

@@ -1,4 +1,4 @@
-import type { UserData } from '../../shared/types'
+import type { FullBackupData } from './file-sync'
 import { BACKUP_FILE_NAME, IMAGE_DIR_NAME, VISION_API_CONFIG_STORAGE_KEY } from '../../shared/constants'
 import { StorageManager } from '../storage'
 import { getFolderHandle, saveFolderHandle, checkFolderPermission } from './indexeddb'
@@ -6,6 +6,7 @@ import { syncToLocalFolder, readFromLocalFolder, selectSyncFolder } from './file
 import type { BackupVersion } from './file-sync'
 import { MessageType } from '../../shared/messages'
 import { ensureOffscreenDocument, sendToOffscreen } from '../offscreen-manager'
+import { readApiConfigFromFolder } from './api-config-sync'
 
 export interface SyncStatus {
   enabled: boolean
@@ -23,17 +24,17 @@ export interface SyncErrorInfo {
 }
 
 /**
- * Trigger sync after data change
+ * Trigger sync after data change (including temporary prompts)
  * Called by store.saveToStorage() - routes through offscreen document for better permission handling
  * Returns sync result with error details if failed
  */
-export async function triggerSync(userData: UserData): Promise<{ success: boolean; error?: SyncErrorInfo }> {
+export async function triggerSync(backupData: FullBackupData): Promise<{ success: boolean; error?: SyncErrorInfo }> {
   const storageManager = StorageManager.getInstance()
   const settings = await storageManager.getSettings()
 
   // If sync not enabled, mark as unsynced and return
   if (!settings.syncEnabled) {
-    if (userData.prompts.length > 0) {
+    if (backupData.prompts.length > 0 || backupData.temporaryPrompts.length > 0) {
       await storageManager.updateSettings({ hasUnsyncedChanges: true })
     }
     return { success: false } // No backup configured
@@ -45,11 +46,11 @@ export async function triggerSync(userData: UserData): Promise<{ success: boolea
   // Try sync via offscreen document first (better permission handling)
   try {
     await ensureOffscreenDocument()
-    const result = await sendToOffscreen(MessageType.OFFSCREEN_SYNC, { userData, version })
+    const result = await sendToOffscreen(MessageType.OFFSCREEN_SYNC, { backupData, version })
 
     if (result.success) {
       await storageManager.updateSettings({ lastSyncTime: Date.now(), hasUnsyncedChanges: false })
-      console.log('[Oh My Prompt] Auto-sync completed via offscreen')
+      console.log('[Oh My Prompt] Auto-sync completed via offscreen, temporaryPrompts:', backupData.temporaryPrompts.length)
       return { success: true }
     }
 
@@ -96,15 +97,55 @@ export async function triggerSync(userData: UserData): Promise<{ success: boolea
     }
 
     try {
-      await syncToLocalFolder(userData, handle, version)
+      await syncToLocalFolder(backupData, handle, version)
       await storageManager.updateSettings({ lastSyncTime: Date.now(), hasUnsyncedChanges: false })
-      console.log('[Oh My Prompt] Auto-sync completed (fallback)')
+      console.log('[Oh My Prompt] Auto-sync completed (fallback), temporaryPrompts:', backupData.temporaryPrompts.length)
       return { success: true }
     } catch (error) {
       console.error('[Oh My Prompt] Fallback sync failed:', error)
       await storageManager.updateSettings({ hasUnsyncedChanges: true })
       return { success: false, error: { type: 'write_failed', message: '同步失败，请稍后重试' } }
     }
+  }
+}
+
+/**
+ * Restore API config from encrypted file in folder
+ * Called when user selects a folder or on plugin startup
+ * Returns true if config was restored, false otherwise
+ */
+export async function restoreApiConfigFromFolder(): Promise<boolean> {
+  console.log('[Oh My Prompt] restoreApiConfigFromFolder: Starting...')
+
+  try {
+    // Check if API config already exists in storage
+    const apiConfigResult = await chrome.storage.local.get(VISION_API_CONFIG_STORAGE_KEY)
+    if (apiConfigResult[VISION_API_CONFIG_STORAGE_KEY]) {
+      console.log('[Oh My Prompt] restoreApiConfigFromFolder: API config already in storage, skipping')
+      return false
+    }
+
+    // Get folder handle
+    const handle = await getFolderHandle()
+    if (!handle) {
+      console.log('[Oh My Prompt] restoreApiConfigFromFolder: No folder configured')
+      return false
+    }
+
+    // Try to read encrypted config from folder (direct read, not via offscreen)
+    const config = await readApiConfigFromFolder(handle)
+    if (!config) {
+      console.log('[Oh My Prompt] restoreApiConfigFromFolder: No encrypted config in folder')
+      return false
+    }
+
+    // Save to storage
+    await chrome.storage.local.set({ [VISION_API_CONFIG_STORAGE_KEY]: config })
+    console.log('[Oh My Prompt] restoreApiConfigFromFolder: API config restored successfully')
+    return true
+  } catch (error) {
+    console.warn('[Oh My Prompt] restoreApiConfigFromFolder: Failed:', error)
+    return false
   }
 }
 
@@ -145,13 +186,21 @@ export async function initialSync(): Promise<void> {
     const storageManager = StorageManager.getInstance()
     const storageData = await storageManager.getData()
 
-    // Read backup data via offscreen
-    const backupResult = await sendToOffscreen<UserData>(MessageType.OFFSCREEN_READ_BACKUP, { filename: BACKUP_FILE_NAME })
+    // Read backup data via offscreen (includes temporaryPrompts)
+    const backupResult = await sendToOffscreen<FullBackupData>(MessageType.OFFSCREEN_READ_BACKUP, { filename: BACKUP_FILE_NAME })
     const localData = backupResult.success ? backupResult.data : null
 
     // Case: chrome.storage empty, local has data -> restore
     if (localData && storageData.userData.prompts.length === 0) {
-      await storageManager.updateUserData(localData)
+      await storageManager.updateUserData({
+        prompts: localData.prompts,
+        categories: localData.categories
+      })
+      // Restore temporary prompts if exist
+      if (localData.temporaryPrompts && localData.temporaryPrompts.length > 0) {
+        await storageManager.updateTemporaryPrompts(localData.temporaryPrompts)
+        console.log('[Oh My Prompt] Restored temporary prompts:', localData.temporaryPrompts.length)
+      }
       console.log('[Oh My Prompt] Restored from local folder backup')
     }
 
@@ -160,7 +209,12 @@ export async function initialSync(): Promise<void> {
       const settings = await storageManager.getSettings()
       if (settings.syncEnabled) {
         const version = chrome.runtime.getManifest().version
-        const syncResult = await sendToOffscreen(MessageType.OFFSCREEN_SYNC, { userData: storageData.userData, version })
+        const backupData: FullBackupData = {
+          prompts: storageData.userData.prompts,
+          categories: storageData.userData.categories,
+          temporaryPrompts: storageData.temporaryPrompts || []
+        }
+        const syncResult = await sendToOffscreen(MessageType.OFFSCREEN_SYNC, { backupData, version })
         if (syncResult.success) {
           await storageManager.updateSettings({ lastSyncTime: Date.now() })
         }
@@ -198,6 +252,7 @@ export interface ExistingBackupInfo {
   hasBackup: boolean
   promptCount?: number
   categoryCount?: number
+  temporaryPromptCount?: number // Temporary library prompt count
   backupTime?: string
 }
 
@@ -219,11 +274,18 @@ export async function enableSync(): Promise<EnableSyncResult> {
     try {
       const storageManager = StorageManager.getInstance()
       const data = await storageManager.getData()
-      await syncToLocalFolder(data.userData, existingHandle)
+      const backupData: FullBackupData = {
+        prompts: data.userData.prompts,
+        categories: data.userData.categories,
+        temporaryPrompts: data.temporaryPrompts || []
+      }
+      await syncToLocalFolder(backupData, existingHandle)
       await storageManager.updateSettings({
         syncEnabled: true,
         lastSyncTime: Date.now()
       })
+      // Restore API config from folder if not in storage
+      await restoreApiConfigFromFolder()
       return { success: true }
     } catch (error) {
       console.error('[Oh My Prompt] Reuse existing folder failed:', error)
@@ -265,11 +327,13 @@ export async function enableSync(): Promise<EnableSyncResult> {
           existingBackupInfo.hasBackup = true
           existingBackupInfo.promptCount = existingData.prompts.length
           existingBackupInfo.categoryCount = existingData.categories.length
+          existingBackupInfo.temporaryPromptCount = existingData.temporaryPrompts?.length || 0
           existingBackupInfo.backupTime = parsed.backupTime
         } catch {
           existingBackupInfo.hasBackup = true
           existingBackupInfo.promptCount = existingData.prompts.length
           existingBackupInfo.categoryCount = existingData.categories.length
+          existingBackupInfo.temporaryPromptCount = existingData.temporaryPrompts?.length || 0
         }
       }
     } catch {
@@ -281,6 +345,9 @@ export async function enableSync(): Promise<EnableSyncResult> {
     await storageManager.updateSettings({
       syncEnabled: true
     })
+
+    // Restore API config from folder if not in storage
+    await restoreApiConfigFromFolder()
 
     return { success: true, existingBackup: existingBackupInfo }
   } catch (error) {
@@ -336,11 +403,13 @@ export async function changeSyncFolder(): Promise<{ success: boolean; error?: st
           existingBackupInfo.hasBackup = true
           existingBackupInfo.promptCount = existingData.prompts.length
           existingBackupInfo.categoryCount = existingData.categories.length
+          existingBackupInfo.temporaryPromptCount = existingData.temporaryPrompts?.length || 0
           existingBackupInfo.backupTime = parsed.backupTime
         } catch {
           existingBackupInfo.hasBackup = true
           existingBackupInfo.promptCount = existingData.prompts.length
           existingBackupInfo.categoryCount = existingData.categories.length
+          existingBackupInfo.temporaryPromptCount = existingData.temporaryPrompts?.length || 0
         }
       }
     } catch {
@@ -352,6 +421,9 @@ export async function changeSyncFolder(): Promise<{ success: boolean; error?: st
       syncEnabled: true,
       lastSyncTime: Date.now()
     })
+
+    // Restore API config from folder if not in storage
+    await restoreApiConfigFromFolder()
 
     return { success: true, existingBackup: existingBackupInfo }
   } catch (error) {
@@ -391,7 +463,12 @@ export async function manualSync(): Promise<{ success: boolean; createdNewBackup
     const storageManager = StorageManager.getInstance()
     const data = await storageManager.getData()
     const version = chrome.runtime.getManifest().version
-    const syncResult = await sendToOffscreen(MessageType.OFFSCREEN_SYNC, { userData: data.userData, version })
+    const backupData: FullBackupData = {
+      prompts: data.userData.prompts,
+      categories: data.userData.categories,
+      temporaryPrompts: data.temporaryPrompts || []
+    }
+    const syncResult = await sendToOffscreen(MessageType.OFFSCREEN_SYNC, { backupData, version })
 
     if (syncResult.success) {
       await storageManager.updateSettings({ lastSyncTime: Date.now(), hasUnsyncedChanges: false })
@@ -480,7 +557,12 @@ export async function restorePermission(): Promise<{ success: boolean; error?: s
       // Permission restored successfully - sync current data
       const storageManager = StorageManager.getInstance()
       const data = await storageManager.getData()
-      const syncResult = await sendToOffscreen(MessageType.OFFSCREEN_SYNC, { userData: data.userData })
+      const backupData: FullBackupData = {
+        prompts: data.userData.prompts,
+        categories: data.userData.categories,
+        temporaryPrompts: data.temporaryPrompts || []
+      }
+      const syncResult = await sendToOffscreen(MessageType.OFFSCREEN_SYNC, { backupData })
 
       if (syncResult.success) {
         await storageManager.updateSettings({
@@ -526,7 +608,7 @@ export async function getBackupVersions(): Promise<{ versions: BackupVersion[]; 
 }
 
 /**
- * Restore data from specific backup version
+ * Restore data from specific backup version (including temporary prompts)
  * Uses offscreen document for file operations
  */
 export async function restoreFromBackup(
@@ -536,25 +618,38 @@ export async function restoreFromBackup(
   try {
     await ensureOffscreenDocument()
 
-    // Read backup file via offscreen
-    const readResult = await sendToOffscreen<UserData>(MessageType.OFFSCREEN_READ_BACKUP, { filename })
+    // Read backup file via offscreen (includes temporaryPrompts)
+    const readResult = await sendToOffscreen<FullBackupData>(MessageType.OFFSCREEN_READ_BACKUP, { filename })
     if (!readResult.success || !readResult.data) {
       return { success: false, error: readResult.error || '备份文件无效或已损坏' }
     }
 
-    const userData = readResult.data
+    const backupData = readResult.data
 
     // Optionally backup current data before restoring
     if (backupFirst) {
       const storageManager = StorageManager.getInstance()
-      const currentData = await storageManager.getUserData()
+      const currentData = await storageManager.getData()
       const version = chrome.runtime.getManifest().version
-      await sendToOffscreen(MessageType.OFFSCREEN_SYNC, { userData: currentData, version })
+      const currentBackupData: FullBackupData = {
+        prompts: currentData.userData.prompts,
+        categories: currentData.userData.categories,
+        temporaryPrompts: currentData.temporaryPrompts || []
+      }
+      await sendToOffscreen(MessageType.OFFSCREEN_SYNC, { backupData: currentBackupData, version })
     }
 
-    // Restore backup data
+    // Restore backup data (including temporary prompts)
     const storageManager = StorageManager.getInstance()
-    await storageManager.updateUserData(userData)
+    await storageManager.updateUserData({
+      prompts: backupData.prompts,
+      categories: backupData.categories
+    })
+    // Restore temporary prompts
+    if (backupData.temporaryPrompts) {
+      await storageManager.updateTemporaryPrompts(backupData.temporaryPrompts)
+      console.log('[Oh My Prompt] Restored temporary prompts:', backupData.temporaryPrompts.length)
+    }
     await storageManager.updateSettings({ lastSyncTime: Date.now() })
 
     return { success: true }

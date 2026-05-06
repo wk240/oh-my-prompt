@@ -175,7 +175,7 @@ export const DROPDOWN_STYLES = `
     max-width: 36px;
     padding: 4px 8px;
     background: #ffffff;
-    border: 1px solid #e5e5e5;
+    border: none;
     border-radius: 4px;
     cursor: pointer;
     font-size: 11px;

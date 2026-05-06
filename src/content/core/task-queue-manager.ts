@@ -34,7 +34,9 @@ export interface QueueTask {
   createdAt: number           // Timestamp when added
   result?: VisionApiResultData // Result on success
   error?: string              // Error message on failure
+  errorAction?: 'settings' | 'retry' | 'close' // Error action for UI guidance
   savedToTemporary?: boolean  // Auto-save status
+  savedFormat?: 'natural' | 'json' // Format used when saving
   saveError?: string          // Save error message
 }
 
@@ -103,7 +105,6 @@ export class TaskQueueManager {
 
     // Add to store
     store.setTasks([...currentTasks, task])
-    store.setPanelOpen(true)
 
     console.log(LOG_PREFIX, 'Task added to queue:', task.id)
 
@@ -166,7 +167,7 @@ export class TaskQueueManager {
    */
   retryTask(taskId: string): void {
     const store = useTaskQueueStore.getState()
-    store.updateTask(taskId, { status: 'pending', error: undefined })
+    store.updateTask(taskId, { status: 'pending', error: undefined, errorAction: undefined })
     console.log(LOG_PREFIX, 'Task retry:', taskId)
     this.tryStartNext()
   }
@@ -301,9 +302,19 @@ export class TaskQueueManager {
         // Auto-save to temporary library
         await this.autoSaveToTemporary(task.id, resultData, task.imageUrl)
       } else {
-        // API returned error
+        // API returned error - use pre-classified error payload from service worker
         const errorPayload = response.error as VisionApiErrorPayload | undefined
-        throw new Error(errorPayload?.message || 'API 调用失败')
+        const errorMessage = errorPayload?.message || 'API 调用失败'
+        const errorAction = errorPayload?.action || 'retry'
+
+        store.updateTask(task.id, {
+          status: 'failed',
+          error: errorMessage,
+          errorAction
+        })
+
+        console.error(LOG_PREFIX, 'Task failed:', task.id, errorMessage, 'action:', errorAction)
+        return // Exit early, no need to go through catch block
       }
 
     } catch (error) {
@@ -312,11 +323,12 @@ export class TaskQueueManager {
         return
       }
 
-      // Classify error
+      // Classify error (fallback for network exceptions not handled by service worker)
       const errorPayload = classifyApiError(error, 0)
       store.updateTask(task.id, {
         status: 'failed',
-        error: errorPayload.message
+        error: errorPayload.message,
+        errorAction: errorPayload.action
       })
 
       console.error(LOG_PREFIX, 'Task failed:', task.id, errorPayload.message)
@@ -344,18 +356,32 @@ export class TaskQueueManager {
     const store = useTaskQueueStore.getState()
 
     try {
+      // Get current format setting (default: natural)
+      const settingsResponse = await chrome.runtime.sendMessage({ type: MessageType.GET_STORAGE })
+      const format = settingsResponse?.data?.settings?.visionDefaultFormat || 'natural'
+
       const promptName = generatePromptName(result.zh.prompt, result.zh.title)
       const promptNameEn = generatePromptName(result.en.prompt, result.en.title)
+
+      // Build content based on format
+      const content = format === 'json'
+        ? JSON.stringify(result.zh_json || result.json_prompt)
+        : result.zh.prompt
+
+      const contentEn = format === 'json'
+        ? JSON.stringify(result.en_json || result.json_prompt)
+        : result.en.prompt
 
       const savePayload: SaveTemporaryPromptPayload = {
         name: promptName,
         nameEn: promptNameEn,
-        content: result.zh.prompt,
-        contentEn: result.en.prompt,
+        content,
+        contentEn,
         description: result.zh.analysis,
         descriptionEn: result.en.analysis,
         imageUrl: imageUrl,
-        styleTags: result.zh_style_tags
+        styleTags: result.zh_style_tags,
+        format // Save format marker
       }
 
       const saveResponse = await chrome.runtime.sendMessage({
@@ -364,8 +390,8 @@ export class TaskQueueManager {
       })
 
       if (saveResponse?.success) {
-        store.updateTask(taskId, { savedToTemporary: true })
-        console.log(LOG_PREFIX, 'Auto-saved to temporary library:', taskId)
+        store.updateTask(taskId, { savedToTemporary: true, savedFormat: format })
+        console.log(LOG_PREFIX, 'Auto-saved to temporary library:', taskId, 'format:', format)
       } else {
         const saveError = saveResponse?.error || '保存失败'
         store.updateTask(taskId, { savedToTemporary: false, saveError })

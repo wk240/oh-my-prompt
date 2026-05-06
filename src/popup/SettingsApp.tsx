@@ -157,22 +157,6 @@ function SettingsApp() {
         <div className="p-4 space-y-3">
           {/* Navigation items */}
           <button
-            onClick={handleOpenApiConfig}
-            className="w-full flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 flex items-center justify-center rounded-md bg-purple-100 text-purple-600">
-                <Bot style={{ width: 16, height: 16 }} />
-              </div>
-              <div className="text-left">
-                <div className="text-sm font-medium text-gray-900">视觉AI配置</div>
-                <div className="text-xs text-gray-500">配置API密钥，支持图片转提示词</div>
-              </div>
-            </div>
-            <ChevronRight style={{ width: 16, height: 16, color: '#9ca3af' }} />
-          </button>
-
-          <button
             onClick={handleOpenBackup}
             className="w-full flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
           >
@@ -183,6 +167,22 @@ function SettingsApp() {
               <div className="text-left">
                 <div className="text-sm font-medium text-gray-900">本地备份</div>
                 <div className="text-xs text-gray-500">选择文件夹自动同步</div>
+              </div>
+            </div>
+            <ChevronRight style={{ width: 16, height: 16, color: '#9ca3af' }} />
+          </button>
+
+          <button
+            onClick={handleOpenApiConfig}
+            className="w-full flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 flex items-center justify-center rounded-md bg-purple-100 text-purple-600">
+                <Bot style={{ width: 16, height: 16 }} />
+              </div>
+              <div className="text-left">
+                <div className="text-sm font-medium text-gray-900">视觉AI配置</div>
+                <div className="text-xs text-gray-500">配置API密钥，支持图片转提示词</div>
               </div>
             </div>
             <ChevronRight style={{ width: 16, height: 16, color: '#9ca3af' }} />
@@ -222,7 +222,7 @@ function SettingsApp() {
               className="flex-1"
             >
               <Upload style={{ width: 16, height: 16 }} />
-              {loading ? '导入中...' : '导入数据'}
+              {loading ? '导入prompt中...' : '导入prompt'}
             </Button>
             <Button
               variant="outline"
@@ -231,7 +231,7 @@ function SettingsApp() {
               className="flex-1"
             >
               <Download style={{ width: 16, height: 16 }} />
-              {loading ? '导出中...' : '导出数据'}
+              {loading ? '导出prompt中...' : '导出prompt'}
             </Button>
           </div>
 

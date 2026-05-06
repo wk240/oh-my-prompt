@@ -18,6 +18,8 @@ import { useState, useEffect, useCallback, useMemo, Suspense, lazy, useRef } fro
   import { ToastNotification } from './components/ToastNotification'
   import { queueImageLoad } from '../lib/sync/image-loader-queue'
   import { downloadImageFromUrl, saveImage } from '../lib/sync/image-sync'
+  import { getFolderHandle, requestFolderPermission } from '../lib/sync/indexeddb'
+  import { manualSync } from '../lib/sync/sync-manager'
 
   // Lazy load modal components
   const PromptPreviewModal = lazy(() => import('../content/components/PromptPreviewModal').then(m => ({ default: m.PromptPreviewModal })))
@@ -568,6 +570,8 @@ export default function SidePanelApp() {
   const [resourceLanguage, setResourceLanguage] = useState<'zh' | 'en'>('zh')
   const [loadedCount, setLoadedCount] = useState(50)
   const [visionEnabled, setVisionEnabled] = useState(true)
+  // Permission restore status for auto-restore on Sidepanel open
+  const [permissionRestoreStatus, setPermissionRestoreStatus] = useState<'idle' | 'restoring' | 'restored' | 'failed'>('idle')
 
   // Input availability detection (Port-based real-time connection)
   type InputStatus = 'checking' | 'available' | 'unavailable'

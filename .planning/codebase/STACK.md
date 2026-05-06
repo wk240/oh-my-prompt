@@ -1,84 +1,104 @@
 # Technology Stack
 
-**Analysis Date:** 2026/04/28
+**Analysis Date:** 2026/05/06
 
 ## Languages
 
 **Primary:**
-- TypeScript 5.x - Entire codebase (`src/**/*.ts`, `src/**/*.tsx`)
-- Target: ES2020 (per `tsconfig.json`)
+- TypeScript 5.x - Used throughout all source files with ES2020 target, strict mode enabled (`strict`, `noUnusedLocals`, `noUnusedParameters`, `noFallthroughCasesInSwitch`)
+- JavaScript (ESM) - Manifest V3 uses `type: "module"` for service worker
 
 **Secondary:**
-- JSON - Configuration files, manifest, built-in data
-- CSS - Tailwind CSS for popup styling (inline CSS for content script Shadow DOM)
+- HTML - Popup pages (`backup.html`, `settings.html`, `loading.html`, `api-config.html`, `sidepanel.html`, `offscreen.html`)
+- CSS - Tailwind CSS utility classes, Shadow DOM inline styles in `VisionModalManager.getStyles()`
 
 ## Runtime
 
 **Environment:**
-- Chrome Extension Manifest V3 - Chromium-based browsers (Chrome, Edge, Brave)
-- ES2020 target with ESM modules (`"type": "module"` in package.json)
-- No Node.js runtime in production (extension runs entirely in browser)
+- Chrome Extension Manifest V3 - Modern extension platform
+- Chromium browsers - Chrome, Edge, Brave supported
 
 **Package Manager:**
-- npm - Package management
-- Lockfile: `package-lock.json` (present)
+- npm - Lockfile present: `package-lock.json`
 
 ## Frameworks
 
 **Core:**
-- React 19.x (`react`, `react-dom`) - UI framework for popup and content script dropdown
-- Chrome Extension Manifest V3 - Extension platform (service worker, content scripts, popup)
-- Vite 6.x (`vite`) - Build tool with hot reload for development
-- @crxjs/vite-plugin 2.x - Chrome Extension bundler for Vite
+- React 19.x - UI framework for popup, sidepanel, and content script dropdown/VisionModal
+- Vite 6.x - Build tool with hot reload (`npm run dev`)
+- @crxjs/vite-plugin 2.x - Chrome Extension bundler, handles manifest and HMR
+
+**State Management:**
+- Zustand 5.x - Reactive state for prompts/categories CRUD with debounced storage sync
+- Custom TaskQueueStore - Zustand store for Vision API task queue (`src/content/core/task-queue-store.ts`)
+
+**UI Components:**
+- Radix UI primitives - Dialog, AlertDialog, DropdownMenu, ScrollArea, Select, Separator, Slot, Toast
+- @dnd-kit - Drag and drop for category/prompt reorder (core, sortable, utilities)
+- Lucide-react - Icon library
+
+**Styling:**
+- Tailwind CSS 3.x - Utility-first CSS for popup/sidepanel
+- tailwindcss-animate - Animation variants
+- Shadow DOM inline styles - Content script UI isolation (no external CSS)
 
 **Testing:**
-- Playwright 1.59.x (`@playwright/test`) - E2E testing framework
-- Config: `playwright.config.ts` (Chromium only, base URL localhost:5173)
-
-**Build/Dev:**
-- @vitejs/plugin-react 4.x - React support for Vite
-- TypeScript 5.x - Type checking (`tsc --noEmit` before build)
-- Tailwind CSS 3.x - CSS framework (popup only)
-- PostCSS 8.x + autoprefixer 10.x - CSS processing
+- Playwright - E2E testing framework (config: `playwright.config.ts`, tests in `tests/` directory)
 
 ## Key Dependencies
 
 **Critical:**
-- Zustand 5.x (`zustand`) - State management for popup store with CRUD operations
-- @dnd-kit/core 6.x, @dnd-kit/sortable 10.x - Drag-and-drop for prompt/category reordering
-- @radix-ui/react-* (dialog, alert-dialog, dropdown-menu, select, scroll-area, separator, toast, slot) - Headless UI primitives
-- Lucide React 1.x (`lucide-react`) - Icon library
-- class-variance-authority, clsx, tailwind-merge - CSS utility libraries for component variants
+- `zustand` 5.0.12 - State management with debounced `saveToStorage()`, retry mechanism for extension context invalidation
+- `@crxjs/vite-plugin` 2.x - Handles CRX bundling, manifest transformation, content script HMR
+- `class-variance-authority` 0.7.1 - Variant-based component styling
+- `clsx` 2.1.1 + `tailwind-merge` 3.5.0 - Conditional class merging
 
-**Infrastructure:**
-- @types/chrome 0.0.260 - Chrome Extension API TypeScript types
-- tailwindcss-animate 1.x - Animation utilities for Tailwind
+**Build:**
+- `vite` 6.x - Dev server, production build with manual chunks:
+  - `vendor-react` - React ecosystem
+  - `vendor-icons` - Lucide icons
+  - `vendor-dnd` - @dnd-kit
+  - `vendor-zustand` - Zustand
+  - `resource-library` - Large JSON data (5MB+)
+
+**Type Definitions:**
+- `@types/chrome` 0.0.260 - Chrome Extension API types
+- `@types/node` 25.6.0 - Node.js types for build scripts
+- `@types/react` 19.0.0, `@types/react-dom` 19.0.0 - React types
 
 ## Configuration
 
-**Environment:**
-- No `.env` file - Extension runs in browser context, no server-side secrets
-- Settings stored in `chrome.storage.local` via `StorageSchema`
-- TypeScript: `tsconfig.json` - Strict mode, path alias `@/*` -> `./src/*`
+**TypeScript:**
+- Target: ES2020, Module: ESNext
+- Module resolution: bundler
+- Path alias: `@/*` → `./src/*`
+- JSX: react-jsx
 
 **Build:**
-- `vite.config.ts` - CRX plugin, React plugin, code splitting (vendor-react, vendor-icons, vendor-dnd, vendor-zustand)
-- `tailwind.config.ts` - Dark mode `class`, custom theme colors, animation keyframes
-- `postcss.config.js` - Tailwind and autoprefixer plugins
-- `manifest.json` - Chrome Extension manifest (MV3)
+- `vite.config.ts` - CRX plugin, manual chunks, multiple HTML entry points
+- `manifest.json` - Extension permissions, content scripts, side panel
+
+**Tailwind:**
+- `tailwind.config.ts` - Theme customization, animation variants
+- `postcss.config.js` - PostCSS with autoprefixer
+
+**Playwright:**
+- `playwright.config.ts` - E2E test configuration
 
 ## Platform Requirements
 
 **Development:**
-- Node.js (ES2020 support required)
-- npm package manager
-- Chrome/Edge/Brave browser with Developer Mode enabled
+- Node.js (version not specified in `.nvmrc` or `.python-version`)
+- Chromium browser with Developer Mode enabled
 
 **Production:**
-- Chromium-based browser (Chrome 88+, Edge, Brave)
-- Extension loaded via `chrome://extensions` (unpacked from `dist/`)
-- Optional: Local filesystem for backup sync (File System Access API)
+- Chrome/Edge/Brave browser (Chromium-based)
+- Manifest V3 compatible
+
+**Permissions Required:**
+- `activeTab`, `downloads`, `storage`, `tabs`, `alarms`, `contextMenus`, `sidePanel`, `scripting`, `offscreen`
+- Host permissions: `https://raw.githubusercontent.com/*`, `https://api.github.com/*`, `https://*/*`
 
 ---
 
-*Stack analysis: 2026/04/28*
+*Stack analysis: 2026/05/06*

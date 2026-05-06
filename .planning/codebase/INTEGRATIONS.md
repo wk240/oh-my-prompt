@@ -1,66 +1,66 @@
 # External Integrations
 
-**Analysis Date:** 2026/04/28
+**Analysis Date:** 2026/05/06
 
 ## APIs & External Services
 
+**Vision API (Image-to-Prompt):**
+- User-configured API endpoint (OpenAI or Anthropic compatible)
+  - SDK/Client: Native `fetch` in `src/lib/vision-api.ts`
+  - Auth: User-provided API key stored in `chrome.storage.local` with key `_visionApiConfig`
+  - Config stored in backup folder encrypted (AES-GCM via Web Crypto API)
+  - Supported formats: OpenAI GPT-4V, Anthropic Claude Vision
+  - Request timeout: 5 minutes (300000ms)
+
 **GitHub Releases API:**
-- Purpose: Check for extension updates from repository releases
-- Endpoint: `https://api.github.com/repos/wk240/oh-my-prompt/releases/latest`
-- SDK/Client: Native `fetch()` API
-- Auth: None (public repository)
-- Implementation: `src/lib/version-checker.ts`
-- Host permission: `https://api.github.com/*` in manifest
+- Update version checking
+  - Endpoint: `https://api.github.com/repos/wk240/oh-my-prompt/releases/latest`
+  - SDK/Client: Native `fetch` in `src/lib/version-checker.ts`
+  - Auth: None (public API)
+  - Used for: Checking latest version, download URL, release notes
 
-**GitHub Raw Content:**
-- Purpose: Resource library prompt data loading
-- Host permission: `https://raw.githubusercontent.com/*` in manifest
-
-**Lovart AI Platform:**
-- Purpose: Target platform for prompt insertion
-- Domain: `lovart.ai` and subdomains
-- Integration: Content script injection via manifest `content_scripts.matches`
-- Input selector: `[data-testid="agent-message-input"]`, `[data-lexical-editor="true"]`
-- Injection point: `[data-testid="agent-input-bottom-more-button"]`
-- Implementation: `src/content/input-detector.ts`, `src/content/insert-handler.ts`
+**File System Access API:**
+- Local folder backup sync
+  - SDK/Client: Native browser API via offscreen document (`src/offscreen/offscreen.ts`)
+  - Auth: User-selected folder with readwrite permission
+  - Folder handle persisted in IndexedDB (`oh-my-prompt-sync` database)
+  - Backup files: `omps-latest.json`, `omps-backup-{timestamp}.json`
+  - Images stored in `images/` subdirectory
 
 ## Data Storage
 
 **Databases:**
-- chrome.storage.local - Primary data persistence
-  - Connection: Chrome Extension API
-  - Client: `StorageManager` singleton at `src/lib/storage.ts`
-  - Key: `prompt_script_data` (single key stores entire `StorageSchema`)
-  - Quota: 10MB maximum (warning at 80% usage, `checkStorageQuota()` in `src/lib/storage.ts`)
-  - Schema: `{ version, userData: { prompts, categories }, settings, _migrationComplete }`
+- `chrome.storage.local` - Primary data storage (10MB quota)
+  - Key: `prompt_script_data` - Full `StorageSchema` object
+  - Key: `_visionApiConfig` - Vision API configuration
+  - Key: `_capturedImageUrl` - Context menu captured image tracking
+  - Key: `omps_update_status` - Update check status
 
-- IndexedDB - Folder handle persistence for File System Access API
-  - Database: `oh-my-prompt-sync` (constants: `SYNC_DB_NAME`)
-  - Store: `handles` (constants: `SYNC_STORE_NAME`)
-  - Key: `syncFolderHandle` (constants: `SYNC_HANDLE_KEY`)
-  - Implementation: `src/lib/sync/indexeddb.ts`
+**IndexedDB:**
+- Database: `oh-my-prompt-sync`
+- Store: `handles`
+- Key: `syncFolderHandle` - FileSystemDirectoryHandle persistence
 
 **File Storage:**
-- File System Access API - Local folder backup/sync
-  - Implementation: `src/lib/sync/file-sync.ts`
-  - Primary file: `omps-latest.json` (constants: `BACKUP_FILE_NAME`)
-  - History files: `omps-backup-{YYYYMMDD}-{HHMMSS}.json`
-  - History pattern: `BACKUP_HISTORY_PATTERN = /^omps-backup-\d{8}-\d{6}\.json$/`
-  - Max history: 100 backup files (`MAX_BACKUP_HISTORY`)
-  - Images directory: `images/` (`IMAGE_DIR_NAME`)
-  - Max image size: 5MB (`MAX_IMAGE_SIZE`)
-  - Allowed extensions: jpg, jpeg, png, webp, gif (`ALLOWED_IMAGE_EXTENSIONS`)
-  - Requires: User folder selection and read/write permission
+- Local folder backup - User-selected via File System Access API
+  - JSON backup files (full data + version history)
+  - Image files in `images/` directory
+  - Encrypted API config in `secrets/api-config.enc` with `secrets/salt.bin`
 
 **Caching:**
-- None - All data persisted to chrome.storage.local immediately
+- None - All data persisted in chrome.storage.local
 
 ## Authentication & Identity
 
 **Auth Provider:**
-- Not applicable - Extension runs locally without authentication
-- No login/registration required
-- User identity: Browser profile level (extension installed per-profile)
+- None (no user accounts)
+
+**Vision API Auth:**
+- User-provided API key
+  - Stored locally in chrome.storage.local
+  - Encrypted and synced to backup folder
+  - Never logged in console (security rule T-11-01)
+  - HTTPS required for API endpoints (security rule T-11-02)
 
 ## Monitoring & Observability
 
@@ -68,77 +68,60 @@
 - None - Console logging only
 
 **Logs:**
-- Browser console with prefixed messages
-- Pattern: `console.log('[Oh My Prompt]', message)` for easy filtering
-- Warning logs: Large datasets (>500 prompts), storage quota (>80%)
+- Prefix: `[Oh My Prompt]` - All console logs filtered by prefix
+- Log levels: `console.log`, `console.warn`, `console.error`
+- Vision API logs: baseUrl, modelName, image size (never apiKey)
 
 ## CI/CD & Deployment
 
 **Hosting:**
-- GitHub Releases - `.crx` or `.zip` packages
-- Chrome Web Store - Extension distribution
-- Project site: `https://oh-my-prompt.com/`
+- Chrome Web Store (distribution)
+- GitHub Releases (download alternative)
 
 **CI Pipeline:**
-- None detected - No GitHub Actions or CI workflows found
-- Manual build and release process
+- None detected
+
+**Build Process:**
+- `npm run build` - TypeScript check + Vite build
+- Output: `dist/` directory
+- Manual upload to Chrome Web Store
 
 ## Environment Configuration
 
 **Required env vars:**
-- None - Extension does not use environment variables
-- All configuration in `manifest.json` and source code constants
+- None - All configuration stored in chrome.storage.local
 
 **Secrets location:**
-- Not applicable - No secrets or API keys required
+- User-provided Vision API key stored in `chrome.storage.local`
+- Encrypted backup in local folder (`secrets/api-config.enc`)
 
 ## Webhooks & Callbacks
 
 **Incoming:**
-- None - Extension does not receive external webhooks
+- None
 
 **Outgoing:**
-- GitHub API GET request for release information
-- No outbound webhooks
+- Vision API requests to user-configured endpoint
+- GitHub Releases API for version check
 
-## Chrome Extension APIs Used
-
-**Storage:**
-- `chrome.storage.local.get()` - Read data
-- `chrome.storage.local.set()` - Write data
-- `chrome.storage.local.remove()` - Clear update status
-- `chrome.storage.local.getBytesInUse()` - Check quota usage
-
-**Runtime:**
-- `chrome.runtime.getManifest()` - Get extension version dynamically
-- `chrome.runtime.sendMessage()` - Message to service worker
-- `chrome.runtime.onMessage.addListener()` - Receive messages
-- `chrome.runtime.getURL()` - Extension resource URLs
-
-**Tabs:**
-- `chrome.tabs.create()` - Open backup page, extensions page
-- `chrome.tabs.sendMessage()` - Message to content script
-- `chrome.tabs.query()` - Query Lovart tabs for broadcast
-
-**Downloads:**
-- `chrome.downloads.download()` - Export JSON files (data URL method in service worker)
-
-**Alarms:**
-- Permission granted but not actively used
-
-## Extension Permissions (from manifest.json)
+## Extension Permissions
 
 **Required permissions:**
-- `activeTab` - Access to active tab content
+- `activeTab` - Access active tab content
 - `downloads` - Export data as JSON download
 - `storage` - chrome.storage.local access
-- `tabs` - Tab querying for messaging
-- `alarms` - Scheduled tasks (reserved)
+- `tabs` - Tab management, sendMessage
+- `alarms` - Scheduled tasks
+- `contextMenus` - Right-click menu on images
+- `sidePanel` - Side panel UI
+- `scripting` - Script injection
+- `offscreen` - Offscreen document for file operations
 
 **Host permissions:**
-- `https://raw.githubusercontent.com/*` - Resource library fetching
-- `https://api.github.com/*` - Version checking
+- `https://raw.githubusercontent.com/*` - Resource library data
+- `https://api.github.com/*` - Version check API
+- `https://*/*` - Universal Vision modal support
 
 ---
 
-*Integration audit: 2026/04/28*
+*Integration audit: 2026/05/06*

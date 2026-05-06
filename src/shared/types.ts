@@ -189,6 +189,7 @@ export interface SaveTemporaryPromptPayload {
   description?: string // Description (Chinese analysis)
   descriptionEn?: string // Description (English analysis)
   imageUrl?: string // Source image URL (optional, for reference)
+  base64Data?: string // Base64 data URL (for file:// images that service worker cannot fetch)
   styleTags?: string[] // Style tags for reference (optional)
   format?: 'natural' | 'json' // Save format marker
 }

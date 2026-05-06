@@ -611,9 +611,10 @@ chrome.runtime.onMessage.addListener(
               remoteImageUrl: savePayload.imageUrl // Optional source URL
             }
 
-            // Try to save image locally if imageUrl provided and folder configured
+            // Try to save image locally if imageUrl or base64Data provided and folder configured
             let localImageSaved = false
-            if (savePayload.imageUrl) {
+            const hasImageData = savePayload.imageUrl || savePayload.base64Data
+            if (hasImageData) {
               try {
                 // Check if folder is configured via offscreen document
                 const permResult = await sendToOffscreen<{ hasFolder: boolean; permission?: 'granted' | 'prompt' | 'denied' }>(MessageType.OFFSCREEN_CHECK_PERMISSION)
@@ -641,20 +642,33 @@ chrome.runtime.onMessage.addListener(
                   console.warn('[Oh My Prompt] Folder permission denied, skipping local image save')
                 }
 
-                // Download and save image if permission is granted
+                // Get image data for saving
                 if (proceedWithSave) {
-                  console.log('[Oh My Prompt] Downloading image:', savePayload.imageUrl)
-                  const imageResponse = await fetch(savePayload.imageUrl)
-                  if (!imageResponse.ok) {
-                    console.warn('[Oh My Prompt] Image download failed:', imageResponse.status, imageResponse.statusText)
-                  } else {
-                    const imageBlob = await imageResponse.blob()
-                    const arrayBuffer = await imageBlob.arrayBuffer()
-                    const uint8Array = new Uint8Array(arrayBuffer)
-                    const dataArray = Array.from(uint8Array)
+                  let dataArray: number[]
 
+                  if (savePayload.base64Data) {
+                    // Use base64 data directly (for file:// images converted by content script)
+                    console.log('[Oh My Prompt] Using base64 data for image save')
+                    const base64Content = savePayload.base64Data.split(',')[1] // Remove data:image/xxx;base64, prefix
+                    const binaryString = atob(base64Content)
+                    dataArray = Array.from(new Uint8Array(binaryString.length)).map((_, i) => binaryString.charCodeAt(i))
+                  } else {
+                    // Fetch from URL (for http/https URLs)
+                    console.log('[Oh My Prompt] Downloading image:', savePayload.imageUrl)
+                    const imageResponse = await fetch(savePayload.imageUrl!)
+                    if (!imageResponse.ok) {
+                      console.warn('[Oh My Prompt] Image download failed:', imageResponse.status, imageResponse.statusText)
+                      dataArray = []
+                    } else {
+                      const imageBlob = await imageResponse.blob()
+                      const arrayBuffer = await imageBlob.arrayBuffer()
+                      dataArray = Array.from(new Uint8Array(arrayBuffer))
+                    }
+                  }
+
+                  if (dataArray.length > 0) {
                     // Determine extension
-                    const ext = savePayload.imageUrl.split('.').pop()?.toLowerCase() || 'jpg'
+                    const ext = savePayload.imageUrl?.split('.').pop()?.toLowerCase() || 'jpg'
 
                     // Save via offscreen document
                     const saveResult = await sendToOffscreen<{ relativePath: string }>(MessageType.OFFSCREEN_SAVE_IMAGE, {
@@ -678,7 +692,7 @@ chrome.runtime.onMessage.addListener(
                 console.warn('[Oh My Prompt] Image save exception:', imageError)
               }
             } else {
-              console.log('[Oh My Prompt] No imageUrl provided, skipping local image save')
+              console.log('[Oh My Prompt] No imageUrl or base64Data provided, skipping local image save')
             }
 
             // Add to temporary prompts array

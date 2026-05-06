@@ -366,6 +366,7 @@ export class TaskQueueManager {
    */
   private async autoSaveToTemporary(taskId: string, result: VisionApiResultData, imageUrl: string): Promise<void> {
     const store = useTaskQueueStore.getState()
+    const task = store.tasks.find(t => t.id === taskId)
 
     try {
       // Get current format setting (default: natural)
@@ -392,6 +393,7 @@ export class TaskQueueManager {
         description: result.zh.analysis,
         descriptionEn: result.en.analysis,
         imageUrl: imageUrl,
+        base64Data: task?.base64Data, // Pass base64 data for file:// images (optional)
         styleTags: result.zh_style_tags,
         format // Save format marker
       }

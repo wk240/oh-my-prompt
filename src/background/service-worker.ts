@@ -903,6 +903,18 @@ chrome.runtime.onMessage.addListener(
   }
 )
 
+/**
+ * Show notification for unsupported page error
+ */
+function showUnsupportedPageNotification(): void {
+  chrome.notifications.create({
+    type: 'basic',
+    iconUrl: chrome.runtime.getURL('assets/icon-128.png'),
+    title: 'Oh My Prompt',
+    message: '此页面不支持此功能，请在普通网页上使用'
+  })
+}
+
 // Vision Modal: Handle context menu click - request permission and send message to content script
 chrome.contextMenus.onClicked.addListener(async (info: chrome.contextMenus.OnClickData, tab?: chrome.tabs.Tab) => {
   if (info.menuItemId === 'convert-to-prompt') {
@@ -947,17 +959,12 @@ chrome.contextMenus.onClicked.addListener(async (info: chrome.contextMenus.OnCli
             })
             .catch((error) => {
               console.error('[Oh My Prompt] Failed to send message to content script:', error)
-              // Only open new tab if content script is completely unreachable
-              // This happens on special pages (chrome://, about:, etc.)
-              chrome.tabs.create({
-                url: chrome.runtime.getURL('src/popup/loading.html')
-              })
+              // Content script is unreachable on special pages (chrome://, about:, etc.)
+              showUnsupportedPageNotification()
             })
         } else {
-          // No valid tab ID, fallback to loading page
-          chrome.tabs.create({
-            url: chrome.runtime.getURL('src/popup/loading.html')
-          })
+          // No valid tab ID
+          showUnsupportedPageNotification()
         }
       })
       .catch((error) => {
@@ -972,9 +979,7 @@ chrome.contextMenus.onClicked.addListener(async (info: chrome.contextMenus.OnCli
             }
           })
         } else {
-          chrome.tabs.create({
-            url: chrome.runtime.getURL('src/popup/loading.html')
-          })
+          showUnsupportedPageNotification()
         }
       })
   }

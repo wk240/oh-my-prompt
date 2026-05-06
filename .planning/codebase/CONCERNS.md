@@ -1,26 +1,25 @@
 # Codebase Concerns
 
-**Analysis Date:** 2026-04-21
+**Analysis Date:** 2026-05-06
 
 ## Tech Debt
 
 **DropdownContainer.tsx Monolithic Component:**
-- Issue: Single file contains 1556 lines with multiple modal components, styles, and state management logic
+- Issue: Single file contains 1542 lines with multiple modal components, styles, and state management logic
 - Files: `src/content/components/DropdownContainer.tsx`
 - Impact: Difficult to maintain, test, and modify. Changes require understanding large interconnected state
 - Fix approach: Extract modals to separate components, move styles to dedicated file, split state management
 
 **Console.log Statements Throughout:**
-- Issue: 50+ console.log/warn/error statements for debugging, no structured logging
+- Issue: 399 console.log/warn/error statements for debugging, no structured logging
 - Files: Throughout `src/lib/`, `src/content/`, `src/background/`
 - Impact: Debug noise in production, no log levels, no filtering capability
 - Fix approach: Implement structured logger with levels (debug/info/warn/error), remove from production build
 
-**Pending GitHub Prompt Data Source Integration:**
-- Issue: TODO.md documents pending feature for importing external prompt sources
-- Files: `TODO.md`
-- Impact: Feature incomplete, users cannot access curated prompt libraries
-- Fix approach: Implement as documented in TODO.md steps
+**(Resolved) Pending GitHub Prompt Data Source Integration:**
+- Issue: Previously documented pending feature for importing external prompt sources — network prompt fetching from prompts.chat now implemented
+- Files: `src/lib/providers/nano-banana.ts`, `src/lib/resource-library.ts`
+- Status: Completed in v1.1.0 (2026-04-19)
 
 ## Known Bugs
 
@@ -161,4 +160,4 @@
 
 ---
 
-*Concerns audit: 2026-04-21*
+*Concerns audit: 2026-05-06*

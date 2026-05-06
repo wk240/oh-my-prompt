@@ -63,7 +63,6 @@ export function TriggerButton({ isOpen, onClick }: TriggerButtonProps) {
         <path
           d="M13 3L4 14h7l-1 7 9-11h-7l1-7z"
           fill="currentColor"
-          fillOpacity="0.9"
         />
       </svg>
     </button>

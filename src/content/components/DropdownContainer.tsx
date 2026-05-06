@@ -29,8 +29,6 @@ import { getResourcePrompts, getResourceCategories } from '../../lib/resource-li
 import { MessageType } from '../../shared/messages'
 import { clearImageUrlCache, isFolderConfigured, downloadImageFromUrl, saveImage } from '../../lib/sync/image-sync'
 import { clearLoadQueue } from '../../lib/sync/image-loader-queue'
-import { getFolderHandle } from '../../lib/sync/indexeddb'
-import { manualSync } from '../../lib/sync/sync-manager'
 import { PromptThumbnail } from './PromptThumbnail'
 import { PORTAL_ID, STYLE_ID, DROPDOWN_STYLES } from '../styles/dropdown-styles'
 
@@ -505,42 +503,27 @@ export function DropdownContainer({
     }
   }, [isOpen, syncStatus, localPrompts.length])
 
-  // Auto-restore folder permission when dropdown opens
-  // Clicking trigger button is valid user gesture for requestPermission()
+  // Auto-restore folder permission by opening sidepanel
+  // Content script cannot access extension's IndexedDB (cross-origin isolation)
+  // Solution: Open sidepanel which can access IndexedDB and restore permission
+  // User gesture from clicking trigger button propagates to chrome.sidePanel.open()
   useEffect(() => {
     if (!isOpen || permissionRestoreStatus !== 'idle') return
     if (!syncStatus?.hasFolder || syncStatus?.permissionStatus !== 'prompt') return
 
-    const restorePermission = async () => {
-      console.log('[Oh My Prompt] Dropdown: Permission auto-restore triggered')
-      setPermissionRestoreStatus('restoring')
+    console.log('[Oh My Prompt] Dropdown: Permission needs restore, requesting sidepanel open')
+    setPermissionRestoreStatus('restoring')
 
-      const handle = await getFolderHandle()
-      if (!handle) {
-        console.warn('[Oh My Prompt] Dropdown: No folder handle found')
-        setPermissionRestoreStatus('failed')
-        return
-      }
-
-      try {
-        const permission = await handle.requestPermission({ mode: 'readwrite' })
-
-        if (permission === 'granted') {
-          console.log('[Oh My Prompt] Dropdown: Permission restored successfully')
-          setPermissionRestoreStatus('restored')
-          // Trigger sync after permission restored
-          manualSync().catch(err => console.warn('[Oh My Prompt] Auto-sync after permission restore failed:', err))
-        } else {
-          console.warn('[Oh My Prompt] Dropdown: Permission restore failed:', permission)
-          setPermissionRestoreStatus('failed')
-        }
-      } catch (error) {
-        console.warn('[Oh My Prompt] Dropdown: Permission request threw error:', error)
+    // Request service worker to open sidepanel (inherits user gesture)
+    chrome.runtime.sendMessage({ type: MessageType.OPEN_SIDEPANEL_FOR_PERMISSION }, (response) => {
+      if (response?.success) {
+        console.log('[Oh My Prompt] Dropdown: Sidepanel opened for permission restore')
+        setPermissionRestoreStatus('restored')
+      } else {
+        console.warn('[Oh My Prompt] Dropdown: Failed to open sidepanel:', response?.error)
         setPermissionRestoreStatus('failed')
       }
-    }
-
-    restorePermission()
+    })
   }, [isOpen, syncStatus, permissionRestoreStatus])
 
   // Reset permission restore status when dropdown closes

@@ -24,6 +24,7 @@ export enum MessageType {
   SET_SETTINGS_ONLY = 'SET_SETTINGS_ONLY',  // Update settings only, no backup trigger (for language toggle)
   OPEN_SETTINGS_PAGE = 'OPEN_SETTINGS_PAGE',  // Open settings.html for settings center
   OPEN_API_CONFIG_PAGE = 'OPEN_API_CONFIG_PAGE',  // Open api-config.html from Vision Modal
+  OPEN_SIDEPANEL_FOR_PERMISSION = 'OPEN_SIDEPANEL_FOR_PERMISSION',  // Open sidepanel to restore folder permission (user gesture propagates)
 
   // Phase 10: API configuration operations
   GET_API_CONFIG = 'GET_API_CONFIG',

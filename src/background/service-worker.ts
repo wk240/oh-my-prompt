@@ -411,6 +411,27 @@ chrome.runtime.onMessage.addListener(
           })
         return true // Required for async response
 
+      case MessageType.OPEN_SIDEPANEL_FOR_PERMISSION:
+        // Open sidepanel to restore folder permission (user gesture propagates from content script click)
+        // Content script cannot access IndexedDB (cross-origin), so sidepanel handles the restore
+        (async () => {
+          try {
+            // Get current tab to open sidepanel for
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+            if (tab?.id && tab.id >= 0) {
+              await chrome.sidePanel.open({ tabId: tab.id })
+              console.log('[Oh My Prompt] Sidepanel opened for permission restore from content script')
+              sendResponse({ success: true } as MessageResponse)
+            } else {
+              sendResponse({ success: false, error: 'No active tab' })
+            }
+          } catch (error) {
+            console.error('[Oh My Prompt] OPEN_SIDEPANEL_FOR_PERMISSION error:', error)
+            sendResponse({ success: false, error: String(error) })
+          }
+        })()
+        return true // Required for async response
+
       case MessageType.SET_SETTINGS_ONLY:
         // Update settings only, no backup trigger (for language toggle)
         const settingsPayload = message.payload as { settings: SyncSettings }

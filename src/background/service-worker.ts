@@ -411,25 +411,57 @@ chrome.runtime.onMessage.addListener(
           })
         return true // Required for async response
 
+      case MessageType.REQUEST_PERMISSION_GESTURE:
+        // Direct permission request via offscreen document, preserving user gesture
+        // CRITICAL: User gesture propagates through message chain, but only in SYNC execution path
+        // We must forward the message immediately without any await
+        // The offscreen document uses cached handle for synchronous permission request
+        console.log('[Oh My Prompt] Forwarding permission request to offscreen with gesture')
+        chrome.runtime.sendMessage({ type: MessageType.OFFSCREEN_REQUEST_PERMISSION })
+          .then((response: MessageResponse) => {
+            console.log('[Oh My Prompt] Offscreen permission response:', response)
+            sendResponse(response)
+          })
+          .catch(error => {
+            console.error('[Oh My Prompt] REQUEST_PERMISSION_GESTURE error:', error)
+            sendResponse({ success: false, error: String(error) })
+          })
+        return true // Required for async response
+
       case MessageType.OPEN_SIDEPANEL_FOR_PERMISSION:
         // Open sidepanel to restore folder permission (user gesture propagates from content script click)
-        // Content script cannot access IndexedDB (cross-origin), so sidepanel handles the restore
-        (async () => {
-          try {
-            // Get current tab to open sidepanel for
-            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
-            if (tab?.id && tab.id >= 0) {
-              await chrome.sidePanel.open({ tabId: tab.id })
+        // CRITICAL: User gesture must be used in synchronous execution path, NOT after await
+        // Chrome preserves user gesture only until the first await in async context
+        const senderTabId = _sender.tab?.id
+
+        if (senderTabId && senderTabId >= 0) {
+          // MUST call sidePanel.open() immediately before any await - this preserves user gesture
+          chrome.sidePanel.open({ tabId: senderTabId })
+            .then(() => {
               console.log('[Oh My Prompt] Sidepanel opened for permission restore from content script')
-              sendResponse({ success: true } as MessageResponse)
-            } else {
-              sendResponse({ success: false, error: 'No active tab' })
-            }
-          } catch (error) {
-            console.error('[Oh My Prompt] OPEN_SIDEPANEL_FOR_PERMISSION error:', error)
-            sendResponse({ success: false, error: String(error) })
-          }
-        })()
+              // Now restore permission via offscreen document (async operations after sidepanel is open)
+              restorePermission()
+                .then(restoreResult => {
+                  if (restoreResult.success) {
+                    console.log('[Oh My Prompt] Permission restored successfully via sidepanel trigger')
+                    sendResponse({ success: true } as MessageResponse)
+                  } else {
+                    console.warn('[Oh My Prompt] Permission restore failed:', restoreResult.error)
+                    sendResponse({ success: false, error: restoreResult.error || 'Permission restore failed' })
+                  }
+                })
+                .catch(error => {
+                  console.error('[Oh My Prompt] restorePermission error:', error)
+                  sendResponse({ success: false, error: String(error) })
+                })
+            })
+            .catch(error => {
+              console.error('[Oh My Prompt] sidePanel.open error:', error)
+              sendResponse({ success: false, error: String(error) })
+            })
+        } else {
+          sendResponse({ success: false, error: 'No sender tab' })
+        }
         return true // Required for async response
 
       case MessageType.SET_SETTINGS_ONLY:

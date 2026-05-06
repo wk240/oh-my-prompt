@@ -18,6 +18,58 @@ import { IMAGE_DIR_NAME, ALLOWED_IMAGE_EXTENSIONS } from '../shared/constants'
 
 console.log('[Oh My Prompt] Offscreen document started')
 
+// Cache folder handle for synchronous access during permission requests
+// IndexedDB operations are async, so we cache the handle for gesture-preserving permission requests
+let _cachedFolderHandle: FileSystemDirectoryHandle | null = null
+
+/**
+ * Get cached folder handle synchronously (for permission request in user gesture context)
+ * Returns null if handle not cached yet - in that case, gesture will break during async retrieval
+ */
+function getCachedFolderHandle(): FileSystemDirectoryHandle | null {
+  return _cachedFolderHandle
+}
+
+/**
+ * Cache folder handle for future synchronous access
+ * Called whenever we successfully retrieve handle from IndexedDB
+ */
+function cacheFolderHandle(handle: FileSystemDirectoryHandle): void {
+  _cachedFolderHandle = handle
+  console.log('[Oh My Prompt] Folder handle cached:', handle.name)
+}
+
+/**
+ * Fallback permission request when handle not cached
+ * WARNING: This breaks user gesture due to async IndexedDB operation
+ * Should only be used when handle couldn't be cached beforehand
+ */
+async function handleRequestPermissionFallback(): Promise<MessageResponse> {
+  console.warn('[Oh My Prompt] Permission request fallback - gesture may be lost')
+  const handle = await getFolderHandle()
+  if (!handle) {
+    return { success: false, error: 'FOLDER_NOT_CONFIGURED' }
+  }
+
+  // Cache for future requests
+  cacheFolderHandle(handle)
+
+  const permission = await requestFolderPermission(handle, 'readwrite')
+  if (permission === 'granted') {
+    return { success: true, data: { permission: 'granted' } }
+  }
+  return { success: false, error: permission === 'denied' ? 'PERMISSION_DENIED' : 'PERMISSION_PROMPT' }
+}
+
+// Pre-cache folder handle on startup for gesture-preserving permission requests
+getFolderHandle().then(handle => {
+  if (handle) {
+    cacheFolderHandle(handle)
+  }
+}).catch(err => {
+  console.warn('[Oh My Prompt] Failed to pre-cache folder handle:', err)
+})
+
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   console.log('[Oh My Prompt] Offscreen received message:', message.type)
 
@@ -64,9 +116,35 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       return true
 
     case MessageType.OFFSCREEN_REQUEST_PERMISSION:
-      handleRequestPermission()
-        .then(result => sendResponse(result))
-        .catch(error => sendResponse({ success: false, error: String(error) }))
+      // CRITICAL: User gesture must be preserved for permission request
+      // Chrome propagates user gesture through message passing, but only in SYNC execution path
+      // We must call requestPermission() BEFORE any await, using cached handle from IndexedDB
+
+      // Step 1: Open IndexedDB synchronously (IDBDatabase.open is async, but we can cache)
+      // For now, we need to get handle synchronously - use a cached handle approach
+      const cachedHandle = getCachedFolderHandle()
+
+      if (!cachedHandle) {
+        // No cached handle - need async retrieval, gesture will break
+        // This should not happen if handle was properly cached during previous operations
+        handleRequestPermissionFallback()
+          .then(result => sendResponse(result))
+          .catch(error => sendResponse({ success: false, error: String(error) }))
+        return true
+      }
+
+      // Step 2: Request permission synchronously BEFORE any await
+      cachedHandle.requestPermission({ mode: 'readwrite' })
+        .then((permission: PermissionState) => {
+          if (permission === 'granted') {
+            sendResponse({ success: true, data: { permission: 'granted' } })
+          } else {
+            sendResponse({ success: false, error: permission === 'denied' ? 'PERMISSION_DENIED' : 'PERMISSION_PROMPT' })
+          }
+        })
+        .catch((error: Error) => {
+          sendResponse({ success: false, error: String(error) })
+        })
       return true
 
     case MessageType.OFFSCREEN_GET_FOLDER_HANDLE:
@@ -129,6 +207,9 @@ async function handleSync(payload: { backupData: FullBackupData; version: string
   if (!handle) {
     return { success: false, error: 'FOLDER_NOT_CONFIGURED' }
   }
+
+  // Cache handle for future synchronous permission requests
+  cacheFolderHandle(handle)
 
   // Check permission first
   const permission = await checkFolderPermission(handle, 'readwrite')
@@ -274,21 +355,11 @@ async function handleCheckPermission(): Promise<MessageResponse> {
     return { success: true, data: { hasFolder: false, permission: null } }
   }
 
+  // Cache handle for future synchronous permission requests
+  cacheFolderHandle(handle)
+
   const permission = await checkFolderPermission(handle, 'readwrite')
   return { success: true, data: { hasFolder: true, permission, folderName: handle.name } }
-}
-
-async function handleRequestPermission(): Promise<MessageResponse> {
-  const handle = await getFolderHandle()
-  if (!handle) {
-    return { success: false, error: 'FOLDER_NOT_CONFIGURED' }
-  }
-
-  const permission = await requestFolderPermission(handle, 'readwrite')
-  if (permission === 'granted') {
-    return { success: true, data: { permission: 'granted' } }
-  }
-  return { success: false, error: permission === 'denied' ? 'PERMISSION_DENIED' : 'PERMISSION_PROMPT' }
 }
 
 async function handleListVersions(): Promise<MessageResponse> {

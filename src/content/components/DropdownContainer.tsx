@@ -361,9 +361,7 @@ export function DropdownContainer({
   // Vision feature enabled state
   const [visionEnabled, setVisionEnabled] = useState(true)
 
-  // Permission restore status for auto-restore on dropdown open
-  const [permissionRestoreStatus, setPermissionRestoreStatus] = useState<'idle' | 'restoring' | 'restored' | 'failed'>('idle')
-  // Sync status for permission restore and UI
+  // Sync status for backup warning UI
   const [syncStatus, setSyncStatus] = useState<{ hasFolder: boolean; permissionStatus?: 'granted' | 'prompt' | 'denied'; hasUnsyncedChanges?: boolean; dismissedBackupWarning?: boolean } | null>(null)
 
   // Transform local prompts by language preference
@@ -503,33 +501,13 @@ export function DropdownContainer({
     }
   }, [isOpen, syncStatus, localPrompts.length])
 
-  // Auto-restore folder permission by opening sidepanel
-  // Content script cannot access extension's IndexedDB (cross-origin isolation)
-  // Solution: Open sidepanel which can access IndexedDB and restore permission
-  // User gesture from clicking trigger button propagates to chrome.sidePanel.open()
-  useEffect(() => {
-    if (!isOpen || permissionRestoreStatus !== 'idle') return
-    if (!syncStatus?.hasFolder || syncStatus?.permissionStatus !== 'prompt') return
+  // NOTE: Folder permission restore is now handled in DropdownApp.tsx handleToggle()
+  // to preserve user gesture context for sidePanel.open() (Chrome requirement)
+  // The sidepanel is opened before the dropdown opens, ensuring permission is restored
 
-    console.log('[Oh My Prompt] Dropdown: Permission needs restore, requesting sidepanel open')
-    setPermissionRestoreStatus('restoring')
-
-    // Request service worker to open sidepanel (inherits user gesture)
-    chrome.runtime.sendMessage({ type: MessageType.OPEN_SIDEPANEL_FOR_PERMISSION }, (response) => {
-      if (response?.success) {
-        console.log('[Oh My Prompt] Dropdown: Sidepanel opened for permission restore')
-        setPermissionRestoreStatus('restored')
-      } else {
-        console.warn('[Oh My Prompt] Dropdown: Failed to open sidepanel:', response?.error)
-        setPermissionRestoreStatus('failed')
-      }
-    })
-  }, [isOpen, syncStatus, permissionRestoreStatus])
-
-  // Reset permission restore status when dropdown closes
+  // Reset sync status when dropdown closes
   useEffect(() => {
     if (!isOpen) {
-      setPermissionRestoreStatus('idle')
       setSyncStatus(null)
     }
   }, [isOpen])

@@ -36,7 +36,7 @@ export const lovartConfig: PlatformConfig = {
   secondaryInjections: [
     {
       inputSelector: '#agent-image-generator-prompt',
-      anchorSelector: '#generator-prompt-container',
+      anchorSelector: '[data-testid="agent-mode-switch-trigger"]',
       position: 'before',
       customButton: LovartButton,
     },

@@ -296,6 +296,93 @@ function validateVisionResult(data: VisionApiResultData): void {
 }
 
 /**
+ * Robustly extract JSON from text that may contain markdown fences or mixed content
+ * Handles: uppercase fences, spaces in fences, explanatory text, truncated JSON
+ * @param text - Raw text from Vision API
+ * @returns Extracted JSON string
+ * @throws Error if no valid JSON found
+ */
+function extractJsonFromText(text: string): string {
+  let jsonText = text.trim()
+
+  // Strategy 1: Strip markdown fences (case-insensitive, with optional spaces)
+  // Pattern: ```[optional spaces][json|JSON|js][optional spaces]
+  const fenceStartMatch = jsonText.match(/^```\s*(json|JSON|js)?\s*\n?/i)
+  if (fenceStartMatch) {
+    jsonText = jsonText.slice(fenceStartMatch[0].length)
+  }
+
+  // Strip trailing fence
+  if (jsonText.endsWith('```')) {
+    jsonText = jsonText.slice(0, -3).trim()
+  }
+
+  // Strategy 2: If still not valid JSON, try to extract JSON object from mixed text
+  // Look for the outermost {...} pattern
+  if (!jsonText.startsWith('{')) {
+    // Find first opening brace
+    const firstBrace = jsonText.indexOf('{')
+    if (firstBrace !== -1) {
+      // Find matching closing brace (count depth)
+      let depth = 0
+      let lastBrace = -1
+      for (let i = firstBrace; i < jsonText.length; i++) {
+        if (jsonText[i] === '{') depth++
+        else if (jsonText[i] === '}') {
+          depth--
+          if (depth === 0) {
+            lastBrace = i
+            break
+          }
+        }
+      }
+
+      if (lastBrace !== -1) {
+        jsonText = jsonText.slice(firstBrace, lastBrace + 1)
+      }
+    }
+  }
+
+  // Strategy 3: Handle truncated JSON (missing closing braces)
+  // Try to repair by counting and adding missing braces
+  let depth = 0
+  let inString = false
+  let escapeNext = false
+
+  for (let i = 0; i < jsonText.length; i++) {
+    const char = jsonText[i]
+
+    if (escapeNext) {
+      escapeNext = false
+      continue
+    }
+
+    if (char === '\\' && inString) {
+      escapeNext = true
+      continue
+    }
+
+    if (char === '"' && !escapeNext) {
+      inString = !inString
+      continue
+    }
+
+    if (!inString) {
+      if (char === '{') depth++
+      else if (char === '}') depth--
+    }
+  }
+
+  // If depth > 0, JSON is truncated - add missing closing braces
+  if (depth > 0) {
+    console.warn('[Oh My Prompt] Vision API response appears truncated, attempting repair')
+    jsonText += '}'.repeat(depth)
+  }
+
+  return jsonText.trim()
+}
+
+/**
  * Parse Vision API response and extract structured data
  * @param apiFormat - 'anthropic' or 'openai'
  * @param response - API response JSON
@@ -310,25 +397,18 @@ export function parseVisionResponse(apiFormat: 'anthropic' | 'openai', response:
     throw new Error('Empty response from Vision API')
   }
 
-  // Strip potential markdown code fences
-  let jsonText = text.trim()
-  if (jsonText.startsWith('```json')) {
-    jsonText = jsonText.slice(7)
-  }
-  if (jsonText.startsWith('```')) {
-    jsonText = jsonText.slice(3)
-  }
-  if (jsonText.endsWith('```')) {
-    jsonText = jsonText.slice(0, -3)
-  }
-  jsonText = jsonText.trim()
+  // Robustly extract JSON from potentially messy text
+  const jsonText = extractJsonFromText(text)
 
   // Parse JSON
   let data: VisionApiResultData
   try {
     data = JSON.parse(jsonText) as VisionApiResultData
   } catch (parseError) {
-    console.error('[Oh My Prompt] Vision API JSON parse error:', parseError, 'raw text:', text.substring(0, 200))
+    // Log the problematic text for debugging
+    console.error('[Oh My Prompt] Vision API JSON parse error:', parseError)
+    console.error('[Oh My Prompt] Raw text (first 500 chars):', text.substring(0, 500))
+    console.error('[Oh My Prompt] Extracted JSON (first 500 chars):', jsonText.substring(0, 500))
     throw new Error('Failed to parse Vision API response as JSON')
   }
 

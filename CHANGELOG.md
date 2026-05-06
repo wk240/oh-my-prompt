@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.2] - 2026-05-06
+
+### Fixed / 修复
+- **[EN]** Auto-request folder permission when offscreen document context switches
+- **[CN]** 自动恢复备份文件夹权限（解决关闭 popup 后权限丢失问题）
+
+### Changed / 变更
+- **[EN]** Removed API key encryption, now stored as plain JSON in secrets/api-config.json
+- **[CN]** 移除 API 密钥加密，改为明文 JSON 存储在 secrets/api-config.json
+
 ## [1.3.0] - 2026-04-28
 
 ### Added / 新增

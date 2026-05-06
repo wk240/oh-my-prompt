@@ -6,7 +6,7 @@
   
   [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
   [![Chrome Extension](https://img.shields.io/badge/Chrome-Manifest%20V3-green.svg)]()
-  [![Version](https://img.shields.io/badge/Version-1.3.1-orange.svg)]()
+  [![Version](https://img.shields.io/badge/Version-1.3.2-orange.svg)]()
   [![Made for Lovart](https://img.shields.io/badge/Made%20for-Lovart%20AI-purple.svg)]()
   
   🌐 [官方网站](https://oh-my-prompt.com/) | 📦 [下载安装](https://github.com/wk240/oh-my-prompt/releases)

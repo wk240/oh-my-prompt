@@ -985,7 +985,8 @@ export default function SidePanelApp() {
     })
   }, [])
 
-  // Check for unsynced changes to show backup reminder and get permission status
+  // Get sync status immediately on Sidepanel open (for permission restore)
+  // This must run ASAP to capture user gesture from clicking extension icon
   useEffect(() => {
     chrome.runtime.sendMessage({ type: MessageType.GET_SYNC_STATUS }, (response) => {
       if (response?.success && response.data) {
@@ -994,17 +995,17 @@ export default function SidePanelApp() {
         if (syncStatus.hasUnsyncedChanges) {
           setModalStates(prev => ({ ...prev, showBackupReminder: true }))
         }
-        // Check for first-time backup warning
-        if (!syncStatus.hasFolder && !syncStatus.dismissedBackupWarning) {
-          const promptCount = prompts.length
-          if (promptCount > 0) {
-            setBackupWarningPromptCount(promptCount)
-            setModalStates(prev => ({ ...prev, showFirstBackupWarning: true }))
-          }
-        }
       }
     })
-  }, [prompts.length])
+  }, []) // Run immediately on mount - don't wait for prompts to load
+
+  // Check for first-time backup warning (depends on prompts.length)
+  useEffect(() => {
+    if (status && !status.hasFolder && !status.dismissedBackupWarning && prompts.length > 0) {
+      setBackupWarningPromptCount(prompts.length)
+      setModalStates(prev => ({ ...prev, showFirstBackupWarning: true }))
+    }
+  }, [status, prompts.length])
 
   // Auto-restore folder permission on Sidepanel open
   // This runs when user clicks extension icon - valid user gesture for requestPermission()

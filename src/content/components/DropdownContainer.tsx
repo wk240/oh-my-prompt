@@ -1477,7 +1477,8 @@ export function DropdownContainer({
                         openModal('isUserPreview')
                       }}
                       onEdit={(p) => {
-                        setEditingItem('prompt', p)
+                        const originalPrompt = localPrompts.find(lp => lp.id === p.id) || p
+                        setEditingItem('prompt', originalPrompt)
                         openModal('isPromptEdit')
                       }}
                       onDelete={(p) => {

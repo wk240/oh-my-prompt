@@ -275,6 +275,19 @@ async function handleCheckPermission(): Promise<MessageResponse> {
   }
 
   const permission = await checkFolderPermission(handle, 'readwrite')
+
+  // Auto-request permission if 'prompt' (permission was previously granted in another context)
+  if (permission === 'prompt') {
+    try {
+      const requestedPermission = await requestFolderPermission(handle, 'readwrite')
+      console.log('[Oh My Prompt] Re-requested permission:', requestedPermission)
+      return { success: true, data: { hasFolder: true, permission: requestedPermission, folderName: handle.name } }
+    } catch (e) {
+      console.warn('[Oh My Prompt] Permission re-request failed:', e)
+      return { success: true, data: { hasFolder: true, permission: 'denied', folderName: handle.name } }
+    }
+  }
+
   return { success: true, data: { hasFolder: true, permission, folderName: handle.name } }
 }
 

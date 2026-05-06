@@ -16,6 +16,9 @@ export const lovartConfig: PlatformConfig = {
 
   inputDetection: {
     selectors: [
+      // Agent image generator input (new)
+      '#agent-image-generator-prompt',
+      // Main chat input (existing)
       '[data-testid="agent-message-input"]',
       '[data-lexical-editor="true"]',
       'div[contenteditable="true"][role="textbox"]',
@@ -28,6 +31,16 @@ export const lovartConfig: PlatformConfig = {
     position: 'before',
     customButton: LovartButton,
   },
+
+  // Secondary injection for agent image generator
+  secondaryInjections: [
+    {
+      inputSelector: '#agent-image-generator-prompt',
+      anchorSelector: '#generator-prompt-container',
+      position: 'before',
+      customButton: LovartButton,
+    },
+  ],
 
   strategies: {
     inserter: new LovartInserter(),

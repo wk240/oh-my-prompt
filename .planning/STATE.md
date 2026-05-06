@@ -92,3 +92,9 @@ Items acknowledged and carried forward:
 
 Last session: 2026-05-01
 Current branch: release/v1.3.1
+
+## Quick Tasks Completed
+
+| Date | Task | Status |
+|------|------|--------|
+| 2026-05-06 | Lovart agent-chat-footer injection | Complete ✓ |

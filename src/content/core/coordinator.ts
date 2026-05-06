@@ -9,7 +9,7 @@ import { Injector } from './injector'
 import { createDefaultInserter } from '../platforms/base/default-strategies'
 import { MessageType } from '../../shared/messages'
 import type { InsertResultPayload } from '../../shared/types'
-import type { InputDetectionConfig } from '../platforms/base/types'
+import type { InputDetectionConfig, UIInjectionConfig } from '../platforms/base/types'
 import { usePromptStore } from '../../lib/store'
 import { VisionModalManager } from '../vision-modal-manager'
 import { ImageHoverButtonManager } from '../image-hover-button-manager'
@@ -207,12 +207,41 @@ class Coordinator {
       this.injector.remove()
     }
 
+    // Select appropriate injection config based on input element
+    const injectionConfig = this.selectInjectionConfig(inputElement)
 
     this.injector.inject(
       inputElement,
-      this.platform.uiInjection,
+      injectionConfig,
       inserter
     )
+  }
+
+  /**
+   * Select injection config based on detected input element
+   * Checks secondaryInjections for matching inputSelector
+   */
+  private selectInjectionConfig(inputElement: HTMLElement): UIInjectionConfig {
+    const platform = this.platform
+    if (!platform) {
+      return platform!.uiInjection
+    }
+
+    // Check secondary injections for matching inputSelector
+    if (platform.secondaryInjections) {
+      for (const config of platform.secondaryInjections) {
+        if (config.inputSelector) {
+          const matches = inputElement.matches(config.inputSelector) ||
+            inputElement.closest(config.inputSelector) !== null
+          if (matches) {
+            return config
+          }
+        }
+      }
+    }
+
+    // Fall back to primary injection config
+    return platform.uiInjection
   }
 
   /**

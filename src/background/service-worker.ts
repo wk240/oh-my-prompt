@@ -11,7 +11,6 @@ import { CAPTURED_IMAGE_STORAGE_KEY, VISION_API_CONFIG_STORAGE_KEY } from '../sh
 import { sendToOffscreen } from '../lib/offscreen-manager'
 import '../lib/migrations/register' // Register all migrations
 
-console.log('[Oh My Prompt] Service Worker started')
 
 // Create context menu on startup (survives service worker restarts)
 function createContextMenu(): void {
@@ -26,12 +25,10 @@ function createContextMenu(): void {
       const errorMsg = chrome.runtime.lastError.message
       // Ignore duplicate/already exists errors on restart
       if (errorMsg && (errorMsg.includes('already exists') || errorMsg.includes('duplicate'))) {
-        console.log('[Oh My Prompt] Context menu already exists (service worker restarted)')
       } else {
         console.error('[Oh My Prompt] Context menu creation error:', errorMsg || JSON.stringify(chrome.runtime.lastError))
       }
     } else {
-      console.log('[Oh My Prompt] Context menu created successfully')
     }
   })
 }
@@ -67,7 +64,6 @@ const storageManager = StorageManager.getInstance()
 
 chrome.runtime.onMessage.addListener(
   (message, _sender, sendResponse) => {
-    console.log('[Oh My Prompt] Received message:', message.type)
 
     switch (message.type) {
       case MessageType.PING:
@@ -84,7 +80,6 @@ chrome.runtime.onMessage.addListener(
         return true // Required for async response
 
       case MessageType.SET_STORAGE:
-        console.log('[Oh My Prompt] SET_STORAGE payload:', message.payload)
         if (!message.payload) {
           console.error('[Oh My Prompt] SET_STORAGE: No payload provided')
           sendResponse({ success: false, error: 'No payload provided' })
@@ -112,7 +107,6 @@ chrome.runtime.onMessage.addListener(
             return storageManager.saveData(mergedData).then(() => mergedData)
           })
           .then((savedData: StorageSchema) => {
-            console.log('[Oh My Prompt] SET_STORAGE: Save successful')
             // Trigger sync with full backup data (including temporary prompts)
             const backupData = {
               prompts: savedData.userData.prompts,
@@ -240,7 +234,6 @@ chrome.runtime.onMessage.addListener(
           sendResponse({ success: false, error: 'Invalid payload' })
           return true
         }
-        console.log('[Oh My Prompt] SAVE_IMAGE: promptId:', saveImagePayload.promptId, 'data array length:', saveImagePayload.data.length)
         sendToOffscreen(MessageType.OFFSCREEN_SAVE_IMAGE, saveImagePayload)
           .then(result => sendResponse(result as MessageResponse))
           .catch(error => {
@@ -448,7 +441,6 @@ chrome.runtime.onMessage.addListener(
           return true
         }
         // SECURITY: Log baseUrl and modelName only, never apiKey (AUTH-02, T-10-01)
-        console.log('[Oh My Prompt] SET_API_CONFIG: baseUrl=', apiConfigPayload.baseUrl, 'modelName=', apiConfigPayload.modelName)
         const configWithTimestamp: VisionApiConfig = {
           ...apiConfigPayload,
           configuredAt: Date.now()
@@ -463,7 +455,6 @@ chrome.runtime.onMessage.addListener(
               if (handle) {
                 const encrypted = await syncApiConfigToFolder(configWithTimestamp, handle)
                 if (encrypted) {
-                  console.log('[Oh My Prompt] API config encrypted and saved to backup folder')
                 }
               }
             } catch (encryptError) {
@@ -481,7 +472,6 @@ chrome.runtime.onMessage.addListener(
         // Delete Vision API configuration
         chrome.storage.local.remove(VISION_API_CONFIG_STORAGE_KEY)
           .then(() => {
-            console.log('[Oh My Prompt] API config deleted')
             sendResponse({ success: true } as MessageResponse)
           })
           .catch(error => {
@@ -507,7 +497,6 @@ chrome.runtime.onMessage.addListener(
         // If base64Data is provided, use it directly (skip URL validation and compression)
         // This handles file:// images converted by content scripts
         if (base64Data) {
-          console.log('[Oh My Prompt] VISION_API_CALL: Using base64 data directly (file:// image converted by content script)')
         } else {
           // SECURITY: Validate imageUrl starts with http/https (T-11-03)
           if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
@@ -529,7 +518,6 @@ chrome.runtime.onMessage.addListener(
             }
 
             const retryCount = visionCallPayload.retryCount || 0
-            console.log('[Oh My Prompt] VISION_API_CALL: baseUrl=', config.baseUrl, 'modelName=', config.modelName, 'retryCount=', retryCount)
 
             try {
               let base64Image: string
@@ -537,12 +525,9 @@ chrome.runtime.onMessage.addListener(
               if (base64Data) {
                 // Use base64 data directly (from content script conversion)
                 base64Image = base64Data
-                console.log('[Oh My Prompt] Using pre-converted base64 data')
               } else {
                 // Compress image from URL to base64 (reduces payload size for large images)
-                console.log('[Oh My Prompt] Compressing image from URL...')
                 base64Image = await asyncCompressImageFromUrl(imageUrl)
-                console.log('[Oh My Prompt] Image compressed successfully')
               }
 
               // Execute Vision API call with base64 data (returns structured result)
@@ -618,22 +603,18 @@ chrome.runtime.onMessage.addListener(
               try {
                 // Check if folder is configured via offscreen document
                 const permResult = await sendToOffscreen<{ hasFolder: boolean; permission?: 'granted' | 'prompt' | 'denied' }>(MessageType.OFFSCREEN_CHECK_PERMISSION)
-                console.log('[Oh My Prompt] Permission check result:', permResult)
 
                 let proceedWithSave = false
 
                 if (!permResult.success) {
                   console.warn('[Oh My Prompt] Offscreen permission check failed:', permResult.error)
                 } else if (!permResult.data?.hasFolder) {
-                  console.log('[Oh My Prompt] No backup folder configured, skipping local image save')
                 } else if (permResult.data?.permission === 'prompt') {
                   // Permission needs re-authorization - request via offscreen document
-                  console.log('[Oh My Prompt] Folder permission needs re-authorization, requesting...')
                   const requestResult = await sendToOffscreen<{ permission: 'granted' | 'denied' }>(MessageType.OFFSCREEN_REQUEST_PERMISSION)
                   if (!requestResult.success || requestResult.data?.permission !== 'granted') {
                     console.warn('[Oh My Prompt] Permission request failed:', requestResult.error)
                   } else {
-                    console.log('[Oh My Prompt] Permission granted after request')
                     proceedWithSave = true
                   }
                 } else if (permResult.data?.permission === 'granted') {
@@ -648,13 +629,11 @@ chrome.runtime.onMessage.addListener(
 
                   if (savePayload.base64Data) {
                     // Use base64 data directly (for file:// images converted by content script)
-                    console.log('[Oh My Prompt] Using base64 data for image save')
                     const base64Content = savePayload.base64Data.split(',')[1] // Remove data:image/xxx;base64, prefix
                     const binaryString = atob(base64Content)
                     dataArray = Array.from(new Uint8Array(binaryString.length)).map((_, i) => binaryString.charCodeAt(i))
                   } else {
                     // Fetch from URL (for http/https URLs)
-                    console.log('[Oh My Prompt] Downloading image:', savePayload.imageUrl)
                     const imageResponse = await fetch(savePayload.imageUrl!)
                     if (!imageResponse.ok) {
                       console.warn('[Oh My Prompt] Image download failed:', imageResponse.status, imageResponse.statusText)
@@ -682,7 +661,6 @@ chrome.runtime.onMessage.addListener(
                     } else if (saveResult.data?.relativePath) {
                       newPrompt.localImage = saveResult.data.relativePath
                       localImageSaved = true
-                      console.log('[Oh My Prompt] Image saved locally:', newPrompt.localImage)
                     }
                   }
                 }
@@ -692,7 +670,6 @@ chrome.runtime.onMessage.addListener(
                 console.warn('[Oh My Prompt] Image save exception:', imageError)
               }
             } else {
-              console.log('[Oh My Prompt] No imageUrl or base64Data provided, skipping local image save')
             }
 
             // Add to temporary prompts array
@@ -707,8 +684,6 @@ chrome.runtime.onMessage.addListener(
               temporaryPrompts
             })
 
-            console.log('[Oh My Prompt] Saved prompt to temporary library:', savePayload.name,
-              localImageSaved ? '(image saved locally)' : '(image URL only)')
 
             // Broadcast REFRESH_DATA to all Lovart tabs so dropdown updates immediately
             chrome.tabs.query({ url: ['*://lovart.ai/*', '*://*.lovart.ai/*'] }, (tabs) => {
@@ -771,7 +746,6 @@ chrome.runtime.onMessage.addListener(
                 description: result.zh.analysis,
                 descriptionEn: result.en.analysis,
               }
-              console.log('[Oh My Prompt] Updated temporary prompt format:', updatePayload.taskId, 'to', newFormat)
             } else {
               // Create new prompt entry (fallback)
               const newPrompt: Prompt = {
@@ -787,7 +761,6 @@ chrome.runtime.onMessage.addListener(
                 remoteImageUrl: updatePayload.imageUrl
               }
               temporaryPrompts.push(newPrompt)
-              console.log('[Oh My Prompt] Created new temporary prompt:', updatePayload.taskId, 'format:', newFormat)
             }
 
             // Save to storage
@@ -829,7 +802,6 @@ chrome.runtime.onMessage.addListener(
               temporaryPrompts: []
             })
 
-            console.log('[Oh My Prompt] Cleared all temporary prompts')
 
             // Broadcast REFRESH_DATA to all Lovart tabs
             chrome.tabs.query({ url: ['*://lovart.ai/*', '*://*.lovart.ai/*'] }, (tabs) => {
@@ -892,7 +864,6 @@ chrome.runtime.onMessage.addListener(
               temporaryPrompts
             })
 
-            console.log('[Oh My Prompt] Transferred prompt to category:', promptToTransfer.name, '→', transferPayload.targetCategoryId)
 
             // Trigger auto-sync with full backup data
             const backupData = {
@@ -968,7 +939,6 @@ chrome.contextMenus.onClicked.addListener(async (info: chrome.contextMenus.OnCli
             .then((response) => {
               // Any response means content script handled it (success or error shown in modal)
               if (response?.success) {
-                console.log('[Oh My Prompt] Vision modal opened in tab:', tab.id)
               } else {
                 // Content script received but had internal error - don't open new tab
                 // Error will be shown in the modal or logged

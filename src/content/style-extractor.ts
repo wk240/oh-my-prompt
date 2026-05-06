@@ -3,8 +3,6 @@
  * Captures Lovart button/card styles to replicate in Shadow DOM
  */
 
-const LOG_PREFIX = '[Oh My Prompt]'
-
 /**
  * Lovart CSS property configuration
  */
@@ -55,7 +53,6 @@ export function extractLovartButtonStyle(): LovartStyleConfig {
     }
   }
 
-  console.log(LOG_PREFIX, 'Lovart button not found, using default style')
   return DEFAULT_STYLE
 }
 

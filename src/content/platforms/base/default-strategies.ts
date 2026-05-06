@@ -23,7 +23,6 @@ export class DefaultInserter implements InsertStrategy {
       }
 
       this.dispatchInputEvents(element)
-      console.log(LOG_PREFIX, 'Prompt inserted:', text)
       return true
     } catch (error) {
       console.error(LOG_PREFIX, 'Insert failed:', error)

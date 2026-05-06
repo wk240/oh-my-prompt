@@ -612,7 +612,6 @@ export default function SidePanelApp() {
       }
 
       const scriptFile = targetScript.js[0]
-      console.log('[Oh My Prompt] SidePanel: Injecting', scriptFile, 'into tab', tabId)
 
       await chrome.scripting.executeScript({
         target: { tabId },
@@ -644,7 +643,6 @@ export default function SidePanelApp() {
         throw new Error('Content script not responding')
       }
     } catch (checkError) {
-      console.log('[Oh My Prompt] SidePanel: Content script not ready, injecting...', checkError)
 
       // Inject content script if not ready
       if (retryCount < 2) {
@@ -665,7 +663,6 @@ export default function SidePanelApp() {
       // Establish Port connection
       const port = chrome.tabs.connect(tabId, { name: 'sidepanel-connection' })
       currentPortRef.current = port
-      console.log('[Oh My Prompt] SidePanel: Port connected to tab', tabId)
 
       // Get tab URL to set connected site name
       chrome.tabs.get(tabId).then((tab) => {
@@ -677,7 +674,6 @@ export default function SidePanelApp() {
       // Handle incoming messages
       port.onMessage.addListener((message) => {
         if (message.type === MessageType.INPUT_STATUS_CHANGED) {
-          console.log('[Oh My Prompt] SidePanel: Received INPUT_STATUS_CHANGED:', message.hasInput)
           if (message.hasInput) {
             setInputStatus('available')
             setCheckingSiteName('')
@@ -691,9 +687,7 @@ export default function SidePanelApp() {
       port.onDisconnect.addListener(() => {
         const lastError = chrome.runtime.lastError
         if (lastError) {
-          console.log('[Oh My Prompt] SidePanel: Port disconnect with error:', lastError.message)
         } else {
-          console.log('[Oh My Prompt] SidePanel: Port disconnected from tab', tabId)
         }
         currentPortRef.current = null
         setConnectedSiteName('')
@@ -702,7 +696,6 @@ export default function SidePanelApp() {
         chrome.tabs.get(tabId).then((tab) => {
           if (tab && tab.url && !isSpecialPage(tab.url)) {
             // Tab still exists, try reconnect (page navigation)
-            console.log('[Oh My Prompt] SidePanel: Tab still exists, reconnecting...')
             setCheckingSiteName(getSiteNameFromUrl(tab.url))
             setInputStatus('checking')
             // Wait for content script to reinitialize, then reconnect
@@ -736,7 +729,6 @@ export default function SidePanelApp() {
 
   // Find an available tab to connect (fallback logic)
   const findAvailableTab = useCallback(async () => {
-    console.log('[Oh My Prompt] SidePanel: Finding available tab...')
     setInputStatus('checking')
     setCheckingSiteName('')
     setCurrentTabId(null)
@@ -771,14 +763,12 @@ export default function SidePanelApp() {
             setCheckingSiteName(getSiteNameFromUrl(tab.url))
             const connected = await connectToTab(tab.id)
             if (connected) {
-              console.log('[Oh My Prompt] SidePanel: Connected to fallback tab', tab.id)
               return
             }
           }
         }
 
         // No suitable tab found
-        console.log('[Oh My Prompt] SidePanel: No available tab found')
         setInputStatus('unavailable')
         setCurrentTabId(null)
         setCheckingSiteName('')
@@ -797,7 +787,6 @@ export default function SidePanelApp() {
   // Re-connect when tab is activated (user switches tabs)
   useEffect(() => {
     const handleTabActivated = (activeInfo: chrome.tabs.TabActiveInfo) => {
-      console.log('[Oh My Prompt] SidePanel: Tab activated:', activeInfo.tabId)
 
       // Disconnect existing port
       if (currentPortRef.current) {
@@ -836,7 +825,6 @@ export default function SidePanelApp() {
   useEffect(() => {
     const handleTabRemoved = (tabId: number) => {
       if (tabId === currentTabId) {
-        console.log('[Oh My Prompt] SidePanel: Connected tab removed:', tabId)
         if (currentPortRef.current) {
           currentPortRef.current.disconnect()
           currentPortRef.current = null
@@ -856,7 +844,6 @@ export default function SidePanelApp() {
     const handleTabUpdated = (tabId: number, changeInfo: chrome.tabs.TabChangeInfo) => {
       // Only handle url changes for connected tab
       if (tabId === currentTabId && changeInfo.url) {
-        console.log('[Oh My Prompt] SidePanel: Connected tab URL changed:', changeInfo.url)
 
         // Check if new URL is special page
         if (isSpecialPage(changeInfo.url)) {
@@ -925,7 +912,6 @@ export default function SidePanelApp() {
   useEffect(() => {
     const handleMessage = (message: { type: string }) => {
       if (message.type === MessageType.REFRESH_DATA) {
-        console.log('[Oh My Prompt] SidePanel: Received REFRESH_DATA, refreshing...')
         loadFromStorage()
       }
     }
@@ -939,7 +925,6 @@ export default function SidePanelApp() {
   useEffect(() => {
     const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }) => {
       if (changes[STORAGE_KEY]) {
-        console.log('[Oh My Prompt] SidePanel: Storage changed, refreshing...')
         loadFromStorage()
       }
     }
@@ -1118,7 +1103,6 @@ export default function SidePanelApp() {
         // Verify tab still exists before sending
         const tab = await chrome.tabs.get(currentTabId)
         if (!tab || !tab.url || isSpecialPage(tab.url)) {
-          console.log('[Oh My Prompt] SidePanel: Tab no longer valid, triggering re-check')
           setInputStatus('unavailable')
           setCurrentTabId(null)
           findAvailableTabRef.current()
@@ -1145,7 +1129,6 @@ export default function SidePanelApp() {
           setTimeout(hideToast, 2000)
         }
       } catch (error) {
-        console.log('[Oh My Prompt] SidePanel: Message failed, triggering re-check:', error)
         // Connection failed - trigger re-check and copy to clipboard as fallback
         setInputStatus('unavailable')
         setCurrentTabId(null)
@@ -1176,7 +1159,6 @@ export default function SidePanelApp() {
       // Verify tab still exists before sending
       const tab = await chrome.tabs.get(currentTabId)
       if (!tab || !tab.url || isSpecialPage(tab.url)) {
-        console.log('[Oh My Prompt] SidePanel: Tab no longer valid, triggering re-check')
         setInputStatus('unavailable')
         setCurrentTabId(null)
         findAvailableTabRef.current()
@@ -1199,7 +1181,6 @@ export default function SidePanelApp() {
         setTimeout(hideToast, 2000)
       }
     } catch (error) {
-      console.log('[Oh My Prompt] SidePanel: Message failed, triggering re-check:', error)
       // Fallback to clipboard and trigger re-check
       setInputStatus('unavailable')
       setCurrentTabId(null)

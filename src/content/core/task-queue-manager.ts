@@ -94,7 +94,6 @@ export class TaskQueueManager {
 
     // Check queue size
     if (currentTasks.length >= MAX_QUEUE_SIZE) {
-      console.log(LOG_PREFIX, 'Queue full, cannot add task')
       return null
     }
 
@@ -110,7 +109,6 @@ export class TaskQueueManager {
     // Add to store
     store.setTasks([...currentTasks, task])
 
-    console.log(LOG_PREFIX, 'Task added to queue:', task.id, base64Data ? '(base64)' : '(url)')
 
     // Generate thumbnail asynchronously (non-blocking)
     // For base64 data, use it directly as thumbnail
@@ -139,7 +137,6 @@ export class TaskQueueManager {
         const task = store.getTask(taskId)
         if (task) {
           store.updateTask(taskId, { thumbnailUrl })
-          console.log(LOG_PREFIX, 'Thumbnail updated for task:', taskId)
         }
       }
     } catch (error) {
@@ -168,7 +165,6 @@ export class TaskQueueManager {
     }
 
     store.removeTask(taskId)
-    console.log(LOG_PREFIX, 'Task removed:', taskId)
   }
 
   /**
@@ -177,7 +173,6 @@ export class TaskQueueManager {
   retryTask(taskId: string): void {
     const store = useTaskQueueStore.getState()
     store.updateTask(taskId, { status: 'pending', error: undefined, errorAction: undefined })
-    console.log(LOG_PREFIX, 'Task retry:', taskId)
     this.tryStartNext()
   }
 
@@ -186,7 +181,6 @@ export class TaskQueueManager {
    */
   clearCompleted(): void {
     useTaskQueueStore.getState().clearCompleted()
-    console.log(LOG_PREFIX, 'Completed tasks cleared')
   }
 
   /**
@@ -201,7 +195,6 @@ export class TaskQueueManager {
     this.runningCount = 0
 
     useTaskQueueStore.getState().clearAll()
-    console.log(LOG_PREFIX, 'All tasks cleared')
   }
 
   /**
@@ -258,7 +251,6 @@ export class TaskQueueManager {
     store.updateTask(task.id, { status: 'running' })
     this.runningCount++
 
-    console.log(LOG_PREFIX, 'Task started:', task.id)
 
     // Create abort controller
     const abortController = new AbortController()
@@ -309,7 +301,6 @@ export class TaskQueueManager {
           result: resultData
         })
 
-        console.log(LOG_PREFIX, 'Task success:', task.id)
 
         // Auto-save to temporary library
         await this.autoSaveToTemporary(task.id, resultData, task.imageUrl)
@@ -405,7 +396,6 @@ export class TaskQueueManager {
 
       if (saveResponse?.success) {
         store.updateTask(taskId, { savedToTemporary: true, savedFormat: format })
-        console.log(LOG_PREFIX, 'Auto-saved to temporary library:', taskId, 'format:', format)
       } else {
         const saveError = saveResponse?.error || '保存失败'
         store.updateTask(taskId, { savedToTemporary: false, saveError })

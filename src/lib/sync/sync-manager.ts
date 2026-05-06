@@ -50,7 +50,6 @@ export async function triggerSync(backupData: FullBackupData): Promise<{ success
 
     if (result.success) {
       await storageManager.updateSettings({ lastSyncTime: Date.now(), hasUnsyncedChanges: false })
-      console.log('[Oh My Prompt] Auto-sync completed via offscreen, temporaryPrompts:', backupData.temporaryPrompts.length)
       return { success: true }
     }
 
@@ -99,7 +98,6 @@ export async function triggerSync(backupData: FullBackupData): Promise<{ success
     try {
       await syncToLocalFolder(backupData, handle, version)
       await storageManager.updateSettings({ lastSyncTime: Date.now(), hasUnsyncedChanges: false })
-      console.log('[Oh My Prompt] Auto-sync completed (fallback), temporaryPrompts:', backupData.temporaryPrompts.length)
       return { success: true }
     } catch (error) {
       console.error('[Oh My Prompt] Fallback sync failed:', error)
@@ -115,33 +113,28 @@ export async function triggerSync(backupData: FullBackupData): Promise<{ success
  * Returns true if config was restored, false otherwise
  */
 export async function restoreApiConfigFromFolder(): Promise<boolean> {
-  console.log('[Oh My Prompt] restoreApiConfigFromFolder: Starting...')
 
   try {
     // Check if API config already exists in storage
     const apiConfigResult = await chrome.storage.local.get(VISION_API_CONFIG_STORAGE_KEY)
     if (apiConfigResult[VISION_API_CONFIG_STORAGE_KEY]) {
-      console.log('[Oh My Prompt] restoreApiConfigFromFolder: API config already in storage, skipping')
       return false
     }
 
     // Get folder handle
     const handle = await getFolderHandle()
     if (!handle) {
-      console.log('[Oh My Prompt] restoreApiConfigFromFolder: No folder configured')
       return false
     }
 
     // Try to read encrypted config from folder (direct read, not via offscreen)
     const config = await readApiConfigFromFolder(handle)
     if (!config) {
-      console.log('[Oh My Prompt] restoreApiConfigFromFolder: No encrypted config in folder')
       return false
     }
 
     // Save to storage
     await chrome.storage.local.set({ [VISION_API_CONFIG_STORAGE_KEY]: config })
-    console.log('[Oh My Prompt] restoreApiConfigFromFolder: API config restored successfully')
     return true
   } catch (error) {
     console.warn('[Oh My Prompt] restoreApiConfigFromFolder: Failed:', error)
@@ -155,7 +148,6 @@ export async function restoreApiConfigFromFolder(): Promise<boolean> {
  * Uses offscreen document for better permission handling
  */
 export async function initialSync(): Promise<void> {
-  console.log('[Oh My Prompt] initialSync: Starting...')
 
   try {
     // Check folder configuration via offscreen document
@@ -163,11 +155,9 @@ export async function initialSync(): Promise<void> {
     const permResult = await sendToOffscreen<{ hasFolder: boolean; permission?: 'granted' | 'prompt' | 'denied'; folderName?: string }>(MessageType.OFFSCREEN_CHECK_PERMISSION)
 
     if (!permResult.success || !permResult.data?.hasFolder) {
-      console.log('[Oh My Prompt] initialSync: No folder configured')
       return
     }
 
-    console.log('[Oh My Prompt] initialSync: Folder handle found:', permResult.data.folderName)
 
     // Check permission status
     const permission = permResult.data.permission
@@ -181,7 +171,6 @@ export async function initialSync(): Promise<void> {
       return
     }
 
-    console.log('[Oh My Prompt] initialSync: Permission granted')
 
     const storageManager = StorageManager.getInstance()
     const storageData = await storageManager.getData()
@@ -199,9 +188,7 @@ export async function initialSync(): Promise<void> {
       // Restore temporary prompts if exist
       if (localData.temporaryPrompts && localData.temporaryPrompts.length > 0) {
         await storageManager.updateTemporaryPrompts(localData.temporaryPrompts)
-        console.log('[Oh My Prompt] Restored temporary prompts:', localData.temporaryPrompts.length)
       }
-      console.log('[Oh My Prompt] Restored from local folder backup')
     }
 
     // Case: both have data -> sync chrome.storage to local
@@ -222,19 +209,14 @@ export async function initialSync(): Promise<void> {
     }
 
     // Restore API config from encrypted file if not in storage
-    console.log('[Oh My Prompt] initialSync: Checking for encrypted API config...')
     try {
       const apiConfigResult = await chrome.storage.local.get(VISION_API_CONFIG_STORAGE_KEY)
-      console.log('[Oh My Prompt] initialSync: Existing API config in storage:', !!apiConfigResult[VISION_API_CONFIG_STORAGE_KEY])
 
       if (!apiConfigResult[VISION_API_CONFIG_STORAGE_KEY]) {
-        console.log('[Oh My Prompt] initialSync: Attempting to read from folder...')
         const apiResult = await sendToOffscreen(MessageType.OFFSCREEN_READ_API_CONFIG)
-        console.log('[Oh My Prompt] initialSync: Encrypted config read result:', !!apiResult.success)
 
         if (apiResult.success && apiResult.data) {
           await chrome.storage.local.set({ [VISION_API_CONFIG_STORAGE_KEY]: apiResult.data })
-          console.log('[Oh My Prompt] Restored API config from encrypted file')
         }
       }
     } catch (apiRestoreError) {
@@ -305,7 +287,6 @@ export async function enableSync(): Promise<EnableSyncResult> {
     // Service Worker cannot request permission without user activation
     try {
       await handle.getDirectoryHandle(IMAGE_DIR_NAME, { create: true })
-      console.log('[Oh My Prompt] Images directory created, permission verified')
     } catch (permError) {
       console.error('[Oh My Prompt] Permission verification failed:', permError)
       return { success: false, error: '文件夹权限验证失败，请重新选择' }
@@ -381,7 +362,6 @@ export async function changeSyncFolder(): Promise<{ success: boolean; error?: st
     // This ensures permission is actually granted in the current context (popup)
     try {
       await handle.getDirectoryHandle(IMAGE_DIR_NAME, { create: true })
-      console.log('[Oh My Prompt] Images directory created, permission verified')
     } catch (permError) {
       console.error('[Oh My Prompt] Permission verification failed:', permError)
       return { success: false, error: '文件夹权限验证失败，请重新选择' }
@@ -570,7 +550,6 @@ export async function restorePermission(): Promise<{ success: boolean; error?: s
           lastSyncTime: Date.now(),
           hasUnsyncedChanges: false
         })
-        console.log('[Oh My Prompt] Permission restored and sync completed')
         return { success: true }
       }
       return { success: false, error: '同步失败，请检查文件夹权限' }
@@ -648,7 +627,6 @@ export async function restoreFromBackup(
     // Restore temporary prompts
     if (backupData.temporaryPrompts) {
       await storageManager.updateTemporaryPrompts(backupData.temporaryPrompts)
-      console.log('[Oh My Prompt] Restored temporary prompts:', backupData.temporaryPrompts.length)
     }
     await storageManager.updateSettings({ lastSyncTime: Date.now() })
 

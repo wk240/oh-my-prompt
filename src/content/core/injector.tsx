@@ -61,7 +61,6 @@ export class Injector {
     this.anchorObserver = new MutationObserver(() => {
       const anchor = document.querySelector<HTMLElement>(config.anchorSelector)
       if (anchor && this.pendingInjection) {
-        console.log(LOG_PREFIX, 'Anchor appeared:', config.anchorSelector)
         this.stopAnchorObserver()
         this.performInjection(
           this.pendingInjection.inputElement,
@@ -255,7 +254,6 @@ export class Injector {
     // Create tooltip at document.body level (outside Shadow DOM)
     this.createTooltip()
 
-    console.log(LOG_PREFIX, 'UI injected at', config.position, 'of', config.anchorSelector)
   }
 
   remove(): void {

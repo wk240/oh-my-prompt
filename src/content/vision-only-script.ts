@@ -79,7 +79,6 @@ function startInputDetection(): void {
   // Initial check
   currentInputElement = findInputElement()
   if (currentInputElement) {
-    console.log(LOG_PREFIX, 'Universal input detected:', currentInputElement)
   }
 
   // Periodic check every 1 second (reduced from 2s for faster detection)
@@ -87,7 +86,6 @@ function startInputDetection(): void {
     const input = findInputElement()
     if (input && input !== currentInputElement) {
       currentInputElement = input
-      console.log(LOG_PREFIX, 'Input element updated:', input)
     }
   }, 1000)
 
@@ -96,7 +94,6 @@ function startInputDetection(): void {
     const input = findInputElement()
     if (input && input !== currentInputElement) {
       currentInputElement = input
-      console.log(LOG_PREFIX, 'Input detected via mutation:', input)
     }
   })
 
@@ -169,7 +166,6 @@ function insertPrompt(inputElement: HTMLElement, text: string): boolean {
       inputElement.dispatchEvent(new Event('input', { bubbles: true }))
     }
 
-    console.log(LOG_PREFIX, 'Prompt inserted successfully')
     return true
   } catch (error) {
     console.error(LOG_PREFIX, 'Insert failed:', error)
@@ -185,19 +181,16 @@ startInputDetection()
  */
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   // Log all incoming messages for debugging
-  console.log(LOG_PREFIX, 'Received message type:', message.type, 'from:', _sender.id ? 'extension' : 'external')
 
   // Vision Modal handling
   if (message.type === MessageType.OPEN_VISION_MODAL) {
     const { imageUrl } = message.payload as { imageUrl: string }
-    console.log(LOG_PREFIX, 'Received OPEN_VISION_MODAL:', imageUrl.substring(0, 50) + '...')
 
     // Check if vision feature is enabled
     chrome.runtime.sendMessage({ type: MessageType.GET_STORAGE }, (settingsResponse) => {
       if (settingsResponse?.success && settingsResponse?.data?.settings) {
         const visionEnabled = settingsResponse.data.settings.visionEnabled ?? true
         if (!visionEnabled) {
-          console.log(LOG_PREFIX, 'Vision feature is disabled')
           sendResponse({ success: false, error: 'VISION_DISABLED' })
           return
         }
@@ -210,7 +203,6 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
               manager.create()
               const taskQueueManager = TaskQueueManager.getInstance()
               taskQueueManager.addTask(imageUrl)
-              console.log(LOG_PREFIX, 'Vision modal created successfully')
               sendResponse({ success: true })
             } catch (error) {
               console.error(LOG_PREFIX, 'Vision modal creation failed:', error)
@@ -248,14 +240,12 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   // Check input availability
   if (message.type === MessageType.CHECK_INPUT_AVAILABILITY) {
     const hasInput = currentInputElement !== null || findInputElement() !== null
-    console.log(LOG_PREFIX, 'CHECK_INPUT_AVAILABILITY response:', hasInput)
     sendResponse({ success: true, data: { hasInput } })
     return true
   }
 
   // Handle prompt insertion from sidepanel
   if (message.type === MessageType.INSERT_PROMPT_TO_CS) {
-    console.log(LOG_PREFIX, 'Received INSERT_PROMPT_TO_CS')
 
     const payload = message.payload as { prompt: string }
     if (!payload || !payload.prompt) {
@@ -284,7 +274,6 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   return false
 })
 
-console.log(LOG_PREFIX, 'Vision-only content script loaded (with universal input support):', window.location.href)
 
 // Cleanup on page hide (replaces unload for bfcache compatibility)
 window.addEventListener('pagehide', () => {

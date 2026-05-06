@@ -53,7 +53,6 @@ export async function syncApiConfigToFolder(
     await writable.write(JSON.stringify(encryptedFile, null, 2))
     await writable.close()
 
-    console.log('[Oh My Prompt] API config encrypted and saved to secrets/', API_CONFIG_ENC_FILE)
     return true
   } catch (error) {
     console.error('[Oh My Prompt] Failed to encrypt API config:', error)
@@ -68,17 +67,14 @@ export async function syncApiConfigToFolder(
 export async function readApiConfigFromFolder(
   handle: FileSystemDirectoryHandle
 ): Promise<VisionApiConfig | null> {
-  console.log('[Oh My Prompt] readApiConfigFromFolder: Starting...')
   try {
     // Get secrets directory
     const secretsDir = await handle.getDirectoryHandle(SECRETS_DIR_NAME)
-    console.log('[Oh My Prompt] readApiConfigFromFolder: secrets directory found')
 
     // Read encrypted file
     const fileHandle = await secretsDir.getFileHandle(API_CONFIG_ENC_FILE)
     const file = await fileHandle.getFile()
     const content = await file.text()
-    console.log('[Oh My Prompt] readApiConfigFromFolder: encrypted file read, size:', content.length)
 
     // Parse encrypted structure
     const encryptedFile: EncryptedApiConfig = JSON.parse(content)
@@ -89,25 +85,20 @@ export async function readApiConfigFromFolder(
       return null
     }
 
-    console.log('[Oh My Prompt] readApiConfigFromFolder: algorithm validated')
 
     // Get encryption key (reads existing salt from folder)
     const key = await getEncryptionKey(handle)
-    console.log('[Oh My Prompt] readApiConfigFromFolder: encryption key obtained')
 
     // Decode base64 IV and ciphertext
     const iv = Uint8Array.from(atob(encryptedFile.iv), c => c.charCodeAt(0))
     const ciphertext = Uint8Array.from(atob(encryptedFile.encrypted), c => c.charCodeAt(0))
-    console.log('[Oh My Prompt] readApiConfigFromFolder: IV length:', iv.length, 'ciphertext length:', ciphertext.length)
 
     // Decrypt (convert Uint8Array to ArrayBuffer)
     const decryptedJson = await decryptData(ciphertext.buffer as ArrayBuffer, iv, key)
-    console.log('[Oh My Prompt] readApiConfigFromFolder: decrypted successfully')
 
     // Parse config
     const config: VisionApiConfig = JSON.parse(decryptedJson)
 
-    console.log('[Oh My Prompt] API config decrypted from secrets/', API_CONFIG_ENC_FILE)
     return config
   } catch (error) {
     // File doesn't exist or decryption failed

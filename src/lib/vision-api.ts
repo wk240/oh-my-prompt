@@ -500,28 +500,6 @@ export async function executeVisionApiCall(
 
   const headers = buildHeaders(apiFormat, config.apiKey)
 
-  // Log request details (T-11-01: apiKey never logged)
-  // For base64, log size instead of full content
-  const imageLog = format === 'base64'
-    ? `base64 (${imageData.length} chars)`
-    : imageData.substring(0, 50) + '...'
-
-  console.log('[Oh My Prompt] Vision API call:', {
-    apiFormat,
-    baseUrl: config.baseUrl,
-    endpointUrl,
-    modelName: config.modelName,
-    imageFormat: format,
-    image: imageLog
-  })
-
-  // Log request body for debugging (truncate base64 data)
-  const logRequestBody = JSON.stringify(requestBody, null, 2)
-  const truncatedLog = logRequestBody.length > 500
-    ? logRequestBody.substring(0, 500) + '... (truncated)'
-    : logRequestBody
-  console.log('[Oh My Prompt] Vision API request body:', truncatedLog)
-
   // Execute with AbortController timeout - merge with external signal if provided
   const abortController = new AbortController()
   const timeoutId = setTimeout(() => abortController.abort(), API_TIMEOUT_MS)
@@ -537,7 +515,6 @@ export async function executeVisionApiCall(
     signal.addEventListener('abort', () => abortController.abort())
   }
 
-  console.log('[Oh My Prompt] Vision API fetch starting...')
 
   try {
     const response = await fetch(endpointUrl, {
@@ -547,21 +524,15 @@ export async function executeVisionApiCall(
       signal: abortController.signal
     })
 
-    console.log('[Oh My Prompt] Vision API fetch completed, status:', response.status)
     clearTimeout(timeoutId)
 
     if (!response.ok) {
-      // Log response body for debugging
-      const errorText = await response.text()
-      console.log('[Oh My Prompt] Vision API error response:', errorText)
       throw new Error(`API error: ${response.status}`)
     }
 
     const data = await response.json()
-    console.log('[Oh My Prompt] Vision API response data:', JSON.stringify(data, null, 2).substring(0, 200))
     const resultData = parseVisionResponse(apiFormat, data)
 
-    console.log('[Oh My Prompt] Vision API success, zh.prompt length:', resultData.zh.prompt.length)
     return resultData
 
   } catch (error) {

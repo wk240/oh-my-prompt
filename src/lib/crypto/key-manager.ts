@@ -27,7 +27,6 @@ export async function getOrCreateSalt(handle: FileSystemDirectoryHandle): Promis
     const saltData = await file.arrayBuffer()
     const salt = new Uint8Array(saltData)
 
-    console.log('[Oh My Prompt] Read existing encryption salt from folder')
     return salt
   } catch {
     // Salt file doesn't exist, create new one
@@ -40,7 +39,6 @@ export async function getOrCreateSalt(handle: FileSystemDirectoryHandle): Promis
     await writable.write(salt)
     await writable.close()
 
-    console.log('[Oh My Prompt] Created new encryption salt in folder')
     return salt
   }
 }

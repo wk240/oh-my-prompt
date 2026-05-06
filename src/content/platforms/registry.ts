@@ -5,8 +5,6 @@
 
 import type { UrlPattern, PlatformConfig } from './base/types'
 
-const LOG_PREFIX = '[Oh My Prompt]'
-
 /**
  * 已注册的平台列表
  * 新增平台只需在此数组添加配置
@@ -21,11 +19,9 @@ const PLATFORMS: PlatformConfig[] = [
 export function matchPlatform(url: string): PlatformConfig | null {
   for (const platform of PLATFORMS) {
     if (matchesUrlPatterns(url, platform.urlPatterns)) {
-      console.log(LOG_PREFIX, `Platform matched: ${platform.name}`)
       return platform
     }
   }
-  console.log(LOG_PREFIX, 'No matching platform')
   return null
 }
 

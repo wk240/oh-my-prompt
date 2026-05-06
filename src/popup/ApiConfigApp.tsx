@@ -24,14 +24,11 @@ async function requestApiHostPermission(baseUrl: string): Promise<boolean> {
     // Check if already granted
     const hasPermission = await chrome.permissions.contains({ origins: [origin] })
     if (hasPermission) {
-      console.log('[Oh My Prompt] API host permission already granted:', origin)
       return true
     }
 
     // Request permission - shows Chrome's permission dialog
-    console.log('[Oh My Prompt] Requesting API host permission:', origin)
     const granted = await chrome.permissions.request({ origins: [origin] })
-    console.log('[Oh My Prompt] Permission result:', granted ? 'granted' : 'denied')
     return granted
   } catch (error) {
     console.error('[Oh My Prompt] Permission request error:', error)
@@ -130,7 +127,6 @@ function ApiConfigApp() {
       }
 
       // SECURITY: Log baseUrl, modelName, apiFormat only, never apiKey (AUTH-02, T-10-02)
-      console.log('[Oh My Prompt] SET_API_CONFIG: baseUrl=', payload.baseUrl, 'modelName=', payload.modelName, 'apiFormat=', payload.apiFormat)
 
       const response = await chrome.runtime.sendMessage({
         type: MessageType.SET_API_CONFIG,

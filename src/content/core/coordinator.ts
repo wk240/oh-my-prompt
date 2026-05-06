@@ -96,7 +96,6 @@ class Coordinator {
    * Always sets up message listener for vision modal, even on non-platform pages
    */
   init(): void {
-    console.log(LOG_PREFIX, 'Coordinator initializing on:', window.location.href)
 
     // Setup message listener FIRST - always needed for vision modal on any page
     this.setupMessageListener()
@@ -113,11 +112,9 @@ class Coordinator {
     // Start ImageHoverButtonManager on all pages (universal image hover button)
     this.hoverButtonManager = ImageHoverButtonManager.getInstance()
     this.hoverButtonManager.start()
-    console.log(LOG_PREFIX, 'ImageHoverButtonManager started')
 
 // Initialize TaskQueueManager (load API config)
     TaskQueueManager.getInstance()
-    console.log(LOG_PREFIX, 'TaskQueueManager initialized')
 
     // Create Injector BEFORE Detector if platform matches
     // This ensures Injector is ready when Detector immediately finds input
@@ -132,15 +129,12 @@ class Coordinator {
     )
     this.detector.setStatusChangedCallback(this.handleInputStatusChanged.bind(this))
     this.detector.start()
-    console.log(LOG_PREFIX, 'Universal detector started')
 
     // Exit early if no platform matched - no UI injection needed
     if (!this.platform) {
-      console.log(LOG_PREFIX, 'No platform matched, but detector is active for input detection')
       return
     }
 
-    console.log(LOG_PREFIX, 'Coordinator initialized for platform:', this.platform.name)
   }
 
   /**
@@ -149,7 +143,6 @@ class Coordinator {
   private setupPortListener(): void {
     chrome.runtime.onConnect.addListener((port) => {
       if (port.name === 'sidepanel-connection') {
-        console.log(LOG_PREFIX, 'SidePanel Port connected')
         this.sidePanelPort = port
 
         // Handle messages from SidePanel
@@ -166,7 +159,6 @@ class Coordinator {
 
         // Handle disconnection (tab closed, refreshed, or SidePanel closed)
         port.onDisconnect.addListener(() => {
-          console.log(LOG_PREFIX, 'SidePanel Port disconnected')
           this.sidePanelPort = null
         })
 
@@ -184,7 +176,6 @@ class Coordinator {
    * Handle input status changes and notify SidePanel via Port
    */
   private handleInputStatusChanged(hasInput: boolean): void {
-    console.log(LOG_PREFIX, 'Input status changed:', hasInput)
     if (this.sidePanelPort) {
       try {
         this.sidePanelPort.postMessage({
@@ -204,22 +195,18 @@ class Coordinator {
    * Inject UI only if platform matches
    */
   private handleUniversalInputDetected(inputElement: HTMLElement): void {
-    console.log(LOG_PREFIX, 'Universal input detected:', inputElement)
 
     // Only inject UI if platform matches
     if (!this.platform || !this.injector) {
-      console.log(LOG_PREFIX, 'No platform match or injector, skipping UI injection')
       return
     }
 
     const inserter = this.platform.strategies?.inserter ?? createDefaultInserter()
 
     if (this.injector.isInjected()) {
-      console.log(LOG_PREFIX, 'Cleaning up existing UI before re-injection')
       this.injector.remove()
     }
 
-    console.log(LOG_PREFIX, 'Injecting UI near input element for platform:', this.platform.name)
 
     this.injector.inject(
       inputElement,
@@ -233,7 +220,6 @@ class Coordinator {
    */
   private setupMessageListener(): void {
     chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-      console.log(LOG_PREFIX, 'Received message:', message.type)
 
       // Handle storage updates
       if (message.type === MessageType.GET_STORAGE) {
@@ -243,10 +229,8 @@ class Coordinator {
 
       // Handle refresh data from backup page
       if (message.type === MessageType.REFRESH_DATA) {
-        console.log(LOG_PREFIX, 'Refreshing data from backup...')
         usePromptStore.getState().loadFromStorage()
           .then(() => {
-            console.log(LOG_PREFIX, 'Data refreshed successfully')
             sendResponse({ success: true })
           })
           .catch((err) => {
@@ -258,7 +242,6 @@ class Coordinator {
 
       // Handle sync failure - show backup reminder
       if (message.type === MessageType.SYNC_FAILED) {
-        console.log(LOG_PREFIX, 'Sync failed, notifying UI to show backup reminder')
         // Future: notify UI component to show warning banner
         sendResponse({ success: true })
         return true
@@ -267,21 +250,18 @@ class Coordinator {
       // Handle input availability check from sidepanel
       if (message.type === MessageType.CHECK_INPUT_AVAILABILITY) {
         const hasInput = this.detector?.getInputElement() !== null
-        console.log(LOG_PREFIX, 'CHECK_INPUT_AVAILABILITY response:', hasInput)
         sendResponse({ success: true, data: { hasInput } })
         return true
       }
 
       // Handle PING from sidepanel (connection check)
       if (message.type === MessageType.PING) {
-        console.log(LOG_PREFIX, 'PING received, responding...')
         sendResponse({ success: true })
         return true
       }
 
       // Handle prompt insertion from service worker
       if (message.type === MessageType.INSERT_PROMPT_TO_CS) {
-        console.log(LOG_PREFIX, 'Received INSERT_PROMPT_TO_CS')
 
         const payload = message.payload as { prompt: string }
         if (!payload || !payload.prompt) {
@@ -303,7 +283,6 @@ class Coordinator {
         const success = inserter.insert(inputElement, payload.prompt)
 
         if (success) {
-          console.log(LOG_PREFIX, 'Prompt inserted successfully')
           sendResponse({ success: true } as InsertResultPayload)
         } else {
           console.error(LOG_PREFIX, 'Insertion failed')
@@ -316,14 +295,12 @@ class Coordinator {
       if (message.type === MessageType.OPEN_VISION_MODAL) {
         const { imageUrl } = message.payload as { imageUrl: string }
 
-        console.log(LOG_PREFIX, 'Received OPEN_VISION_MODAL:', imageUrl.substring(0, 50) + '...')
 
         // Check if vision feature is enabled
         chrome.runtime.sendMessage({ type: MessageType.GET_STORAGE }, (settingsResponse) => {
           if (settingsResponse?.success && settingsResponse?.data?.settings) {
             const visionEnabled = settingsResponse.data.settings.visionEnabled ?? true
             if (!visionEnabled) {
-              console.log(LOG_PREFIX, 'Vision feature is disabled')
               sendResponse({ success: false, error: 'VISION_DISABLED' })
               return
             }
@@ -359,12 +336,11 @@ class Coordinator {
   private pingServiceWorker(): void {
     chrome.runtime.sendMessage(
       { type: MessageType.PING },
-      (response) => {
+      (_response) => {
         if (chrome.runtime.lastError) {
           console.error(LOG_PREFIX, 'Ping failed:', chrome.runtime.lastError.message)
           return
         }
-        console.log(LOG_PREFIX, 'Ping response:', response)
       }
     )
   }
@@ -376,13 +352,11 @@ class Coordinator {
     // Cleanup on page hide (replaces unload for bfcache compatibility)
     window.addEventListener('pagehide', () => {
       this.cleanup()
-      console.log(LOG_PREFIX, 'Cleanup complete')
     })
 
     // Handle bfcache restoration - re-initialize when page is restored from cache
     window.addEventListener('pageshow', (event) => {
       if (event.persisted) {
-        console.log(LOG_PREFIX, 'Page restored from bfcache, re-initializing...')
         // Re-start input detection after bfcache restoration
         this.detector?.start()
       }

@@ -91,7 +91,6 @@ function LoadingApp() {
       }
 
       const imageUrl = capturedData.url
-      console.log('[Oh My Prompt] Loading page: requesting API call for', imageUrl.substring(0, 50) + '...')
 
       // Send API call request to service worker
       // Permission should have been granted when user saved API config in SettingsApp
@@ -154,7 +153,6 @@ function LoadingApp() {
   const copyToClipboard = async (text: string): Promise<boolean> => {
     try {
       await navigator.clipboard.writeText(text)
-      console.log('[Oh My Prompt] Copied to clipboard')
       return true
     } catch (error) {
       console.error('[Oh My Prompt] Clipboard copy failed:', error)
@@ -236,7 +234,6 @@ function LoadingApp() {
           imageUrl: state.imageUrl
         } as SaveTemporaryPromptPayload
       })
-      console.log('[Oh My Prompt] Saved to temporary library:', promptName)
     } catch (saveError) {
       console.error('[Oh My Prompt] Save to temporary library failed:', saveError)
       // Continue even if save fails - user still got the prompt

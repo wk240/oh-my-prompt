@@ -9,13 +9,11 @@ export function migrateTemporaryCategory(data: unknown): StorageSchema {
 
   // Guard: Already has temporaryPrompts field
   if (schema.temporaryPrompts) {
-    console.log('[Oh My Prompt] Migration v1.3: temporaryPrompts already exists, skipping')
     return schema
   }
 
   // Guard: No userData
   if (!schema.userData) {
-    console.log('[Oh My Prompt] Migration v1.3: No userData, creating empty temporaryPrompts')
     return {
       ...schema,
       temporaryPrompts: []
@@ -29,7 +27,6 @@ export function migrateTemporaryCategory(data: unknown): StorageSchema {
   const tempCategory = categories.find(c => c.name === '临时' || c.name === '临时分类')
 
   if (!tempCategory) {
-    console.log('[Oh My Prompt] Migration v1.3: No 临时 category found, creating empty temporaryPrompts')
     return {
       ...schema,
       temporaryPrompts: []
@@ -40,7 +37,6 @@ export function migrateTemporaryCategory(data: unknown): StorageSchema {
   const tempPrompts = prompts.filter(p => p.categoryId === tempCategory.id)
 
   if (tempPrompts.length === 0) {
-    console.log('[Oh My Prompt] Migration v1.3: 临时 category has no prompts, removing category')
     // Remove the empty 临时 category
     const updatedCategories = categories.filter(c => c.id !== tempCategory.id)
     return {
@@ -63,7 +59,6 @@ export function migrateTemporaryCategory(data: unknown): StorageSchema {
   const updatedCategories = categories.filter(c => c.id !== tempCategory.id)
   const updatedPrompts = prompts.filter(p => p.categoryId !== tempCategory.id)
 
-  console.log('[Oh My Prompt] Migration v1.3: Moved', tempPrompts.length, 'prompts from 临时 category to temporaryPrompts')
 
   return {
     ...schema,

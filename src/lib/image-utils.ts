@@ -71,17 +71,6 @@ export async function asyncCompressImageFromUrl(
   // Convert blob to base64 data URL
   const base64 = await blobToDataUrl(compressedBlob)
 
-  // Log compression stats
-  const originalSize = blob.size
-  const compressedSize = compressedBlob.size
-  const reduction = Math.round((1 - compressedSize / originalSize) * 100)
-  console.log('[Oh My Prompt] Image compressed:', {
-    original: `${originalSize} bytes`,
-    compressed: `${compressedSize} bytes`,
-    reduction: `${reduction}%`,
-    dimensions: `${width}x${height}`
-  })
-
   return base64
 }
 
@@ -207,10 +196,6 @@ export async function generateThumbnail(imageUrl: string): Promise<string | null
     // Convert blob to base64 data URL
     const base64 = await blobToDataUrl(thumbnailBlob)
 
-    console.log('[Oh My Prompt] Thumbnail generated:', {
-      dimensions: `${width}x${height}`,
-      size: `${thumbnailBlob.size} bytes`
-    })
 
     return base64
   } catch (error) {

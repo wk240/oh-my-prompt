@@ -6,9 +6,10 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "extract": "npx tsx scripts/extract-prompts.ts",
-    "version": "npx tsx scripts/version.ts",
-    "release": "npx tsx scripts/release.ts",
+    "version": "npx tsx .claude/skills/release/scripts/version.ts",
+    "release": "npx tsx .claude/skills/release/scripts/release.ts",
+    "github-release": "npx tsx .claude/skills/release/scripts/github-release.ts",
+    "publish": "npx tsx .claude/skills/release/scripts/github-release.ts",
     "test": "playwright test",
     "test:ui": "playwright test --ui",
     "test:headed": "playwright test --headed"

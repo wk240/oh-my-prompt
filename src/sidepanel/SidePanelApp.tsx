@@ -575,6 +575,15 @@ export default function SidePanelApp() {
   // Sync status for permission restore and UI
   const [status, setStatus] = useState<{ hasFolder: boolean; permissionStatus?: 'granted' | 'prompt' | 'denied'; hasUnsyncedChanges?: boolean; dismissedBackupWarning?: boolean } | null>(null)
 
+  // Refresh sync status (called after folder configuration to close backup warning)
+  const refreshStatus = useCallback(() => {
+    chrome.runtime.sendMessage({ type: MessageType.GET_SYNC_STATUS }, (response) => {
+      if (response?.success && response.data) {
+        setStatus(response.data)
+      }
+    })
+  }, [])
+
   // Input availability detection (Port-based real-time connection)
   type InputStatus = 'checking' | 'available' | 'unavailable'
   const [inputStatus, setInputStatus] = useState<InputStatus>('checking')
@@ -922,26 +931,28 @@ export default function SidePanelApp() {
     const handleMessage = (message: { type: string }) => {
       if (message.type === MessageType.REFRESH_DATA) {
         loadFromStorage()
+        refreshStatus() // Refresh sync status to close backup warning after folder config
       }
     }
     chrome.runtime.onMessage.addListener(handleMessage)
     return () => {
       chrome.runtime.onMessage.removeListener(handleMessage)
     }
-  }, [loadFromStorage])
+  }, [loadFromStorage, refreshStatus])
 
   // Listen for storage changes directly (robust fallback for any storage mutation)
   useEffect(() => {
     const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }) => {
       if (changes[STORAGE_KEY]) {
         loadFromStorage()
+        refreshStatus() // Refresh sync status to close backup warning after folder config
       }
     }
     chrome.storage.onChanged.addListener(handleStorageChange)
     return () => {
       chrome.storage.onChanged.removeListener(handleStorageChange)
     }
-  }, [loadFromStorage])
+  }, [loadFromStorage, refreshStatus])
 
   // Load language preference and vision setting
   useEffect(() => {

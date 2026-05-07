@@ -521,11 +521,35 @@ chrome.runtime.onMessage.addListener(
 
       // Phase 10: API configuration handlers (AUTH-01, AUTH-02, AUTH-04)
       case MessageType.GET_API_CONFIG:
-        // Get Vision API configuration from storage
-        chrome.storage.local.get(VISION_API_CONFIG_STORAGE_KEY)
+        // Legacy compatibility: return VisionApiConfig from active ProviderConfig
+        chrome.storage.local.get(PROVIDER_CONFIGS_STORAGE_KEY)
           .then((result) => {
-            const config = result[VISION_API_CONFIG_STORAGE_KEY] as VisionApiConfig | undefined
-            sendResponse({ success: true, data: config || null } as MessageResponse<VisionApiConfig | null>)
+            const storage = result[PROVIDER_CONFIGS_STORAGE_KEY] as ProviderConfigsStorage | undefined
+            if (!storage || !storage.activeConfigId) {
+              // Fallback to legacy storage if no new configs
+              chrome.storage.local.get(LEGACY_VISION_API_CONFIG_KEY)
+                .then((legacyResult) => {
+                  const legacyConfig = legacyResult[LEGACY_VISION_API_CONFIG_KEY] as VisionApiConfig | undefined
+                  sendResponse({ success: true, data: legacyConfig || null })
+                })
+              return
+            }
+
+            const activeConfig = storage.configs.find(c => c.id === storage.activeConfigId)
+            if (!activeConfig) {
+              sendResponse({ success: true, data: null })
+              return
+            }
+
+            // Map ProviderConfig to VisionApiConfig for legacy compatibility
+            const legacyConfig: VisionApiConfig = {
+              baseUrl: activeConfig.apiEndpoint,
+              apiKey: activeConfig.apiKey,
+              modelName: activeConfig.selectedModel,
+              apiFormat: activeConfig.apiFormat === 'anthropic_messages' ? 'anthropic' : 'openai',
+              configuredAt: activeConfig.configuredAt
+            }
+            sendResponse({ success: true, data: legacyConfig })
           })
           .catch(error => {
             console.error('[Oh My Prompt] GET_API_CONFIG error:', error)

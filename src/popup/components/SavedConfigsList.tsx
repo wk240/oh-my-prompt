@@ -20,7 +20,7 @@ export function SavedConfigsList({ configs, activeConfigId, onActivate, onDelete
       <h2 className="text-sm font-medium text-gray-700 mb-2">
         已保存配置 ({configs.length})
       </h2>
-      <div className="space-y-2">
+      <div className="max-h-[200px] overflow-y-auto space-y-2 pr-1">
         {configs.map(config => (
           <ConfigCard
             key={config.id}

@@ -102,7 +102,7 @@ export interface ProviderConfig {
   providerName: string          // Display name (e.g., 'Anthropic Claude')
   apiKey: string                // API key — NEVER log this
   apiEndpoint: string           // Full API URL
-  apiFormat: 'anthropic_messages' | 'chat_completions'
+  apiFormat: 'anthropic_messages' | 'chat_completions' | 'openai_responses'
   selectedModel: string         // User-selected model
   configuredAt: number          // Timestamp
   isCustom?: boolean            // true for custom configs
@@ -111,16 +111,23 @@ export interface ProviderConfig {
 // Provider data from providers.json
 export interface Provider {
   id: string                              // Generated from name (slug)
-  name: string                            // Display name
+  name: string                            // Display name (English/international)
+  nameCn?: string                         // Chinese name for cn_official providers
   type: 'official' | 'cn_official' | 'aggregator' | 'third_party'
   apiEndpoint: string                     // Default API URL
-  apiFormat: 'anthropic_messages' | 'chat_completions'
-  models: string[]                        // Available models
+  apiFormat: 'anthropic_messages' | 'chat_completions' | 'openai_responses'
+  models: ModelInfo[]                     // Available models with vision info
   icon: string                            // Icon identifier
   iconColor: string                       // Icon color
   websiteUrl?: string                     // Official website
   apiKeyUrl?: string                      // API key management page
   isPartner?: boolean                     // Partner flag
+}
+
+// Model information with vision capability
+export interface ModelInfo {
+  id: string                              // Model identifier (API name)
+  visionCapable: boolean                  // Supports vision/multimodal input
 }
 
 // Provider group for UI display

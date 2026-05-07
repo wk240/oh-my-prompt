@@ -1,15 +1,29 @@
 // src/lib/provider-data.ts
 import providersJson from '../data/providers.json'
-import type { Provider, ProviderGroup } from '../shared/types'
+import type { Provider, ProviderGroup, ModelInfo } from '../shared/types'
 
-// Supported API formats (anthropic_messages and chat_completions)
-const SUPPORTED_FORMATS = ['anthropic_messages', 'chat_completions'] as const
+// JSON provider type (matches providers.json structure)
+interface JsonProvider {
+  name: string
+  nameCn?: string
+  type: string
+  websiteUrl: string
+  apiKeyUrl: string
+  apiEndpoint: string
+  apiFormat: string
+  models: Array<{ id: string; visionCapable: boolean }>
+  icon: string
+  iconColor: string
+  isPartner?: boolean
+}
 
-// Unsupported formats (4 providers):
+// Supported API formats
+const SUPPORTED_FORMATS = ['anthropic_messages', 'chat_completions', 'openai_responses'] as const
+
+// Unsupported formats (3 providers):
 // - gemini_native: Google Gemini (requires separate implementation)
 // - bedrock_converse_stream: AWS Bedrock (requires AWS SDK)
 // - openai_chat: GitHub Copilot (OAuth-based)
-// - openai_responses: Codex (OAuth-based)
 
 /**
  * Generate provider ID from name (slug)
@@ -33,11 +47,21 @@ function mapProviderType(type: string): Provider['type'] {
 }
 
 /**
+ * Map models from JSON format to ModelInfo
+ */
+function mapModels(models: Array<{ id: string; visionCapable: boolean }>): ModelInfo[] {
+  return models.map(m => ({
+    id: m.id,
+    visionCapable: m.visionCapable
+  }))
+}
+
+/**
  * Load supported providers from providers.json
  * Filters out unsupported API formats and logs them
  */
 export function loadSupportedProviders(): Provider[] {
-  const providersData = providersJson.providers
+  const providersData = providersJson.providers as JsonProvider[]
   const supported: Provider[] = []
   const unsupported: { name: string; format: string }[] = []
 
@@ -46,10 +70,11 @@ export function loadSupportedProviders(): Provider[] {
       supported.push({
         id: generateProviderId(p.name),
         name: p.name,
+        nameCn: p.nameCn,
         type: mapProviderType(p.type),
         apiEndpoint: p.apiEndpoint,
         apiFormat: p.apiFormat as Provider['apiFormat'],
-        models: p.models,
+        models: mapModels(p.models),
         icon: p.icon,
         iconColor: p.iconColor,
         websiteUrl: p.websiteUrl,
@@ -79,8 +104,8 @@ export function groupProvidersByType(providers: Provider[]): ProviderGroup[] {
   }
 
   const groupDefinitions: Array<{ type: Provider['type']; label: string; labelEn: string; order: number }> = [
-    { type: 'official', label: '官方 API', labelEn: 'Official', order: 1 },
-    { type: 'cn_official', label: '国内提供商', labelEn: 'China Providers', order: 2 },
+    { type: 'cn_official', label: '国内提供商', labelEn: 'China Providers', order: 1 },
+    { type: 'official', label: '国外 API', labelEn: 'Global', order: 2 },
     { type: 'aggregator', label: '聚合器', labelEn: 'Aggregators', order: 3 },
     { type: 'third_party', label: '第三方', labelEn: 'Third-party', order: 4 }
   ]

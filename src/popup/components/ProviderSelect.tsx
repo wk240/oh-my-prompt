@@ -16,11 +16,12 @@ export function ProviderSelect({ providers: _providers, groups, value, onChange,
   const [searchQuery, setSearchQuery] = useState('')
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // Filter providers by search query
+  // Filter providers by search query (support both name and nameCn)
   const filteredGroups = groups.map(group => ({
     ...group,
     providers: group.providers.filter(p =>
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.nameCn && p.nameCn.toLowerCase().includes(searchQuery.toLowerCase())) ||
       p.id.toLowerCase().includes(searchQuery.toLowerCase())
     )
   })).filter(g => g.providers.length > 0)
@@ -56,14 +57,14 @@ export function ProviderSelect({ providers: _providers, groups, value, onChange,
         className="w-full px-3 py-2 border border-gray-200 rounded flex items-center justify-between bg-white hover:border-gray-300 focus:border-gray-400 focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <span className={value ? 'text-gray-900' : 'text-gray-400'}>
-          {value ? value.name : '选择服务商...'}
+          {value ? (value.nameCn || value.name) : '选择服务商...'}
         </span>
         <ChevronDown style={{ width: 16, height: 16 }} className="text-gray-400" />
       </button>
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded shadow-lg max-h-60 overflow-y-auto">
+        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded shadow-lg max-h-96 overflow-y-auto">
           {/* Search input */}
           <div className="p-2 border-b border-gray-100">
             <div className="flex items-center gap-2 px-2 py-1 bg-gray-50 rounded">
@@ -97,7 +98,10 @@ export function ProviderSelect({ providers: _providers, groups, value, onChange,
                     onClick={() => handleSelect(provider)}
                     className="w-full px-3 py-2 text-left hover:bg-gray-50 flex items-center justify-between"
                   >
-                    <span className="text-sm text-gray-900">{provider.name}</span>
+                    <span className="text-sm text-gray-900">
+                        {provider.nameCn || provider.name}
+                        {provider.nameCn && <span className="text-xs text-gray-500 ml-1">({provider.name})</span>}
+                      </span>
                     {value?.id === provider.id && (
                       <Check style={{ width: 14, height: 14 }} className="text-green-600" />
                     )}

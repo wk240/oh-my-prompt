@@ -1,9 +1,10 @@
 // src/popup/components/ModelSelect.tsx
 import { useState, useRef, useEffect } from 'react'
-import { ChevronDown, Check } from 'lucide-react'
+import { ChevronDown, Check, Eye } from 'lucide-react'
+import type { ModelInfo } from '../../shared/types'
 
 interface ModelSelectProps {
-  models: string[]
+  models: ModelInfo[]
   value: string
   onChange: (model: string) => void
   disabled?: boolean
@@ -24,8 +25,8 @@ export function ModelSelect({ models, value, onChange, disabled }: ModelSelectPr
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const handleSelect = (model: string) => {
-    onChange(model)
+  const handleSelect = (modelId: string) => {
+    onChange(modelId)
     setIsOpen(false)
   }
 
@@ -48,7 +49,7 @@ export function ModelSelect({ models, value, onChange, disabled }: ModelSelectPr
       </button>
 
       {isOpen && (
-        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded shadow-lg max-h-40 overflow-y-auto">
+        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded shadow-lg max-h-60 overflow-y-auto">
           {models.length === 0 ? (
             <div className="p-3 text-sm text-gray-500 text-center">
               没有可用模型
@@ -56,13 +57,20 @@ export function ModelSelect({ models, value, onChange, disabled }: ModelSelectPr
           ) : (
             models.map(model => (
               <button
-                key={model}
+                key={model.id}
                 type="button"
-                onClick={() => handleSelect(model)}
+                onClick={() => handleSelect(model.id)}
                 className="w-full px-3 py-2 text-left hover:bg-gray-50 flex items-center justify-between"
               >
-                <span className="text-sm text-gray-900">{model}</span>
-                {value === model && (
+                <span className="text-sm text-gray-900 flex items-center gap-1.5">
+                  {model.id}
+                  {model.visionCapable && (
+                    <span title="支持视觉理解">
+                      <Eye style={{ width: 12, height: 12 }} className="text-blue-500" />
+                    </span>
+                  )}
+                </span>
+                {value === model.id && (
                   <Check style={{ width: 14, height: 14 }} className="text-green-600" />
                 )}
               </button>

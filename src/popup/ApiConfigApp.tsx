@@ -83,7 +83,7 @@ function ApiConfigApp() {
   // Auto-select first model when provider changes
   useEffect(() => {
     if (selectedProvider?.models.length) {
-      setSelectedModel(selectedProvider.models[0])
+      setSelectedModel(selectedProvider.models[0].id)
     }
   }, [selectedProvider])
 
@@ -131,7 +131,7 @@ function ApiConfigApp() {
         type: MessageType.ADD_PROVIDER_CONFIG,
         payload: {
           providerId: selectedProvider.id,
-          providerName: selectedProvider.name,
+          providerName: selectedProvider.nameCn || selectedProvider.name,
           apiKey: apiKey.trim(),
           apiEndpoint: endpoint,
           apiFormat: selectedProvider.apiFormat,

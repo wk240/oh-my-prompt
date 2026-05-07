@@ -1,39 +1,38 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.3.4
-milestone_name: Gesture-Preserving Permission
-status: complete
-last_updated: "2026-05-07T00:00:00.000Z"
+milestone: v2.0
+milestone_name: 网络版 + 团队协作
+status: Planning
+last_updated: "2026-05-07T10:30:00.000Z"
 last_activity: 2026-05-07
 progress:
-  total_phases: 5
-  completed_phases: 4
-  total_plans: 17
-  completed_plans: 14
-  percent: 82
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-28)
+See: .planning/PROJECT.md (updated 2026-05-07)
 
 **Core value:** 一键插入预设提示词，提升AI平台创作效率
-**Current focus:** v1.3.4 release preparation — gesture-preserving permission fix
+**Current focus:** v2.0 网络版 + 团队协作 — Extension + Web App混合架构
 
 ## Current Position
 
-Phase: Complete
-Plan: N/A
-Status: Shipped
-Last activity: 2026-05-07
-
-Progress: v1.3.4 shipped
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-05-07 — Milestone v2.0 started
 
 ## Recent Work (release/v1.3.4 branch)
 
 Version 1.3.4 shipped with gesture-preserving permission restore:
+
 - Folder permission auto-restore with gesture-preserving sidePanel.open()
 - Cached handle approach for cross-origin permission restore
 - Sidepanel permission denied warning banner
@@ -90,5 +89,5 @@ Items acknowledged and carried forward:
 
 ## Session Continuity
 
-Last session: 2026-05-07
+Last session: 2026-05-07T07:26:52.633Z
 Current branch: release/v1.3.4

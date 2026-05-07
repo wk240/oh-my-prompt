@@ -203,15 +203,35 @@ class Coordinator {
       return
     }
 
-    const inserter = this.platform.strategies?.inserter ?? createDefaultInserter()
-
-    if (this.injector.isInjected()) {
-      this.injector.remove()
-    }
-
     // Select appropriate injection config based on input element
     const injectionConfig = this.selectInjectionConfig(inputElement)
     console.log(LOG_PREFIX, 'Injection config:', injectionConfig.anchorSelector, injectionConfig.position)
+
+    // Check if anchor element exists in DOM
+    const anchorExists = document.querySelector(injectionConfig.anchorSelector) !== null
+    console.log(LOG_PREFIX, 'Anchor exists:', anchorExists)
+
+    // Check if already injected with the same anchor
+    const isInjected = this.injector.isInjected()
+    console.log(LOG_PREFIX, 'Is injected:', isInjected)
+
+    if (isInjected) {
+      const currentAnchor = this.injector.getCurrentAnchorSelector()
+      const currentPosition = this.injector.getCurrentPosition()
+      console.log(LOG_PREFIX, 'Current anchor:', currentAnchor, 'Current position:', currentPosition)
+
+      // If anchor and position match AND anchor exists, skip re-injection (avoid flicker)
+      if (currentAnchor === injectionConfig.anchorSelector && currentPosition === injectionConfig.position && anchorExists) {
+        console.log(LOG_PREFIX, 'Same anchor and anchor exists, skipping re-injection')
+        return
+      }
+
+      // Different anchor or anchor was removed, need to remove and re-inject
+      console.log(LOG_PREFIX, 'Different anchor or anchor removed, re-injecting')
+      this.injector.remove()
+    }
+
+    const inserter = this.platform.strategies?.inserter ?? createDefaultInserter()
 
     this.injector.inject(
       inputElement,

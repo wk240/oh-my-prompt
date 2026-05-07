@@ -462,21 +462,6 @@
   color: #1D4ED8;
 }
 
-/* Permission denied banner - red warning style */
-.permission-denied-banner {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: #FEF2F2;
-  border-bottom: 1px solid #FECACA;
-  flex-shrink: 0;
-}
-
-.permission-denied-banner .banner-text {
-  color: #DC2626;
-}
-
 .banner-close {
   cursor: pointer;
   font-size: 16px;

@@ -1795,22 +1795,7 @@ export default function SidePanelApp() {
           </div>
         )}
 
-        {/* Permission denied banner - shows when auto-restore failed */}
-        {permissionRestoreStatus === 'failed' && status?.hasFolder && (
-          <div className="permission-denied-banner">
-            <AlertTriangle style={{ width: 14, height: 14, color: '#dc2626' }} />
-            <span className="banner-text">文件夹权限被拒绝，数据无法同步</span>
-            <span
-              className="banner-link"
-              onClick={() => chrome.runtime.sendMessage({ type: MessageType.OPEN_BACKUP_PAGE })}
-            >
-              更换文件夹
-            </span>
-          </div>
-        )}
-
-        {/* Update banner */}
-        {updateStatus?.hasUpdate && (
+                {updateStatus?.hasUpdate && (
           <div className="update-banner">
             <ArrowUpCircle style={{ width: 14, height: 14, color: '#856404' }} />
             <span className="banner-text">新版本 {updateStatus.latestVersion} 可用</span>

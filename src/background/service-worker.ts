@@ -1,5 +1,5 @@
 import { MessageType, MessageResponse } from '../shared/messages'
-import type { StorageSchema, SyncSettings, VisionApiConfig, InsertPromptPayload, InsertResultPayload, SaveTemporaryPromptPayload, UpdateTemporaryPromptFormatPayload, Prompt } from '../shared/types'
+import type { StorageSchema, SyncSettings, VisionApiConfig, InsertPromptPayload, InsertResultPayload, SaveTemporaryPromptPayload, UpdateTemporaryPromptFormatPayload, Prompt, ProviderConfig, ProviderConfigsStorage } from '../shared/types'
 import { StorageManager } from '../lib/storage'
 import { saveFolderHandle, getFolderHandle } from '../lib/sync/indexeddb'
 import { getSyncStatus, triggerSync, restorePermission, initialSync } from '../lib/sync/sync-manager'
@@ -7,7 +7,8 @@ import { syncApiConfigToFolder } from '../lib/sync/api-config-sync'
 import { checkForUpdate, getUpdateStatus, clearUpdateStatus, type UpdateStatus } from '../lib/version-checker'
 import { executeVisionApiCall, classifyApiError, getLanguagePreference } from '../lib/vision-api'
 import { asyncCompressImageFromUrl } from '../lib/image-utils'
-import { CAPTURED_IMAGE_STORAGE_KEY, VISION_API_CONFIG_STORAGE_KEY } from '../shared/constants'
+import { CAPTURED_IMAGE_STORAGE_KEY, VISION_API_CONFIG_STORAGE_KEY, PROVIDER_CONFIGS_STORAGE_KEY, LEGACY_VISION_API_CONFIG_KEY } from '../shared/constants'
+import { validateProviderConfig, maskApiKey } from '../lib/config-validator'
 import { sendToOffscreen } from '../lib/offscreen-manager'
 import '../lib/migrations/register' // Register all migrations
 
@@ -61,6 +62,52 @@ chrome.action.onClicked.addListener((tab) => {
 })
 
 const storageManager = StorageManager.getInstance()
+
+/**
+ * Migrate legacy VisionApiConfig to new ProviderConfigsStorage
+ * Runs on install and startup
+ */
+async function migrateLegacyProviderConfig(): Promise<void> {
+  const result = await chrome.storage.local.get([
+    LEGACY_VISION_API_CONFIG_KEY,
+    PROVIDER_CONFIGS_STORAGE_KEY
+  ])
+
+  // Skip if new configs already exist
+  const existingStorage = result[PROVIDER_CONFIGS_STORAGE_KEY] as ProviderConfigsStorage | undefined
+  if (existingStorage && existingStorage.configs && existingStorage.configs.length > 0) {
+    return
+  }
+
+  // Migrate legacy config
+  const legacyConfig = result[LEGACY_VISION_API_CONFIG_KEY] as VisionApiConfig | undefined
+  if (legacyConfig?.apiKey) {
+    const migratedConfig: ProviderConfig = {
+      id: crypto.randomUUID(),
+      providerId: 'migrated',
+      providerName: '迁移的配置',
+      apiKey: legacyConfig.apiKey,
+      apiEndpoint: legacyConfig.baseUrl,
+      apiFormat: legacyConfig.apiFormat === 'anthropic' ? 'anthropic_messages' : 'chat_completions',
+      selectedModel: legacyConfig.modelName,
+      configuredAt: legacyConfig.configuredAt || Date.now(),
+      isCustom: true
+    }
+
+    await chrome.storage.local.set({
+      [PROVIDER_CONFIGS_STORAGE_KEY]: {
+        configs: [migratedConfig],
+        activeConfigId: migratedConfig.id
+      }
+    })
+
+    console.log('[Oh My Prompt] Migrated legacy API config to provider configs')
+  }
+}
+
+// Run migration on install and startup
+chrome.runtime.onInstalled.addListener(migrateLegacyProviderConfig)
+chrome.runtime.onStartup.addListener(migrateLegacyProviderConfig)
 
 chrome.runtime.onMessage.addListener(
   (message, _sender, sendResponse) => {
@@ -532,6 +579,232 @@ chrome.runtime.onMessage.addListener(
             sendResponse({ success: false, error: String(error) })
           })
         return true // Required for async response
+
+      // Provider config management (multi-provider support)
+      case MessageType.GET_PROVIDER_CONFIGS:
+        // Get all provider configs (mask apiKey for UI display)
+        chrome.storage.local.get(PROVIDER_CONFIGS_STORAGE_KEY)
+          .then((result) => {
+            const storage = result[PROVIDER_CONFIGS_STORAGE_KEY] as ProviderConfigsStorage | undefined
+            if (!storage) {
+              sendResponse({ success: true, data: { configs: [], activeConfigId: null } })
+              return
+            }
+            // SECURITY: Mask apiKey for UI display
+            const maskedConfigs = storage.configs.map(config => ({
+              ...config,
+              apiKey: maskApiKey(config.apiKey)
+            }))
+            sendResponse({
+              success: true,
+              data: {
+                configs: maskedConfigs,
+                activeConfigId: storage.activeConfigId
+              }
+            })
+          })
+          .catch(error => {
+            console.error('[Oh My Prompt] GET_PROVIDER_CONFIGS error:', error)
+            sendResponse({ success: false, error: String(error) })
+          })
+        return true
+
+      case MessageType.ADD_PROVIDER_CONFIG:
+        const addPayload = message.payload as Partial<ProviderConfig>
+        if (!addPayload) {
+          sendResponse({ success: false, error: 'No payload provided' })
+          return true
+        }
+
+        // Validate config
+        const addValidation = validateProviderConfig(addPayload)
+        if (!addValidation.valid) {
+          sendResponse({ success: false, error: addValidation.errors.join('; ') })
+          return true
+        }
+
+        // Generate full config
+        const newConfig: ProviderConfig = {
+          id: crypto.randomUUID(),
+          providerId: addPayload.providerId || 'custom',
+          providerName: addPayload.providerName || '自定义配置',
+          apiKey: addPayload.apiKey!,
+          apiEndpoint: addPayload.apiEndpoint!,
+          apiFormat: addPayload.apiFormat || 'chat_completions',
+          selectedModel: addPayload.selectedModel!,
+          configuredAt: Date.now(),
+          isCustom: addPayload.isCustom ?? (addPayload.providerId === 'custom')
+        }
+
+        // Get existing storage and add new config
+        chrome.storage.local.get(PROVIDER_CONFIGS_STORAGE_KEY)
+          .then((result) => {
+            const existingStorage = result[PROVIDER_CONFIGS_STORAGE_KEY] as ProviderConfigsStorage | undefined
+            const configs = existingStorage?.configs || []
+            const isFirstConfig = configs.length === 0
+
+            const updatedStorage: ProviderConfigsStorage = {
+              configs: [...configs, newConfig],
+              activeConfigId: isFirstConfig ? newConfig.id : (existingStorage?.activeConfigId || null)
+            }
+
+            return chrome.storage.local.set({ [PROVIDER_CONFIGS_STORAGE_KEY]: updatedStorage })
+          })
+          .then(() => sendResponse({ success: true, data: { id: newConfig.id } }))
+          .catch(error => {
+            console.error('[Oh My Prompt] ADD_PROVIDER_CONFIG error:', error)
+            sendResponse({ success: false, error: String(error) })
+          })
+        return true
+
+      case MessageType.UPDATE_PROVIDER_CONFIG:
+        const providerUpdatePayload = message.payload as { id: string; updates: Partial<ProviderConfig> }
+        if (!providerUpdatePayload?.id) {
+          sendResponse({ success: false, error: 'Config ID required' })
+          return true
+        }
+
+        chrome.storage.local.get(PROVIDER_CONFIGS_STORAGE_KEY)
+          .then((result) => {
+            const storage = result[PROVIDER_CONFIGS_STORAGE_KEY] as ProviderConfigsStorage | undefined
+            if (!storage) {
+              sendResponse({ success: false, error: 'No configs found' })
+              return
+            }
+
+            const configIndex = storage.configs.findIndex(c => c.id === providerUpdatePayload.id)
+            if (configIndex === -1) {
+              sendResponse({ success: false, error: 'Config not found' })
+              return
+            }
+
+            const existingConfig = storage.configs[configIndex]
+            const updatedConfig: ProviderConfig = {
+              ...existingConfig,
+              ...providerUpdatePayload.updates,
+              id: existingConfig.id, // Preserve ID
+              configuredAt: existingConfig.configuredAt // Preserve timestamp
+            }
+
+            // Validate updated config
+            const updateValidation = validateProviderConfig(updatedConfig)
+            if (!updateValidation.valid) {
+              sendResponse({ success: false, error: updateValidation.errors.join('; ') })
+              return
+            }
+
+            const updatedConfigs = [...storage.configs]
+            updatedConfigs[configIndex] = updatedConfig
+
+            return chrome.storage.local.set({
+              [PROVIDER_CONFIGS_STORAGE_KEY]: {
+                configs: updatedConfigs,
+                activeConfigId: storage.activeConfigId
+              }
+            })
+          })
+          .then(() => sendResponse({ success: true }))
+          .catch(error => {
+            console.error('[Oh My Prompt] UPDATE_PROVIDER_CONFIG error:', error)
+            sendResponse({ success: false, error: String(error) })
+          })
+        return true
+
+      case MessageType.DELETE_PROVIDER_CONFIG:
+        const deletePayload = message.payload as { id: string }
+        if (!deletePayload?.id) {
+          sendResponse({ success: false, error: 'Config ID required' })
+          return true
+        }
+
+        chrome.storage.local.get(PROVIDER_CONFIGS_STORAGE_KEY)
+          .then((result) => {
+            const storage = result[PROVIDER_CONFIGS_STORAGE_KEY] as ProviderConfigsStorage | undefined
+            if (!storage) {
+              sendResponse({ success: false, error: 'No configs found' })
+              return
+            }
+
+            const filteredConfigs = storage.configs.filter(c => c.id !== deletePayload.id)
+            const wasActive = storage.activeConfigId === deletePayload.id
+
+            // If deleted config was active, auto-activate first remaining or null
+            let newActiveId: string | null = null
+            if (wasActive && filteredConfigs.length > 0) {
+              newActiveId = filteredConfigs[0].id
+            } else if (!wasActive) {
+              newActiveId = storage.activeConfigId
+            }
+
+            return chrome.storage.local.set({
+              [PROVIDER_CONFIGS_STORAGE_KEY]: {
+                configs: filteredConfigs,
+                activeConfigId: newActiveId
+              }
+            })
+          })
+          .then(() => sendResponse({ success: true }))
+          .catch(error => {
+            console.error('[Oh My Prompt] DELETE_PROVIDER_CONFIG error:', error)
+            sendResponse({ success: false, error: String(error) })
+          })
+        return true
+
+      case MessageType.SET_ACTIVE_CONFIG:
+        const activePayload = message.payload as { id: string }
+        if (!activePayload?.id) {
+          sendResponse({ success: false, error: 'Config ID required' })
+          return true
+        }
+
+        chrome.storage.local.get(PROVIDER_CONFIGS_STORAGE_KEY)
+          .then((result) => {
+            const storage = result[PROVIDER_CONFIGS_STORAGE_KEY] as ProviderConfigsStorage | undefined
+            if (!storage) {
+              sendResponse({ success: false, error: 'No configs found' })
+              return
+            }
+
+            // Validate config exists
+            const configExists = storage.configs.some(c => c.id === activePayload.id)
+            if (!configExists) {
+              sendResponse({ success: false, error: 'Config not found' })
+              return
+            }
+
+            return chrome.storage.local.set({
+              [PROVIDER_CONFIGS_STORAGE_KEY]: {
+                configs: storage.configs,
+                activeConfigId: activePayload.id
+              }
+            })
+          })
+          .then(() => sendResponse({ success: true }))
+          .catch(error => {
+            console.error('[Oh My Prompt] SET_ACTIVE_CONFIG error:', error)
+            sendResponse({ success: false, error: String(error) })
+          })
+        return true
+
+      case MessageType.GET_ACTIVE_CONFIG:
+        // Get active config with full apiKey (for Vision API use only)
+        // SECURITY: Only use in trusted contexts (service worker → vision-api)
+        chrome.storage.local.get(PROVIDER_CONFIGS_STORAGE_KEY)
+          .then((result) => {
+            const storage = result[PROVIDER_CONFIGS_STORAGE_KEY] as ProviderConfigsStorage | undefined
+            if (!storage || !storage.activeConfigId) {
+              sendResponse({ success: true, data: null })
+              return
+            }
+
+            const activeConfig = storage.configs.find(c => c.id === storage.activeConfigId)
+            sendResponse({ success: true, data: activeConfig || null })
+          })
+          .catch(error => {
+            console.error('[Oh My Prompt] GET_ACTIVE_CONFIG error:', error)
+            sendResponse({ success: false, error: String(error) })
+          })
+        return true
 
       // Phase 11: Vision API call handler (VISION-01, VISION-02)
       // Now compresses image to base64 before sending to API

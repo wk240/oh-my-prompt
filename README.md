@@ -5,9 +5,8 @@
   <p><strong>告别复制粘贴，一键插入你的提示词，无需离开创造界面</strong></p>
   
   [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-  [![Chrome Extension](https://img.shields.io/badge/Chrome-Manifest%20V3-green.svg)]()
-[![Version](https://img.shields.io/badge/Version-1.3.5-orange.svg)]()
-  [![Made for Lovart](https://img.shields.io/badge/Made%20for-Lovart%20AI-purple.svg)]()
+[![Chrome Extension](https://img.shields.io/badge/Chrome-Manifest%20V3-green.svg)]()
+[![Made for Lovart](https://img.shields.io/badge/Made%20for-Lovart%20AI-purple.svg)]()
   
   🌐 [官方网站](https://oh-my-prompt.com/) | 📦 [下载安装](https://github.com/wk240/oh-my-prompt/releases)
 </div>

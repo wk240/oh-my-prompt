@@ -10,8 +10,12 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["src/content/core/coordinator.ts"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "src/content/core/coordinator.ts"
+      ],
       "run_at": "document_idle"
     }
   ],
@@ -30,7 +34,18 @@
     "48": "assets/icon-48.png",
     "128": "assets/icon-128.png"
   },
-  "permissions": ["activeTab", "downloads", "storage", "tabs", "alarms", "contextMenus", "sidePanel", "scripting", "offscreen", "notifications"],
+  "permissions": [
+    "activeTab",
+    "downloads",
+    "storage",
+    "tabs",
+    "alarms",
+    "contextMenus",
+    "sidePanel",
+    "scripting",
+    "offscreen",
+    "notifications"
+  ],
   "host_permissions": [
     "https://raw.githubusercontent.com/*",
     "https://api.github.com/*",
@@ -38,8 +53,14 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["assets/icon-16.png", "assets/icon-48.png", "assets/icon-128.png"],
-      "matches": ["<all_urls>"]
+      "resources": [
+        "assets/icon-16.png",
+        "assets/icon-48.png",
+        "assets/icon-128.png"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ]
 }

@@ -1,6 +1,7 @@
 node_modules
 dist/
 dist.zip
+releases/
 oh-my-prompt-v*
 tests/
 **/.DS_Store

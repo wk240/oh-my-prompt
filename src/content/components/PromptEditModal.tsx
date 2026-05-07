@@ -823,7 +823,7 @@ export function PromptEditModal({
                 onClick={() => {
                   setShowFolderWarning(false)
                   // Open backup page for folder selection
-                  chrome.runtime.sendMessage({ type: MessageType.OPEN_BACKUP_PAGE })
+                  chrome.runtime.sendMessage({ type: MessageType.OPEN_SIDEPANEL })
                 }}
                 style={{
                   padding: '4px 8px',
@@ -862,7 +862,7 @@ export function PromptEditModal({
                 onClick={() => {
                   setShowPermissionWarning(false)
                   // Open backup page for folder re-selection
-                  chrome.runtime.sendMessage({ type: MessageType.OPEN_BACKUP_PAGE })
+                  chrome.runtime.sendMessage({ type: MessageType.OPEN_SIDEPANEL })
                 }}
                 style={{
                   padding: '4px 8px',

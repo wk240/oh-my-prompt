@@ -1029,8 +1029,8 @@ export function DropdownContainer({
     if (dontShowBackupWarning) {
       chrome.runtime.sendMessage({ type: MessageType.DISMISS_BACKUP_WARNING })
     }
-    // Open backup page for folder selection
-    await chrome.runtime.sendMessage({ type: MessageType.OPEN_BACKUP_PAGE })
+    // Open sidepanel for folder selection
+    chrome.runtime.sendMessage({ type: MessageType.OPEN_SIDEPANEL })
   }, [dontShowBackupWarning])
 
   const handleBackupWarningSkip = useCallback(() => {
@@ -1320,7 +1320,7 @@ export function DropdownContainer({
                 <button
                   className="dropdown-action-btn"
                   style={{ color: '#a855f7' }}
-                  onClick={() => chrome.runtime.sendMessage({ type: MessageType.OPEN_SETTINGS_PAGE })}
+                  onClick={() => chrome.runtime.sendMessage({ type: MessageType.OPEN_SIDEPANEL })}
                   aria-label="转提示词功能已开启"
                 >
                   <Sparkles style={{ width: 14, height: 14 }} />
@@ -1348,7 +1348,7 @@ export function DropdownContainer({
             <Tooltip content="设置" placement="bottom">
               <button
                 className="dropdown-action-btn"
-                onClick={() => chrome.runtime.sendMessage({ type: MessageType.OPEN_SETTINGS_PAGE })}
+                onClick={() => chrome.runtime.sendMessage({ type: MessageType.OPEN_SIDEPANEL })}
                 aria-label="设置"
               >
                 <Settings style={{ width: 14, height: 14 }} />
@@ -1394,7 +1394,7 @@ export function DropdownContainer({
                   className="backup-reminder-link"
                   onClick={() => {
                     closeModal('showBackupReminder')
-                    chrome.runtime.sendMessage({ type: MessageType.OPEN_BACKUP_PAGE })
+                    chrome.runtime.sendMessage({ type: MessageType.OPEN_SIDEPANEL })
                   }}
                 >
                   设置备份

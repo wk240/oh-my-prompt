@@ -436,6 +436,24 @@ chrome.runtime.onMessage.addListener(
           })
         return true // Required for async response
 
+      case MessageType.OPEN_SIDEPANEL:
+        // Open sidepanel for general use (backup settings, folder configuration, etc.)
+        const openTabId = _sender.tab?.id
+        if (openTabId && openTabId >= 0) {
+          chrome.sidePanel.open({ tabId: openTabId })
+            .then(() => {
+              console.log('[Oh My Prompt] Sidepanel opened from content script')
+              sendResponse({ success: true } as MessageResponse)
+            })
+            .catch(error => {
+              console.error('[Oh My Prompt] sidePanel.open error:', error)
+              sendResponse({ success: false, error: String(error) })
+            })
+        } else {
+          sendResponse({ success: false, error: 'No sender tab' })
+        }
+        return true // Required for async response
+
       case MessageType.OPEN_SIDEPANEL_FOR_PERMISSION:
         // Open sidepanel to restore folder permission (user gesture propagates from content script click)
         // CRITICAL: User gesture must be used in synchronous execution path, NOT after await

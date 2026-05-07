@@ -22,6 +22,7 @@ export enum MessageType {
   RESTORE_PERMISSION = 'RESTORE_PERMISSION',  // Restore folder permission after extension update
   REQUEST_PERMISSION_GESTURE = 'REQUEST_PERMISSION_GESTURE',  // Direct permission request preserving user gesture (Content -> SW -> Offscreen)
   SET_SETTINGS_ONLY = 'SET_SETTINGS_ONLY',  // Update settings only, no backup trigger (for language toggle)
+  OPEN_SIDEPANEL = 'OPEN_SIDEPANEL',  // Open sidepanel (general use - backup settings, etc.)
   OPEN_SIDEPANEL_FOR_PERMISSION = 'OPEN_SIDEPANEL_FOR_PERMISSION',  // Open sidepanel to restore folder permission (user gesture propagates)
 
   // Phase 10: API configuration operations

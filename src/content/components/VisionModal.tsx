@@ -427,7 +427,7 @@ function VisionModal({ onClose }: VisionModalProps) {
           <div className="action-buttons">
             {errorAction === 'settings' && (
               <button className="btn btn-primary" onClick={() => {
-                chrome.runtime.sendMessage({ type: MessageType.OPEN_API_CONFIG_PAGE })
+                chrome.runtime.sendMessage({ type: MessageType.OPEN_SIDEPANEL })
               }}>
                 <Settings />
                 去配置

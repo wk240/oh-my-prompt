@@ -815,27 +815,30 @@ chrome.runtime.onMessage.addListener(
           return true
         }
 
-        // SECURITY: Validate imageUrl if provided (skip validation for base64Data)
-        // file:// URLs cannot be fetched by service workers - content scripts convert them to base64
         const imageUrl = visionCallPayload.imageUrl || ''
         const base64Data = visionCallPayload.base64Data
 
-        // If base64Data is provided, use it directly (skip URL validation and compression)
-        // This handles file:// images converted by content scripts
-        if (base64Data) {
-        } else {
-          // SECURITY: Validate imageUrl starts with http/https (T-11-03)
+        if (!base64Data) {
           if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
             sendResponse({ success: false, error: { type: 'unsupported_image', message: '图片URL格式无效', action: 'close' } })
             return true
           }
         }
 
-        // Get API config from storage
-        chrome.storage.local.get(VISION_API_CONFIG_STORAGE_KEY)
+        // Use PROVIDER_CONFIGS_STORAGE_KEY for new ProviderConfig architecture
+        chrome.storage.local.get(PROVIDER_CONFIGS_STORAGE_KEY)
           .then(async (result) => {
-            const config = result[VISION_API_CONFIG_STORAGE_KEY] as VisionApiConfig | undefined
-            if (!config || !config.apiKey) {
+            const storage = result[PROVIDER_CONFIGS_STORAGE_KEY] as ProviderConfigsStorage | undefined
+            if (!storage || !storage.activeConfigId) {
+              sendResponse({
+                success: false,
+                error: { type: 'invalid_key', message: 'API 未配置，请先添加配置', action: 'settings' }
+              })
+              return
+            }
+
+            const activeConfig = storage.configs.find(c => c.id === storage.activeConfigId)
+            if (!activeConfig || !activeConfig.apiKey) {
               sendResponse({
                 success: false,
                 error: { type: 'invalid_key', message: 'API Key 未配置', action: 'settings' }
@@ -849,21 +852,24 @@ chrome.runtime.onMessage.addListener(
               let base64Image: string
 
               if (base64Data) {
-                // Use base64 data directly (from content script conversion)
                 base64Image = base64Data
               } else {
-                // Compress image from URL to base64 (reduces payload size for large images)
                 base64Image = await asyncCompressImageFromUrl(imageUrl)
               }
 
-              // Execute Vision API call with base64 data (returns structured result)
-              const resultData = await executeVisionApiCall(config, base64Image, 'base64')
-              // Get language preference for primary prompt selection
+              // Convert ProviderConfig to VisionApiConfig for backward compatibility
+              const legacyConfig: VisionApiConfig = {
+                baseUrl: activeConfig.apiEndpoint,
+                apiKey: activeConfig.apiKey,
+                modelName: activeConfig.selectedModel,
+                apiFormat: activeConfig.apiFormat === 'anthropic_messages' ? 'anthropic' : 'openai'
+              }
+
+              const resultData = await executeVisionApiCall(legacyConfig, base64Image, 'base64')
               const languagePreference = await getLanguagePreference()
               const primaryPrompt = languagePreference === 'en' ? resultData.en.prompt : resultData.zh.prompt
               sendResponse({ success: true, data: { prompt: primaryPrompt, fullData: resultData } })
             } catch (apiError) {
-              // If compression fails, classify as unsupported_image
               if (apiError instanceof Error && apiError.message.includes('Failed to fetch image')) {
                 sendResponse({
                   success: false,

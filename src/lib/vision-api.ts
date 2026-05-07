@@ -4,8 +4,25 @@
  * API format is user-selected (OpenAI or Anthropic compatible)
  */
 
-import type { VisionApiConfig, VisionApiErrorPayload, VisionApiResultData } from '../shared/types'
+import type { VisionApiConfig, VisionApiErrorPayload, VisionApiResultData, ProviderConfig } from '../shared/types'
+import { MessageType } from '../shared/messages'
 import { extractBase64Data } from './image-utils'
+
+/**
+ * Get active provider config from storage
+ * SECURITY: Returns full apiKey for internal Vision API use only
+ */
+async function getActiveProviderConfig(): Promise<ProviderConfig | null> {
+  const response = await chrome.runtime.sendMessage({ type: MessageType.GET_ACTIVE_CONFIG })
+  return response.success ? response.data : null
+}
+
+/**
+ * Map ProviderConfig apiFormat to Vision API format
+ */
+function mapApiFormat(format: ProviderConfig['apiFormat']): 'anthropic' | 'openai' {
+  return format === 'anthropic_messages' ? 'anthropic' : 'openai'
+}
 
 // Anthropic API version header (T-11-04 mitigation)
 const ANTHROPIC_VERSION = '2023-06-01'
@@ -563,6 +580,103 @@ export async function executeVisionApiCall(
       throw new Error('timeout')
     }
 
+    throw error
+  }
+}
+
+/**
+ * Execute Vision API call using active ProviderConfig
+ * New multi-provider architecture
+ */
+export async function executeVisionApiCallWithProviderConfig(
+  imageData: string,
+  format: 'url' | 'base64' = 'base64',
+  signal?: AbortSignal
+): Promise<VisionApiResultData> {
+  const config = await getActiveProviderConfig()
+  if (!config) {
+    throw new Error('NO_CONFIG: 请先配置 Vision API')
+  }
+
+  // SECURITY: Validate endpoint starts with https://
+  if (!config.apiEndpoint.startsWith('https://')) {
+    throw new Error('API 地址必须使用 HTTPS')
+  }
+
+  // Validate image data
+  if (format === 'url') {
+    if (!imageData.startsWith('http://') && !imageData.startsWith('https://')) {
+      throw new Error('Image URL must be HTTP or HTTPS')
+    }
+  } else {
+    if (!imageData.startsWith('data:image/')) {
+      throw new Error('Image must be a valid data URL for base64 format')
+    }
+  }
+
+  const apiFormat = mapApiFormat(config.apiFormat)
+  const endpointUrl = getFullEndpoint(config.apiEndpoint, apiFormat)
+
+  // Prepare image data
+  const imageForApi = apiFormat === 'anthropic' && format === 'base64'
+    ? extractBase64Data(imageData)
+    : imageData
+
+  const requestBody = apiFormat === 'anthropic'
+    ? buildAnthropicRequest(imageForApi, config.selectedModel, format)
+    : buildOpenAIRequest(imageForApi, config.selectedModel, format)
+
+  const headers = buildHeaders(apiFormat, config.apiKey)
+
+  // Execute with timeout
+  const abortController = new AbortController()
+  const timeoutId = setTimeout(() => abortController.abort(), API_TIMEOUT_MS)
+
+  if (signal) {
+    if (signal.aborted) {
+      clearTimeout(timeoutId)
+      abortController.abort()
+      throw new DOMException('Aborted before API call', 'AbortError')
+    }
+    signal.addEventListener('abort', () => abortController.abort())
+  }
+
+  try {
+    const response = await fetch(endpointUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(requestBody),
+      signal: abortController.signal
+    })
+
+    clearTimeout(timeoutId)
+
+    if (!response.ok) {
+      let errorDetail = `HTTP ${response.status}`
+      try {
+        const errorBody = await response.json()
+        if (errorBody?.error?.message) {
+          errorDetail = errorBody.error.message
+        }
+        if (errorBody?.message) {
+          errorDetail = errorBody.message
+        }
+        if (errorBody?.error?.code) {
+          errorDetail = `${errorBody.error.code}: ${errorDetail}`
+        }
+      } catch {
+        // Failed to parse error body
+      }
+      throw new Error(errorDetail)
+    }
+
+    const data = await response.json()
+    return parseVisionResponse(apiFormat, data)
+  } catch (error) {
+    clearTimeout(timeoutId)
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('timeout')
+    }
     throw error
   }
 }

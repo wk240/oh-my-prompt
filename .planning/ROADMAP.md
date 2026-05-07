@@ -15,6 +15,7 @@
 - ✅ **v1.3.1** — Stability & Polish (shipped 2026-04-29)
 - ✅ **v1.3.2** — Permission Auto-Restore (shipped 2026-05-01)
 - ✅ **v1.3.3** — Gesture-Preserving Permission (shipped 2026-05-06)
+- 🚧 **v2.0 Web + Team** — Phases 13-18 (in progress)
 
 ---
 
@@ -71,86 +72,111 @@ Plans:
 
 ---
 
-### ✅ v1.3.0 Image to Prompt (Complete 2026-04-28)
+<details>
+<summary>✅ v1.3.0 Image to Prompt (Phases 9-12) — SHIPPED 2026-04-28</summary>
 
-**Milestone Goal:** 用户右键点击任意网站图片，AI分析生成提示词并直接插入Lovart输入框
-
-- [x] **Phase 9: Context Menu Foundation** — completed 2026-04-28
-- [x] **Phase 10: API Key Management** — completed 2026-04-28
-- [x] **Phase 11: Vision API Integration** — completed 2026-04-28
-- [x] **Phase 12: Prompt Insertion** — completed 2026-04-28
+- [x] Phase 9: Context Menu Foundation (2/2 plans) — completed 2026-04-28
+- [x] Phase 10: API Key Management (3/3 plans) — completed 2026-04-28
+- [x] Phase 11: Vision API Integration (4/4 plans) — completed 2026-04-28
+- [x] Phase 12: Prompt Insertion (3/3 plans) — completed 2026-04-28
 
 **Total:** 4 phases, 12 plans — 100% complete
 
+</details>
+
+### 🚧 v2.0 Web + Team (In Progress)
+
+**Milestone Goal:** 将Oh My Prompt从单一Chrome Extension扩展为Extension + Web App混合架构，提供团队共享提示词库、云端同步、订阅付费功能。
+
+- [ ] **Phase 13: Authentication Foundation** — Email/password and Google OAuth login with unified Extension-Web App identity
+- [ ] **Phase 14: Cloud Sync** — Automatic personal prompt library synchronization across devices
+- [ ] **Phase 15: Team Creation & Management** — Team creation, member invitations, and role-based management
+- [ ] **Phase 16: Team Shared Library** — Shared prompt library with role-based permissions (Admin/Editor/Member)
+- [ ] **Phase 17: Subscription & Payments** — Multi-payment provider billing (WeChat/Alipay/Stripe) with subscription lifecycle
+- [ ] **Phase 18: Web App Management** — Responsive web interface for team, account, and subscription management
+
 ## Phase Details
 
-### Phase 9: Context Menu Foundation
-**Goal**: 用户右键点击任意网站图片时看到"转提示词"菜单项
-**Depends on**: Phase 8
-**Requirements**: MENU-01, MENU-02, MENU-03
+### Phase 13: Authentication Foundation
+**Goal**: Users can create accounts, log in, and maintain sessions across Extension and Web App with unified identity.
+**Depends on**: Phase 12 (v1.3 foundation)
+**Requirements**: AUTH-01, AUTH-02, AUTH-03, AUTH-04, AUTH-05, AUTH-06, AUTH-07
 **Success Criteria** (what must be TRUE):
-  1. User sees "转提示词" option when right-clicking any image on any website
-  2. Menu item only appears on image elements (not on text, links, or other elements)
-  3. Clicking the menu item captures the image URL for processing
-  4. Menu item appears immediately after extension install without page reload
-**Plans:** 2 plans
+  1. User can sign up with email and password from Web App
+  2. User can log in with email and password from Web App
+  3. User can sign up and log in using Google OAuth
+  4. User can reset forgotten password via email link
+  5. User session persists for 30 days across browser refreshes
+  6. Extension login state is linked to Web App account (unified identity)
+  7. User can log out from both Extension popup and Web App
+**Plans**: TBD
 
-Plans:
-- [x] 09-01-PLAN.md — Add contextMenus permission + storage key constant (Wave 1)
-- [x] 09-02-PLAN.md — Implement context menu creation + URL capture handler (Wave 2)
-
-### Phase 10: API Key Management
-**Goal**: 用户可安全配置和管理Vision AI API密钥
-**Depends on**: Phase 9
-**Requirements**: AUTH-01, AUTH-02, AUTH-03, AUTH-04
+### Phase 14: Cloud Sync
+**Goal**: Users' personal prompt libraries automatically synchronize to cloud and across all logged-in devices.
+**Depends on**: Phase 13 (authentication)
+**Requirements**: SYNC-01, SYNC-02, SYNC-03, SYNC-04, SYNC-05, SYNC-06
 **Success Criteria** (what must be TRUE):
-  1. User can configure API key in popup settings page
-  2. API key is stored securely in chrome.storage.local (not sync, not exposed in logs)
-  3. First-time use of "转提示词" triggers onboarding dialog to configure API key
-  4. User can select Vision AI provider (Claude Vision or OpenAI GPT-4V)
-  5. User can update or delete API key at any time
+  1. User's personal prompts automatically sync to cloud after login
+  2. Prompts created on one device appear on another device after login
+  3. Every CRUD operation (create/update/delete) triggers automatic cloud sync
+  4. User sees sync status indicator (syncing/synced/error) in Extension popup
+  5. User can manually trigger sync via button
+  6. User can view and restore any of the last 10 prompt versions from sync history
+**Plans**: TBD
+
+### Phase 15: Team Creation & Management
+**Goal**: Users can create teams, invite members via email or link, and manage team membership.
+**Depends on**: Phase 13 (authentication)
+**Requirements**: TEAM-01, TEAM-02, TEAM-03, TEAM-09, TEAM-10
+**Success Criteria** (what must be TRUE):
+  1. User can create a new team with name and optional description
+  2. User can invite team members via email address
+  3. User can invite team members via shareable invite link
+  4. Team admin can view list of all team members
+  5. Team admin can remove members from the team
+  6. User can voluntarily leave a team they belong to
+**Plans**: TBD
+
+### Phase 16: Team Shared Library
+**Goal**: Team members can access a shared prompt library with role-based CRUD permissions.
+**Depends on**: Phase 14 (cloud sync), Phase 15 (team creation)
+**Requirements**: TEAM-04, TEAM-05, TEAM-06, TEAM-07, TEAM-08
+**Success Criteria** (what must be TRUE):
+  1. All team members can view and use prompts in the team's shared library
+  2. Team has three roles with distinct permissions: Admin, Editor, Member
+  3. Admin can create, edit, and delete team prompts
+  4. Editor can create, edit, and delete team prompts
+  5. Member can view team prompts but cannot modify them (read-only)
+**Plans**: TBD
+
+### Phase 17: Subscription & Payments
+**Goal**: Users can purchase subscriptions via multiple payment providers and manage their billing lifecycle.
+**Depends on**: Phase 13 (authentication)
+**Requirements**: PAY-01, PAY-02, PAY-03, PAY-04, PAY-05, PAY-06, PAY-07, PAY-08
+**Success Criteria** (what must be TRUE):
+  1. User can view pricing page with free tier, monthly (¥9), and annual (¥99) options
+  2. User can pay for subscription via WeChat Pay
+  3. User can pay for subscription via Alipay
+  4. User can pay for subscription via Stripe (international)
+  5. User can view billing history showing all past payments
+  6. User receives renewal reminder email 7 days before subscription renews
+  7. User can cancel subscription self-service without contacting support
+  8. Subscription features activate immediately after successful payment
+**Plans**: TBD
 **UI hint**: yes
-**Plans:** 3/3 plans complete
 
-Plans:
-- [x] 10-01-PLAN.md — Add VisionApiConfig types, constants, and MessageType entries (Wave 1)
-- [x] 10-02-PLAN.md — Create Settings UI + service worker handlers (Wave 2)
-- [x] 10-03-PLAN.md — Update build config + onboarding trigger (Wave 3)
-
-### Phase 11: Vision API Integration
-**Goal**: 扩展能够调用Vision AI分析图片并生成提示词
-**Depends on**: Phase 10
-**Requirements**: VISION-01, VISION-02, VISION-03, VISION-04
+### Phase 18: Web App Management
+**Goal**: Users can manage teams, account settings, and subscriptions through a responsive web interface.
+**Depends on**: Phase 15 (teams), Phase 16 (shared library), Phase 17 (subscription)
+**Requirements**: WEB-01, WEB-02, WEB-03, WEB-04, WEB-05
 **Success Criteria** (what must be TRUE):
-  1. Service worker successfully calls Vision API with captured image URL
-  2. API returns prompt text suitable for Lovart image generation
-  3. Loading indicator is shown during API call (visual feedback for 2-10 sec latency)
-  4. Clear error messages shown for API failures (rate limit, invalid key, network error, unsupported image)
-  5. User sees generated prompt content before insertion
-**Plans:** 4/4 plans complete
-
-Plans:
-- [x] 11-01-PLAN.md — Add VISION_API_CALL MessageType + payload interfaces (Wave 1)
-- [x] 11-02-PLAN.md — Create vision-api.ts with provider detection + request builders (Wave 1)
-- [x] 11-03-PLAN.md — Add VISION_API_CALL handler + open loading page (Wave 2)
-- [x] 11-04-PLAN.md — Create LoadingApp UI with spinner + error handling (Wave 2)
-
-### Phase 12: Prompt Insertion
-**Goal**: 生成的提示词能够正确送达用户
-**Depends on**: Phase 11
-**Requirements**: INSERT-01, INSERT-02, INSERT-03
-**Success Criteria** (what must be TRUE):
-  1. User sees prompt preview in dialog before insertion (with confirm/cancel options)
-  2. When user confirms on Lovart page, prompt is inserted into Lovart input field
-  3. When user confirms on non-Lovart page, prompt is copied to clipboard with notification toast
-  4. User can cancel the preview dialog to discard the generated prompt
+  1. User can view team member list and add/remove members from Web App
+  2. User can update team name and description from Web App
+  3. Web App interface works correctly on mobile and tablet devices
+  4. User can update account email and password from Web App
+  5. User can view current subscription status and plan details from Web App
+**Plans**: TBD
 **UI hint**: yes
-**Plans:** 3/3 plans complete
-
-Plans:
-- [x] 12-01-PLAN.md — Add message routing infrastructure (INSERT_PROMPT_TO_CS, SAVE_TEMPORARY_PROMPT) (Wave 1)
-- [x] 12-02-PLAN.md — Add content script INSERT_PROMPT_TO_CS handler (Wave 2)
-- [x] 12-03-PLAN.md — Implement LoadingApp prompt delivery flow (Lovart detection, clipboard, save, feedback) (Wave 2)
 
 ---
 
@@ -170,7 +196,13 @@ Plans:
 | 10. API Key Management | v1.3.0 | 3/3 | Complete | 2026-04-28 |
 | 11. Vision API Integration | v1.3.0 | 4/4 | Complete | 2026-04-28 |
 | 12. Prompt Insertion | v1.3.0 | 3/3 | Complete | 2026-04-28 |
+| 13. Authentication Foundation | v2.0 | 0/TBD | Not started | - |
+| 14. Cloud Sync | v2.0 | 0/TBD | Not started | - |
+| 15. Team Creation & Management | v2.0 | 0/TBD | Not started | - |
+| 16. Team Shared Library | v2.0 | 0/TBD | Not started | - |
+| 17. Subscription & Payments | v2.0 | 0/TBD | Not started | - |
+| 18. Web App Management | v2.0 | 0/TBD | Not started | - |
 
 ---
 
-*Roadmap updated: 2026-05-06 — v1.3.3 gesture-preserving permission work in progress*
+*Roadmap updated: 2026-05-07 — v2.0 roadmap created, ready to plan Phase 13*

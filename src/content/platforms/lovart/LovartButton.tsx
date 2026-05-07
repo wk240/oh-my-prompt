@@ -1,16 +1,9 @@
 /**
  * LovartButton - Lovart-native styled trigger button
- * Extracts Lovart visual styles at runtime for UI coordination
- * Uses host element attributes to trigger tooltip outside Shadow DOM
+ * Fixed black color with circular hover background
  */
 
-import { useState, useEffect } from 'react'
-import {
-  extractLovartButtonStyle,
-  getLovartIconColor,
-  DEFAULT_STYLE,
-  type LovartStyleConfig,
-} from '../../style-extractor'
+import { useState } from 'react'
 
 interface LovartButtonProps {
   inputElement: HTMLElement
@@ -19,18 +12,7 @@ interface LovartButtonProps {
 }
 
 export function LovartButton({ isOpen, onClick }: LovartButtonProps) {
-  const [style, setStyle] = useState<LovartStyleConfig>(DEFAULT_STYLE)
-  const [iconColor, setIconColor] = useState<string>(DEFAULT_STYLE.color)
   const [isActive, setIsActive] = useState(false)
-
-  // Extract Lovart styles on mount
-  useEffect(() => {
-    const extractedStyle = extractLovartButtonStyle()
-    setStyle(extractedStyle)
-
-    const extractedColor = getLovartIconColor()
-    setIconColor(extractedColor)
-  }, [])
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -45,11 +27,11 @@ export function LovartButton({ isOpen, onClick }: LovartButtonProps) {
     }
   }
 
-  // Compute background color based on hover/active state
+  // 固定使用黑色，不从页面提取
   const getBackgroundColor = (isHovered: boolean) => {
-    if (isActive) return style.activeBackgroundColor
-    if (isHovered) return style.hoverBackgroundColor
-    return style.backgroundColor
+    if (isActive) return 'rgba(0, 0, 0, 0.1)'
+    if (isHovered) return 'rgba(0, 0, 0, 0.06)'
+    return 'transparent'
   }
 
   // Update tooltip visibility via host element attribute (external tooltip mechanism)
@@ -73,8 +55,6 @@ export function LovartButton({ isOpen, onClick }: LovartButtonProps) {
       onMouseLeave={handleMouseLeave}
       onMouseDown={() => setIsActive(true)}
       onMouseUp={() => setIsActive(false)}
-      style={style}
-      iconColor={iconColor}
       getBackgroundColor={getBackgroundColor}
     />
   )
@@ -89,8 +69,6 @@ function LovartButtonInner({
   onMouseLeave,
   onMouseDown,
   onMouseUp,
-  style,
-  iconColor,
   getBackgroundColor,
 }: {
   isOpen: boolean
@@ -100,8 +78,6 @@ function LovartButtonInner({
   onMouseLeave: () => void
   onMouseDown: () => void
   onMouseUp: () => void
-  style: LovartStyleConfig
-  iconColor: string
   getBackgroundColor: (isHovered: boolean) => string
 }) {
   const [isHovered, setIsHovered] = useState(false)
@@ -132,9 +108,9 @@ function LovartButtonInner({
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: getBackgroundColor(isHovered),
-        borderRadius: style.borderRadius,
-        boxShadow: style.boxShadow,
-        color: iconColor,
+        borderRadius: '50%',
+        boxShadow: 'none',
+        color: '#171717', // 固定黑色
         cursor: 'pointer',
         border: 'none',
         transition: 'background-color 150ms',

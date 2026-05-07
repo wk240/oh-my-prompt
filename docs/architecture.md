@@ -149,4 +149,4 @@ Message types defined in `src/shared/messages.ts` (MessageType enum).
 
 ---
 
-*Last updated: 2026-05-06*
+*Last updated: 2026-05-07*

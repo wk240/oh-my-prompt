@@ -12,7 +12,7 @@ export const DROPDOWN_STYLES = `
   #${PORTAL_ID} .dropdown-container {
     position: fixed;
     width: 640px;
-    max-height: 600px;
+    height: 600px;
     background: #ffffff;
     border: 1px solid #E5E5E5;
     border-radius: 12px;

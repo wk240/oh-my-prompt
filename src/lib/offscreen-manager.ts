@@ -36,19 +36,16 @@ export async function ensureOffscreenDocument(): Promise<void> {
         const permCheck = await chrome.runtime.sendMessage({ type: MessageType.OFFSCREEN_CHECK_PERMISSION })
         if (permCheck?.success !== undefined) {
           offscreenDocumentCreated = true
-          console.log('[Oh My Prompt] Offscreen document already exists and is responsive')
           return
         }
       }
     } catch {
       // Existing document doesn't respond correctly - close and recreate
-      console.log('[Oh My Prompt] Existing offscreen document unresponsive, recreating...')
     }
 
     // Close existing document before creating new one
     try {
       await chrome.offscreen.closeDocument()
-      console.log('[Oh My Prompt] Closed stale offscreen document')
     } catch {
       // Ignore close errors
     }
@@ -62,7 +59,6 @@ export async function ensureOffscreenDocument(): Promise<void> {
       justification: 'File System Access API requires DOM context for permission handling and file operations'
     })
     offscreenDocumentCreated = true
-    console.log('[Oh My Prompt] Offscreen document created successfully')
 
     // Wait for offscreen document to initialize (message listener needs to be ready)
     await waitForOffscreenReady()
@@ -73,7 +69,6 @@ export async function ensureOffscreenDocument(): Promise<void> {
       error.message.includes('single offscreen document')
     )) {
       offscreenDocumentCreated = true
-      console.log('[Oh My Prompt] Offscreen document already exists (caught in error)')
       // Wait for readiness
       await waitForOffscreenReady()
       return
@@ -99,7 +94,6 @@ async function waitForOffscreenReady(): Promise<void> {
     try {
       const response = await chrome.runtime.sendMessage({ type: MessageType.OFFSCREEN_PING })
       if (response?.success) {
-        console.log('[Oh My Prompt] Offscreen document ready (attempt', attempt, ')')
         return
       }
     } catch (error) {
@@ -125,7 +119,6 @@ export async function closeOffscreenDocument(): Promise<void> {
   try {
     await chrome.offscreen.closeDocument()
     offscreenDocumentCreated = false
-    console.log('[Oh My Prompt] Offscreen document closed')
   } catch (error) {
     // Document might already be closed
     if (error instanceof Error && error.message.includes('does not exist')) {

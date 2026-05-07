@@ -98,14 +98,12 @@ async function saveImageViaServiceWorker(
   blob: Blob,
   originalFilename?: string
 ): Promise<ImageSaveResult> {
-  console.log('[Oh My Prompt] saveImage: sending to service worker, promptId:', promptId, 'blob size:', blob.size)
 
   // Convert blob to Uint8Array and then to plain array for messaging
   // ArrayBuffer cannot be reliably passed cross-origin (content script -> service worker)
   const arrayBuffer = await blob.arrayBuffer()
   const uint8Array = new Uint8Array(arrayBuffer)
   const dataArray = Array.from(uint8Array)  // Plain array can be serialized cross-origin
-  console.log('[Oh My Prompt] Data array created, length:', dataArray.length)
 
   try {
     const response = await chrome.runtime.sendMessage({
@@ -118,7 +116,6 @@ async function saveImageViaServiceWorker(
     })
 
     if (response?.success) {
-      console.log('[Oh My Prompt] Image saved via service worker:', response.data?.relativePath)
       return { success: true, relativePath: response.data?.relativePath }
     }
     console.error('[Oh My Prompt] Save image failed:', response?.error)
@@ -137,17 +134,14 @@ async function saveImageDirect(
   blob: Blob,
   originalFilename?: string
 ): Promise<ImageSaveResult> {
-  console.log('[Oh My Prompt] saveImage direct, promptId:', promptId, 'blob size:', blob.size)
 
   const handle = await getFolderHandle()
   if (!handle) {
-    console.log('[Oh My Prompt] No folder handle found')
     return { success: false, error: 'FOLDER_NOT_CONFIGURED' }
   }
 
   // Check and request permission if needed
   const permission = await checkFolderPermission(handle, 'readwrite')
-  console.log('[Oh My Prompt] Permission status:', permission)
   if (permission === 'denied') {
     return { success: false, error: 'PERMISSION_DENIED' }
   }
@@ -165,9 +159,7 @@ async function saveImageDirect(
   const ext = getImageExtension(originalFilename || '', blob.type)
 
   try {
-    console.log('[Oh My Prompt] Creating images directory...')
     const imagesDir = await handle.getDirectoryHandle(IMAGE_DIR_NAME, { create: true })
-    console.log('[Oh My Prompt] Images directory ready')
 
     const filename = `${promptId}.${ext}`
     const fileHandle = await imagesDir.getFileHandle(filename, { create: true })
@@ -176,7 +168,6 @@ async function saveImageDirect(
     await writable.close()
 
     const relativePath = `${IMAGE_DIR_NAME}/${filename}`
-    console.log('[Oh My Prompt] Image saved:', relativePath)
     return { success: true, relativePath }
   } catch (error) {
     console.error('[Oh My Prompt] Save image failed:', error)
@@ -233,7 +224,6 @@ async function deleteImageDirect(promptId: string): Promise<{ success: boolean; 
       const filename = `${promptId}.${ext}`
       try {
         await imagesDir.removeEntry(filename)
-        console.log('[Oh My Prompt] Image deleted:', filename)
       } catch {
         // File doesn't exist, try next
       }
@@ -259,7 +249,6 @@ export async function deleteImage(promptId: string): Promise<{ success: boolean;
  * Returns blob URL for display
  */
 async function readImageViaServiceWorker(relativePath: string): Promise<ImageReadResult> {
-  console.log('[Oh My Prompt] readImageViaServiceWorker:', relativePath)
   try {
     const response = await chrome.runtime.sendMessage({
       type: MessageType.READ_IMAGE,
@@ -272,7 +261,6 @@ async function readImageViaServiceWorker(relativePath: string): Promise<ImageRea
       const mimeType = response.data.mimeType || 'image/jpeg'
       const blob = new Blob([uint8Array], { type: mimeType })
       const url = URL.createObjectURL(blob)
-      console.log('[Oh My Prompt] Image blob URL created:', url, 'size:', blob.size)
       return { success: true, blob, url }
     }
 

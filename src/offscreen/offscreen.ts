@@ -16,7 +16,6 @@ import { syncToLocalFolder, listBackupVersions, readBackupFile } from '../lib/sy
 import { syncApiConfigToFolder, readApiConfigFromFolder } from '../lib/sync/api-config-sync'
 import { IMAGE_DIR_NAME, ALLOWED_IMAGE_EXTENSIONS } from '../shared/constants'
 
-console.log('[Oh My Prompt] Offscreen document started')
 
 // Cache folder handle for synchronous access during permission requests
 // IndexedDB operations are async, so we cache the handle for gesture-preserving permission requests
@@ -71,7 +70,6 @@ getFolderHandle().then(handle => {
 })
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  console.log('[Oh My Prompt] Offscreen received message:', message.type)
 
   switch (message.type) {
     // Handle PING for readiness check
@@ -289,7 +287,6 @@ async function handleSaveImage(payload: { promptId: string; data: number[]; orig
     await writable.close()
 
     const relativePath = `${IMAGE_DIR_NAME}/${filename}`
-    console.log('[Oh My Prompt] Image saved via offscreen:', relativePath)
     return { success: true, data: { relativePath } } as MessageResponse
   } catch (error) {
     console.error('[Oh My Prompt] Offscreen save image failed:', error)
@@ -317,7 +314,6 @@ async function handleReadImage(payload: { relativePath: string }): Promise<Messa
     const dataArray = Array.from(uint8Array)
     const mimeType = file.type || 'image/jpeg'
 
-    console.log('[Oh My Prompt] Image read via offscreen:', filename, 'size:', file.size)
     return { success: true, data: { dataArray, mimeType } } as MessageResponse
   } catch (error) {
     console.warn('[Oh My Prompt] Offscreen read image failed:', payload.relativePath, error)
@@ -337,7 +333,6 @@ async function handleDeleteImage(payload: { promptId: string }): Promise<Message
       const filename = `${payload.promptId}.${ext}`
       try {
         await imagesDir.removeEntry(filename)
-        console.log('[Oh My Prompt] Image deleted via offscreen:', filename)
       } catch {
         // File doesn't exist with this extension
       }

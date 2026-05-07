@@ -3,8 +3,6 @@
  * Captures Lovart button/card styles to replicate in Shadow DOM
  */
 
-const LOG_PREFIX = '[Oh My Prompt]'
-
 /**
  * Lovart CSS property configuration
  */
@@ -23,10 +21,10 @@ export interface LovartStyleConfig {
  */
 export const DEFAULT_STYLE: LovartStyleConfig = {
   backgroundColor: 'transparent',
-  borderRadius: '8px',
+  borderRadius: '50%',
   boxShadow: 'none',
-  color: '#666',
-  hoverBackgroundColor: 'rgba(0, 0, 0, 0.05)',
+  color: '#171717', // 黑色
+  hoverBackgroundColor: 'rgba(0, 0, 0, 0.06)',
   activeBackgroundColor: 'rgba(0, 0, 0, 0.1)',
 }
 
@@ -55,7 +53,6 @@ export function extractLovartButtonStyle(): LovartStyleConfig {
     }
   }
 
-  console.log(LOG_PREFIX, 'Lovart button not found, using default style')
   return DEFAULT_STYLE
 }
 

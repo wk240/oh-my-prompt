@@ -298,7 +298,6 @@ function migratePromptOrders(prompts: Prompt[]): Prompt[] {
     })
   })
 
-  console.log('[Oh My Prompt] Migrated prompt order field for', migrated.length, 'prompts')
   return migrated
 }
 

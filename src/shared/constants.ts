@@ -36,6 +36,12 @@ export const CAPTURED_IMAGE_STORAGE_KEY = '_capturedImageUrl'
 // Vision API configuration storage key (for Phase 10)
 export const VISION_API_CONFIG_STORAGE_KEY = '_visionApiConfig'
 
+// Provider configs storage key (new multi-provider architecture)
+export const PROVIDER_CONFIGS_STORAGE_KEY = '_providerConfigs'
+
+// Legacy Vision API config key (for migration)
+export const LEGACY_VISION_API_CONFIG_KEY = '_visionApiConfig'
+
 // Secrets directory for API config (no encryption)
 export const SECRETS_DIR_NAME = 'secrets'
 export const API_CONFIG_FILE = 'api-config.json'

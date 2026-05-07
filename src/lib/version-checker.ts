@@ -48,7 +48,6 @@ async function fetchLatestRelease(): Promise<{
 
     if (!response.ok) {
       if (response.status === 404) {
-        console.log('[Oh My Prompt] No releases found in repository')
         return null
       }
       console.error('[Oh My Prompt] GitHub API error:', response.status)
@@ -102,7 +101,6 @@ export async function checkForUpdate(): Promise<UpdateStatus> {
   // Store status in chrome.storage.local
   await chrome.storage.local.set({ [UPDATE_STATUS_KEY]: status })
 
-  console.log('[Oh My Prompt] Update check result:', status)
   return status
 }
 
@@ -124,5 +122,4 @@ export async function getUpdateStatus(): Promise<UpdateStatus | null> {
  */
 export async function clearUpdateStatus(): Promise<void> {
   await chrome.storage.local.remove(UPDATE_STATUS_KEY)
-  console.log('[Oh My Prompt] Update status cleared')
 }

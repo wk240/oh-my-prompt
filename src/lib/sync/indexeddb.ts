@@ -64,7 +64,6 @@ async function migrateFolderHandle(): Promise<FileSystemDirectoryHandle | null> 
       await saveFolderHandle(handle)
       // Delete legacy DB
       indexedDB.deleteDatabase(LEGACY_SYNC_DB_NAME)
-      console.log('[Oh My Prompt] Migrated folder handle from legacy DB')
       return handle
     }
 
@@ -123,12 +122,10 @@ export async function getFolderHandle(): Promise<FileSystemDirectoryHandle | nul
   })
 
   if (handle) {
-    console.log('[Oh My Prompt] IndexedDB handle found')
     return handle
   }
 
   // Try migration from legacy DB
-  console.log('[Oh My Prompt] IndexedDB handle not found, checking legacy DB...')
   return migrateFolderHandle()
 }
 

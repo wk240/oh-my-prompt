@@ -8,8 +8,6 @@ import { createRoot, type Root } from 'react-dom/client'
 import VisionModal from './components/VisionModal'
 import { ErrorBoundary } from './components/ErrorBoundary'
 
-const LOG_PREFIX = '[Oh My Prompt]'
-
 /**
  * Host element ID for Shadow DOM container
  */
@@ -71,7 +69,6 @@ export class VisionModalManager {
       </ErrorBoundary>
     )
 
-    console.log(LOG_PREFIX, 'Vision modal created (subscribe mode)')
   }
 
   /**
@@ -92,7 +89,6 @@ export class VisionModalManager {
 
     this.shadowRoot = null
 
-    console.log(LOG_PREFIX, 'Vision modal destroyed')
   }
 
   /**

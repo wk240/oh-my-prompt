@@ -100,6 +100,7 @@ export function PromptEditModal({
   const [isUploadingImage, setIsUploadingImage] = useState(false)
   const [imageError, setImageError] = useState<string | undefined>(undefined)
   const [showFolderWarning, setShowFolderWarning] = useState(false)
+  const [showPermissionWarning, setShowPermissionWarning] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Hover preview state
@@ -179,6 +180,7 @@ export function PromptEditModal({
       setImageUrlInput('')
       setImageError(undefined)
       setShowFolderWarning(false)
+      setShowPermissionWarning(false)
       // Reset tab to Chinese when modal opens
       setActiveTab('zh')
 
@@ -225,7 +227,11 @@ export function PromptEditModal({
           setLocalImage(result.relativePath)
           setImagePreviewUrl(URL.createObjectURL(file))
         } else {
-          setImageError(getImageErrorMessage(result.error))
+          if (result.error === 'PERMISSION_DENIED') {
+            setShowPermissionWarning(true)
+          } else {
+            setImageError(getImageErrorMessage(result.error))
+          }
         }
       } catch {
         setImageError('图片保存失败，请检查文件夹权限')
@@ -264,7 +270,11 @@ export function PromptEditModal({
           setImagePreviewUrl(URL.createObjectURL(downloadResult.blob))
           setImageUrlInput('')
         } else {
-          setImageError(getImageErrorMessage(result.error))
+          if (result.error === 'PERMISSION_DENIED') {
+            setShowPermissionWarning(true)
+          } else {
+            setImageError(getImageErrorMessage(result.error))
+          }
         }
       } else {
         setImageError('图片下载失败，请检查网络或URL是否有效')
@@ -827,6 +837,45 @@ export function PromptEditModal({
                 }}
               >
                 配置文件夹
+              </button>
+            </div>
+          )}
+
+          {/* Permission warning */}
+          {showPermissionWarning && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px',
+                background: '#fef2f2',
+                border: '1px solid #fecaca',
+                borderRadius: '4px',
+              }}
+            >
+              <AlertCircle style={{ width: 14, height: 14, color: '#dc2626' }} />
+              <span style={{ fontSize: '11px', color: '#991b1b', flex: 1 }}>
+                文件夹权限不足，请重新选择文件夹或授权访问
+              </span>
+              <button
+                onClick={() => {
+                  setShowPermissionWarning(false)
+                  // Open backup page for folder re-selection
+                  chrome.runtime.sendMessage({ type: MessageType.OPEN_BACKUP_PAGE })
+                }}
+                style={{
+                  padding: '4px 8px',
+                  background: '#dc2626',
+                  border: 'none',
+                  borderRadius: '4px',
+                  fontSize: '10px',
+                  fontWeight: 500,
+                  color: '#ffffff',
+                  cursor: 'pointer',
+                }}
+              >
+                重新授权
               </button>
             </div>
           )}

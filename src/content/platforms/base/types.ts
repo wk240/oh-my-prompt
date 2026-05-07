@@ -49,6 +49,8 @@ export interface UIInjectionConfig {
   position: InjectionPosition
   buttonStyle?: ButtonStyleConfig
   customButton?: React.ComponentType<{ inputElement: HTMLElement; isOpen: boolean; onClick: () => void }>
+  /** Optional: selector to identify which input this injection targets */
+  inputSelector?: string
 }
 
 /**
@@ -60,6 +62,8 @@ export interface PlatformConfig {
   urlPatterns: UrlPattern[]
   inputDetection: InputDetectionConfig
   uiInjection: UIInjectionConfig
+  /** Optional: additional injection configs for different input areas (mutually exclusive) */
+  secondaryInjections?: UIInjectionConfig[]
   strategies?: StrategyOverrides
 }
 

@@ -49,7 +49,6 @@ export async function backupToFolder(
     await writable.write(JSON.stringify(backupFile, null, 2))
     await writable.close()
 
-    console.log('[Oh My Prompt] Backup saved:', BACKUP_FILE_NAME, 'temporaryPrompts:', backupData.temporaryPrompts.length)
   } catch (error) {
     console.error('[Oh My Prompt] Failed to backup:', error)
     throw error
@@ -93,7 +92,6 @@ export async function syncToLocalFolder(
     await writable.write(JSON.stringify(backupFile, null, 2))
     await writable.close()
 
-    console.log('[Oh My Prompt] Synced to local folder:', BACKUP_FILE_NAME, 'temporaryPrompts:', backupData.temporaryPrompts.length)
 
     // Create history backup only if content changed
     const hashExists = await checkHashExistsInHistory(handle, contentHash)
@@ -102,7 +100,6 @@ export async function syncToLocalFolder(
       await createHistoryBackup(handle)
       createdNewBackup = true
     } else {
-      console.log('[Oh My Prompt] Skipped history backup - content unchanged')
     }
 
     await cleanupOldBackups(handle)
@@ -178,7 +175,6 @@ export async function selectSyncFolder(): Promise<FileSystemDirectoryHandle | nu
     return handle
   } catch (error) {
     // User cancelled or picker failed
-    console.log('[Oh My Prompt] Folder selection cancelled:', error)
     return null
   }
 }
@@ -237,7 +233,6 @@ async function createHistoryBackup(handle: FileSystemDirectoryHandle): Promise<v
     await writable.write(content)
     await writable.close()
 
-    console.log('[Oh My Prompt] History backup created:', historyFilename)
   } catch (error) {
     console.warn('[Oh My Prompt] Failed to create history backup:', error)
   }
@@ -275,7 +270,6 @@ async function cleanupOldBackups(handle: FileSystemDirectoryHandle): Promise<voi
       const toRemove = historyFiles.slice(MAX_BACKUP_HISTORY)
       for (const file of toRemove) {
         await handle.removeEntry(file.name)
-        console.log('[Oh My Prompt] Removed old backup:', file.name)
       }
     }
   } catch (error) {

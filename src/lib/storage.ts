@@ -76,7 +76,6 @@ export class StorageManager {
   async initializeStorage(): Promise<StorageSchema> {
     const defaultData = this.getDefaultData()
     await this.saveData(defaultData)
-    console.log('[Oh My Prompt] Initialized storage with default data')
     return defaultData
   }
 
@@ -101,7 +100,6 @@ export class StorageManager {
 
       // Case 2: Legacy format - needs migration
       if (isLegacyFormat(data)) {
-        console.log('[Oh My Prompt] Detected legacy format, migrating...')
         const migrated = await migrate(data, this.getCurrentVersion())
         await this.saveData(migrated)
         return migrated
@@ -119,7 +117,6 @@ export class StorageManager {
 
       // Update version if mismatch (no full migration needed for new format)
       if (schema.version !== currentVersion) {
-        console.log('[Oh My Prompt] Version mismatch, updating version...')
         schema.version = currentVersion
         schema._migrationComplete = true
         await this.saveData(schema)

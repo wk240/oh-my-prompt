@@ -12,6 +12,7 @@ import HoverButton from './components/HoverButton'
 import { MessageType } from '@/shared/messages'
 import { TaskQueueManager } from './core/task-queue-manager'
 import { VisionModalManager } from './vision-modal-manager'
+import { isFileUrl, imageElementToBase64 } from '@/lib/file-image-utils'
 
 const LOG_PREFIX = '[Oh My Prompt]'
 
@@ -69,13 +70,11 @@ export class ImageHoverButtonManager {
    * Start listening for image hovers
    */
   start(): void {
-    console.log(LOG_PREFIX, 'ImageHoverButtonManager started (PLAN-B: event delegation)')
 
     // Load vision setting from storage
     chrome.runtime.sendMessage({ type: MessageType.GET_STORAGE }, (response) => {
       if (response?.success && response.data?.settings) {
         this.visionEnabled = response.data.settings.visionEnabled ?? true
-        console.log(LOG_PREFIX, 'Vision feature setting loaded:', this.visionEnabled)
       }
     })
 
@@ -96,7 +95,6 @@ export class ImageHoverButtonManager {
   private handleStorageChange(changes: { [key: string]: chrome.storage.StorageChange }): void {
     if (changes['prompt_script_data']?.newValue?.settings?.visionEnabled !== undefined) {
       this.visionEnabled = changes['prompt_script_data'].newValue.settings.visionEnabled
-      console.log(LOG_PREFIX, 'Vision feature setting updated:', this.visionEnabled)
     }
   }
 
@@ -124,7 +122,6 @@ export class ImageHoverButtonManager {
 
     this.currentImg = null
 
-    console.log(LOG_PREFIX, 'ImageHoverButtonManager stopped')
   }
 
   /**
@@ -233,7 +230,6 @@ export class ImageHoverButtonManager {
     this.singletonRoot = createRoot(buttonWrapper)
 
     if (DEBUG_HOVER_BUTTON) {
-      console.log(LOG_PREFIX, 'Singleton button created')
     }
 
     return container
@@ -247,11 +243,6 @@ export class ImageHoverButtonManager {
     const elements = document.elementsFromPoint(x, y)
 
     if (DEBUG_HOVER_BUTTON) {
-      console.log(LOG_PREFIX, 'elementsFromPoint stack:', elements.slice(0, 10).map(el => ({
-        tag: el.tagName,
-        class: el.className?.toString().slice(0, 50),
-        src: el.tagName === 'IMG' ? (el as HTMLImageElement).src?.slice(0, 50) : undefined
-      })))
     }
 
     // Find the first large enough image in the stack
@@ -262,7 +253,6 @@ export class ImageHoverButtonManager {
         if (rect.width >= MIN_WIDTH && rect.height >= MIN_HEIGHT) {
           return img
         } else if (DEBUG_HOVER_BUTTON) {
-          console.log(LOG_PREFIX, 'Image found but too small:', { width: rect.width, height: rect.height })
         }
       }
 
@@ -273,7 +263,6 @@ export class ImageHoverButtonManager {
           const rect = img.getBoundingClientRect()
           if (rect.width >= MIN_WIDTH && rect.height >= MIN_HEIGHT) {
             if (DEBUG_HOVER_BUTTON) {
-              console.log(LOG_PREFIX, 'Found image in PICTURE element')
             }
             return img
           }
@@ -286,7 +275,6 @@ export class ImageHoverButtonManager {
         const containedImg = this.findLargeImageInContainer(el as HTMLElement)
         if (containedImg) {
           if (DEBUG_HOVER_BUTTON) {
-            console.log(LOG_PREFIX, 'Found covered image in element:', containedImg.src?.slice(0, 50))
           }
           return containedImg
         }
@@ -305,7 +293,6 @@ export class ImageHoverButtonManager {
     const images = container.querySelectorAll('img')
 
     if (DEBUG_HOVER_BUTTON && images.length > 0) {
-      console.log(LOG_PREFIX, 'Container has images:', images.length)
     }
 
     // Prefer the first visible large image (main image, not preview stack)
@@ -315,12 +302,6 @@ export class ImageHoverButtonManager {
       const opacity = parseFloat(style.opacity)
 
       if (DEBUG_HOVER_BUTTON) {
-        console.log(LOG_PREFIX, 'Checking image in container:', {
-          src: img.src?.slice(0, 50),
-          width: rect.width,
-          height: rect.height,
-          opacity
-        })
       }
 
       // Check if image is large enough and visible (opacity > 0)
@@ -352,7 +333,6 @@ export class ImageHoverButtonManager {
     const rect = img.getBoundingClientRect()
     if (rect.width < MIN_WIDTH || rect.height < MIN_HEIGHT) {
       if (DEBUG_HOVER_BUTTON) {
-        console.log(LOG_PREFIX, 'Image too small, skipping', { width: rect.width, height: rect.height })
       }
       return
     }
@@ -361,7 +341,6 @@ export class ImageHoverButtonManager {
     const imageUrl = this.getImageUrl(img)
     if (!imageUrl) {
       if (DEBUG_HOVER_BUTTON) {
-        console.log(LOG_PREFIX, 'No valid image URL, skipping')
       }
       return
     }
@@ -371,26 +350,16 @@ export class ImageHoverButtonManager {
       clearTimeout(this.hideTimeout)
       this.hideTimeout = null
       if (DEBUG_HOVER_BUTTON) {
-        console.log(LOG_PREFIX, 'Cleared hide timeout (mouse returned)')
       }
     }
 
     if (DEBUG_HOVER_BUTTON) {
-      console.log(LOG_PREFIX, 'About to show button', {
-        imgRect: { top: rect.top, left: rect.left, width: rect.width, height: rect.height },
-        currentImg: this.currentImg?.src?.slice(0, 30),
-        newImg: img.src?.slice(0, 30)
-      })
     }
 
     // Show immediately (singleton button is cheap, no delay needed)
     this.showButton(img, imageUrl)
 
     if (DEBUG_HOVER_BUTTON) {
-      console.log(LOG_PREFIX, 'Image detected, showing button', {
-        src: imageUrl.substring(0, 50),
-        size: { width: rect.width, height: rect.height }
-      })
     }
   }
 
@@ -429,7 +398,6 @@ export class ImageHoverButtonManager {
     }, HIDE_DELAY)
 
     if (DEBUG_HOVER_BUTTON) {
-      console.log(LOG_PREFIX, 'Mouse left image area, scheduling hide')
     }
   }
 
@@ -458,10 +426,6 @@ export class ImageHoverButtonManager {
     )
 
     if (DEBUG_HOVER_BUTTON) {
-      console.log(LOG_PREFIX, 'Button shown', {
-        position: { top: rect.top + 8, left: rect.left + 8 },
-        imageUrl: imageUrl.substring(0, 50)
-      })
     }
   }
 
@@ -475,15 +439,13 @@ export class ImageHoverButtonManager {
     this.currentImg = null
 
     if (DEBUG_HOVER_BUTTON) {
-      console.log(LOG_PREFIX, 'Button hidden')
     }
   }
 
   /**
    * Handle button click - add to queue and show VisionModal
    */
-  private handleButtonClick(imageUrl: string): void {
-    console.log(LOG_PREFIX, 'Hover button clicked')
+  private async handleButtonClick(imageUrl: string): Promise<void> {
 
     try {
       const queueManager = TaskQueueManager.getInstance()
@@ -492,13 +454,33 @@ export class ImageHoverButtonManager {
       // Ensure modal is open first
       visionModalManager.create()
 
-      // Add task to queue
-      const task = queueManager.addTask(imageUrl)
+      // Handle file:// URLs - convert to base64 in content script context
+      // Service worker cannot fetch file:// URLs due to Chrome security model
+      if (isFileUrl(imageUrl)) {
 
-      if (task === null) {
-        // Queue is full, show toast
-        this.showToast('队列已满，请等待任务完成')
-        return
+        // Try to convert from the current image element (already loaded)
+        const base64Data = this.currentImg ? imageElementToBase64(this.currentImg) : null
+
+        if (base64Data) {
+          // Add task with base64 data
+          const task = queueManager.addTask('', base64Data)
+          if (task === null) {
+            this.showToast('队列已满，请等待任务完成')
+            return
+          }
+        } else {
+          // Failed to convert - show error
+          console.warn(LOG_PREFIX, 'Failed to convert file:// image to base64')
+          this.showToast('无法读取本地图片，请尝试其他图片')
+          return
+        }
+      } else {
+        // Normal HTTP URL - add to queue directly
+        const task = queueManager.addTask(imageUrl)
+        if (task === null) {
+          this.showToast('队列已满，请等待任务完成')
+          return
+        }
       }
     } catch (error) {
       console.error(LOG_PREFIX, 'Queue operation failed:', error)
@@ -607,7 +589,6 @@ export class ImageHoverButtonManager {
           })
           if (sorted[0]?.url && sorted[0].url.startsWith('http')) {
             if (DEBUG_HOVER_BUTTON) {
-              console.log(LOG_PREFIX, 'Found URL from picture > source:', sorted[0].url.slice(0, 50))
             }
             return sorted[0].url
           }
@@ -621,7 +602,6 @@ export class ImageHoverButtonManager {
       const value = img.getAttribute(attr)
       if (value && value.startsWith('http')) {
         if (DEBUG_HOVER_BUTTON) {
-          console.log(LOG_PREFIX, 'Found URL from Pinterest attr:', attr, value.slice(0, 50))
         }
         return value
       }
@@ -643,7 +623,6 @@ export class ImageHoverButtonManager {
       if (img.src.startsWith('data:')) {
         // Skip data URLs but log for debugging
         if (DEBUG_HOVER_BUTTON) {
-          console.log(LOG_PREFIX, 'Skipping data URL, checking other attributes')
         }
         return null
       }

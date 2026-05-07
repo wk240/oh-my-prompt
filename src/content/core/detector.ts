@@ -5,7 +5,6 @@
 
 import type { InputDetectionConfig } from '../platforms/base/types'
 
-const LOG_PREFIX = '[Oh My Prompt]'
 const DEFAULT_DEBOUNCE_MS = 100
 
 export class Detector {
@@ -107,7 +106,6 @@ export class Detector {
       if (element && this.isValidInput(element)) {
         if (element !== this.inputElement) {
           this.inputElement = element
-          console.log(LOG_PREFIX, 'Input detected:', selector)
           this.onDetected(element)
         }
         // Notify status change if callback is set
@@ -149,7 +147,6 @@ export class Detector {
     this.originalReplaceState = history.replaceState
 
     const handleNav = () => {
-      console.log(LOG_PREFIX, 'Navigation detected')
       this.inputElement = null
       this.tryDetect()
     }

@@ -405,7 +405,14 @@ function VisionModal({ onClose }: VisionModalProps) {
       return (
         <div className="loading-view">
           <Loader2 className="loading-spinner" />
-          <p className="loading-text">正在分析图片...</p>
+          <p className="loading-text">
+            正在分析图片...
+            {selectedTask.modelName && (
+              <span style={{ color: '#64748B', fontSize: '12px', marginLeft: '8px' }}>
+                ({selectedTask.modelName})
+              </span>
+            )}
+          </p>
         </div>
       )
     }

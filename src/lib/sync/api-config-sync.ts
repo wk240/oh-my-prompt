@@ -51,11 +51,9 @@ export async function syncApiConfigToFolder(
 export async function readApiConfigFromFolder(
   handle: FileSystemDirectoryHandle
 ): Promise<VisionApiConfig | null> {
-  console.log('[Oh My Prompt] readApiConfigFromFolder: Starting...')
   try {
     // Get secrets directory
     const secretsDir = await handle.getDirectoryHandle(SECRETS_DIR_NAME)
-    console.log('[Oh My Prompt] readApiConfigFromFolder: secrets directory found')
 
     // Read config file
     const fileHandle = await secretsDir.getFileHandle(API_CONFIG_FILE)

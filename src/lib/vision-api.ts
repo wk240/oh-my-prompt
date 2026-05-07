@@ -4,8 +4,25 @@
  * API format is user-selected (OpenAI or Anthropic compatible)
  */
 
-import type { VisionApiConfig, VisionApiErrorPayload, VisionApiResultData } from '../shared/types'
+import type { VisionApiConfig, VisionApiErrorPayload, VisionApiResultData, ProviderConfig } from '../shared/types'
+import { MessageType } from '../shared/messages'
 import { extractBase64Data } from './image-utils'
+
+/**
+ * Get active provider config from storage
+ * SECURITY: Returns full apiKey for internal Vision API use only
+ */
+async function getActiveProviderConfig(): Promise<ProviderConfig | null> {
+  const response = await chrome.runtime.sendMessage({ type: MessageType.GET_ACTIVE_CONFIG })
+  return response.success ? response.data : null
+}
+
+/**
+ * Map ProviderConfig apiFormat to Vision API format
+ */
+function mapApiFormat(format: ProviderConfig['apiFormat']): 'anthropic' | 'openai' {
+  return format === 'anthropic_messages' ? 'anthropic' : 'openai'
+}
 
 // Anthropic API version header (T-11-04 mitigation)
 const ANTHROPIC_VERSION = '2023-06-01'
@@ -296,6 +313,93 @@ function validateVisionResult(data: VisionApiResultData): void {
 }
 
 /**
+ * Robustly extract JSON from text that may contain markdown fences or mixed content
+ * Handles: uppercase fences, spaces in fences, explanatory text, truncated JSON
+ * @param text - Raw text from Vision API
+ * @returns Extracted JSON string
+ * @throws Error if no valid JSON found
+ */
+function extractJsonFromText(text: string): string {
+  let jsonText = text.trim()
+
+  // Strategy 1: Strip markdown fences (case-insensitive, with optional spaces)
+  // Pattern: ```[optional spaces][json|JSON|js][optional spaces]
+  const fenceStartMatch = jsonText.match(/^```\s*(json|JSON|js)?\s*\n?/i)
+  if (fenceStartMatch) {
+    jsonText = jsonText.slice(fenceStartMatch[0].length)
+  }
+
+  // Strip trailing fence
+  if (jsonText.endsWith('```')) {
+    jsonText = jsonText.slice(0, -3).trim()
+  }
+
+  // Strategy 2: If still not valid JSON, try to extract JSON object from mixed text
+  // Look for the outermost {...} pattern
+  if (!jsonText.startsWith('{')) {
+    // Find first opening brace
+    const firstBrace = jsonText.indexOf('{')
+    if (firstBrace !== -1) {
+      // Find matching closing brace (count depth)
+      let depth = 0
+      let lastBrace = -1
+      for (let i = firstBrace; i < jsonText.length; i++) {
+        if (jsonText[i] === '{') depth++
+        else if (jsonText[i] === '}') {
+          depth--
+          if (depth === 0) {
+            lastBrace = i
+            break
+          }
+        }
+      }
+
+      if (lastBrace !== -1) {
+        jsonText = jsonText.slice(firstBrace, lastBrace + 1)
+      }
+    }
+  }
+
+  // Strategy 3: Handle truncated JSON (missing closing braces)
+  // Try to repair by counting and adding missing braces
+  let depth = 0
+  let inString = false
+  let escapeNext = false
+
+  for (let i = 0; i < jsonText.length; i++) {
+    const char = jsonText[i]
+
+    if (escapeNext) {
+      escapeNext = false
+      continue
+    }
+
+    if (char === '\\' && inString) {
+      escapeNext = true
+      continue
+    }
+
+    if (char === '"' && !escapeNext) {
+      inString = !inString
+      continue
+    }
+
+    if (!inString) {
+      if (char === '{') depth++
+      else if (char === '}') depth--
+    }
+  }
+
+  // If depth > 0, JSON is truncated - add missing closing braces
+  if (depth > 0) {
+    console.warn('[Oh My Prompt] Vision API response appears truncated, attempting repair')
+    jsonText += '}'.repeat(depth)
+  }
+
+  return jsonText.trim()
+}
+
+/**
  * Parse Vision API response and extract structured data
  * @param apiFormat - 'anthropic' or 'openai'
  * @param response - API response JSON
@@ -310,25 +414,18 @@ export function parseVisionResponse(apiFormat: 'anthropic' | 'openai', response:
     throw new Error('Empty response from Vision API')
   }
 
-  // Strip potential markdown code fences
-  let jsonText = text.trim()
-  if (jsonText.startsWith('```json')) {
-    jsonText = jsonText.slice(7)
-  }
-  if (jsonText.startsWith('```')) {
-    jsonText = jsonText.slice(3)
-  }
-  if (jsonText.endsWith('```')) {
-    jsonText = jsonText.slice(0, -3)
-  }
-  jsonText = jsonText.trim()
+  // Robustly extract JSON from potentially messy text
+  const jsonText = extractJsonFromText(text)
 
   // Parse JSON
   let data: VisionApiResultData
   try {
     data = JSON.parse(jsonText) as VisionApiResultData
   } catch (parseError) {
-    console.error('[Oh My Prompt] Vision API JSON parse error:', parseError, 'raw text:', text.substring(0, 200))
+    // Log the problematic text for debugging
+    console.error('[Oh My Prompt] Vision API JSON parse error:', parseError)
+    console.error('[Oh My Prompt] Raw text (first 500 chars):', text.substring(0, 500))
+    console.error('[Oh My Prompt] Extracted JSON (first 500 chars):', jsonText.substring(0, 500))
     throw new Error('Failed to parse Vision API response as JSON')
   }
 
@@ -420,28 +517,6 @@ export async function executeVisionApiCall(
 
   const headers = buildHeaders(apiFormat, config.apiKey)
 
-  // Log request details (T-11-01: apiKey never logged)
-  // For base64, log size instead of full content
-  const imageLog = format === 'base64'
-    ? `base64 (${imageData.length} chars)`
-    : imageData.substring(0, 50) + '...'
-
-  console.log('[Oh My Prompt] Vision API call:', {
-    apiFormat,
-    baseUrl: config.baseUrl,
-    endpointUrl,
-    modelName: config.modelName,
-    imageFormat: format,
-    image: imageLog
-  })
-
-  // Log request body for debugging (truncate base64 data)
-  const logRequestBody = JSON.stringify(requestBody, null, 2)
-  const truncatedLog = logRequestBody.length > 500
-    ? logRequestBody.substring(0, 500) + '... (truncated)'
-    : logRequestBody
-  console.log('[Oh My Prompt] Vision API request body:', truncatedLog)
-
   // Execute with AbortController timeout - merge with external signal if provided
   const abortController = new AbortController()
   const timeoutId = setTimeout(() => abortController.abort(), API_TIMEOUT_MS)
@@ -457,7 +532,6 @@ export async function executeVisionApiCall(
     signal.addEventListener('abort', () => abortController.abort())
   }
 
-  console.log('[Oh My Prompt] Vision API fetch starting...')
 
   try {
     const response = await fetch(endpointUrl, {
@@ -467,21 +541,34 @@ export async function executeVisionApiCall(
       signal: abortController.signal
     })
 
-    console.log('[Oh My Prompt] Vision API fetch completed, status:', response.status)
     clearTimeout(timeoutId)
 
     if (!response.ok) {
-      // Log response body for debugging
-      const errorText = await response.text()
-      console.log('[Oh My Prompt] Vision API error response:', errorText)
-      throw new Error(`API error: ${response.status}`)
+      // Try to extract error details from response body
+      let errorDetail = `HTTP ${response.status}`
+      try {
+        const errorBody = await response.json()
+        // OpenAI format: { error: { message, code, type } }
+        if (errorBody?.error?.message) {
+          errorDetail = errorBody.error.message
+        }
+        // Anthropic format: { error: { message, type } }
+        if (errorBody?.message) {
+          errorDetail = errorBody.message
+        }
+        // Include error code if available
+        if (errorBody?.error?.code) {
+          errorDetail = `${errorBody.error.code}: ${errorDetail}`
+        }
+      } catch {
+        // Failed to parse error body, use status code
+      }
+      throw new Error(errorDetail)
     }
 
     const data = await response.json()
-    console.log('[Oh My Prompt] Vision API response data:', JSON.stringify(data, null, 2).substring(0, 200))
     const resultData = parseVisionResponse(apiFormat, data)
 
-    console.log('[Oh My Prompt] Vision API success, zh.prompt length:', resultData.zh.prompt.length)
     return resultData
 
   } catch (error) {
@@ -498,34 +585,114 @@ export async function executeVisionApiCall(
 }
 
 /**
- * Classify API error to VisionApiErrorPayload (D-05, VISION-04)
+ * Execute Vision API call using active ProviderConfig
+ * New multi-provider architecture
+ */
+export async function executeVisionApiCallWithProviderConfig(
+  imageData: string,
+  format: 'url' | 'base64' = 'base64',
+  signal?: AbortSignal
+): Promise<VisionApiResultData> {
+  const config = await getActiveProviderConfig()
+  if (!config) {
+    throw new Error('NO_CONFIG: 请先配置 Vision API')
+  }
+
+  // SECURITY: Validate endpoint starts with https://
+  if (!config.apiEndpoint.startsWith('https://')) {
+    throw new Error('API 地址必须使用 HTTPS')
+  }
+
+  // Validate image data
+  if (format === 'url') {
+    if (!imageData.startsWith('http://') && !imageData.startsWith('https://')) {
+      throw new Error('Image URL must be HTTP or HTTPS')
+    }
+  } else {
+    if (!imageData.startsWith('data:image/')) {
+      throw new Error('Image must be a valid data URL for base64 format')
+    }
+  }
+
+  const apiFormat = mapApiFormat(config.apiFormat)
+  const endpointUrl = getFullEndpoint(config.apiEndpoint, apiFormat)
+
+  // Prepare image data
+  const imageForApi = apiFormat === 'anthropic' && format === 'base64'
+    ? extractBase64Data(imageData)
+    : imageData
+
+  const requestBody = apiFormat === 'anthropic'
+    ? buildAnthropicRequest(imageForApi, config.selectedModel, format)
+    : buildOpenAIRequest(imageForApi, config.selectedModel, format)
+
+  const headers = buildHeaders(apiFormat, config.apiKey)
+
+  // Execute with timeout
+  const abortController = new AbortController()
+  const timeoutId = setTimeout(() => abortController.abort(), API_TIMEOUT_MS)
+
+  if (signal) {
+    if (signal.aborted) {
+      clearTimeout(timeoutId)
+      abortController.abort()
+      throw new DOMException('Aborted before API call', 'AbortError')
+    }
+    signal.addEventListener('abort', () => abortController.abort())
+  }
+
+  try {
+    const response = await fetch(endpointUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(requestBody),
+      signal: abortController.signal
+    })
+
+    clearTimeout(timeoutId)
+
+    if (!response.ok) {
+      let errorDetail = `HTTP ${response.status}`
+      try {
+        const errorBody = await response.json()
+        if (errorBody?.error?.message) {
+          errorDetail = errorBody.error.message
+        }
+        if (errorBody?.message) {
+          errorDetail = errorBody.message
+        }
+        if (errorBody?.error?.code) {
+          errorDetail = `${errorBody.error.code}: ${errorDetail}`
+        }
+      } catch {
+        // Failed to parse error body
+      }
+      throw new Error(errorDetail)
+    }
+
+    const data = await response.json()
+    return parseVisionResponse(apiFormat, data)
+  } catch (error) {
+    clearTimeout(timeoutId)
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('timeout')
+    }
+    throw error
+  }
+}
+
+/**
+ * Classify API error to VisionApiErrorPayload
+ * Simplified: directly pass through API error message for user visibility
  * @param error - Error from API call
- * @param retryCount - Current retry count (for T-11-05)
+ * @param retryCount - Current retry count (for retry logic)
  * @returns VisionApiErrorPayload with type, message, action
  */
 export function classifyApiError(error: unknown, retryCount = 0): VisionApiErrorPayload {
   if (error instanceof Error) {
     const errorMessage = error.message
 
-    // Invalid API key (401, invalid_api_key)
-    if (errorMessage.includes('401') || errorMessage.includes('invalid_api_key')) {
-      return {
-        type: 'invalid_key',
-        message: 'API Key 无效，请检查配置',
-        action: 'settings'
-      }
-    }
-
-    // Rate limit (429)
-    if (errorMessage.includes('429') || errorMessage.includes('rate_limit')) {
-      return {
-        type: 'rate_limit',
-        message: 'API 调用频率超限，请稍后重试',
-        action: retryCount < MAX_RETRY_COUNT ? 'retry' : 'close' // T-11-05 mitigation
-      }
-    }
-
-    // Timeout
+    // Timeout - needs retry
     if (errorMessage.includes('timeout') || error.name === 'AbortError') {
       return {
         type: 'timeout',
@@ -534,43 +701,25 @@ export function classifyApiError(error: unknown, retryCount = 0): VisionApiError
       }
     }
 
-    // Network error
-    if (errorMessage.includes('network') || errorMessage.includes('fetch') || errorMessage.includes('Failed to fetch')) {
+    // Network error (before reaching API)
+    if (errorMessage.includes('Failed to fetch') || errorMessage.includes('network')) {
       return {
         type: 'network',
-        message: '网络连接失败，请检查网络后重试',
+        message: '网络连接失败，请检查网络或 API 地址',
         action: retryCount < MAX_RETRY_COUNT ? 'retry' : 'close'
       }
     }
 
-    // Unsupported image (400 with image-related error)
-    if (errorMessage.includes('400') || errorMessage.includes('image')) {
+    // Rate limit - needs retry
+    if (errorMessage.includes('429') || errorMessage.includes('rate_limit')) {
       return {
-        type: 'unsupported_image',
-        message: '图片格式不支持或图片过大',
-        action: 'close'
+        type: 'rate_limit',
+        message: 'API 调用频率超限，请稍后重试',
+        action: retryCount < MAX_RETRY_COUNT ? 'retry' : 'close'
       }
     }
 
-    // Endpoint not found (404)
-    if (errorMessage.includes('404')) {
-      return {
-        type: 'network',
-        message: 'API 端点不存在，请检查 Base URL 配置',
-        action: 'settings'
-      }
-    }
-
-    // Forbidden (403)
-    if (errorMessage.includes('403')) {
-      return {
-        type: 'invalid_key',
-        message: 'API 访问被拒绝，请检查 API Key 权限',
-        action: 'settings'
-      }
-    }
-
-    // Server errors (500/502/503)
+    // Server errors (500/502/503) - needs retry
     if (errorMessage.includes('500') || errorMessage.includes('502') || errorMessage.includes('503')) {
       return {
         type: 'network',
@@ -578,19 +727,32 @@ export function classifyApiError(error: unknown, retryCount = 0): VisionApiError
         action: retryCount < MAX_RETRY_COUNT ? 'retry' : 'close'
       }
     }
+
+    // All other errors: directly show the API error message
+    // This includes model_not_found, invalid_api_key, 401, 403, 404, 400, etc.
+    // Determine action based on error type
+    const needsSettings = errorMessage.includes('invalid') ||
+                          errorMessage.includes('key') ||
+                          errorMessage.includes('not found') ||
+                          errorMessage.includes('does not exist') ||
+                          errorMessage.includes('no access') ||
+                          errorMessage.includes('400') ||
+                          errorMessage.includes('401') ||
+                          errorMessage.includes('403') ||
+                          errorMessage.includes('404')
+
+    return {
+      type: 'invalid_key',
+      message: errorMessage, // Directly show API error message
+      action: needsSettings ? 'settings' : 'close'
+    }
   }
 
-  // Generic error fallback with detailed logging
-  const errorDetails = error instanceof Error
-    ? { name: error.name, message: error.message, stack: error.stack?.substring(0, 200) }
-    : { value: String(error), type: typeof error }
-
-  console.error('[Oh My Prompt] Unhandled API error:', errorDetails)
-
-  // Include error message in the user message for debugging (visible in page console)
+  // Non-Error fallback
+  console.error('[Oh My Prompt] Unknown error type:', error)
   return {
     type: 'network',
-    message: `发生未知错误，请重试 (${error instanceof Error ? error.message : 'unknown'})`,
+    message: `发生未知错误 (${String(error)})`,
     action: 'retry'
   }
 }

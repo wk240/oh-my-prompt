@@ -25,7 +25,6 @@ export default defineConfig({
       input: {
         backup: 'src/popup/backup.html',
         settings: 'src/popup/settings.html',
-        loading: 'src/popup/loading.html',
         apiConfig: 'src/popup/api-config.html',
         sidepanel: 'src/sidepanel/sidepanel.html',
         offscreen: 'src/offscreen/offscreen.html'

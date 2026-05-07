@@ -3,6 +3,7 @@
  */
 
 import type { PlatformConfig } from '../base/types'
+import { ChatGPTButton } from './ChatGPTButton'
 
 export const chatgptConfig: PlatformConfig = {
   id: 'chatgpt',
@@ -25,5 +26,6 @@ export const chatgptConfig: PlatformConfig = {
   uiInjection: {
     anchorSelector: '[data-testid="composer-plus-btn"]',
     position: 'before',
+    customButton: ChatGPTButton,
   },
 }

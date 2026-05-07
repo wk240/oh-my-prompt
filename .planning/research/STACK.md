@@ -1,206 +1,388 @@
-# Stack Research: Online Search Feature Integration
+# Stack Research: Web App + Team Collaboration
 
-**Milestone:** v1.2.0 在线搜索功能
-**Domain:** Chrome Extension (Manifest V3) / Network Integration
-**Researched:** 2026-04-19
-**Confidence:** HIGH
-
----
-
-## 1. Stack Additions Required
-
-### 1.1 No New Dependencies Required
-
-Chrome Extension Manifest V3 already supports `fetch()` API natively in:
-- **Service Worker** (background) — Primary network request location
-- **Popup/Options pages** — Can also make direct network requests
-
-No external HTTP libraries needed (axios, etc. would add unnecessary bundle size).
-
-### 1.2 Data Source Access
-
-| Data Source | Format | URL | Fetch Method |
-|-------------|--------|-----|--------------|
-| Nano Banana Prompts | Markdown (embedded in README) | `https://raw.githubusercontent.com/devanshug2307/Awesome-Nano-Banana-Prompts/main/README.md` | Parse markdown structure |
-| prompts.chat | CSV | `https://raw.githubusercontent.com/f/prompts.chat/main/prompts.csv` | Parse CSV to JSON |
+**Milestone:** v2.0 网络版 + 团队协作
+**Domain:** Chrome Extension + Web App + Backend Services
+**Researched:** 2026-05-07
+**Confidence:** HIGH (well-established stack), MEDIUM (Chinese payment integration)
 
 ---
 
-## 2. Chrome Extension Network Patterns (Manifest V3)
+## 1. Recommended Stack Overview
 
-### 2.1 CSP Constraints
+### Architecture Summary
 
-**Key rule:** Content scripts cannot make direct cross-origin fetch requests.
-
-**Solution:** All network requests must go through:
-1. **Service Worker** (background) — Recommended for all network operations
-2. **chrome.runtime.sendMessage** — Content script → Service Worker → Network → Response
-
-### 2.2 Required Permissions
-
-```json
-// manifest.json
-{
-  "host_permissions": [
-    "https://raw.githubusercontent.com/*",
-    "https://api.github.com/*"
-  ]
-}
 ```
-
-### 2.3 Service Worker Lifecycle
-
-**Critical:** Service Worker can be terminated by Chrome at any time.
-
-Implications:
-- Global variables unreliable — use `chrome.storage.local` for state
-- Long-running requests may be interrupted — handle gracefully
-- Network requests must be fully async (Promise-based)
-
-### 2.4 Request Pattern
-
-```typescript
-// Service Worker
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === 'FETCH_NETWORK_DATA') {
-    fetch(message.url)
-      .then(res => res.text())
-      .then(data => sendResponse({ success: true, data }))
-      .catch(err => sendResponse({ success: false, error: err.message }))
-    return true // Keep channel open for async response
-  }
-})
+┌─────────────────────────────────────────────────────────────────────┐
+│                           CLIENT LAYER                               │
+├─────────────────────────┬───────────────────────────────────────────┤
+│   Chrome Extension      │           Web App (Next.js)               │
+│   (Existing)            │           (New)                           │
+│   - Content Script      │           - Dashboard                     │
+│   - Service Worker      │           - Team Management               │
+│   - Popup UI            │           - Subscription Management       │
+│   - Zustand Store       │           - React Query + Zustand         │
+└─────────────────────────┴───────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                        BACKEND LAYER (Supabase)                      │
+├─────────────────────────────────────────────────────────────────────┤
+│   ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                │
+│   │   Auth      │  │  Database   │  │   Storage   │                │
+│   │  (GoTrue)   │  │ (PostgreSQL)│  │   (S3-like) │                │
+│   └─────────────┘  └─────────────┘  └─────────────┘                │
+│                                                                      │
+│   ┌─────────────┐  ┌─────────────┐                                 │
+│   │  Realtime   │  │  Edge       │                                 │
+│   │  (WebSocket)│  │  Functions  │                                 │
+│   └─────────────┘  └─────────────┘                                 │
+└─────────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                        PAYMENT LAYER                                 │
+├─────────────────────────────────────────────────────────────────────┤
+│   ┌─────────────────────┐     ┌─────────────────────┐              │
+│   │   Stripe            │     │   WeChat/Alipay     │              │
+│   │   (International)   │     │   (via Stripe or   │              │
+│   │   - Subscriptions   │     │    aggregator)     │              │
+│   │   - Webhooks        │     │                     │              │
+│   └─────────────────────┘     └─────────────────────┘              │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 3. Data Source Abstraction
+## 2. Core Technologies
 
-### 3.1 Provider Interface Design
+### 2.1 Web Application
 
-```typescript
-interface DataSourceProvider {
-  id: string
-  name: string
-  fetch(): Promise<RawPromptData>
-  parse(raw: string): ParsedPrompt[]
-  getCategoryMapping(): Map<string, string> // Source category → Local category
-}
-```
+| Technology | Version | Purpose | Why Recommended |
+|------------|---------|---------|-----------------|
+| Next.js | 16.2.x | Full-stack web framework | App Router for SSR/SSG, built-in API routes, excellent DX, Vercel deployment, TypeScript-first |
+| React | 19.x | UI library | Consistent with existing Extension stack, Server Components for performance |
+| TypeScript | 5.x | Type safety | Consistent with existing codebase, end-to-end type safety |
+| Tailwind CSS | 3.x | Styling | Consistent with existing Extension popup, rapid UI development |
+| Zustand | 5.x | Client state | Consistent with Extension, lightweight, simple API |
+| TanStack Query | 5.x | Server state | Caching, synchronization, optimistic updates for team collaboration |
 
-### 3.2 Provider Implementations
+**Why Next.js over alternatives:**
+- Vite SPA: No SSR, worse SEO for public landing pages, no API routes
+- Remix: Smaller ecosystem, less familiar
+- Nuxt (Vue): Inconsistent with existing React Extension codebase
 
-| Provider | Fetch Method | Parse Method | Category Count |
-|----------|--------------|--------------|----------------|
-| NanoBananaProvider | fetch README.md | Markdown parser (regex-based) | 16 categories |
-| PromptsChatProvider | fetch CSV | CSV parser | No categories (flat) |
+### 2.2 Backend Platform
 
-### 3.3 Extensibility Pattern
+| Technology | Version | Purpose | Why Recommended |
+|------------|---------|---------|-----------------|
+| Supabase | 2.105.x | Backend-as-a-Service | All-in-one: Auth, Database, Storage, Realtime, Edge Functions |
+| PostgreSQL | 15.x | Primary database | Via Supabase, excellent for relational data (teams, permissions) |
+| Prisma | 7.8.x | ORM (optional) | Type-safe queries, migrations; can also use Supabase client directly |
 
-```typescript
-// Provider registry
-const providers: DataSourceProvider[] = [
-  new NanoBananaProvider(),
-  new PromptsChatProvider(),
-  // Future: new CustomProvider()
-]
+**Why Supabase over alternatives:**
+- Firebase: NoSQL limits team/permission queries, vendor lock-in, expensive at scale
+- AWS Amplify: Complex setup, steeper learning curve
+- Custom Node.js backend: More code to maintain, need separate auth, storage, realtime services
+- Convex: Newer, smaller ecosystem
 
-function getProvider(id: string): DataSourceProvider | undefined
-```
+### 2.3 Authentication
+
+| Technology | Version | Purpose | Why Recommended |
+|------------|---------|---------|-----------------|
+| Supabase Auth | (via SDK) | Authentication | Built into Supabase, supports Google OAuth, email/password, magic links |
+| @supabase/ssr | 0.10.x | SSR auth helpers | Cookie-based auth for Next.js App Router |
+
+**Extension Auth Flow:**
+1. User initiates login in Extension → Opens Web App in new tab
+2. Web App handles OAuth (Google) or email/password
+3. On success, store session token in `chrome.storage.local`
+4. Extension uses stored token for API calls
+
+### 2.4 Payment Integration
+
+| Technology | Version | Purpose | Why Recommended |
+|------------|---------|---------|-----------------|
+| Stripe | 22.x | International payments | Industry standard, excellent subscription support, webhooks |
+| Stripe Checkout | (via API) | Hosted payment page | PCI compliance, supports WeChat Pay & Alipay for international |
+
+**Chinese Payment Strategy:**
+
+| Option | Pros | Cons | Recommendation |
+|--------|------|------|----------------|
+| Stripe (WeChat/Alipay) | Unified system, no extra integration | Requires international business setup | **Primary** for MVP |
+| Manual bank transfer | No fees, direct | Manual verification, poor UX | Fallback option |
+| Chinese aggregator (Ping++) | Local expertise | Requires ICP license, extra cost | Future consideration |
+
+**Important:** Direct WeChat Pay / Alipay integration requires:
+- Chinese business license (营业执照)
+- ICP filing
+- Individual accounts not supported for SaaS
+
+### 2.5 Real-time Collaboration
+
+| Technology | Version | Purpose | Why Recommended |
+|------------|---------|---------|-----------------|
+| Supabase Realtime | (via SDK) | WebSocket subscriptions | Built into Supabase, PostgreSQL-based, automatic sync |
+
+**Use Cases:**
+- Team prompt library updates (real-time sync)
+- Presence indicators (who's editing)
+- Conflict resolution (optimistic updates + server merge)
+
+### 2.6 Cloud Storage
+
+| Technology | Version | Purpose | Why Recommended |
+|------------|---------|---------|-----------------|
+| Supabase Storage | (via SDK) | File storage | Built into Supabase, S3-compatible API, CDN-backed |
+| IndexedDB | (browser) | Extension local cache | Already used for folder handle persistence |
+
+**Storage Schema:**
+- `prompt-images/` - User uploaded images for vision API
+- `team-avatars/` - Team profile images
+- `exports/` - Generated export files (temporary)
 
 ---
 
-## 4. Caching Strategy
+## 3. Supporting Libraries
 
-### 4.1 Storage Schema Extension
+### 3.1 Web App Specific
 
-```typescript
-interface CachedNetworkData {
-  providerId: string
-  fetchedAt: string // ISO timestamp
-  data: ParsedPrompt[]
-  ttl: number // Cache expiry in hours (default: 24)
-}
-```
+| Library | Version | Purpose | When to Use |
+|---------|---------|---------|-------------|
+| @radix-ui/react-* | ^1.x | UI primitives | Consistent with Extension popup |
+| lucide-react | ^1.x | Icons | Consistent with Extension |
+| react-hook-form | ^7.x | Form handling | Subscription forms, team settings |
+| zod | ^4.x | Schema validation | API input validation, form validation |
+| date-fns | ^4.x | Date handling | Subscription expiry, billing cycles |
 
-### 4.2 Cache Flow
+### 3.2 API Layer
 
-1. User clicks "在线库" → Check cache timestamp
-2. If cache expired (>24h) or empty → Fetch from network
-3. On fetch success → Store to `chrome.storage.local`
-4. Display cached data (fast UI)
+| Library | Version | Purpose | When to Use |
+|---------|---------|---------|-------------|
+| @supabase/supabase-js | 2.105.x | Supabase client | All backend operations |
+| @supabase/ssr | 0.10.x | SSR auth | Next.js server components |
+| stripe | 22.x | Stripe Node SDK | Server-side payment processing |
 
-### 4.3 Cache Key
+### 3.3 Extension Integration
 
-```typescript
-const CACHE_KEY = 'prompt_script_network_cache'
-```
+| Library | Version | Purpose | When to Use |
+|---------|---------|---------|-------------|
+| webextension-polyfill | ^0.12.x | Cross-browser API | Future Firefox support |
+| (existing) | - | Chrome APIs | Manifest V3 compatible |
 
 ---
 
-## 5. Integration Points with Existing Code
+## 4. Development Tools
 
-### 5.1 Message Protocol Extension
+| Tool | Purpose | Notes |
+|------|---------|-------|
+| Supabase CLI | Local development, migrations | `supabase init`, `supabase start` |
+| Prisma Studio | Database GUI | Optional if using Prisma |
+| Stripe CLI | Webhook testing | `stripe listen --forward-to` |
 
-Add new `MessageType` values:
-```typescript
-enum MessageType {
-  // ... existing
-  FETCH_NETWORK_PROMPTS = 'FETCH_NETWORK_PROMPTS',
-  GET_NETWORK_CACHE = 'GET_NETWORK_CACHE',
-  COLLECT_NETWORK_PROMPT = 'COLLECT_NETWORK_PROMPT' // Add to local storage
-}
+---
+
+## 5. Installation
+
+### 5.1 Web App (New)
+
+```bash
+# Create Next.js app in apps/web/
+npx create-next-app@latest --typescript --tailwind --app
+
+# Core dependencies
+npm install @supabase/supabase-js @supabase/ssr stripe zod
+
+# UI and utilities
+npm install @radix-ui/react-dialog @radix-ui/react-dropdown-menu
+npm install lucide-react react-hook-form @hookform/resolvers
+npm install date-fns
+
+# State management
+npm install zustand @tanstack/react-query
 ```
 
-### 5.2 Storage Extension
+### 5.2 Shared Package (New)
 
-Extend `StorageSchema`:
-```typescript
-interface StorageSchema {
-  prompts: Prompt[]
-  categories: Category[]
-  version: string
-  networkCache?: CachedNetworkData[] // NEW
-  collectedPrompts?: string[] // IDs of prompts collected from network
-}
+```bash
+# Create shared package for types
+mkdir -p packages/shared
+# Define shared types: Prompt, Category, Team, User, etc.
 ```
 
-### 5.3 UI Integration
+### 5.3 Extension Updates
 
-- Dropdown: Add "在线库" tab/section
-- Popup: Add "网络数据源" settings panel
-- Both use same message pattern to fetch data
+```bash
+# Add Supabase client for Extension
+npm install @supabase/supabase-js
+```
 
 ---
 
 ## 6. Alternatives Considered
 
-| Approach | Pros | Cons | Decision |
-|----------|------|------|----------|
-| Service Worker fetch | CSP compliant, centralized | Service Worker lifecycle | ✓ Selected |
-| Popup fetch | Simpler implementation | Not available to content script | ✗ Rejected |
-| External API proxy | More control | Requires backend | ✗ Out of scope |
+### Backend Platform
+
+| Recommended | Alternative | When to Use Alternative |
+|-------------|-------------|-------------------------|
+| Supabase | Firebase | If team has Firebase expertise, prefer NoSQL for simple data |
+| Supabase | Custom Node.js + PostgreSQL | If need full control, have DevOps resources, expect >100K users |
+| Supabase | Convex | If want real-time-first, simpler API, smaller scale |
+
+### ORM
+
+| Recommended | Alternative | When to Use Alternative |
+|-------------|-------------|-------------------------|
+| Prisma | Drizzle | If prefer SQL-like API, smaller bundle, edge runtime |
+| Prisma | Supabase client only | If want simpler setup, fewer dependencies |
+| Prisma | Kysely | If prefer raw SQL with type safety |
+
+### Authentication
+
+| Recommended | Alternative | When to Use Alternative |
+|-------------|-------------|-------------------------|
+| Supabase Auth | Clerk | If want drop-in UI components, simpler integration |
+| Supabase Auth | Auth.js (NextAuth) | If want self-hosted, more provider options |
+| Supabase Auth | AWS Cognito | If already in AWS ecosystem |
+
+### Payment
+
+| Recommended | Alternative | When to Use Alternative |
+|-------------|-------------|-------------------------|
+| Stripe | Paddle | If want to outsource tax compliance (Merchant of Record) |
+| Stripe | Lemon Squeezy | If want simpler EU focus, Merchant of Record |
+| Stripe | Polar | If want open-source alternative, EU-based |
 
 ---
 
-## Confidence Levels
+## 7. What NOT to Use
 
-| Recommendation | Confidence | Rationale |
-|----------------|------------|-----------|
-| Service Worker network proxy | HIGH | Chrome Extension MV3 standard |
-| Markdown parsing for Nano Banana | HIGH | Structure is predictable, regex-based |
-| Provider abstraction pattern | HIGH | Proven extensibility pattern |
-| 24h cache TTL | MEDIUM | Trade-off: freshness vs latency |
+| Avoid | Why | Use Instead |
+|-------|-----|-------------|
+| Express.js backend | Supabase handles everything, reduces code | Supabase Edge Functions for custom logic |
+| Socket.io | Supabase has built-in realtime | Supabase Realtime |
+| Redux | Zustand already used, simpler for this scope | Zustand + TanStack Query |
+| Firebase Realtime Database | NoSQL limits team permission queries | Supabase PostgreSQL |
+| NextAuth/Auth.js | More setup, separate from Supabase | Supabase Auth |
+| AWS services | Overkill complexity for this stage | Supabase (managed) |
+| Chinese payment aggregators | Requires ICP license, business license | Stripe WeChat/Alipay support |
+
+---
+
+## 8. Stack Patterns by Variant
+
+### Minimum Viable Product (MVP)
+
+- Use Supabase only (no separate Next.js API routes)
+- Stripe Checkout (hosted) instead of embedded
+- Manual team invitation (no email service)
+- Basic real-time (Supabase subscriptions only)
+
+### Scale-Up (1000+ users)
+
+- Add Next.js API routes for custom business logic
+- Stripe Billing Portal for self-service
+- Email service (Resend, SendGrid) for notifications
+- Background jobs (Inngest, Trigger.dev) for sync tasks
+
+### Enterprise (10000+ users)
+
+- Add caching layer (Upstash Redis)
+- CDN for static assets (Cloudflare)
+- Rate limiting (Upstash)
+- Monitoring (Sentry, LogSnag)
 
 ---
 
-## Sources
+## 9. Version Compatibility
 
-- Chrome Extension Manifest V3 CSP documentation
-- GitHub raw file access patterns
-- Nano Banana Prompts README analysis
-- prompts.chat CSV structure analysis
+| Package A | Compatible With | Notes |
+|-----------|-----------------|-------|
+| Next.js 16.x | React 19.x | App Router requires React 19 |
+| Supabase JS 2.x | Next.js 13+ | Use @supabase/ssr for App Router |
+| Stripe 22.x | Node.js 18+ | Server-side only |
+| Prisma 7.x | Node.js 18+ | Use with PostgreSQL 15 |
+| TanStack Query 5.x | React 18+ | Works with React 19 |
 
 ---
-*Stack research for: Network Prompt Data Source Integration*
-*Researched: 2026-04-19*
+
+## 10. Integration with Existing Extension
+
+### 10.1 Shared Types
+
+Create `packages/shared` for type definitions used by both Extension and Web App:
+
+```typescript
+// packages/shared/src/types.ts
+export interface Prompt { id: string; title: string; content: string; ... }
+export interface Category { id: string; name: string; ... }
+export interface Team { id: string; name: string; ownerId: string; ... }
+export interface User { id: string; email: string; ... }
+```
+
+### 10.2 Authentication Bridge
+
+```typescript
+// Extension: background/service-worker.ts
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+// Store session from Web App
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.type === 'SET_SESSION') {
+    chrome.storage.local.set({ session: msg.session })
+  }
+})
+
+// Get session for API calls
+async function getSession() {
+  const { session } = await chrome.storage.local.get('session')
+  return session
+}
+```
+
+### 10.3 Data Synchronization
+
+```typescript
+// Sync local prompts to cloud on login
+async function syncToCloud() {
+  const localData = await chrome.storage.local.get('prompt_script_data')
+  const session = await getSession()
+
+  if (session) {
+    await supabase.from('prompts').upsert(
+      localData.prompts.map(p => ({ ...p, userId: session.user.id }))
+    )
+  }
+}
+```
+
+---
+
+## 11. Confidence Assessment
+
+| Area | Level | Notes |
+|------|-------|-------|
+| Web App stack (Next.js + React) | HIGH | Well-established, team familiarity |
+| Backend (Supabase) | HIGH | Proven for similar SaaS apps, excellent DX |
+| Authentication | HIGH | Supabase Auth is mature, Google OAuth standard |
+| Real-time sync | HIGH | Supabase Realtime is battle-tested |
+| Stripe integration | HIGH | Industry standard, excellent docs |
+| Chinese payments | MEDIUM | Stripe supports WeChat/Alipay, but verify business requirements |
+| Extension integration | HIGH | Clear patterns for auth bridge and sync |
+
+---
+
+## 12. Sources
+
+- npm registry (package versions) — Current versions verified 2026-05-07
+- Supabase documentation — Auth, Storage, Realtime patterns
+- Stripe documentation — Subscriptions, webhooks, payment methods
+- Next.js App Router documentation — SSR, authentication patterns
+- Chrome Extension Manifest V3 documentation — Service worker patterns
+
+---
+
+*Stack research for: Web App + Team Collaboration (v2.0)*
+*Researched: 2026-05-07*

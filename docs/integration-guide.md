@@ -164,4 +164,4 @@ Content Script 使用 Shadow DOM 隔离，不应有 CSS 冲突。如有问题，
 
 ---
 
-*Last updated: 2026-05-06*
+*Last updated: 2026-05-07*

@@ -1,5 +1,5 @@
 import { MessageType, MessageResponse } from '../shared/messages'
-import type { StorageSchema, SyncSettings, VisionApiConfig, InsertPromptPayload, InsertResultPayload, SaveTemporaryPromptPayload, UpdateTemporaryPromptFormatPayload, Prompt } from '../shared/types'
+import type { StorageSchema, SyncSettings, VisionApiConfig, InsertPromptPayload, InsertResultPayload, SaveTemporaryPromptPayload, UpdateTemporaryPromptFormatPayload, Prompt, ProviderConfig, ProviderConfigsStorage } from '../shared/types'
 import { StorageManager } from '../lib/storage'
 import { saveFolderHandle, getFolderHandle } from '../lib/sync/indexeddb'
 import { getSyncStatus, triggerSync, restorePermission, initialSync } from '../lib/sync/sync-manager'
@@ -7,11 +7,11 @@ import { syncApiConfigToFolder } from '../lib/sync/api-config-sync'
 import { checkForUpdate, getUpdateStatus, clearUpdateStatus, type UpdateStatus } from '../lib/version-checker'
 import { executeVisionApiCall, classifyApiError, getLanguagePreference } from '../lib/vision-api'
 import { asyncCompressImageFromUrl } from '../lib/image-utils'
-import { CAPTURED_IMAGE_STORAGE_KEY, VISION_API_CONFIG_STORAGE_KEY } from '../shared/constants'
+import { CAPTURED_IMAGE_STORAGE_KEY, VISION_API_CONFIG_STORAGE_KEY, PROVIDER_CONFIGS_STORAGE_KEY, LEGACY_VISION_API_CONFIG_KEY } from '../shared/constants'
+import { validateProviderConfig, maskApiKey } from '../lib/config-validator'
 import { sendToOffscreen } from '../lib/offscreen-manager'
 import '../lib/migrations/register' // Register all migrations
 
-console.log('[Oh My Prompt] Service Worker started')
 
 // Create context menu on startup (survives service worker restarts)
 function createContextMenu(): void {
@@ -26,12 +26,10 @@ function createContextMenu(): void {
       const errorMsg = chrome.runtime.lastError.message
       // Ignore duplicate/already exists errors on restart
       if (errorMsg && (errorMsg.includes('already exists') || errorMsg.includes('duplicate'))) {
-        console.log('[Oh My Prompt] Context menu already exists (service worker restarted)')
       } else {
         console.error('[Oh My Prompt] Context menu creation error:', errorMsg || JSON.stringify(chrome.runtime.lastError))
       }
     } else {
-      console.log('[Oh My Prompt] Context menu created successfully')
     }
   })
 }
@@ -65,9 +63,54 @@ chrome.action.onClicked.addListener((tab) => {
 
 const storageManager = StorageManager.getInstance()
 
+/**
+ * Migrate legacy VisionApiConfig to new ProviderConfigsStorage
+ * Runs on install and startup
+ */
+async function migrateLegacyProviderConfig(): Promise<void> {
+  const result = await chrome.storage.local.get([
+    LEGACY_VISION_API_CONFIG_KEY,
+    PROVIDER_CONFIGS_STORAGE_KEY
+  ])
+
+  // Skip if new configs already exist
+  const existingStorage = result[PROVIDER_CONFIGS_STORAGE_KEY] as ProviderConfigsStorage | undefined
+  if (existingStorage && existingStorage.configs && existingStorage.configs.length > 0) {
+    return
+  }
+
+  // Migrate legacy config
+  const legacyConfig = result[LEGACY_VISION_API_CONFIG_KEY] as VisionApiConfig | undefined
+  if (legacyConfig?.apiKey) {
+    const migratedConfig: ProviderConfig = {
+      id: crypto.randomUUID(),
+      providerId: 'migrated',
+      providerName: '迁移的配置',
+      apiKey: legacyConfig.apiKey,
+      apiEndpoint: legacyConfig.baseUrl,
+      apiFormat: legacyConfig.apiFormat === 'anthropic' ? 'anthropic_messages' : 'chat_completions',
+      selectedModel: legacyConfig.modelName,
+      configuredAt: legacyConfig.configuredAt || Date.now(),
+      isCustom: true
+    }
+
+    await chrome.storage.local.set({
+      [PROVIDER_CONFIGS_STORAGE_KEY]: {
+        configs: [migratedConfig],
+        activeConfigId: migratedConfig.id
+      }
+    })
+
+    console.log('[Oh My Prompt] Migrated legacy API config to provider configs')
+  }
+}
+
+// Run migration on install and startup
+chrome.runtime.onInstalled.addListener(migrateLegacyProviderConfig)
+chrome.runtime.onStartup.addListener(migrateLegacyProviderConfig)
+
 chrome.runtime.onMessage.addListener(
   (message, _sender, sendResponse) => {
-    console.log('[Oh My Prompt] Received message:', message.type)
 
     switch (message.type) {
       case MessageType.PING:
@@ -84,7 +127,6 @@ chrome.runtime.onMessage.addListener(
         return true // Required for async response
 
       case MessageType.SET_STORAGE:
-        console.log('[Oh My Prompt] SET_STORAGE payload:', message.payload)
         if (!message.payload) {
           console.error('[Oh My Prompt] SET_STORAGE: No payload provided')
           sendResponse({ success: false, error: 'No payload provided' })
@@ -112,7 +154,6 @@ chrome.runtime.onMessage.addListener(
             return storageManager.saveData(mergedData).then(() => mergedData)
           })
           .then((savedData: StorageSchema) => {
-            console.log('[Oh My Prompt] SET_STORAGE: Save successful')
             // Trigger sync with full backup data (including temporary prompts)
             const backupData = {
               prompts: savedData.userData.prompts,
@@ -240,7 +281,6 @@ chrome.runtime.onMessage.addListener(
           sendResponse({ success: false, error: 'Invalid payload' })
           return true
         }
-        console.log('[Oh My Prompt] SAVE_IMAGE: promptId:', saveImagePayload.promptId, 'data array length:', saveImagePayload.data.length)
         sendToOffscreen(MessageType.OFFSCREEN_SAVE_IMAGE, saveImagePayload)
           .then(result => sendResponse(result as MessageResponse))
           .catch(error => {
@@ -481,11 +521,35 @@ chrome.runtime.onMessage.addListener(
 
       // Phase 10: API configuration handlers (AUTH-01, AUTH-02, AUTH-04)
       case MessageType.GET_API_CONFIG:
-        // Get Vision API configuration from storage
-        chrome.storage.local.get(VISION_API_CONFIG_STORAGE_KEY)
+        // Legacy compatibility: return VisionApiConfig from active ProviderConfig
+        chrome.storage.local.get(PROVIDER_CONFIGS_STORAGE_KEY)
           .then((result) => {
-            const config = result[VISION_API_CONFIG_STORAGE_KEY] as VisionApiConfig | undefined
-            sendResponse({ success: true, data: config || null } as MessageResponse<VisionApiConfig | null>)
+            const storage = result[PROVIDER_CONFIGS_STORAGE_KEY] as ProviderConfigsStorage | undefined
+            if (!storage || !storage.activeConfigId) {
+              // Fallback to legacy storage if no new configs
+              chrome.storage.local.get(LEGACY_VISION_API_CONFIG_KEY)
+                .then((legacyResult) => {
+                  const legacyConfig = legacyResult[LEGACY_VISION_API_CONFIG_KEY] as VisionApiConfig | undefined
+                  sendResponse({ success: true, data: legacyConfig || null })
+                })
+              return
+            }
+
+            const activeConfig = storage.configs.find(c => c.id === storage.activeConfigId)
+            if (!activeConfig) {
+              sendResponse({ success: true, data: null })
+              return
+            }
+
+            // Map ProviderConfig to VisionApiConfig for legacy compatibility
+            const legacyConfig: VisionApiConfig = {
+              baseUrl: activeConfig.apiEndpoint,
+              apiKey: activeConfig.apiKey,
+              modelName: activeConfig.selectedModel,
+              apiFormat: activeConfig.apiFormat === 'anthropic_messages' ? 'anthropic' : 'openai',
+              configuredAt: activeConfig.configuredAt
+            }
+            sendResponse({ success: true, data: legacyConfig })
           })
           .catch(error => {
             console.error('[Oh My Prompt] GET_API_CONFIG error:', error)
@@ -501,7 +565,6 @@ chrome.runtime.onMessage.addListener(
           return true
         }
         // SECURITY: Log baseUrl and modelName only, never apiKey (AUTH-02, T-10-01)
-        console.log('[Oh My Prompt] SET_API_CONFIG: baseUrl=', apiConfigPayload.baseUrl, 'modelName=', apiConfigPayload.modelName)
         const configWithTimestamp: VisionApiConfig = {
           ...apiConfigPayload,
           configuredAt: Date.now()
@@ -516,7 +579,6 @@ chrome.runtime.onMessage.addListener(
               if (handle) {
                 const encrypted = await syncApiConfigToFolder(configWithTimestamp, handle)
                 if (encrypted) {
-                  console.log('[Oh My Prompt] API config encrypted and saved to backup folder')
                 }
               }
             } catch (encryptError) {
@@ -534,7 +596,6 @@ chrome.runtime.onMessage.addListener(
         // Delete Vision API configuration
         chrome.storage.local.remove(VISION_API_CONFIG_STORAGE_KEY)
           .then(() => {
-            console.log('[Oh My Prompt] API config deleted')
             sendResponse({ success: true } as MessageResponse)
           })
           .catch(error => {
@@ -543,27 +604,265 @@ chrome.runtime.onMessage.addListener(
           })
         return true // Required for async response
 
+      // Provider config management (multi-provider support)
+      case MessageType.GET_PROVIDER_CONFIGS:
+        // Get all provider configs (mask apiKey for UI display)
+        chrome.storage.local.get(PROVIDER_CONFIGS_STORAGE_KEY)
+          .then((result) => {
+            const storage = result[PROVIDER_CONFIGS_STORAGE_KEY] as ProviderConfigsStorage | undefined
+            if (!storage) {
+              sendResponse({ success: true, data: { configs: [], activeConfigId: null } })
+              return
+            }
+            // SECURITY: Mask apiKey for UI display
+            const maskedConfigs = storage.configs.map(config => ({
+              ...config,
+              apiKey: maskApiKey(config.apiKey)
+            }))
+            sendResponse({
+              success: true,
+              data: {
+                configs: maskedConfigs,
+                activeConfigId: storage.activeConfigId
+              }
+            })
+          })
+          .catch(error => {
+            console.error('[Oh My Prompt] GET_PROVIDER_CONFIGS error:', error)
+            sendResponse({ success: false, error: String(error) })
+          })
+        return true
+
+      case MessageType.ADD_PROVIDER_CONFIG:
+        const addPayload = message.payload as Partial<ProviderConfig>
+        if (!addPayload) {
+          sendResponse({ success: false, error: 'No payload provided' })
+          return true
+        }
+
+        // Validate config
+        const addValidation = validateProviderConfig(addPayload)
+        if (!addValidation.valid) {
+          sendResponse({ success: false, error: addValidation.errors.join('; ') })
+          return true
+        }
+
+        // Generate full config
+        const newConfig: ProviderConfig = {
+          id: crypto.randomUUID(),
+          providerId: addPayload.providerId || 'custom',
+          providerName: addPayload.providerName || '自定义配置',
+          apiKey: addPayload.apiKey!,
+          apiEndpoint: addPayload.apiEndpoint!,
+          apiFormat: addPayload.apiFormat || 'chat_completions',
+          selectedModel: addPayload.selectedModel!,
+          configuredAt: Date.now(),
+          isCustom: addPayload.isCustom ?? (addPayload.providerId === 'custom')
+        }
+
+        // Get existing storage and add new config
+        chrome.storage.local.get(PROVIDER_CONFIGS_STORAGE_KEY)
+          .then((result) => {
+            const existingStorage = result[PROVIDER_CONFIGS_STORAGE_KEY] as ProviderConfigsStorage | undefined
+            const configs = existingStorage?.configs || []
+            const isFirstConfig = configs.length === 0
+
+            const updatedStorage: ProviderConfigsStorage = {
+              configs: [...configs, newConfig],
+              activeConfigId: isFirstConfig ? newConfig.id : (existingStorage?.activeConfigId || null)
+            }
+
+            return chrome.storage.local.set({ [PROVIDER_CONFIGS_STORAGE_KEY]: updatedStorage })
+          })
+          .then(() => sendResponse({ success: true, data: { id: newConfig.id } }))
+          .catch(error => {
+            console.error('[Oh My Prompt] ADD_PROVIDER_CONFIG error:', error)
+            sendResponse({ success: false, error: String(error) })
+          })
+        return true
+
+      case MessageType.UPDATE_PROVIDER_CONFIG:
+        const providerUpdatePayload = message.payload as { id: string; updates: Partial<ProviderConfig> }
+        if (!providerUpdatePayload?.id) {
+          sendResponse({ success: false, error: 'Config ID required' })
+          return true
+        }
+
+        chrome.storage.local.get(PROVIDER_CONFIGS_STORAGE_KEY)
+          .then((result) => {
+            const storage = result[PROVIDER_CONFIGS_STORAGE_KEY] as ProviderConfigsStorage | undefined
+            if (!storage) {
+              sendResponse({ success: false, error: 'No configs found' })
+              return
+            }
+
+            const configIndex = storage.configs.findIndex(c => c.id === providerUpdatePayload.id)
+            if (configIndex === -1) {
+              sendResponse({ success: false, error: 'Config not found' })
+              return
+            }
+
+            const existingConfig = storage.configs[configIndex]
+            const updatedConfig: ProviderConfig = {
+              ...existingConfig,
+              ...providerUpdatePayload.updates,
+              id: existingConfig.id, // Preserve ID
+              configuredAt: existingConfig.configuredAt // Preserve timestamp
+            }
+
+            // Validate updated config
+            const updateValidation = validateProviderConfig(updatedConfig)
+            if (!updateValidation.valid) {
+              sendResponse({ success: false, error: updateValidation.errors.join('; ') })
+              return
+            }
+
+            const updatedConfigs = [...storage.configs]
+            updatedConfigs[configIndex] = updatedConfig
+
+            return chrome.storage.local.set({
+              [PROVIDER_CONFIGS_STORAGE_KEY]: {
+                configs: updatedConfigs,
+                activeConfigId: storage.activeConfigId
+              }
+            })
+          })
+          .then(() => sendResponse({ success: true }))
+          .catch(error => {
+            console.error('[Oh My Prompt] UPDATE_PROVIDER_CONFIG error:', error)
+            sendResponse({ success: false, error: String(error) })
+          })
+        return true
+
+      case MessageType.DELETE_PROVIDER_CONFIG:
+        const deletePayload = message.payload as { id: string }
+        if (!deletePayload?.id) {
+          sendResponse({ success: false, error: 'Config ID required' })
+          return true
+        }
+
+        chrome.storage.local.get(PROVIDER_CONFIGS_STORAGE_KEY)
+          .then((result) => {
+            const storage = result[PROVIDER_CONFIGS_STORAGE_KEY] as ProviderConfigsStorage | undefined
+            if (!storage) {
+              sendResponse({ success: false, error: 'No configs found' })
+              return
+            }
+
+            const filteredConfigs = storage.configs.filter(c => c.id !== deletePayload.id)
+            const wasActive = storage.activeConfigId === deletePayload.id
+
+            // If deleted config was active, auto-activate first remaining or null
+            let newActiveId: string | null = null
+            if (wasActive && filteredConfigs.length > 0) {
+              newActiveId = filteredConfigs[0].id
+            } else if (!wasActive) {
+              newActiveId = storage.activeConfigId
+            }
+
+            return chrome.storage.local.set({
+              [PROVIDER_CONFIGS_STORAGE_KEY]: {
+                configs: filteredConfigs,
+                activeConfigId: newActiveId
+              }
+            })
+          })
+          .then(() => sendResponse({ success: true }))
+          .catch(error => {
+            console.error('[Oh My Prompt] DELETE_PROVIDER_CONFIG error:', error)
+            sendResponse({ success: false, error: String(error) })
+          })
+        return true
+
+      case MessageType.SET_ACTIVE_CONFIG:
+        const activePayload = message.payload as { id: string }
+        if (!activePayload?.id) {
+          sendResponse({ success: false, error: 'Config ID required' })
+          return true
+        }
+
+        chrome.storage.local.get(PROVIDER_CONFIGS_STORAGE_KEY)
+          .then((result) => {
+            const storage = result[PROVIDER_CONFIGS_STORAGE_KEY] as ProviderConfigsStorage | undefined
+            if (!storage) {
+              sendResponse({ success: false, error: 'No configs found' })
+              return
+            }
+
+            // Validate config exists
+            const configExists = storage.configs.some(c => c.id === activePayload.id)
+            if (!configExists) {
+              sendResponse({ success: false, error: 'Config not found' })
+              return
+            }
+
+            return chrome.storage.local.set({
+              [PROVIDER_CONFIGS_STORAGE_KEY]: {
+                configs: storage.configs,
+                activeConfigId: activePayload.id
+              }
+            })
+          })
+          .then(() => sendResponse({ success: true }))
+          .catch(error => {
+            console.error('[Oh My Prompt] SET_ACTIVE_CONFIG error:', error)
+            sendResponse({ success: false, error: String(error) })
+          })
+        return true
+
+      case MessageType.GET_ACTIVE_CONFIG:
+        // Get active config with full apiKey (for Vision API use only)
+        // SECURITY: Only use in trusted contexts (service worker → vision-api)
+        chrome.storage.local.get(PROVIDER_CONFIGS_STORAGE_KEY)
+          .then((result) => {
+            const storage = result[PROVIDER_CONFIGS_STORAGE_KEY] as ProviderConfigsStorage | undefined
+            if (!storage || !storage.activeConfigId) {
+              sendResponse({ success: true, data: null })
+              return
+            }
+
+            const activeConfig = storage.configs.find(c => c.id === storage.activeConfigId)
+            sendResponse({ success: true, data: activeConfig || null })
+          })
+          .catch(error => {
+            console.error('[Oh My Prompt] GET_ACTIVE_CONFIG error:', error)
+            sendResponse({ success: false, error: String(error) })
+          })
+        return true
+
       // Phase 11: Vision API call handler (VISION-01, VISION-02)
       // Now compresses image to base64 before sending to API
       case MessageType.VISION_API_CALL:
-        const visionCallPayload = message.payload as { imageUrl: string; retryCount?: number }
-        if (!visionCallPayload || !visionCallPayload.imageUrl) {
-          sendResponse({ success: false, error: { type: 'network', message: '无效的图片URL', action: 'close' } })
+        const visionCallPayload = message.payload as { imageUrl: string; base64Data?: string; retryCount?: number }
+        if (!visionCallPayload || (!visionCallPayload.imageUrl && !visionCallPayload.base64Data)) {
+          sendResponse({ success: false, error: { type: 'network', message: '无效的图片数据', action: 'close' } })
           return true
         }
 
-        // SECURITY: Validate imageUrl starts with http/https (T-11-03)
-        const imageUrl = visionCallPayload.imageUrl
-        if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
-          sendResponse({ success: false, error: { type: 'unsupported_image', message: '图片URL格式无效', action: 'close' } })
-          return true
+        const imageUrl = visionCallPayload.imageUrl || ''
+        const base64Data = visionCallPayload.base64Data
+
+        if (!base64Data) {
+          if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+            sendResponse({ success: false, error: { type: 'unsupported_image', message: '图片URL格式无效', action: 'close' } })
+            return true
+          }
         }
 
-        // Get API config from storage
-        chrome.storage.local.get(VISION_API_CONFIG_STORAGE_KEY)
+        // Use PROVIDER_CONFIGS_STORAGE_KEY for new ProviderConfig architecture
+        chrome.storage.local.get(PROVIDER_CONFIGS_STORAGE_KEY)
           .then(async (result) => {
-            const config = result[VISION_API_CONFIG_STORAGE_KEY] as VisionApiConfig | undefined
-            if (!config || !config.apiKey) {
+            const storage = result[PROVIDER_CONFIGS_STORAGE_KEY] as ProviderConfigsStorage | undefined
+            if (!storage || !storage.activeConfigId) {
+              sendResponse({
+                success: false,
+                error: { type: 'invalid_key', message: 'API 未配置，请先添加配置', action: 'settings' }
+              })
+              return
+            }
+
+            const activeConfig = storage.configs.find(c => c.id === storage.activeConfigId)
+            if (!activeConfig || !activeConfig.apiKey) {
               sendResponse({
                 success: false,
                 error: { type: 'invalid_key', message: 'API Key 未配置', action: 'settings' }
@@ -571,24 +870,30 @@ chrome.runtime.onMessage.addListener(
               return
             }
 
-            // Compress image to base64 (reduces payload size for large images)
             const retryCount = visionCallPayload.retryCount || 0
-            console.log('[Oh My Prompt] VISION_API_CALL: baseUrl=', config.baseUrl, 'modelName=', config.modelName, 'retryCount=', retryCount)
-            console.log('[Oh My Prompt] Compressing image from URL...')
 
             try {
-              // Step 1: Compress image to base64
-              const base64Image = await asyncCompressImageFromUrl(imageUrl)
-              console.log('[Oh My Prompt] Image compressed successfully')
+              let base64Image: string
 
-              // Step 2: Execute Vision API call with base64 data (returns structured result)
-              const resultData = await executeVisionApiCall(config, base64Image, 'base64')
-              // Get language preference for primary prompt selection
+              if (base64Data) {
+                base64Image = base64Data
+              } else {
+                base64Image = await asyncCompressImageFromUrl(imageUrl)
+              }
+
+              // Convert ProviderConfig to VisionApiConfig for backward compatibility
+              const legacyConfig: VisionApiConfig = {
+                baseUrl: activeConfig.apiEndpoint,
+                apiKey: activeConfig.apiKey,
+                modelName: activeConfig.selectedModel,
+                apiFormat: activeConfig.apiFormat === 'anthropic_messages' ? 'anthropic' : 'openai'
+              }
+
+              const resultData = await executeVisionApiCall(legacyConfig, base64Image, 'base64')
               const languagePreference = await getLanguagePreference()
               const primaryPrompt = languagePreference === 'en' ? resultData.en.prompt : resultData.zh.prompt
               sendResponse({ success: true, data: { prompt: primaryPrompt, fullData: resultData } })
             } catch (apiError) {
-              // If compression fails, classify as unsupported_image
               if (apiError instanceof Error && apiError.message.includes('Failed to fetch image')) {
                 sendResponse({
                   success: false,
@@ -647,28 +952,25 @@ chrome.runtime.onMessage.addListener(
               remoteImageUrl: savePayload.imageUrl // Optional source URL
             }
 
-            // Try to save image locally if imageUrl provided and folder configured
+            // Try to save image locally if imageUrl or base64Data provided and folder configured
             let localImageSaved = false
-            if (savePayload.imageUrl) {
+            const hasImageData = savePayload.imageUrl || savePayload.base64Data
+            if (hasImageData) {
               try {
                 // Check if folder is configured via offscreen document
                 const permResult = await sendToOffscreen<{ hasFolder: boolean; permission?: 'granted' | 'prompt' | 'denied' }>(MessageType.OFFSCREEN_CHECK_PERMISSION)
-                console.log('[Oh My Prompt] Permission check result:', permResult)
 
                 let proceedWithSave = false
 
                 if (!permResult.success) {
                   console.warn('[Oh My Prompt] Offscreen permission check failed:', permResult.error)
                 } else if (!permResult.data?.hasFolder) {
-                  console.log('[Oh My Prompt] No backup folder configured, skipping local image save')
                 } else if (permResult.data?.permission === 'prompt') {
                   // Permission needs re-authorization - request via offscreen document
-                  console.log('[Oh My Prompt] Folder permission needs re-authorization, requesting...')
                   const requestResult = await sendToOffscreen<{ permission: 'granted' | 'denied' }>(MessageType.OFFSCREEN_REQUEST_PERMISSION)
                   if (!requestResult.success || requestResult.data?.permission !== 'granted') {
                     console.warn('[Oh My Prompt] Permission request failed:', requestResult.error)
                   } else {
-                    console.log('[Oh My Prompt] Permission granted after request')
                     proceedWithSave = true
                   }
                 } else if (permResult.data?.permission === 'granted') {
@@ -677,20 +979,31 @@ chrome.runtime.onMessage.addListener(
                   console.warn('[Oh My Prompt] Folder permission denied, skipping local image save')
                 }
 
-                // Download and save image if permission is granted
+                // Get image data for saving
                 if (proceedWithSave) {
-                  console.log('[Oh My Prompt] Downloading image:', savePayload.imageUrl)
-                  const imageResponse = await fetch(savePayload.imageUrl)
-                  if (!imageResponse.ok) {
-                    console.warn('[Oh My Prompt] Image download failed:', imageResponse.status, imageResponse.statusText)
-                  } else {
-                    const imageBlob = await imageResponse.blob()
-                    const arrayBuffer = await imageBlob.arrayBuffer()
-                    const uint8Array = new Uint8Array(arrayBuffer)
-                    const dataArray = Array.from(uint8Array)
+                  let dataArray: number[]
 
+                  if (savePayload.base64Data) {
+                    // Use base64 data directly (for file:// images converted by content script)
+                    const base64Content = savePayload.base64Data.split(',')[1] // Remove data:image/xxx;base64, prefix
+                    const binaryString = atob(base64Content)
+                    dataArray = Array.from(new Uint8Array(binaryString.length)).map((_, i) => binaryString.charCodeAt(i))
+                  } else {
+                    // Fetch from URL (for http/https URLs)
+                    const imageResponse = await fetch(savePayload.imageUrl!)
+                    if (!imageResponse.ok) {
+                      console.warn('[Oh My Prompt] Image download failed:', imageResponse.status, imageResponse.statusText)
+                      dataArray = []
+                    } else {
+                      const imageBlob = await imageResponse.blob()
+                      const arrayBuffer = await imageBlob.arrayBuffer()
+                      dataArray = Array.from(new Uint8Array(arrayBuffer))
+                    }
+                  }
+
+                  if (dataArray.length > 0) {
                     // Determine extension
-                    const ext = savePayload.imageUrl.split('.').pop()?.toLowerCase() || 'jpg'
+                    const ext = savePayload.imageUrl?.split('.').pop()?.toLowerCase() || 'jpg'
 
                     // Save via offscreen document
                     const saveResult = await sendToOffscreen<{ relativePath: string }>(MessageType.OFFSCREEN_SAVE_IMAGE, {
@@ -704,7 +1017,6 @@ chrome.runtime.onMessage.addListener(
                     } else if (saveResult.data?.relativePath) {
                       newPrompt.localImage = saveResult.data.relativePath
                       localImageSaved = true
-                      console.log('[Oh My Prompt] Image saved locally:', newPrompt.localImage)
                     }
                   }
                 }
@@ -714,7 +1026,6 @@ chrome.runtime.onMessage.addListener(
                 console.warn('[Oh My Prompt] Image save exception:', imageError)
               }
             } else {
-              console.log('[Oh My Prompt] No imageUrl provided, skipping local image save')
             }
 
             // Add to temporary prompts array
@@ -729,8 +1040,6 @@ chrome.runtime.onMessage.addListener(
               temporaryPrompts
             })
 
-            console.log('[Oh My Prompt] Saved prompt to temporary library:', savePayload.name,
-              localImageSaved ? '(image saved locally)' : '(image URL only)')
 
             // Broadcast REFRESH_DATA to all Lovart tabs so dropdown updates immediately
             chrome.tabs.query({ url: ['*://lovart.ai/*', '*://*.lovart.ai/*'] }, (tabs) => {
@@ -793,7 +1102,6 @@ chrome.runtime.onMessage.addListener(
                 description: result.zh.analysis,
                 descriptionEn: result.en.analysis,
               }
-              console.log('[Oh My Prompt] Updated temporary prompt format:', updatePayload.taskId, 'to', newFormat)
             } else {
               // Create new prompt entry (fallback)
               const newPrompt: Prompt = {
@@ -809,7 +1117,6 @@ chrome.runtime.onMessage.addListener(
                 remoteImageUrl: updatePayload.imageUrl
               }
               temporaryPrompts.push(newPrompt)
-              console.log('[Oh My Prompt] Created new temporary prompt:', updatePayload.taskId, 'format:', newFormat)
             }
 
             // Save to storage
@@ -851,7 +1158,6 @@ chrome.runtime.onMessage.addListener(
               temporaryPrompts: []
             })
 
-            console.log('[Oh My Prompt] Cleared all temporary prompts')
 
             // Broadcast REFRESH_DATA to all Lovart tabs
             chrome.tabs.query({ url: ['*://lovart.ai/*', '*://*.lovart.ai/*'] }, (tabs) => {
@@ -914,7 +1220,6 @@ chrome.runtime.onMessage.addListener(
               temporaryPrompts
             })
 
-            console.log('[Oh My Prompt] Transferred prompt to category:', promptToTransfer.name, '→', transferPayload.targetCategoryId)
 
             // Trigger auto-sync with full backup data
             const backupData = {
@@ -954,6 +1259,18 @@ chrome.runtime.onMessage.addListener(
   }
 )
 
+/**
+ * Show notification for unsupported page error
+ */
+function showUnsupportedPageNotification(): void {
+  chrome.notifications.create({
+    type: 'basic',
+    iconUrl: chrome.runtime.getURL('assets/icon-128.png'),
+    title: 'Oh My Prompt',
+    message: '此页面不支持此功能，请在普通网页上使用'
+  })
+}
+
 // Vision Modal: Handle context menu click - request permission and send message to content script
 chrome.contextMenus.onClicked.addListener(async (info: chrome.contextMenus.OnClickData, tab?: chrome.tabs.Tab) => {
   if (info.menuItemId === 'convert-to-prompt') {
@@ -990,7 +1307,6 @@ chrome.contextMenus.onClicked.addListener(async (info: chrome.contextMenus.OnCli
             .then((response) => {
               // Any response means content script handled it (success or error shown in modal)
               if (response?.success) {
-                console.log('[Oh My Prompt] Vision modal opened in tab:', tab.id)
               } else {
                 // Content script received but had internal error - don't open new tab
                 // Error will be shown in the modal or logged
@@ -999,17 +1315,12 @@ chrome.contextMenus.onClicked.addListener(async (info: chrome.contextMenus.OnCli
             })
             .catch((error) => {
               console.error('[Oh My Prompt] Failed to send message to content script:', error)
-              // Only open new tab if content script is completely unreachable
-              // This happens on special pages (chrome://, about:, etc.)
-              chrome.tabs.create({
-                url: chrome.runtime.getURL('src/popup/loading.html')
-              })
+              // Content script is unreachable on special pages (chrome://, about:, etc.)
+              showUnsupportedPageNotification()
             })
         } else {
-          // No valid tab ID, fallback to loading page
-          chrome.tabs.create({
-            url: chrome.runtime.getURL('src/popup/loading.html')
-          })
+          // No valid tab ID
+          showUnsupportedPageNotification()
         }
       })
       .catch((error) => {
@@ -1024,9 +1335,7 @@ chrome.contextMenus.onClicked.addListener(async (info: chrome.contextMenus.OnCli
             }
           })
         } else {
-          chrome.tabs.create({
-            url: chrome.runtime.getURL('src/popup/loading.html')
-          })
+          showUnsupportedPageNotification()
         }
       })
   }

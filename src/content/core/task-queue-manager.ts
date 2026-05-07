@@ -28,10 +28,12 @@ export type TaskStatus = 'pending' | 'running' | 'success' | 'failed'
 // Queue task interface
 export interface QueueTask {
   id: string                  // crypto.randomUUID()
-  imageUrl: string            // Image URL
+  imageUrl: string            // Image URL (empty if base64Data provided)
+  base64Data?: string         // Base64 data URL (for file:// images that cannot be fetched by service worker)
   thumbnailUrl?: string       // Thumbnail (compressed base64 for display)
   status: TaskStatus
   createdAt: number           // Timestamp when added
+  modelName?: string          // Model name being used for analysis (e.g., 'claude-3-5-sonnet-20241022')
   result?: VisionApiResultData // Result on success
   error?: string              // Error message on failure
   errorAction?: 'settings' | 'retry' | 'close' // Error action for UI guidance
@@ -84,14 +86,15 @@ export class TaskQueueManager {
   /**
    * Add task to queue
    * Returns null if queue is full
+   * @param imageUrl - HTTP URL of the image (empty string if base64Data provided)
+   * @param base64Data - Base64 data URL (for file:// images converted by content script)
    */
-  addTask(imageUrl: string): QueueTask | null {
+  addTask(imageUrl: string, base64Data?: string): QueueTask | null {
     const store = useTaskQueueStore.getState()
     const currentTasks = store.tasks
 
     // Check queue size
     if (currentTasks.length >= MAX_QUEUE_SIZE) {
-      console.log(LOG_PREFIX, 'Queue full, cannot add task')
       return null
     }
 
@@ -99,6 +102,7 @@ export class TaskQueueManager {
     const task: QueueTask = {
       id: crypto.randomUUID(),
       imageUrl,
+      base64Data,
       status: 'pending',
       createdAt: Date.now()
     }
@@ -106,10 +110,14 @@ export class TaskQueueManager {
     // Add to store
     store.setTasks([...currentTasks, task])
 
-    console.log(LOG_PREFIX, 'Task added to queue:', task.id)
 
     // Generate thumbnail asynchronously (non-blocking)
-    this.generateThumbnailAsync(task.id, imageUrl)
+    // For base64 data, use it directly as thumbnail
+    if (base64Data) {
+      store.updateTask(task.id, { thumbnailUrl: base64Data })
+    } else {
+      this.generateThumbnailAsync(task.id, imageUrl)
+    }
 
     // Try to start immediately
     this.tryStartNext()
@@ -130,7 +138,6 @@ export class TaskQueueManager {
         const task = store.getTask(taskId)
         if (task) {
           store.updateTask(taskId, { thumbnailUrl })
-          console.log(LOG_PREFIX, 'Thumbnail updated for task:', taskId)
         }
       }
     } catch (error) {
@@ -159,7 +166,6 @@ export class TaskQueueManager {
     }
 
     store.removeTask(taskId)
-    console.log(LOG_PREFIX, 'Task removed:', taskId)
   }
 
   /**
@@ -168,7 +174,6 @@ export class TaskQueueManager {
   retryTask(taskId: string): void {
     const store = useTaskQueueStore.getState()
     store.updateTask(taskId, { status: 'pending', error: undefined, errorAction: undefined })
-    console.log(LOG_PREFIX, 'Task retry:', taskId)
     this.tryStartNext()
   }
 
@@ -177,7 +182,6 @@ export class TaskQueueManager {
    */
   clearCompleted(): void {
     useTaskQueueStore.getState().clearCompleted()
-    console.log(LOG_PREFIX, 'Completed tasks cleared')
   }
 
   /**
@@ -192,7 +196,6 @@ export class TaskQueueManager {
     this.runningCount = 0
 
     useTaskQueueStore.getState().clearAll()
-    console.log(LOG_PREFIX, 'All tasks cleared')
   }
 
   /**
@@ -241,15 +244,25 @@ export class TaskQueueManager {
 
   /**
    * Start a task
+   * Fetches active config to display model name during analysis
    */
-  private startTask(task: QueueTask): void {
+  private async startTask(task: QueueTask): Promise<void> {
     const store = useTaskQueueStore.getState()
 
-    // Update status
-    store.updateTask(task.id, { status: 'running' })
-    this.runningCount++
+    // Fetch active config to get model name (async, non-blocking)
+    let modelName: string | undefined
+    try {
+      const configResponse = await chrome.runtime.sendMessage({ type: MessageType.GET_ACTIVE_CONFIG })
+      if (configResponse?.success && configResponse?.data) {
+        modelName = configResponse.data.selectedModel
+      }
+    } catch {
+      // Ignore - model name is optional for display
+    }
 
-    console.log(LOG_PREFIX, 'Task started:', task.id)
+    // Update status and model name
+    store.updateTask(task.id, { status: 'running', modelName })
+    this.runningCount++
 
     // Create abort controller
     const abortController = new AbortController()
@@ -266,11 +279,14 @@ export class TaskQueueManager {
     const store = useTaskQueueStore.getState()
 
     try {
-      // Call Vision API via service worker (handles image compression and CORS bypass)
+      // Call Vision API via service worker
+      // Service worker handles image compression and CORS bypass
+      // For file:// images, we pass base64Data directly (skip URL validation)
       const response = await chrome.runtime.sendMessage({
         type: MessageType.VISION_API_CALL,
         payload: {
           imageUrl: task.imageUrl,
+          base64Data: task.base64Data, // Pass base64 data for file:// images
           retryCount: 0
         }
       })
@@ -297,7 +313,6 @@ export class TaskQueueManager {
           result: resultData
         })
 
-        console.log(LOG_PREFIX, 'Task success:', task.id)
 
         // Auto-save to temporary library
         await this.autoSaveToTemporary(task.id, resultData, task.imageUrl)
@@ -354,6 +369,7 @@ export class TaskQueueManager {
    */
   private async autoSaveToTemporary(taskId: string, result: VisionApiResultData, imageUrl: string): Promise<void> {
     const store = useTaskQueueStore.getState()
+    const task = store.tasks.find(t => t.id === taskId)
 
     try {
       // Get current format setting (default: natural)
@@ -380,6 +396,7 @@ export class TaskQueueManager {
         description: result.zh.analysis,
         descriptionEn: result.en.analysis,
         imageUrl: imageUrl,
+        base64Data: task?.base64Data, // Pass base64 data for file:// images (optional)
         styleTags: result.zh_style_tags,
         format // Save format marker
       }
@@ -391,7 +408,6 @@ export class TaskQueueManager {
 
       if (saveResponse?.success) {
         store.updateTask(taskId, { savedToTemporary: true, savedFormat: format })
-        console.log(LOG_PREFIX, 'Auto-saved to temporary library:', taskId, 'format:', format)
       } else {
         const saveError = saveResponse?.error || '保存失败'
         store.updateTask(taskId, { savedToTemporary: false, saveError })

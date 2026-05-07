@@ -25,9 +25,19 @@ export class Injector {
   } | null = null
   private tooltipElement: HTMLDivElement | null = null
   private tooltipObserver: MutationObserver | null = null
+  private currentAnchorSelector: string | null = null
+  private currentPosition: UIInjectionConfig['position'] | null = null
 
   isInjected(): boolean {
     return this.hostElement !== null && document.contains(this.hostElement)
+  }
+
+  getCurrentAnchorSelector(): string | null {
+    return this.currentAnchorSelector
+  }
+
+  getCurrentPosition(): UIInjectionConfig['position'] | null {
+    return this.currentPosition
   }
 
   inject(
@@ -39,12 +49,15 @@ export class Injector {
     this.stopAnchorObserver()
 
     const anchor = document.querySelector<HTMLElement>(config.anchorSelector)
+    console.log(LOG_PREFIX, 'Looking for anchor:', config.anchorSelector, 'Found:', !!anchor)
+
     if (!anchor) {
       console.warn(LOG_PREFIX, 'Anchor not found:', config.anchorSelector, '- waiting for anchor to appear...')
       this.waitForAnchor(inputElement, config, inserter)
       return
     }
 
+    console.log(LOG_PREFIX, 'Performing injection at anchor:', anchor.className)
     this.performInjection(inputElement, config, inserter, anchor)
   }
 
@@ -61,7 +74,6 @@ export class Injector {
     this.anchorObserver = new MutationObserver(() => {
       const anchor = document.querySelector<HTMLElement>(config.anchorSelector)
       if (anchor && this.pendingInjection) {
-        console.log(LOG_PREFIX, 'Anchor appeared:', config.anchorSelector)
         this.stopAnchorObserver()
         this.performInjection(
           this.pendingInjection.inputElement,
@@ -157,8 +169,11 @@ export class Injector {
     const candidates: HTMLElement[] = [document.body]
 
     // Find elements with very high z-index (modal backdrops, overlays, etc.)
+    // Exclude our own tooltip element to avoid self-append error
     const allElements = document.querySelectorAll<HTMLElement>('*')
     for (const el of allElements) {
+      // Skip our own tooltip element (cannot append to itself)
+      if (el.id === TOOLTIP_ID) continue
       const style = getComputedStyle(el)
       const zIndex = parseInt(style.zIndex)
       if (zIndex > 1000000 && style.position !== 'static') {
@@ -208,6 +223,10 @@ export class Injector {
     inserter: InsertStrategy,
     anchor: HTMLElement
   ): void {
+    // Save current injection config for comparison
+    this.currentAnchorSelector = config.anchorSelector
+    this.currentPosition = config.position
+
     this.hostElement = document.createElement('span')
     this.hostElement.id = HOST_ID
     this.hostElement.setAttribute('data-testid', 'oh-my-prompt-trigger')
@@ -235,6 +254,8 @@ export class Injector {
         break
     }
 
+    console.log(LOG_PREFIX, 'Host element inserted:', this.hostElement.id, 'Position:', config.position)
+
     const mountPoint = this.shadowRoot.querySelector('#react-root')
     if (mountPoint) {
       const ButtonComponent = config.customButton ?? TriggerButton
@@ -247,12 +268,12 @@ export class Injector {
           buttonStyle={config.buttonStyle}
         />
       )
+      console.log(LOG_PREFIX, 'React app rendered successfully')
     }
 
     // Create tooltip at document.body level (outside Shadow DOM)
     this.createTooltip()
 
-    console.log(LOG_PREFIX, 'UI injected at', config.position, 'of', config.anchorSelector)
   }
 
   remove(): void {
@@ -269,6 +290,8 @@ export class Injector {
     this.hostElement?.remove()
     this.hostElement = null
     this.shadowRoot = null
+    this.currentAnchorSelector = null
+    this.currentPosition = null
   }
 
   private getStyles(): string {

@@ -3,6 +3,7 @@
  */
 
 import type { PlatformConfig } from '../base/types'
+import { JimengButton } from './JimengButton'
 
 export const jimengConfig: PlatformConfig = {
   id: 'jimeng',
@@ -14,6 +15,10 @@ export const jimengConfig: PlatformConfig = {
 
   inputDetection: {
     selectors: [
+      // ProseMirror/TipTap editor (ai-tool/generate page)
+      '.prompt-editor-aDwTfA div[contenteditable="true"].ProseMirror',
+      'div[contenteditable="true"].tiptap.ProseMirror',
+      // Generic fallbacks
       'textarea[placeholder*="描述"]',
       'textarea[placeholder*="提示"]',
       'div[contenteditable="true"]',
@@ -21,7 +26,8 @@ export const jimengConfig: PlatformConfig = {
   },
 
   uiInjection: {
-    anchorSelector: '.prompt-input-area',
+    anchorSelector: '.toolbar-settings-content-AqQb52',
     position: 'append',
+    customButton: JimengButton,
   },
 }

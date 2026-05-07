@@ -2,7 +2,7 @@ node_modules
 .planning/debug/
 dist/
 dist.zip
-oh-my-prompt-v*.zip
+oh-my-prompt-v*
 tests/
 **/.DS_Store
 .worktrees/

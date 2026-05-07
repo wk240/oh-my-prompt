@@ -11,6 +11,7 @@ import type { ResourcePrompt } from '../../shared/types'
 import type { InsertStrategy } from '../platforms/base/strategy-interface'
 import type { ButtonStyleConfig } from '../platforms/base/types'
 import { usePromptStore } from '../../lib/store'
+import { MessageType } from '../../shared/messages'
 
 interface DropdownAppProps {
   inputElement: HTMLElement
@@ -68,7 +69,25 @@ export function DropdownApp({
     }
   }, [isOpen])
 
+  // Check and restore folder permission in user gesture context (before opening dropdown)
+  // Chrome requires permission request to be called directly in response to user gesture
+  // The gesture propagates through message chain: Content -> SW -> Offscreen
+  // CRITICAL: We must send permission request BEFORE any await to preserve gesture
+  // Offscreen document uses cached handle for synchronous permission request
   const handleToggle = useCallback(() => {
+    // Fire permission request message immediately (preserves user gesture)
+    // We don't wait for the result - just trigger it and continue
+    // Offscreen will check if folder exists and request permission if needed
+    chrome.runtime.sendMessage({ type: MessageType.REQUEST_PERMISSION_GESTURE })
+      .then((response) => {
+        if (response?.success) {
+          console.log('[Oh My Prompt] Permission check/restored successfully')
+        }
+      })
+      .catch((error) => {
+        console.warn('[Oh My Prompt] Permission request failed:', error)
+      })
+
     setIsOpen((prev) => !prev)
   }, [])
 

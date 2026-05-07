@@ -12,7 +12,9 @@
 - ⏸️ **v1.2.0 在线搜索功能** — Phase 8 (deferred)
 - ✅ **v1.2.x 双语支持与图片功能** — Integrated into v1.2.1/v1.2.0 releases (shipped 2026-04-27)
 - ✅ **v1.3.0 Image to Prompt** — Phases 9-12 (shipped 2026-04-28)
-- 🚧 **v1.3.1** — Release preparation (in progress)
+- ✅ **v1.3.1** — Stability & Polish (shipped 2026-04-29)
+- ✅ **v1.3.2** — Permission Auto-Restore (shipped 2026-05-01)
+- ✅ **v1.3.3** — Gesture-Preserving Permission (shipped 2026-05-06)
 
 ---
 
@@ -171,4 +173,4 @@ Plans:
 
 ---
 
-*Roadmap updated: 2026-05-01 — v1.3.1 release preparation, v1.2.0 search deferred*
+*Roadmap updated: 2026-05-06 — v1.3.3 gesture-preserving permission work in progress*

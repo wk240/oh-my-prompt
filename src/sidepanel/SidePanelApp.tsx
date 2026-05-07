@@ -18,6 +18,8 @@ import { useState, useEffect, useCallback, useMemo, Suspense, lazy, useRef } fro
   import { ToastNotification } from './components/ToastNotification'
   import { queueImageLoad } from '../lib/sync/image-loader-queue'
   import { downloadImageFromUrl, saveImage } from '../lib/sync/image-sync'
+  import { getFolderHandle } from '../lib/sync/indexeddb'
+  import { manualSync } from '../lib/sync/sync-manager'
 
   // Lazy load modal components
   const PromptPreviewModal = lazy(() => import('../content/components/PromptPreviewModal').then(m => ({ default: m.PromptPreviewModal })))
@@ -568,6 +570,10 @@ export default function SidePanelApp() {
   const [resourceLanguage, setResourceLanguage] = useState<'zh' | 'en'>('zh')
   const [loadedCount, setLoadedCount] = useState(50)
   const [visionEnabled, setVisionEnabled] = useState(true)
+  // Permission restore status for auto-restore on Sidepanel open
+  const [permissionRestoreStatus, setPermissionRestoreStatus] = useState<'idle' | 'restoring' | 'restored' | 'failed'>('idle')
+  // Sync status for permission restore and UI
+  const [status, setStatus] = useState<{ hasFolder: boolean; permissionStatus?: 'granted' | 'prompt' | 'denied'; hasUnsyncedChanges?: boolean; dismissedBackupWarning?: boolean } | null>(null)
 
   // Input availability detection (Port-based real-time connection)
   type InputStatus = 'checking' | 'available' | 'unavailable'
@@ -578,6 +584,9 @@ export default function SidePanelApp() {
 
   // Port reference for managing connection
   const currentPortRef = useRef<chrome.runtime.Port | null>(null)
+
+  // Cached folder handle for synchronous permission request (preserves user gesture)
+  const cachedFolderHandleRef = useRef<FileSystemDirectoryHandle | null>(null)
 
   // Ref for findAvailableTab to avoid circular dependency in useCallback
   const findAvailableTabRef = useRef<() => void>(() => {})
@@ -964,25 +973,109 @@ export default function SidePanelApp() {
     })
   }, [])
 
-  // Check for unsynced changes to show backup reminder
+  // Get sync status immediately on Sidepanel open (for permission restore)
+  // This must run ASAP to capture user gesture from clicking extension icon
   useEffect(() => {
     chrome.runtime.sendMessage({ type: MessageType.GET_SYNC_STATUS }, (response) => {
       if (response?.success && response.data) {
         const syncStatus = response.data
+        setStatus(syncStatus)
         if (syncStatus.hasUnsyncedChanges) {
           setModalStates(prev => ({ ...prev, showBackupReminder: true }))
         }
-        // Check for first-time backup warning
-        if (!syncStatus.hasFolder && !syncStatus.dismissedBackupWarning) {
-          const promptCount = prompts.length
-          if (promptCount > 0) {
-            setBackupWarningPromptCount(promptCount)
-            setModalStates(prev => ({ ...prev, showFirstBackupWarning: true }))
-          }
-        }
       }
     })
-  }, [prompts.length])
+  }, []) // Run immediately on mount - don't wait for prompts to load
+
+  // Check for first-time backup warning (depends on prompts.length)
+  useEffect(() => {
+    if (status && !status.hasFolder && !status.dismissedBackupWarning && prompts.length > 0) {
+      setBackupWarningPromptCount(prompts.length)
+      setModalStates(prev => ({ ...prev, showFirstBackupWarning: true }))
+    }
+  }, [status, prompts.length])
+
+  // Pre-cache folder handle on mount for gesture-preserving permission requests
+  // Chrome requires permission request to be called directly in response to user gesture
+  // The first async operation (await) breaks the gesture chain
+  useEffect(() => {
+    getFolderHandle().then(handle => {
+      if (handle) {
+        cachedFolderHandleRef.current = handle
+        console.log('[Oh My Prompt] SidePanel: Folder handle cached:', handle.name)
+      }
+    }).catch(err => {
+      console.warn('[Oh My Prompt] SidePanel: Failed to pre-cache folder handle:', err)
+    })
+  }, [])
+
+  // Auto-restore folder permission on Sidepanel open
+  // This runs when user clicks extension icon - valid user gesture for requestPermission()
+  // CRITICAL: We must use cached handle synchronously to preserve user gesture
+  useEffect(() => {
+    const restorePermission = () => {
+      // Skip if already in progress or completed
+      if (permissionRestoreStatus !== 'idle') {
+        return
+      }
+      // Only restore if folder exists and permission is 'prompt' (not yet authorized in this context)
+      if (!status?.hasFolder || status?.permissionStatus !== 'prompt') {
+        return
+      }
+
+      console.log('[Oh My Prompt] SidePanel: Permission auto-restore triggered')
+      setPermissionRestoreStatus('restoring')
+
+      // Use cached handle synchronously to preserve user gesture
+      const cachedHandle = cachedFolderHandleRef.current
+      if (!cachedHandle) {
+        console.warn('[Oh My Prompt] SidePanel: No cached handle, gesture may be lost')
+        // Fallback: async retrieval (will likely fail to restore gesture)
+        getFolderHandle().then(handle => {
+          if (!handle) {
+            console.warn('[Oh My Prompt] SidePanel: No folder handle found')
+            setPermissionRestoreStatus('failed')
+            return
+          }
+          // Cache for future requests
+          cachedFolderHandleRef.current = handle
+          handle.requestPermission({ mode: 'readwrite' }).then(permission => {
+            if (permission === 'granted') {
+              console.log('[Oh My Prompt] SidePanel: Permission restored (fallback)')
+              setPermissionRestoreStatus('restored')
+              manualSync().catch(err => console.warn('[Oh My Prompt] Auto-sync failed:', err))
+            } else {
+              setPermissionRestoreStatus('failed')
+            }
+          }).catch(err => {
+            console.warn('[Oh My Prompt] SidePanel: Permission request error:', err)
+            setPermissionRestoreStatus('failed')
+          })
+        })
+        return
+      }
+
+      // Request permission synchronously BEFORE any await
+      cachedHandle.requestPermission({ mode: 'readwrite' })
+        .then((permission: PermissionState) => {
+          if (permission === 'granted') {
+            console.log('[Oh My Prompt] SidePanel: Permission restored successfully')
+            setPermissionRestoreStatus('restored')
+            // Trigger sync after permission restored
+            manualSync().catch(err => console.warn('[Oh My Prompt] Auto-sync after permission restore failed:', err))
+          } else {
+            console.warn('[Oh My Prompt] SidePanel: Permission restore failed:', permission)
+            setPermissionRestoreStatus('failed')
+          }
+        })
+        .catch((error: Error) => {
+          console.warn('[Oh My Prompt] SidePanel: Permission request threw error:', error)
+          setPermissionRestoreStatus('failed')
+        })
+    }
+
+    restorePermission()
+  }, [status?.hasFolder, status?.permissionStatus, permissionRestoreStatus])
 
   // Listen for storage changes to detect sync failures
   useEffect(() => {
@@ -1699,6 +1792,20 @@ export default function SidePanelApp() {
           <div className="input-status-banner unavailable">
             <AlertTriangle style={{ width: 14, height: 14, color: '#ea580c' }} />
             <span className="banner-text">无法连接到页面，请关闭并重新打开扩展</span>
+          </div>
+        )}
+
+        {/* Permission denied banner - shows when auto-restore failed */}
+        {permissionRestoreStatus === 'failed' && status?.hasFolder && (
+          <div className="permission-denied-banner">
+            <AlertTriangle style={{ width: 14, height: 14, color: '#dc2626' }} />
+            <span className="banner-text">文件夹权限被拒绝，数据无法同步</span>
+            <span
+              className="banner-link"
+              onClick={() => chrome.runtime.sendMessage({ type: MessageType.OPEN_BACKUP_PAGE })}
+            >
+              更换文件夹
+            </span>
           </div>
         )}
 

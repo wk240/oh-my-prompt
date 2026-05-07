@@ -48,7 +48,7 @@
 
 **Shipped v1.3.0:** 12,000+ LOC TypeScript + React. Chrome Extension Manifest V3.
 Tech stack: Vite, @crxjs/vite-plugin, React, Zustand, Shadow DOM.
-Supported platforms: Lovart, ChatGPT, Claude.ai, Gemini, LibLib, 即梦.
+Supported platforms: Lovart, ChatGPT, Claude.ai, Gemini, LibLib, 即梦, Kimi, 星流.
 
 ## Constraints
 

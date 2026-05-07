@@ -1,10 +1,10 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.3.1
-milestone_name: milestone
-status: executing
-last_updated: "2026-05-06T16:23:13.608Z"
-last_activity: 2026-05-01
+milestone: v1.3.4
+milestone_name: Gesture-Preserving Permission
+status: complete
+last_updated: "2026-05-07T00:00:00.000Z"
+last_activity: 2026-05-07
 progress:
   total_phases: 5
   completed_phases: 4
@@ -20,26 +20,25 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-28)
 
 **Core value:** 一键插入预设提示词，提升AI平台创作效率
-**Current focus:** v1.3.1 release preparation — stability fixes and polish
+**Current focus:** v1.3.4 release preparation — gesture-preserving permission fix
 
 ## Current Position
 
-Phase: Release prep
+Phase: Complete
 Plan: N/A
-Status: In progress
-Last activity: 2026-05-01
+Status: Shipped
+Last activity: 2026-05-07
 
-Progress: v1.3.0 complete, v1.3.1 in progress
+Progress: v1.3.4 shipped
 
-## Recent Work (v1.3.1 branch)
+## Recent Work (release/v1.3.4 branch)
 
-Recent commits on `release/v1.3.1`:
-
-- Offscreen Document API for file system operations
-- Retry mechanism for extension reload race condition
-- Update check UX improvements
-- Vision feature toggle in settings
-- Encrypted API config backup
+Version 1.3.4 shipped with gesture-preserving permission restore:
+- Folder permission auto-restore with gesture-preserving sidePanel.open()
+- Cached handle approach for cross-origin permission restore
+- Sidepanel permission denied warning banner
+- Chrome user gesture requirements documented (docs/chrome-user-gesture.md)
+- Offscreen Document API for gesture-preserving permission request
 
 ## Performance Metrics
 
@@ -75,7 +74,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 
 ### Pending Todos
 
-None tracked in GSD — v1.3.1 work is ad-hoc fixes on release branch.
+None tracked in GSD — v1.3.4 work is ad-hoc fixes on release branch.
 
 ### Blockers/Concerns
 
@@ -91,11 +90,5 @@ Items acknowledged and carried forward:
 
 ## Session Continuity
 
-Last session: 2026-05-06T16:23:13.605Z
-Current branch: release/v1.3.1
-
-## Quick Tasks Completed
-
-| Date | Task | Status |
-|------|------|--------|
-| 2026-05-06 | Lovart agent-chat-footer injection | Complete ✓ |
+Last session: 2026-05-07
+Current branch: release/v1.3.4

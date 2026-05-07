@@ -2,11 +2,71 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.3.4] - 2026-05-06
+## [1.3.4] - 2026-05-07
 
 ### Fixed / 修复
 - **[EN]** Gesture-preserving permission request using offscreen document
 - **[CN]** 使用 offscreen 文档保持用户手势权限请求
+
+## [1.3.3] - 2026-05-06
+
+### Added / 新增
+- **[EN]** Chrome user gesture requirements documentation (docs/chrome-user-gesture.md)
+- **[CN]** Chrome 用户手势要求技术文档
+- **[EN]** Sidepanel permission denied warning banner
+- **[CN]** Sidepanel 权限拒绝警告提示条
+
+### Fixed / 修复
+- **[EN]** Folder permission auto-restore with gesture-preserving sidePanel.open()
+- **[CN]** 文件夹权限自动恢复（手势保留的 sidePanel.open() 调用）
+- **[EN]** Cached handle approach for cross-origin permission restore
+- **[CN]** 缓存句柄方案解决跨域权限恢复
+- **[EN]** Use offscreen document for gesture-preserving permission request
+- **[CN]** 使用 offscreen document 实现手势保留的权限请求
+
+## [1.3.2] - 2026-05-01
+
+### Added / 新增
+- **[EN]** Offscreen Document API for file system operations (cross-origin fix)
+- **[CN]** Offscreen Document API 用于文件系统操作（跨域修复）
+- **[EN]** Retry mechanism for extension reload race condition
+- **[CN]** 扩展重载竞态条件的重试机制
+- **[EN]** Vision feature toggle in settings
+- **[CN]** 设置页 Vision 功能开关
+- **[EN]** Encrypted API config backup
+- **[CN]** API 配置加密备份
+
+### Fixed / 修复
+- **[EN]** Update check UX improvements
+- **[CN]** 更新检查 UX 优化
+
+## [1.3.1] - 2026-04-29
+
+### Added / 新增
+- **[EN]** New platforms: Kimi, 星流 (Lexical editor support)
+- **[CN]** 新平台支持：Kimi、星流（Lexical 编辑器）
+- **[EN]** Sidepanel universal input detection (works on any page with input)
+- **[CN]** Sidepanel 通用输入检测（任何有输入框的页面都能工作）
+- **[EN]** Sidepanel storage change detection and auto-sync
+- **[CN]** Sidepanel 存储变更检测和自动同步
+
+### Changed / 变更
+- **[EN]** Vision modal UI: format selection, resave button, layout improvements
+- **[CN]** Vision 模态框 UI：格式选择、重新保存按钮、布局优化
+- **[EN]** Prompt edit modal: auto-stick preview to viewport edge
+- **[CN]** 提示词编辑模态框：预览自动贴合视口边缘
+- **[EN]** Settings UI: reordered items (local backup first, vision API second)
+- **[CN]** 设置 UI：重排序（本地备份优先，Vision API 其次）
+- **[EN]** Temporary library included in local folder backup
+- **[CN]** 临时库纳入本地文件夹备份
+
+### Fixed / 修复
+- **[EN]** Single prompt deletion in temporary library
+- **[CN]** 临时库单条提示词删除修复
+- **[EN]** Pinterest image detection for hover button
+- **[CN]** Hover 按钮 Pinterest 图片检测改进
+- **[EN]** Trigger button icon, VisionModal spacing, language toggle borders
+- **[CN]** 触发按钮图标、VisionModal 间距、语言切换边框样式修正
 
 ## [1.3.0] - 2026-04-28
 

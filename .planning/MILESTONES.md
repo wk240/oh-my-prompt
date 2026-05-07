@@ -62,11 +62,11 @@
 
 ---
 
-## v1.3.1 Stability & Polish (In Progress: 2026-05-06)
+## v1.3.1 Stability & Polish (Shipped: 2026-04-29)
 
 **Branch:** release/v1.3.1
 
-**Key changes (20+ commits since v1.3.0.0):**
+**Key changes:**
 
 - Vision modal UI improvements: format selection, resave button, layout fixes
 - Prompt edit modal: auto-stick preview to viewport edge
@@ -75,7 +75,36 @@
 - Settings UI: reordered items (local backup first, vision API second)
 - Style polish: trigger button icon, VisionModal spacing, language toggle borders
 - New platforms: Kimi, 星流 (Lexical editor support)
+- Sidepanel: universal input detection, storage change auto-sync
 - Codebase docs: CONCERNS.md updated, platform lists synchronized
+
+---
+
+## v1.3.2 Permission Auto-Restore (Shipped: 2026-05-01)
+
+**Branch:** release/v1.3.2
+
+**Key changes:**
+
+- Offscreen Document API for file system operations
+- Retry mechanism for extension reload race condition
+- Update check UX improvements
+- Vision feature toggle in settings
+- Encrypted API config backup
+
+---
+
+## v1.3.3 Gesture-Preserving Permission (Shipped: 2026-05-06)
+
+**Branch:** release/v1.3.3
+
+**Key changes:**
+
+- Folder permission auto-restore with gesture-preserving sidePanel.open()
+- Cached handle approach for cross-origin permission restore
+- Sidepanel permission denied warning banner
+- Chrome user gesture requirements documented
+- Offscreen Document API for gesture-preserving permission request
 
 ---
 

@@ -3,8 +3,8 @@
  * Saves VisionApiConfig to secrets/ directory in backup folder
  */
 
-import type { VisionApiConfig, ProviderConfigsStorage } from '../../shared/types'
-import { SECRETS_DIR_NAME, API_CONFIG_FILE, PROVIDER_CONFIGS_FILE } from '../../shared/constants'
+import type { VisionApiConfig, ProviderConfigsStorage } from '@oh-my-prompt/shared/types'
+import { SECRETS_DIR_NAME, API_CONFIG_FILE, PROVIDER_CONFIGS_FILE } from '@oh-my-prompt/shared/constants'
 
 interface ApiConfigFile {
   version: string

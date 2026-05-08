@@ -1,5 +1,5 @@
 // src/popup/components/SavedConfigsList.tsx
-import type { ProviderConfig } from '../../shared/types'
+import type { ProviderConfig } from '@oh-my-prompt/shared/types'
 import { ConfigCard } from './ConfigCard'
 
 interface SavedConfigsListProps {

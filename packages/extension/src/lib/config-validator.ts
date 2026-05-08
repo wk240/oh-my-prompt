@@ -1,5 +1,5 @@
 // src/lib/config-validator.ts
-import type { ProviderConfig } from '../shared/types'
+import type { ProviderConfig } from '@oh-my-prompt/shared/types'
 
 export interface ConfigValidationResult {
   valid: boolean

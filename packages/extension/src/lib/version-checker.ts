@@ -3,7 +3,7 @@
  * Checks for updates from GitHub Releases API
  */
 
-import type { UpdateStatus } from '../shared/types'
+import type { UpdateStatus } from '@oh-my-prompt/shared/types'
 
 const REPO_OWNER = 'wk240'
 const REPO_NAME = 'oh-my-prompt'
@@ -12,7 +12,7 @@ const API_URL = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/release
 const UPDATE_STATUS_KEY = 'omps_update_status'
 
 // Re-export UpdateStatus type for convenience
-export type { UpdateStatus } from '../shared/types'
+export type { UpdateStatus } from '@oh-my-prompt/shared/types'
 
 /**
  * Compare semantic version strings

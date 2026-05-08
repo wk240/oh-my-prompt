@@ -1,4 +1,4 @@
-import type { UserData, Prompt } from '../../shared/types'
+import type { UserData, Prompt } from '@oh-my-prompt/shared/types'
 
 // Extended data structure for hash computation (includes temporary library)
 export interface BackupData extends UserData {

@@ -1,7 +1,7 @@
 // src/popup/components/ModelSelect.tsx
 import { useState, useRef, useEffect } from 'react'
 import { ChevronDown, Check, Eye } from 'lucide-react'
-import type { ModelInfo } from '../../shared/types'
+import type { ModelInfo } from '@oh-my-prompt/shared/types'
 
 interface ModelSelectProps {
   models: ModelInfo[]

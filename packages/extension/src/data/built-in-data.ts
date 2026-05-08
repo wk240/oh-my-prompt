@@ -4,7 +4,7 @@
  * Bilingual support: Chinese (content) + English (contentEn)
  */
 
-import type { Prompt, Category } from '../shared/types'
+import type { Prompt, Category } from '@oh-my-prompt/shared/types'
 
 /**
  * Built-in categories for organizing prompts (bilingual: zh + en)

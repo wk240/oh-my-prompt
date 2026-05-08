@@ -3,7 +3,7 @@
  * Displays category name + count
  */
 
-import type { ResourceCategory } from '../../shared/types'
+import type { ResourceCategory } from '@oh-my-prompt/shared/types'
 import { Database } from 'lucide-react'
 import { Tooltip } from './Tooltip'
 

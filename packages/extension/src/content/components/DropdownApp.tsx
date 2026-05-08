@@ -6,12 +6,12 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { TriggerButton } from './TriggerButton'
 import { DropdownContainer } from './DropdownContainer'
-import type { Prompt } from '../../shared/types'
-import type { ResourcePrompt } from '../../shared/types'
+import type { Prompt } from '@oh-my-prompt/shared/types'
+import type { ResourcePrompt } from '@oh-my-prompt/shared/types'
 import type { InsertStrategy } from '../platforms/base/strategy-interface'
 import type { ButtonStyleConfig } from '../platforms/base/types'
 import { usePromptStore } from '../../lib/store'
-import { MessageType } from '../../shared/messages'
+import { MessageType } from '@oh-my-prompt/shared/messages'
 
 interface DropdownAppProps {
   inputElement: HTMLElement

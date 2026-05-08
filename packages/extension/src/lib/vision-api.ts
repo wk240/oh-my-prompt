@@ -4,8 +4,8 @@
  * API format is user-selected (OpenAI or Anthropic compatible)
  */
 
-import type { VisionApiConfig, VisionApiErrorPayload, VisionApiResultData, ProviderConfig } from '../shared/types'
-import { MessageType } from '../shared/messages'
+import type { VisionApiConfig, VisionApiErrorPayload, VisionApiResultData, ProviderConfig } from '@oh-my-prompt/shared/types'
+import { MessageType } from '@oh-my-prompt/shared/messages'
 import { extractBase64Data } from './image-utils'
 
 /**

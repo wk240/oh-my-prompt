@@ -1,4 +1,4 @@
-import type { StorageSchema, LegacyStorageSchema, Prompt, Category } from '../../shared/types'
+import type { StorageSchema, LegacyStorageSchema, Prompt, Category } from '@oh-my-prompt/shared/types'
 import { isLegacyFormat } from './index'
 
 /**

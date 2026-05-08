@@ -8,8 +8,8 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { Upload, Link, Image as ImageIcon, AlertCircle } from 'lucide-react'
 import { BaseModal } from './BaseModal'
-import type { Prompt, Category } from '../../shared/types'
-import { MessageType } from '../../shared/messages'
+import type { Prompt, Category } from '@oh-my-prompt/shared/types'
+import { MessageType } from '@oh-my-prompt/shared/messages'
 import {
   saveImage,
   deleteImage,
@@ -18,7 +18,7 @@ import {
   getCachedImageUrl,
 } from '../../lib/sync/image-sync'
 import type { ImageSaveResult } from '../../lib/sync/image-sync'
-import { MAX_IMAGE_SIZE, ALLOWED_IMAGE_EXTENSIONS } from '../../shared/constants'
+import { MAX_IMAGE_SIZE, ALLOWED_IMAGE_EXTENSIONS } from '@oh-my-prompt/shared/constants'
 
 // Preview offset from mouse cursor
 const PREVIEW_OFFSET = 16

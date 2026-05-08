@@ -6,9 +6,9 @@
 
 import { useRef, useState, useMemo, useEffect, useCallback, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
-import type { Prompt, Category } from '../../shared/types'
-import type { ResourcePrompt, ResourceCategory, UpdateStatus } from '../../shared/types'
-import { truncateText, sortCategoriesByOrder, sortPromptsByOrder, sortProviderCategoriesByOrder, sortResourcePromptsByCategoryOrder } from '../../shared/utils'
+import type { Prompt, Category } from '@oh-my-prompt/shared/types'
+import type { ResourcePrompt, ResourceCategory, UpdateStatus } from '@oh-my-prompt/shared/types'
+import { truncateText, sortCategoriesByOrder, sortPromptsByOrder, sortProviderCategoriesByOrder, sortResourcePromptsByCategoryOrder } from '@oh-my-prompt/shared/utils'
 import { Sparkles, Palette, Shapes, ArrowUpRight, FolderOpen, Layers, Sparkle, Brush, GripVertical, Database, ArrowLeft, Sun, Frame, Paintbrush, Image, ArrowUpCircle, Plus, Pencil, Trash2, ExternalLink, AlertTriangle, Settings, Clock, Copy } from 'lucide-react'
 import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
@@ -26,7 +26,7 @@ const DeleteConfirmModal = lazy(() => import('./DeleteConfirmModal').then(m => (
 const PromptEditModal = lazy(() => import('./PromptEditModal').then(m => ({ default: m.PromptEditModal })))
 import { usePromptStore } from '../../lib/store'
 import { getResourcePrompts, getResourceCategories } from '../../lib/resource-library'
-import { MessageType } from '../../shared/messages'
+import { MessageType } from '@oh-my-prompt/shared/messages'
 import { clearImageUrlCache, isFolderConfigured, downloadImageFromUrl, saveImage } from '../../lib/sync/image-sync'
 import { clearLoadQueue } from '../../lib/sync/image-loader-queue'
 import { PromptThumbnail } from './PromptThumbnail'

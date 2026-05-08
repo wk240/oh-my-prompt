@@ -5,8 +5,8 @@
 
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
-import type { UpdateStatus } from '../../shared/types'
-import { MessageType } from '../../shared/messages'
+import type { UpdateStatus } from '@oh-my-prompt/shared/types'
+import { MessageType } from '@oh-my-prompt/shared/messages'
 import { Download, RefreshCw, Check, ExternalLink, ChevronRight, ChevronLeft, X, FileDown, FileUp } from 'lucide-react'
 
 interface UpdateGuideModalProps {

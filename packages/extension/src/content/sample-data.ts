@@ -3,7 +3,7 @@
  * Phase 3 will replace with storage-backed data
  */
 
-import type { Prompt, Category } from '../shared/types'
+import type { Prompt, Category } from '@oh-my-prompt/shared/types'
 
 /**
  * Sample categories for grouping prompts

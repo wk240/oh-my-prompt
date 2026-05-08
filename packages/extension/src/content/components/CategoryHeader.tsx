@@ -3,7 +3,7 @@
  * Styled as muted uppercase label per UI-SPEC
  */
 
-import type { Category } from '../../shared/types'
+import type { Category } from '@oh-my-prompt/shared/types'
 
 interface CategoryHeaderProps {
   category: Category

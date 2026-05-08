@@ -1,4 +1,4 @@
-import type { StorageSchema } from '../../shared/types'
+import type { StorageSchema } from '@oh-my-prompt/shared/types'
 
 export interface MigrationStep {
   version: string

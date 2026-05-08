@@ -1,4 +1,4 @@
-import type { StorageSchema, Prompt } from '../../shared/types'
+import type { StorageSchema, Prompt } from '@oh-my-prompt/shared/types'
 
 /**
  * Migration from 1.2 to 1.3: Move "临时" category prompts to temporaryPrompts

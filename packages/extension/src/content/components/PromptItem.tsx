@@ -3,8 +3,8 @@
  * Handles selection state and keyboard interaction
  */
 
-import type { Prompt } from '../../shared/types'
-import { truncateText } from '../../shared/utils'
+import type { Prompt } from '@oh-my-prompt/shared/types'
+import { truncateText } from '@oh-my-prompt/shared/utils'
 
 interface PromptItemProps {
   prompt: Prompt

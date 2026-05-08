@@ -1,7 +1,7 @@
 // src/popup/components/ProviderSelect.tsx
 import { useState, useEffect, useRef } from 'react'
 import { ChevronDown, Search, Check } from 'lucide-react'
-import type { Provider, ProviderGroup } from '../../shared/types'
+import type { Provider, ProviderGroup } from '@oh-my-prompt/shared/types'
 
 interface ProviderSelectProps {
   providers: Provider[]

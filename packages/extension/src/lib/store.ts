@@ -5,9 +5,9 @@
  */
 
 import { create } from 'zustand'
-import type { Prompt, Category, StorageSchema } from '../shared/types'
-import { MessageType } from '../shared/messages'
-import { sortPromptsByOrder } from '../shared/utils'
+import type { Prompt, Category, StorageSchema } from '@oh-my-prompt/shared/types'
+import { MessageType } from '@oh-my-prompt/shared/messages'
+import { sortPromptsByOrder } from '@oh-my-prompt/shared/utils'
 
 interface PromptStore {
   prompts: Prompt[]

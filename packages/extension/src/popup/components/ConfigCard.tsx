@@ -1,7 +1,7 @@
 // src/popup/components/ConfigCard.tsx
 import { Check, Trash2, Edit2, Star } from 'lucide-react'
 import { Button } from './ui/button'
-import type { ProviderConfig } from '../../shared/types'
+import type { ProviderConfig } from '@oh-my-prompt/shared/types'
 
 interface ConfigCardProps {
   config: ProviderConfig

@@ -8,7 +8,7 @@
 import { createPortal } from 'react-dom'
 import { useEffect, useCallback, useState } from 'react'
 import { X, Bookmark, ArrowUpRight, Languages, Pencil, Copy } from 'lucide-react'
-import type { ResourcePrompt, Prompt } from '../../shared/types'
+import type { ResourcePrompt, Prompt } from '@oh-my-prompt/shared/types'
 
 interface PromptPreviewModalProps {
   prompt: ResourcePrompt | Prompt  // Changed: support both types

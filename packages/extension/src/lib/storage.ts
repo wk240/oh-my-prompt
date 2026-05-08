@@ -4,8 +4,8 @@
  * error handling, and migration integration.
  */
 
-import type { StorageSchema, UserData, SyncSettings, Prompt } from '../shared/types'
-import { STORAGE_KEY } from '../shared/constants'
+import type { StorageSchema, UserData, SyncSettings, Prompt } from '@oh-my-prompt/shared/types'
+import { STORAGE_KEY } from '@oh-my-prompt/shared/constants'
 import { BUILT_IN_CATEGORIES, BUILT_IN_PROMPTS } from '../data/built-in-data'
 import { migrate, isLegacyFormat } from './migrations/index'
 // Import register to ensure migrations are registered before any migrate() calls

@@ -3,7 +3,7 @@
  * Provides JSON file download and validation for StorageSchema data.
  */
 
-import type { StorageSchema, Prompt, Category } from '../shared/types'
+import type { StorageSchema, Prompt, Category } from '@oh-my-prompt/shared/types'
 
 interface ValidationResult {
   valid: boolean
@@ -130,8 +130,8 @@ export function validateImportData(json: unknown): ValidationResult {
   const converted: StorageSchema = {
     version: typeof data.version === 'string' ? data.version : '1.0.0',
     userData: {
-      prompts: data.prompts as unknown as import('../shared/types').Prompt[],
-      categories: data.categories as unknown as import('../shared/types').Category[]
+      prompts: data.prompts as unknown as import('@oh-my-prompt/shared/types').Prompt[],
+      categories: data.categories as unknown as import('@oh-my-prompt/shared/types').Category[]
     },
     settings: {
       showBuiltin: true,

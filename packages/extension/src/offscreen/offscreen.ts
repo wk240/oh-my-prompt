@@ -8,13 +8,13 @@
  * Offscreen document provides this context, reducing permission loss frequency.
  */
 
-import { MessageType, MessageResponse } from '../shared/messages'
-import type { VisionApiConfig, ProviderConfigsStorage } from '../shared/types'
+import { MessageType, MessageResponse } from '@oh-my-prompt/shared/messages'
+import type { VisionApiConfig, ProviderConfigsStorage } from '@oh-my-prompt/shared/types'
 import type { FullBackupData } from '../lib/sync/file-sync'
 import { getFolderHandle, saveFolderHandle, checkFolderPermission, requestFolderPermission } from '../lib/sync/indexeddb'
 import { syncToLocalFolder, listBackupVersions, readBackupFile } from '../lib/sync/file-sync'
 import { syncApiConfigToFolder, readApiConfigFromFolder, syncProviderConfigsToFolder, readProviderConfigsFromFolder } from '../lib/sync/api-config-sync'
-import { IMAGE_DIR_NAME, ALLOWED_IMAGE_EXTENSIONS } from '../shared/constants'
+import { IMAGE_DIR_NAME, ALLOWED_IMAGE_EXTENSIONS } from '@oh-my-prompt/shared/constants'
 
 
 // Cache folder handle for synchronous access during permission requests

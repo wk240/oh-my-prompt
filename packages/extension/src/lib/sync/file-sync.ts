@@ -1,5 +1,5 @@
-import type { Prompt, Category } from '../../shared/types'
-import { BACKUP_FILE_NAME, BACKUP_HISTORY_PREFIX, BACKUP_HISTORY_PATTERN, MAX_BACKUP_HISTORY } from '../../shared/constants'
+import type { Prompt, Category } from '@oh-my-prompt/shared/types'
+import { BACKUP_FILE_NAME, BACKUP_HISTORY_PREFIX, BACKUP_HISTORY_PATTERN, MAX_BACKUP_HISTORY } from '@oh-my-prompt/shared/constants'
 import { computeBackupDataHash, type BackupData } from './hash'
 
 // Full backup data structure including temporary prompts

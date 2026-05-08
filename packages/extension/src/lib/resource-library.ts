@@ -3,7 +3,7 @@
  * Loads built-in prompt library from split category JSON files
  */
 
-import type { ResourcePrompt, ResourceCategory } from '../shared/types'
+import type { ResourcePrompt, ResourceCategory } from '@oh-my-prompt/shared/types'
 
 // Import index metadata
 import indexData from '../data/resource-library/index.json'

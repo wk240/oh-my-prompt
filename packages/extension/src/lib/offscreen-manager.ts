@@ -8,7 +8,7 @@
  * Chrome MV3 Service Workers cannot request permissions because they lack DOM/user interaction context.
  */
 
-import { MessageType, MessageResponse } from '../shared/messages'
+import { MessageType, MessageResponse } from '@oh-my-prompt/shared/messages'
 
 const OFFSCREEN_DOCUMENT_PATH = 'src/offscreen/offscreen.html'
 

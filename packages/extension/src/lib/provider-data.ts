@@ -1,6 +1,6 @@
 // src/lib/provider-data.ts
 import providersJson from '../data/providers.json'
-import type { Provider, ProviderGroup, ModelInfo } from '../shared/types'
+import type { Provider, ProviderGroup, ModelInfo } from '@oh-my-prompt/shared/types'
 
 // JSON provider type (matches providers.json structure)
 interface JsonProvider {

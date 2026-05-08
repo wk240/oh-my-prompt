@@ -8,8 +8,8 @@
 import { useState, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowUpRight, Bookmark, Copy } from 'lucide-react'
-import type { ResourcePrompt } from '../../shared/types'
-import { truncateText } from '../../shared/utils'
+import type { ResourcePrompt } from '@oh-my-prompt/shared/types'
+import { truncateText } from '@oh-my-prompt/shared/utils'
 import { Tooltip } from './Tooltip'
 
 interface NetworkPromptCardProps {

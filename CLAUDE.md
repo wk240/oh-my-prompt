@@ -40,9 +40,9 @@ npm run test:ui        # Interactive test UI
 npm run test:headed    # Run with visible browser
 ```
 
-After running `npm run dev`, load the extension from `dist/` folder in Chrome via `chrome://extensions` (enable Developer Mode).
+After running `npm run dev`, load the extension from `packages/extension/dist/` folder in Chrome via `chrome://extensions` (enable Developer Mode).
 
-**Note:** `manifest.json` is at project root (imported by `vite.config.ts`), not in `src/`.
+**Note:** `manifest.json` is at `packages/extension/manifest.json` (imported by `vite.config.ts`), not in `src/`.
 
 <!-- GSD:stack-start source:research/STACK.md -->
 ## Technology Stack
@@ -68,70 +68,70 @@ After running `npm run dev`, load the extension from `dist/` folder in Chrome vi
 <!-- GSD:architecture-start source:ARCHITECTURE.md -->
 ## Architecture
 
-### Three-Part Extension Structure
+### Monorepo Structure
 
 ```
-src/
-├── content/           # Runs on supported platforms (Shadow DOM isolated)
-│   ├── core/               # Core modules (shared across platforms)
-│   │   ├── coordinator.ts  # Entry point, platform matching
-│   │   ├── detector.ts     # Config-driven input detection
-│   │   └── injector.tsx    # Config-driven UI injection
-│   │
-│   ├── platforms/          # Platform configs and strategies
-│   │   ├── registry.ts     # URL → Platform matching
-│   │   ├── base/           # Types and default strategies
-│   │   │   ├── types.ts           # PlatformConfig, UrlPattern, etc.
-│   │   │   ├── strategy-interface.ts  # InsertStrategy, DetectStrategy
-│   │   │   └── default-strategies.ts  # DefaultInserter
-│   │   ├── lovart/         # Lovart (Lexical editor)
-│   │   │   ├── config.ts
-│   │   │   └── strategies.ts
-│   │   ├── chatgpt/        # ChatGPT
-│   │   ├── claude-ai/      # Claude.ai (ProseMirror)
-│   │   ├── gemini/         # Gemini
-│   │   ├── liblib/         # LibLib (国内)
-│   │   ├── jimeng/         # 即梦 (国内)
-│   │   ├── kimi/           # Kimi (Lexical)
-│   │   ├── xingliu/        # 星流 (Lexical)
-│   │   └── ...             # More platforms
-│   │
-│   ├── components/         # Dropdown UI React components
-│   │   ├── DropdownApp.tsx # Main dropdown with InsertStrategy prop
-│   │   ├── TriggerButton.tsx
-│   │   └── ...
-│   │
-│   ├── styles/             # Shadow DOM styles
-│   └── vision-modal-manager.tsx  # Vision modal for image-to-prompt
+packages/
+├── extension/          # Chrome Extension（开源）
+│   ├── src/
+│   │   ├── content/    # Content scripts (Shadow DOM isolated)
+│   │   │   ├── core/        # Core modules (shared across platforms)
+│   │   │   │   ├── coordinator.ts  # Entry point, platform matching
+│   │   │   │   ├── detector.ts     # Config-driven input detection
+│   │   │   │   └── injector.tsx    # Config-driven UI injection
+│   │   │   ├── platforms/    # Platform configs and strategies
+│   │   │   │   ├── registry.ts     # URL → Platform matching
+│   │   │   │   ├── base/           # Types and default strategies
+│   │   │   │   ├── lovart/         # Lovart (Lexical editor)
+│   │   │   │   ├── chatgpt/        # ChatGPT
+│   │   │   │   ├── claude-ai/      # Claude.ai (ProseMirror)
+│   │   │   │   ├── gemini/         # Gemini
+│   │   │   │   ├── liblib/         # LibLib (国内)
+│   │   │   │   ├── jimeng/         # 即梦 (国内)
+│   │   │   │   ├── kimi/           # Kimi (Lexical)
+│   │   │   │   ├── xingliu/        # 星流 (Lexical)
+│   │   │   │   └── ...
+│   │   │   ├── components/    # Dropdown UI React components
+│   │   │   └── vision-modal-manager.tsx
+│   │   ├── background/   # Service worker (no DOM access)
+│   │   ├── popup/        # Extension popup (React + Tailwind)
+│   │   ├── sidepanel/    # Sidepanel UI
+│   │   ├── lib/          # Utilities
+│   │   │   ├── store.ts        # Zustand store
+│   │   │   ├── storage.ts      # StorageManager
+│   │   │   ├── import-export.ts
+│   │   │   ├── version-checker.ts
+│   │   │   ├── resource-library.ts
+│   │   │   └── sync/           # Local folder backup sync
+│   │   ├── offscreen/    # Offscreen documents
+│   │   ├── hooks/        # React hooks
+│   │   └── data/         # Built-in data
+│   ├── manifest.json
+│   └── vite.config.ts
 │
-├── background/        # Service worker (no DOM access)
-│   └── service-worker.ts    # Message routing, storage ops
-│
-├── popup/             # Extension popup (React + Tailwind)
-│   ├── backup.html           # Backup management popup (default action)
-│   ├── backup.tsx            # BackupApp component
-│   ├── App.tsx               # Main management UI (unused in current build)
-│   ├── components/           # Category list, prompt editor, dialogs
-│   └── components/ui/       # Radix UI primitives (button, dialog, etc.)
-│
-├── lib/               # Shared utilities
-│   ├── store.ts             # Zustand store (CRUD + storage sync)
-│   ├── storage.ts           # StorageManager singleton
-│   ├── import-export.ts     # JSON download/upload
-│   ├── version-checker.ts   # GitHub release version check
-│   ├── resource-library.ts  # Resource prompt data loading
-│   └── sync/                # Local folder backup sync
-│       ├── sync-manager.ts  # Sync orchestration
-│       ├── file-sync.ts     # File System Access API operations
-│       └── indexeddb.ts     # Folder handle persistence
-│
-├── shared/            # Cross-context shared
-│   ├── types.ts             # Prompt, Category, StorageSchema
-│   ├── messages.ts          # MessageType enum for communication
-│   └── constants.ts         # STORAGE_KEY, PLATFORM_DOMAIN
-│
-├── data/              # Initial data
-│   └── built-in-data.ts     # Default prompts and categories
+└── shared/             # Shared types（开源）
+    ├── types/
+    │   ├── prompt.ts
+    │   ├── storage.ts
+    │   ├── sync.ts     # Cloud sync types
+    │   └── ...
+    ├── constants/
+    ├── messages.ts     # MessageType enum
+    └── utils.ts
+```
+
+### Import Convention
+
+- Extension imports shared types: `import { Prompt } from '@oh-my-prompt/shared/types'`
+- Path alias: `@/` resolves to `packages/extension/src/`
+
+### Commands
+
+```bash
+# Run from root directory
+npm run dev
+npm run build
+npm run test
 ```
 
 ### Communication Patterns

@@ -168,9 +168,8 @@ npm run build
 <summary><strong>Q: 图片转提示词功能如何配置 API？</strong></summary>
 
 需要配置 Vision API 才能使用此功能：
-1. 点击扩展图标打开设置页面
-2. 进入「API 配置」页面
-3. 填写 API Base URL、API Key、模型名称
+1. 点击扩展图标打开侧边栏面板，点击右上角设置图标，选择「AI识图」标签页
+2. 填写 API Base URL、API Key、模型名称
 4. 选择 API 格式（OpenAI 格式或 Anthropic 格式）
 5. 保存配置后即可使用
 

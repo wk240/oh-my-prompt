@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "rootDir": "src",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@oh-my-prompt/shared": ["../shared"]
+    }
+  },
+  "include": ["src", "vite.config.ts", "playwright.config.ts"],
+  "references": [
+    { "path": "../shared" }
+  ]
+}

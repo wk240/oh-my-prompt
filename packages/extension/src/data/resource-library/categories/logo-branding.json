@@ -1,0 +1,31 @@
+{
+  "categoryId": "logo-branding",
+  "prompts": [
+    {
+      "id": "resource-logo-branding-1",
+      "name": "优雅手写体Logo重设计：Lacoste、Tesla、Ferrari",
+      "content": "一个扁平、极简主义的矢量设计，以高度风格化的单字母花押字为中心，下方配有品牌的官方Logo，代表 [BRAND NAME]。\n\n**主要元素（花押字）：**\n设计中心仅展示 \"[BRAND NAME]\" 的第一个字母。风格为 \"装饰性矢量字体\"，具有高度的书法艺术性，模仿定制奢侈品牌花押字。这不是标准字体；而是一个高度定制、艺术化的字形，带有优雅的装饰、夸张的回旋或装饰性衬线。线条干净、精确，完美的平滑矢量图形。\n\n**次要元素（品牌标识）：**\n在主风格化字母的正下方居中位置，放置 \"[BRAND NAME]\" 实际的官方Logo标识或字体商标。此元素必须明显小于上方的主字母。\n\n**表面处理与纹理（严格要求）：**\n图像中绝对不允许任何纹理、浮雕、阴影或渐变。必须看起来像一个完美扁平的数字插画或丝网印刷。\n\n**配色方案（AI驱动 & 高对比度）：**\n1.  **背景：** AI自动选择的单一纯色色块，用于代表 [BRAND NAME] 的品牌调性。\n2.  **主花押字颜色：** 单一纯色，与背景形成鲜明的高对比度。\n3.  **次级Logo颜色：** 下方的小型官方Logo必须是单色的。必须是纯白色或纯深灰色之一——根据哪种颜色在所选背景色上具有最佳可读性自动选择。",
+      "categoryId": "logo-branding",
+      "order": 1,
+      "sourceCategory": "Logo & Branding",
+      "previewImage": "https://pbs.twimg.com/media/G9WSTeBWoAA1Aa-.jpg",
+      "author": "AmirMušić",
+      "authorUrl": "https://x.com/AmirMushich/status/2005670356745322759",
+      "nameEn": "Elegant Script Logo Redesigns: Lacoste, Tesla, Ferrari",
+      "contentEn": "A flat, minimalist vector design featuring a highly stylized single letter monogram with the official brand logo below it, representing [BRAND NAME].\n\n**MAIN ELEMENT (THE MONOGRAM):**\nThe center of the design features ONLY the single first letter of \"[BRAND NAME]\". The style is \"Ornamental Vector Typography\" with high calligraphic artistry, mimicking bespoke luxury monograms. This is not a standard font; it is a Highly customized, artistic glyph with elegant flourishes, exaggerated swashes, or ornamental serifs. The lines are clean, precise, and perfectly smooth vector graphics.\n\n**SECONDARY ELEMENT (BRAND IDENTIFIER):**\nDirectly below the main stylized letter, positioned centrally, include the actual, original official logomark or logotype of \"[BRAND NAME]\". This element must be rendered significantly smaller than the main letter above it.\n\n**FINISH & TEXTURE (STRICT):**\nAbsolutely zero texture, zero embossing, zero shadows, and zero gradients anywhere in the image. It must look like a perfectly flat digital illustration or screen print.\n\n**COLOR PALETTE (AI-DRIVEN & HIGH CONTRAST):**\n1.  **Background:** A single, solid, flat color block chosen by the AI to represent the vibe of [BRAND NAME].\n2.  **Main Monogram Color:** A single, solid, flat color that creates a sharp, high contrast against the background.\n3.  **Secondary Logo Color:** The small official logo below must be monochrome. It must be EITHER solid white OR solid dark gray—chosen automatically based on whichever offers the best readability against the chosen background color."
+    },
+    {
+      "id": "resource-logo-branding-3",
+      "name": "趣味香蕉Google Logo搜索页设计",
+      "content": "Google首页截图，带有香蕉主题的Google涂鸦，将\"手气不错\"按钮改为 \"Go bananas\"。不要出现猴子。",
+      "categoryId": "logo-branding",
+      "order": 3,
+      "sourceCategory": "Logo & Branding",
+      "previewImage": "https://pbs.twimg.com/media/G6T124XWcAA8eiE.jpg",
+      "author": "Nano Banana Pro",
+      "authorUrl": "https://x.com/NanoBanana/status/1991987708840026131",
+      "nameEn": "Playful Banana Google Logo Search Page Design",
+      "contentEn": "A screenshot of the Google home page with a banana Google doodle, change I'm feeling lucky to be \"Go bananas\". No monkeys."
+    }
+  ]
+}

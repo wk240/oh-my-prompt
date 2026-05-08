@@ -1,0 +1,147 @@
+{
+  "version": "1.2.0",
+  "fetchedAt": "2026-04-25T17:23:32.158Z",
+  "categories": [
+    {
+      "id": "gpt-image",
+      "name": "GPT Image",
+      "order": 0,
+      "count": 27
+    },
+    {
+      "id": "nano-banana",
+      "name": "Nano Banana",
+      "order": 1
+    },
+    {
+      "id": "prompts-chat-image",
+      "name": "Prompts.Chat",
+      "order": 2,
+      "count": 276
+    },
+    {
+      "id": "3d-miniatures-dioramas",
+      "name": "3D微缩模型",
+      "order": 3,
+      "count": 9
+    },
+    {
+      "id": "product-photography",
+      "name": "产品摄影",
+      "order": 4,
+      "count": 14
+    },
+    {
+      "id": "character-design",
+      "name": "角色设计",
+      "order": 5,
+      "count": 10
+    },
+    {
+      "id": "food-culinary",
+      "name": "美食烹饪",
+      "order": 6,
+      "count": 10
+    },
+    {
+      "id": "fantasy-scifi",
+      "name": "奇幻科幻",
+      "order": 7,
+      "count": 10
+    },
+    {
+      "id": "sports-action",
+      "name": "运动动感",
+      "order": 8,
+      "count": 15
+    },
+    {
+      "id": "urban-cityscapes",
+      "name": "城市街景",
+      "order": 9,
+      "count": 10
+    },
+    {
+      "id": "architecture-interiors",
+      "name": "建筑室内",
+      "order": 10,
+      "count": 10
+    },
+    {
+      "id": "nature-landscapes",
+      "name": "自然风景",
+      "order": 11,
+      "count": 10
+    },
+    {
+      "id": "logo-branding",
+      "name": "标志品牌",
+      "order": 12,
+      "count": 10
+    },
+    {
+      "id": "vintage-retro",
+      "name": "复古怀旧",
+      "order": 13,
+      "count": 10
+    },
+    {
+      "id": "cinematic-posters",
+      "name": "电影海报",
+      "order": 14,
+      "count": 10
+    },
+    {
+      "id": "anime-manga",
+      "name": "动漫漫画",
+      "order": 15,
+      "count": 9
+    },
+    {
+      "id": "minimalist-icons",
+      "name": "极简图标",
+      "order": 16,
+      "count": 7
+    },
+    {
+      "id": "misc",
+      "name": "其他杂项",
+      "order": 17,
+      "count": 4
+    },
+    {
+      "id": "portrait-photography",
+      "name": "肖像摄影",
+      "order": 18,
+      "count": 50
+    },
+    {
+      "id": "fashion-photography",
+      "name": "时尚摄影",
+      "order": 19,
+      "count": 51
+    }
+  ],
+  "categoryFiles": [
+    "3d-miniatures-dioramas",
+    "anime-manga",
+    "architecture-interiors",
+    "character-design",
+    "cinematic-posters",
+    "fantasy-scifi",
+    "fashion-photography",
+    "food-culinary",
+    "gpt-image",
+    "logo-branding",
+    "minimalist-icons",
+    "misc",
+    "nano-banana",
+    "nature-landscapes",
+    "portrait-photography",
+    "product-photography",
+    "prompts-chat-image",
+    "sports-action",
+    "urban-cityscapes",
+    "vintage-retro"
+  ]
+}

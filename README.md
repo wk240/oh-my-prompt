@@ -92,7 +92,7 @@ npm run build
 
 ### 2、备份管理
 
-点击浏览器工具栏的扩展图标，打开备份管理界面：
+点击浏览器工具栏的扩展图标，打开侧边栏面板。点击右上角设置图标，进入「备份」标签页：
 
 - **开启备份**：选择本地文件夹，数据变更时自动同步
 - **版本历史**：查看历史备份文件列表
@@ -131,7 +131,7 @@ npm run build
 <details>
 <summary><strong>Q: 为什么在其他网站看不到闪电图标？</strong></summary>
 
-扩展在 Lovart、ChatGPT、Claude.ai、Gemini、LibLib、即梦等支持的平台上激活。如在其他网站看不到图标，说明该平台暂未支持，后续版本可能添加。
+扩展在 Lovart、ChatGPT、Claude.ai、Gemini、LibLib、即梦、Kimi、星流等支持的平台上激活。如在其他网站看不到图标，说明该平台暂未支持，后续版本可能添加。
 </details>
 
 <details>
@@ -168,9 +168,8 @@ npm run build
 <summary><strong>Q: 图片转提示词功能如何配置 API？</strong></summary>
 
 需要配置 Vision API 才能使用此功能：
-1. 点击扩展图标打开设置页面
-2. 进入「API 配置」页面
-3. 填写 API Base URL、API Key、模型名称
+1. 点击扩展图标打开侧边栏面板，点击右上角设置图标，选择「AI识图」标签页
+2. 填写 API Base URL、API Key、模型名称
 4. 选择 API 格式（OpenAI 格式或 Anthropic 格式）
 5. 保存配置后即可使用
 

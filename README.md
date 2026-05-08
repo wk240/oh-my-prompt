@@ -13,6 +13,23 @@
 
 ---
 
+## 项目结构
+
+本项目采用 **Monorepo** 架构：
+
+```
+packages/
+├── extension/      # Chrome Extension（开源）
+│   ├── src/        # Extension 源码
+│   └── dist/       # 构建产物
+│
+└── shared/         # 共享类型定义（开源）
+    ├── types/      # TypeScript 类型
+    └── constants/  # 常量定义
+```
+
+---
+
 <!-- SEO Keywords: Lovart AI, prompt manager, Chrome extension, 提示词管理, AI设计工具, prompt template, 提示词模板 -->
 
 ## ✨ 核心功能 | Features
@@ -73,7 +90,7 @@ npm run build
 # 1. 打开 chrome://extensions/
 # 2. 启用「开发者模式」
 # 3. 点击「加载已解压的扩展程序」
-# 4. 选择项目根目录下的 dist 文件夹
+# 4. 选择 packages/extension/dist 文件夹
 ```
 
 ---
@@ -197,7 +214,13 @@ npm run build
 
 ## 📄 许可证
 
-[MIT License](LICENSE) - 自由使用、修改和分发。
+[MIT License](LICENSE) - Extension 和 Shared 包开源
+
+---
+
+## 🏗️ 架构设计
+
+详见 [商业化架构设计](docs/superpowers/specs/2026-05-08-commercialization-architecture-design.md)
 
 ---
 

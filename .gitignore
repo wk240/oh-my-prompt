@@ -12,6 +12,9 @@ packages/web-app/supabase/
 # Stripe 密钥
 stripe-keys.txt
 
+# TypeScript incremental build cache
+*.tsbuildinfo
+
 # 现有的忽略项
 node_modules
 dist/

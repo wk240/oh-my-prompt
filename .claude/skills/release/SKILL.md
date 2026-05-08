@@ -18,9 +18,9 @@ description: >
 
 **完整流程**：
 ```
-确认版本 → 预览说明 → version → git commit → release → github-release
-    ↓         ↓         ↓          ↓           ↓            ↓
-  输入版本   用户确认   更新版本号  提交更改    构建打包zip   发布到GitHub
+确认版本 → 预览说明 → CHANGELOG → version → git commit → release → github-release
+    ↓         ↓         ↓          ↓          ↓           ↓            ↓
+  输入版本   用户确认   同步变更记录  更新版本号  提交更改    构建打包zip   发布到GitHub
 ```
 
 ## 前置条件检查
@@ -95,7 +95,40 @@ description: >
 
    **注意**：用户确认后才开始执行版本号更新等操作。
 
-### 第三步：版本号同步
+### 第三步：同步 CHANGELOG.md
+
+**重要**：CHANGELOG.md 必须在版本号更新前同步，确保版本记录完整。
+
+1. **读取当前 CHANGELOG.md** 确认最新版本记录
+
+2. **检查是否需要更新**：
+   - 如果 CHANGELOG 最新版本 < 新版本号 → 需要添加新版本记录
+   - 如果 CHANGELOG 最新版本 == 新版本号 → 跳过此步骤
+
+3. **生成 CHANGELOG 条目**：
+   - 使用与 Release Notes 相同的 commit 分组
+   - **双语格式**（项目约定）：
+     ```markdown
+     ## [1.4.0] - 2026-05-08
+
+     ### Added / 新增
+     - **[EN]** Release skill for GitHub release workflow
+     - **[CN]** 发布技能自动化 GitHub Release 流程
+
+     ### Fixed / 修复
+     - **[EN]** Pre-cache folder handle to preserve user gesture
+     - **[CN]** 预缓存文件夹句柄以保留用户手势
+
+     ### Changed / 变更
+     - **[EN]** Removed deprecated popup pages
+     - **[CN]** 移除废弃的 popup 页面
+     ```
+
+4. **使用 Edit 工具更新 CHANGELOG.md**：
+   - 在文件开头（`# Changelog` 标题后）插入新版本条目
+   - 保持双语格式一致性
+
+### 第四步：版本号同步
 
 运行版本更新脚本：
 
@@ -110,18 +143,18 @@ npm run version <new-version>
 - `BUILD.md` — 文档中的版本引用
 - `package-lock.json` — 自动同步
 
-### 第四步：Git 提交
+### 第五步：Git 提交
 
 提交版本号更改：
 
 ```bash
-git add package.json manifest.json package-lock.json VERSION BUILD.md
+git add package.json manifest.json package-lock.json VERSION BUILD.md CHANGELOG.md
 git commit -m "chore: bump version to v<版本号>"
 ```
 
 如果用户需要，可额外提交其他更改。
 
-### 第五步：构建与打包
+### 第六步：构建与打包
 
 运行构建打包脚本：
 
@@ -136,7 +169,7 @@ npm run release
 
 **输出位置**：`releases/oh-my-prompt-v{版本号}.zip`
 
-### 第六步：GitHub Release
+### 第七步：GitHub Release
 
 运行 GitHub 发布脚本：
 
@@ -166,7 +199,7 @@ npm run github-release
 - chore: bump version to v1.4.0
 ```
 
-### 第七步：后续操作提示
+### 第八步：后续操作提示
 
 发布完成后提示用户：
 
@@ -218,6 +251,7 @@ manifest.json         # Chrome 扩展版本
 package-lock.json     # 锁文件
 VERSION               # 版本记录（可选）
 BUILD.md              # 文档引用（可选）
+CHANGELOG.md          # 版本变更记录（重要）
 dist/                 # 构建输出
 releases/             # zip 输出目录
 .claude/skills/release/scripts/
@@ -233,9 +267,11 @@ releases/             # zip 输出目录
 - [ ] git 状态干净
 - [ ] 在 master 分支
 - [ ] 版本号已确认
+- [ ] CHANGELOG.md 已同步
 
 发布后：
 - [ ] GitHub Release 已创建
 - [ ] zip 文件已上传为 asset
 - [ ] tag 已推送
 - [ ] release notes 已生成
+- [ ] CHANGELOG.md 版本记录已添加

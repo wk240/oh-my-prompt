@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.0] - 2026-05-08
+
+### Added / 新增
+- **[EN]** Release skill for GitHub release workflow automation
+- **[CN]** 发布技能自动化 GitHub Release 流程
+- **[EN]** Release notes preview step before version bump
+- **[CN]** 版本升级前预览发布说明
+- **[EN]** Copy button for prompt content
+- **[CN]** 提示词内容一键复制按钮
+- **[EN]** Sidepanel settings navigation
+- **[CN]** Sidepanel 设置页面导航
+
+### Fixed / 修复
+- **[EN]** Pre-cache folder handle on dropdown mount to preserve user gesture
+- **[CN]** 下拉菜单挂载时预缓存文件夹句柄以保留用户手势
+- **[EN]** Sync restored data to latest backup file after restore
+- **[CN]** 恢复后同步数据到最新备份文件
+- **[EN]** UI text clarity for backup and vision features
+- **[CN]** 备份和 Vision 功能 UI 文字清晰度改进
+- **[EN]** Sidepanel settings layout
+- **[CN]** Sidepanel 设置页面布局
+
+### Changed / 变更
+- **[EN]** Removed deprecated popup pages and OPEN_*_PAGE message handlers
+- **[CN]** 移除废弃的 popup 页面和 OPEN_*_PAGE 消息处理器
+- **[EN]** Simplified SidePanelApp to view switcher pattern
+- **[CN]** SidePanelApp 简化为视图切换器模式
+
 ## [1.3.4] - 2026-05-07
 
 ### Fixed / 修复

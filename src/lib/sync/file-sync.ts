@@ -157,6 +157,13 @@ export async function readFromLocalFolder(
 /**
  * Request user to select a folder for sync
  * Returns handle if successful, null if cancelled or denied
+ *
+ * Note: showDirectoryPicker() already requests and grants permission when user selects a folder.
+ * We do NOT call requestPermission() after showDirectoryPicker() because:
+ * 1. The Picker itself consumes the user gesture
+ * 2. Calling requestPermission() after an async operation (await showDirectoryPicker) loses user gesture context
+ * 3. Chrome may return 'prompt' instead of 'granted', causing false permission failures
+ * 4. The returned handle is already authorized for readwrite access
  */
 export async function selectSyncFolder(): Promise<FileSystemDirectoryHandle | null> {
   try {
@@ -165,13 +172,7 @@ export async function selectSyncFolder(): Promise<FileSystemDirectoryHandle | nu
       startIn: 'documents'
     })
 
-    // Verify permission
-    const permission = await handle.requestPermission({ mode: 'readwrite' })
-    if (permission !== 'granted') {
-      console.warn('[Oh My Prompt] Folder permission denied')
-      return null
-    }
-
+    // showDirectoryPicker grants permission upon selection - no need for additional requestPermission()
     return handle
   } catch (error) {
     // User cancelled or picker failed

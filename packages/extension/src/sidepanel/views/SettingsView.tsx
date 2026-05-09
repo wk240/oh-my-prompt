@@ -1,6 +1,7 @@
 import { useState, lazy, Suspense } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { BackupSection } from '../settings/BackupSection'
+import { CloudSyncSection } from '../components/CloudSync'
 import { LoadingSpinner } from '../components/LoadingSpinner'
 
 const VisionSection = lazy(() =>
@@ -14,16 +15,17 @@ interface SettingsViewProps {
   onBack: () => void
 }
 
-type SettingsTab = 'backup' | 'vision' | 'import-export'
+type SettingsTab = 'cloud-sync' | 'backup' | 'vision' | 'import-export'
 
 const tabLabels: Record<SettingsTab, string> = {
-  backup: '备份',
+  'cloud-sync': '云端同步',
+  backup: '本地备份',
   vision: 'AI识图',
   'import-export': '导入导出'
 }
 
 export default function SettingsView({ onBack }: SettingsViewProps) {
-  const [activeTab, setActiveTab] = useState<SettingsTab>('backup')
+  const [activeTab, setActiveTab] = useState<SettingsTab>('cloud-sync')
 
   return (
     <div className="h-full flex flex-col bg-white">
@@ -45,7 +47,7 @@ export default function SettingsView({ onBack }: SettingsViewProps) {
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+            className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-all ${
               activeTab === tab
                 ? 'bg-white text-blue-700 shadow-sm border border-gray-200'
                 : 'text-gray-600 hover:bg-white/50 hover:text-gray-900'
@@ -58,6 +60,7 @@ export default function SettingsView({ onBack }: SettingsViewProps) {
 
       {/* Tab Content - Scrollable with full width */}
       <div className="flex-1 w-full overflow-y-auto">
+        {activeTab === 'cloud-sync' && <CloudSyncSection />}
         {activeTab === 'backup' && <BackupSection />}
         {activeTab === 'vision' && (
           <Suspense fallback={<LoadingSpinner className="py-8" />}>

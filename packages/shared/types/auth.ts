@@ -10,7 +10,13 @@ export interface CloudAuthState {
   }
   subscription?: {
     planType: 'free' | 'pro' | 'team'
-    status: 'active' | 'inactive' | 'expired'
+    status: 'active' | 'inactive' | 'expired' | 'canceled'
+    currentPeriodEnd?: number
+    optimizationQuota?: {
+      used: number
+      remaining: number
+      limit: number
+    }
   }
   lastSyncAt?: number
 }

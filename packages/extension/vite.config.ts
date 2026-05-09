@@ -10,6 +10,11 @@ export default defineConfig({
     crx({ manifest })
   ],
   base: './',
+  define: {
+    // Web-app URL for development (localhost:3000)
+    // Production builds will use the fallback 'https://ohmyprompt.com'
+    DEV_WEB_APP_URL: '"http://localhost:3000"'
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

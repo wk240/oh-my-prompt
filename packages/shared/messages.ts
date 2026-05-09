@@ -65,6 +65,9 @@ export enum MessageType {
   INPUT_STATUS_CHANGED = 'INPUT_STATUS_CHANGED',  // CS → SP: Notify input status change (hasInput: boolean)
   CHECK_INPUT_PORT = 'CHECK_INPUT_PORT',  // SP → CS: Request input check via Port
 
+  // Cloud Sync: Auth callback from web-app OAuth
+  AUTH_CALLBACK_COMPLETE = 'AUTH_CALLBACK_COMPLETE',  // Web-app callback → SW: Notify auth success/failure
+
   // Offscreen Document: File system operations (SW → Offscreen)
   OFFSCREEN_PING = 'OFFSCREEN_PING',                   // Ping offscreen document for readiness check
   OFFSCREEN_SYNC = 'OFFSCREEN_SYNC',                     // Sync user data to folder

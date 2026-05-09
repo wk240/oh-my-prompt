@@ -19,6 +19,24 @@ export function CloudSyncSection() {
     loadAuthState()
   }, [])
 
+  // Listen for auth callback updates from service worker
+  useEffect(() => {
+    const handleMessage = (message: { type: string; payload?: { success: boolean; error?: string } }) => {
+      if (message.type === 'AUTH_STATUS_UPDATE') {
+        console.log('[Oh My Prompt] Received auth status update:', message.payload)
+        if (message.payload?.success) {
+          loadAuthState()
+          setSuccess('登录成功')
+        } else {
+          setError(message.payload?.error || '登录失败')
+        }
+      }
+    }
+
+    chrome.runtime.onMessage.addListener(handleMessage)
+    return () => chrome.runtime.onMessage.removeListener(handleMessage)
+  }, [])
+
   const loadAuthState = async () => {
     setLoading(true)
     const state = await getAuthState()

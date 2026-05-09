@@ -1,11 +1,12 @@
 // packages/extension/src/sidepanel/components/CloudSync/AuthModal.tsx
-import { useState } from 'react'
-import { signInWithOAuth, waitForAuthCallback } from '@/lib/cloud-sync/auth-service'
+import { useState, useEffect, useRef } from 'react'
+import { signInWithOAuth } from '@/lib/cloud-sync/auth-service'
 import { Button } from '@/popup/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/popup/components/ui/dialog'
 
 const providers = [
-  { name: 'google', label: 'Google 登录', icon: '🔵' },
+  // Google login temporarily disabled - requires Supabase Dashboard configuration
+  // { name: 'google', label: 'Google 登录', icon: '🔵' },
   { name: 'github', label: 'GitHub 登录', icon: '⚫' }
 ]
 
@@ -19,6 +20,28 @@ export function AuthModal({ open, onClose, onSuccess }: AuthModalProps) {
   const [loading, setLoading] = useState(false)
   const [waiting, setWaiting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const waitingRef = useRef(false)
+
+  // Listen for auth callback updates from service worker
+  useEffect(() => {
+    const handleMessage = (message: { type: string; payload?: { success: boolean; error?: string } }) => {
+      if (message.type === 'AUTH_STATUS_UPDATE' && waitingRef.current) {
+        console.log('[Oh My Prompt] AuthModal received auth update:', message.payload)
+        waitingRef.current = false
+        setWaiting(false)
+
+        if (message.payload?.success) {
+          onSuccess()
+          onClose()
+        } else {
+          setError(message.payload?.error || '登录失败')
+        }
+      }
+    }
+
+    chrome.runtime.onMessage.addListener(handleMessage)
+    return () => chrome.runtime.onMessage.removeListener(handleMessage)
+  }, [onSuccess, onClose])
 
   const handleOAuth = async (provider: 'google' | 'github') => {
     setLoading(true)
@@ -32,19 +55,19 @@ export function AuthModal({ open, onClose, onSuccess }: AuthModalProps) {
       return
     }
 
+    // OAuth initiated successfully, now waiting for callback
     setWaiting(true)
     setLoading(false)
+    waitingRef.current = true
 
-    const success = await waitForAuthCallback(60000)
-
-    setWaiting(false)
-
-    if (success) {
-      onSuccess()
-      onClose()
-    } else {
-      setError('登录超时，请重试')
-    }
+    // Timeout after 60 seconds
+    setTimeout(() => {
+      if (waitingRef.current) {
+        waitingRef.current = false
+        setWaiting(false)
+        setError('登录超时，请重试')
+      }
+    }, 60000)
   }
 
   return (
@@ -65,7 +88,7 @@ export function AuthModal({ open, onClose, onSuccess }: AuthModalProps) {
 
         {waiting && (
           <div className="p-3 bg-blue-50 rounded text-sm text-blue-600">
-            等待登录完成...
+            等待登录完成...（请在新打开的页面完成登录）
           </div>
         )}
 

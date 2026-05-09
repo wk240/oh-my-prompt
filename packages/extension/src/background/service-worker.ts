@@ -330,6 +330,24 @@ chrome.runtime.onMessage.addListener(
         return true // Required for async response
 
       
+      // Cloud Sync: Auth callback from web-app OAuth page
+      case MessageType.AUTH_CALLBACK_COMPLETE:
+        // Auth callback content script reports success/failure
+        const authPayload = message.payload as { success: boolean; error?: string }
+        console.log('[Oh My Prompt] Auth callback complete:', authPayload)
+
+        // Broadcast to sidepanel if open
+        chrome.runtime.sendMessage({
+          type: 'AUTH_STATUS_UPDATE',
+          payload: authPayload
+        }).catch(err => {
+          // Sidepanel may not be open, ignore error
+          console.log('[Oh My Prompt] Sidepanel not reachable for auth update:', err)
+        })
+
+        sendResponse({ success: true } as MessageResponse)
+        break
+
       case MessageType.REFRESH_DATA:
         // Broadcast refresh to all content scripts (handled by tabs.sendMessage)
         // This is just a confirmation from backup page

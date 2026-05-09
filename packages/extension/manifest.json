@@ -17,6 +17,17 @@
         "src/content/core/coordinator.ts"
       ],
       "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "http://localhost:3000/auth/callback*",
+        "http://localhost:3000/auth/callback",
+        "https://ohmyprompt.com/auth/callback*"
+      ],
+      "js": [
+        "src/content/auth-callback.ts"
+      ],
+      "run_at": "document_start"
     }
   ],
   "side_panel": {

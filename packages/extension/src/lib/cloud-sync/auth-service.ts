@@ -105,6 +105,10 @@ export async function signInWithOAuth(provider: 'google' | 'github'): Promise<{ 
   }
 }
 
+// Supabase project reference (extracted from URL)
+const SUPABASE_PROJECT_REF = 'futfxudabvjfldlismun'
+const SUPABASE_AUTH_KEY = `sb-${SUPABASE_PROJECT_REF}-auth-token`
+
 /**
  * Sign out and clear all session data.
  *
@@ -127,11 +131,8 @@ export async function signOut(): Promise<{ success: boolean }> {
 
   clearSupabaseClient()
 
-  // Clear stored session from chrome.storage.local
-  await chrome.storage.local.remove([
-    'supabase.auth.token',
-    'supabase.auth.expires_at'
-  ])
+  // Clear stored session from chrome.storage.local with correct key format
+  await chrome.storage.local.remove([SUPABASE_AUTH_KEY])
 
   return { success: true }
 }

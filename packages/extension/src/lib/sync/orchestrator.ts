@@ -1,6 +1,7 @@
 import { CloudSyncStrategy } from './strategies/cloud'
 import { LocalSyncStrategy } from './strategies/local'
 import { executeLocalSync } from './local-sync-executor'
+import { getFolderHandle, checkFolderPermission } from './indexeddb'
 import {
   FullBackupData,
   MergeResult,
@@ -253,6 +254,18 @@ export class SyncOrchestrator {
 
     const settings = await this.getSyncStatus()
 
+    // Get folder name and permission status
+    let folderName: string | undefined = undefined
+    let permissionStatus: 'granted' | 'prompt' | 'denied' | undefined = undefined
+
+    if (localStatus.enabled) {
+      const handle = await getFolderHandle()
+      if (handle) {
+        folderName = handle.name
+        permissionStatus = await checkFolderPermission(handle)
+      }
+    }
+
     return {
       cloudEnabled: cloudStatus.enabled,
       cloudLoggedIn: await this.cloudStrategy.isAvailable(),
@@ -261,6 +274,8 @@ export class SyncOrchestrator {
       localEnabled: localStatus.enabled,
       lastLocalSyncTime: localStatus.lastSyncTime,
       localError: localStatus.error,
+      folderName,
+      permissionStatus,
       hasUnsyncedChanges: settings.hasUnsyncedChanges || false,
       pendingCloudSync: settings.pendingCloudSync || false,
       pendingUpload: settings.pendingUpload || false,

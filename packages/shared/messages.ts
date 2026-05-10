@@ -10,6 +10,7 @@ export enum MessageType {
   GET_FOLDER_HANDLE = 'GET_FOLDER_HANDLE',  // Get folder handle from service worker (deprecated - handles cannot cross origins)
   SAVE_FOLDER_HANDLE = 'SAVE_FOLDER_HANDLE',
   GET_SYNC_STATUS = 'GET_SYNC_STATUS',
+  TRIGGER_SYNC = 'TRIGGER_SYNC',  // Trigger sync after permission restored
   SET_UNSYNCED_FLAG = 'SET_UNSYNCED_FLAG',
   SYNC_FAILED = 'SYNC_FAILED',  // Broadcast to content scripts when sync fails
   REFRESH_DATA = 'REFRESH_DATA',
@@ -85,6 +86,9 @@ export enum MessageType {
   OFFSCREEN_READ_API_CONFIG = 'OFFSCREEN_READ_API_CONFIG',  // Read encrypted API config
   OFFSCREEN_SAVE_PROVIDER_CONFIGS = 'OFFSCREEN_SAVE_PROVIDER_CONFIGS',  // Save ProviderConfigsStorage
   OFFSCREEN_READ_PROVIDER_CONFIGS = 'OFFSCREEN_READ_PROVIDER_CONFIGS',  // Read ProviderConfigsStorage
+
+  // Sidepanel status check
+  SIDEPANEL_PING = 'SIDEPANEL_PING',  // Check if sidepanel is open (SW → Sidepanel)
 }
 
 export interface Message<T = unknown> {

@@ -67,6 +67,11 @@ export async function triggerSync(backupData: FullBackupData): Promise<{ success
       await storageManager.updateSettings({ syncEnabled: false, hasUnsyncedChanges: true })
       return { success: false, error: { type: 'permission_lost', message: '文件夹权限已失效，请在备份设置中恢复权限' } }
     }
+    if (error === 'PERMISSION_PROMPT') {
+      // Permission needs to be restored via user gesture (not permanently lost)
+      await storageManager.updateSettings({ hasUnsyncedChanges: true })
+      return { success: false, error: { type: 'permission_lost', message: '文件夹权限需要重新授权，请在备份设置中恢复权限' } }
+    }
 
     // Generic write failure
     await storageManager.updateSettings({ hasUnsyncedChanges: true })

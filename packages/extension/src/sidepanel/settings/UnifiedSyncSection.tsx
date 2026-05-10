@@ -9,7 +9,11 @@ import {
   AlertTriangle,
   Check,
   X,
-  LogIn
+  LogIn,
+  History,
+  ChevronDown,
+  ChevronUp,
+  RotateCcw
 } from 'lucide-react'
 import { Button } from '@/popup/components/ui/button'
 import {
@@ -21,9 +25,11 @@ import {
   DialogFooter
 } from '@/popup/components/ui/dialog'
 import type { UnifiedSyncStatus } from '@/lib/sync/types'
+import type { BackupVersion } from '@/lib/sync/file-sync'
 import { createSyncOrchestrator } from '@/lib/sync'
 import type { SyncOrchestrator } from '@/lib/sync/orchestrator'
 import { MessageType } from '@oh-my-prompt/shared/messages'
+import { getBackupVersions, restoreFromBackup } from '@/lib/sync/sync-manager'
 
 const POLL_INTERVAL = 10000 // 10 seconds
 
@@ -73,6 +79,13 @@ export function UnifiedSyncSection() {
   const [showUploadDialog, setShowUploadDialog] = useState(false)
   const [uploading, setUploading] = useState(false)
 
+  // Backup history states
+  const [showHistory, setShowHistory] = useState(false)
+  const [versions, setVersions] = useState<BackupVersion[]>([])
+  const [versionsLoading, setVersionsLoading] = useState(false)
+  const [restoreDialog, setRestoreDialog] = useState<{ open: boolean; version: BackupVersion | null }>({ open: false, version: null })
+  const [backupBeforeRestore, setBackupBeforeRestore] = useState(true)
+
   // Load status on mount and poll every 10 seconds
   const loadStatus = useCallback(async () => {
     try {
@@ -101,6 +114,62 @@ export function UnifiedSyncSection() {
       return () => clearTimeout(timer)
     }
   }, [success, error])
+
+  // Load versions when history section is expanded
+  useEffect(() => {
+    if (status?.localEnabled && status.permissionStatus === 'granted' && showHistory) {
+      loadVersions()
+    }
+  }, [status, showHistory])
+
+  const loadVersions = async () => {
+    setVersionsLoading(true)
+    const result = await getBackupVersions()
+    setVersions(result.versions)
+    if (result.error) {
+      setError(result.error)
+    }
+    setVersionsLoading(false)
+  }
+
+  const handleRestore = async () => {
+    if (!restoreDialog.version) return
+
+    setLoading(true)
+    setError(null)
+    setSuccess(null)
+
+    const result = await restoreFromBackup(restoreDialog.version.filename, backupBeforeRestore)
+    setLoading(false)
+
+    if (result.success) {
+      setSuccess('恢复成功')
+      setRestoreDialog({ open: false, version: null })
+      await loadStatus()
+      if (showHistory) {
+        loadVersions()
+      }
+      // Notify content script to refresh data
+      try {
+        await chrome.runtime.sendMessage({ type: MessageType.REFRESH_DATA })
+      } catch (err) {
+        console.warn('[Oh My Prompt] Failed to notify refresh:', err)
+      }
+    } else {
+      setError(result.error || '恢复失败')
+    }
+  }
+
+  function formatBackupTime(backupTime: string): string {
+    if (!backupTime) return '未知时间'
+    const date = new Date(backupTime)
+    return date.toLocaleString('zh-CN', {
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
 
   /**
    * Handle manual cloud sync
@@ -400,6 +469,9 @@ export function UnifiedSyncSection() {
                       if (result.success) {
                         setSuccess(result.createdNewBackup ? '备份成功' : '内容无变更')
                         loadStatus()
+                        if (showHistory) {
+                          loadVersions()
+                        }
                       } else {
                         setError(result.error || '备份失败')
                       }
@@ -436,6 +508,65 @@ export function UnifiedSyncSection() {
                 更换
               </Button>
             </div>
+
+            {/* Backup history section */}
+            {status.permissionStatus === 'granted' && (
+              <div className="pt-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowHistory(!showHistory)}
+                  className="w-full justify-start text-gray-600 hover:text-gray-900"
+                >
+                  <History className="w-4 h-4" />
+                  备份历史
+                  {showHistory ? <ChevronUp className="w-4 h-4 ml-auto" /> : <ChevronDown className="w-4 h-4 ml-auto" />}
+                </Button>
+
+                {showHistory && (
+                  <div className="mt-2 space-y-2">
+                    {versionsLoading ? (
+                      <div className="text-sm text-gray-500 text-center py-2">加载中...</div>
+                    ) : versions.length === 0 ? (
+                      <div className="text-sm text-gray-500 text-center py-2">暂无备份历史</div>
+                    ) : (
+                      versions.map(version => (
+                        <div key={version.filename} className="flex items-center justify-between p-2 rounded-lg border bg-gray-50">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-gray-700 truncate">
+                                {formatBackupTime(version.backupTime)}
+                              </span>
+                              {version.isLatest && (
+                                <span className="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded">
+                                  最新版本
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {version.promptCount} 条提示词 · {version.categoryCount} 个分类
+                              {version.temporaryPromptCount > 0 && ` · ${version.temporaryPromptCount} 个临时提示词`}
+                            </div>
+                          </div>
+                          {!version.isLatest && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setRestoreDialog({ open: true, version })}
+                              disabled={loading}
+                              className="ml-2"
+                            >
+                              <RotateCcw className="w-4 h-4" />
+                              恢复
+                            </Button>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -509,6 +640,56 @@ export function UnifiedSyncSection() {
             </Button>
             <Button onClick={handleUploadLocalOnly} disabled={uploading}>
               {uploading ? '上传中...' : '上传'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Restore Backup Dialog */}
+      <Dialog open={restoreDialog.open} onOpenChange={(isOpen) => !isOpen && setRestoreDialog({ open: false, version: null })}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>确认恢复</DialogTitle>
+            <DialogDescription>
+              将从以下版本恢复数据：
+            </DialogDescription>
+          </DialogHeader>
+
+          {restoreDialog.version && (
+            <div className="p-3 bg-gray-50 rounded text-sm">
+              <div className="font-medium text-gray-900">
+                {formatBackupTime(restoreDialog.version.backupTime)}
+              </div>
+              <div className="text-gray-500 mt-1">
+                {restoreDialog.version.promptCount} 个提示词 · {restoreDialog.version.categoryCount} 个分类
+                {restoreDialog.version.temporaryPromptCount > 0 && (
+                  <span> · {restoreDialog.version.temporaryPromptCount} 个临时提示词</span>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 p-2 bg-yellow-50 rounded text-sm text-yellow-800">
+            <AlertTriangle className="h-4 w-4" />
+            <span>此操作将完全替换当前数据</span>
+          </div>
+
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={backupBeforeRestore}
+              onChange={(e) => setBackupBeforeRestore(e.target.checked)}
+              className="rounded border-gray-300"
+            />
+            恢复前先备份当前数据
+          </label>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRestoreDialog({ open: false, version: null })}>
+              取消
+            </Button>
+            <Button onClick={handleRestore} disabled={loading}>
+              {loading ? '恢复中...' : '确认恢复'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -284,6 +284,27 @@ chrome.runtime.onMessage.addListener(
           })
         return true // Required for async response
 
+      case MessageType.TRIGGER_SYNC:
+        // Trigger sync after permission restored (called from sidepanel)
+        storageManager.getData()
+          .then(data => {
+            const backupData = {
+              prompts: data.userData?.prompts || [],
+              categories: data.userData?.categories || [],
+              temporaryPrompts: data.temporaryPrompts || [],
+              timestamp: Date.now()
+            }
+            return triggerSync(backupData)
+          })
+          .then(result => {
+            sendResponse({ success: result.success, error: result.error?.message } as MessageResponse)
+          })
+          .catch(error => {
+            console.error('[Oh My Prompt] TRIGGER_SYNC error:', error)
+            sendResponse({ success: false, error: String(error) })
+          })
+        return true // Required for async response
+
       case MessageType.GET_FOLDER_HANDLE:
         // Get folder handle for content script (IndexedDB is context-isolated)
         // NOTE: FileSystemDirectoryHandle cannot be passed cross-origin via message
@@ -497,6 +518,8 @@ chrome.runtime.onMessage.addListener(
       case MessageType.OPEN_SIDEPANEL_FOR_SETTINGS:
         // Open sidepanel and navigate to settings view
         // CRITICAL: sidePanel.open() must be called in sync path to preserve user gesture
+        // Note: If sidepanel is already open, this may cause a visual refresh but is necessary
+        // to preserve user gesture for sidePanel.open() permission
         const settingsTabId = _sender.tab?.id
         if (settingsTabId && settingsTabId >= 0) {
           // Call sidePanel.open FIRST in sync path (user gesture preserved)
@@ -504,10 +527,11 @@ chrome.runtime.onMessage.addListener(
             .then(() => {
               // Set intent AFTER sidepanel opens - storage.onChanged will catch it if already open
               chrome.storage.session.set({ sidepanelIntent: 'settings' })
-              console.log('[Oh My Prompt] Sidepanel opened for settings from content script')
-              sendResponse({ success: true } as MessageResponse)
+              sendResponse({ success: true })
             })
             .catch(error => {
+              // If sidepanel already open, still set intent so it navigates to settings
+              chrome.storage.session.set({ sidepanelIntent: 'settings' })
               console.error('[Oh My Prompt] sidePanel.open error:', error)
               sendResponse({ success: false, error: String(error) })
             })

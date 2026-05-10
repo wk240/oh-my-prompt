@@ -21,6 +21,9 @@ import { IMAGE_DIR_NAME, ALLOWED_IMAGE_EXTENSIONS } from '@oh-my-prompt/shared/c
 // IndexedDB operations are async, so we cache the handle for gesture-preserving permission requests
 let _cachedFolderHandle: FileSystemDirectoryHandle | null = null
 
+// Track initialization promise
+let _initPromise: Promise<void> | null = null
+
 /**
  * Get cached folder handle synchronously (for permission request in user gesture context)
  * Returns null if handle not cached yet - in that case, gesture will break during async retrieval
@@ -37,6 +40,24 @@ function cacheFolderHandle(handle: FileSystemDirectoryHandle): void {
   _cachedFolderHandle = handle
   console.log('[Oh My Prompt] Folder handle cached:', handle.name)
 }
+
+/**
+ * Initialize offscreen document - pre-cache folder handle
+ * This must complete before permission requests can work with user gesture
+ */
+async function initialize(): Promise<void> {
+  try {
+    const handle = await getFolderHandle()
+    if (handle) {
+      cacheFolderHandle(handle)
+    }
+  } catch (err) {
+    console.warn('[Oh My Prompt] Failed to pre-cache folder handle:', err)
+  }
+}
+
+// Start initialization immediately
+_initPromise = initialize()
 
 /**
  * Fallback permission request when handle not cached
@@ -60,22 +81,18 @@ async function handleRequestPermissionFallback(): Promise<MessageResponse> {
   return { success: false, error: permission === 'denied' ? 'PERMISSION_DENIED' : 'PERMISSION_PROMPT' }
 }
 
-// Pre-cache folder handle on startup for gesture-preserving permission requests
-getFolderHandle().then(handle => {
-  if (handle) {
-    cacheFolderHandle(handle)
-  }
-}).catch(err => {
-  console.warn('[Oh My Prompt] Failed to pre-cache folder handle:', err)
-})
-
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   switch (message.type) {
     // Handle PING for readiness check
     case MessageType.OFFSCREEN_PING:
-      sendResponse({ success: true, data: 'pong' })
-      return false
+      // Wait for initialization to complete before responding
+      _initPromise?.then(() => {
+        sendResponse({ success: true, data: 'pong' })
+      }).catch(() => {
+        sendResponse({ success: true, data: 'pong' }) // Still respond even if init failed
+      })
+      return true
 
     case MessageType.OFFSCREEN_SYNC:
       handleSync(message.payload as { backupData: FullBackupData; version: string })
@@ -224,11 +241,9 @@ async function handleSync(payload: { backupData: FullBackupData; version: string
   // Check permission first
   const permission = await checkFolderPermission(handle, 'readwrite')
   if (permission !== 'granted') {
-    // Try to request permission (offscreen has user interaction context)
-    const restored = await requestFolderPermission(handle, 'readwrite')
-    if (restored !== 'granted') {
-      return { success: false, error: 'PERMISSION_DENIED' }
-    }
+    // Don't auto-request permission - requires user gesture
+    // Return specific error so caller can prompt user to restore permission
+    return { success: false, error: permission === 'denied' ? 'PERMISSION_DENIED' : 'PERMISSION_PROMPT' }
   }
 
   try {
@@ -246,13 +261,15 @@ async function handleBackup(payload: { backupData: FullBackupData; version: stri
     return { success: false, error: 'FOLDER_NOT_CONFIGURED' }
   }
 
+  // Cache handle for future synchronous permission requests
+  cacheFolderHandle(handle)
+
   // Check permission first
   const permission = await checkFolderPermission(handle, 'readwrite')
   if (permission !== 'granted') {
-    const restored = await requestFolderPermission(handle, 'readwrite')
-    if (restored !== 'granted') {
-      return { success: false, error: 'PERMISSION_DENIED' }
-    }
+    // Don't auto-request permission - requires user gesture
+    // Return specific error so caller can prompt user to restore permission
+    return { success: false, error: permission === 'denied' ? 'PERMISSION_DENIED' : 'PERMISSION_PROMPT' }
   }
 
   try {
@@ -270,13 +287,14 @@ async function handleSaveImage(payload: { promptId: string; data: number[]; orig
     return { success: false, error: 'FOLDER_NOT_CONFIGURED' }
   }
 
+  // Cache handle for future synchronous permission requests
+  cacheFolderHandle(handle)
+
   // Check permission
   const permission = await checkFolderPermission(handle, 'readwrite')
   if (permission !== 'granted') {
-    const restored = await requestFolderPermission(handle, 'readwrite')
-    if (restored !== 'granted') {
-      return { success: false, error: 'PERMISSION_DENIED' }
-    }
+    // Don't auto-request permission - requires user gesture
+    return { success: false, error: permission === 'denied' ? 'PERMISSION_DENIED' : 'PERMISSION_PROMPT' }
   }
 
   try {

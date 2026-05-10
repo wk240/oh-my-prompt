@@ -7,6 +7,7 @@ export type SyncStatus = 'idle' | 'syncing' | 'success' | 'error' | 'not_logged_
 export interface SyncPayload {
   prompts: Prompt[]
   categories: Category[]
+  temporaryPrompts?: Prompt[] // Temporary library prompts (optional)
   timestamp: number
 }
 

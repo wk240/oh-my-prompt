@@ -3,10 +3,8 @@ import { LocalSyncStrategy } from './strategies/local'
 import {
   FullBackupData,
   MergeResult,
-  UnifiedSyncStatus,
-  SyncResult
+  UnifiedSyncStatus
 } from './types'
-import type { Prompt, Category } from '@oh-my-prompt/shared/types'
 
 const STORAGE_KEY = 'prompt_script_data'
 

@@ -1,5 +1,6 @@
 import { CloudSyncStrategy } from './strategies/cloud'
 import { LocalSyncStrategy } from './strategies/local'
+import { executeLocalSync } from './local-sync-executor'
 import {
   FullBackupData,
   MergeResult,
@@ -14,6 +15,7 @@ const STORAGE_KEY = 'prompt_script_data'
  * Features:
  * - Parallel sync when cloud available (Promise.all)
  * - Fallback to local-only when cloud unavailable
+ * - Local sync via sync-manager (offscreen document for Service Worker)
  * - Tracks pending state (pendingCloudSync, pendingUpload)
  * - Merge logic: cloud wins same ID, local-only preserved
  */
@@ -28,8 +30,8 @@ export class SyncOrchestrator {
 
   /**
    * Trigger sync on data change.
-   * Parallel sync to both strategies when cloud available.
-   * Fallback to local only when cloud unavailable.
+   * Uses sync-manager for local sync (offscreen document for Service Worker context).
+   * Cloud sync is done directly via CloudSyncStrategy (fetch works in Service Worker).
    */
   async triggerSync(data: FullBackupData): Promise<void> {
     const cloudAvailable = await this.cloudStrategy.isAvailable()
@@ -37,43 +39,64 @@ export class SyncOrchestrator {
 
     if (!localAvailable) {
       console.log('[Oh My Prompt] Local sync not available, skipping sync')
+      // Still try cloud sync if available
+      if (cloudAvailable) {
+        const cloudResult = await this.cloudStrategy.sync(data)
+        if (cloudResult.success) {
+          await this.updateSyncStatus({
+            lastCloudSyncTime: cloudResult.syncedAt,
+            hasUnsyncedChanges: false,
+            pendingCloudSync: false
+          })
+        }
+      }
       return
     }
 
     if (!cloudAvailable) {
-      // Cloud unavailable: local backup only, mark pending
-      const localResult = await this.localStrategy.sync(data)
+      // Cloud unavailable: local backup only via offscreen document
+      const localResult = await executeLocalSync(data)
 
       if (localResult.success) {
         await this.updateSyncStatus({
-          lastLocalSyncTime: localResult.syncedAt,
+          lastLocalSyncTime: localResult.syncedAt || Date.now(),
           hasUnsyncedChanges: true,
           pendingCloudSync: true
         })
+      } else {
+        console.warn('[Oh My Prompt] Local sync failed:', localResult.error)
       }
       return
     }
 
     // Cloud available: parallel sync
+    // Cloud sync directly, local sync via offscreen document
     const [cloudResult, localResult] = await Promise.all([
       this.cloudStrategy.sync(data),
-      this.localStrategy.sync(data)
+      executeLocalSync(data)
     ])
 
     if (cloudResult.success && localResult.success) {
       await this.updateSyncStatus({
         lastCloudSyncTime: cloudResult.syncedAt,
-        lastLocalSyncTime: localResult.syncedAt,
+        lastLocalSyncTime: Date.now(),
         hasUnsyncedChanges: false,
         pendingCloudSync: false
       })
     } else if (localResult.success) {
       // Local success, cloud failed
       await this.updateSyncStatus({
-        lastLocalSyncTime: localResult.syncedAt,
+        lastLocalSyncTime: Date.now(),
         hasUnsyncedChanges: true,
         pendingCloudSync: true,
         cloudError: cloudResult.error
+      })
+    } else if (cloudResult.success) {
+      // Cloud success, local failed
+      await this.updateSyncStatus({
+        lastCloudSyncTime: cloudResult.syncedAt,
+        hasUnsyncedChanges: true,
+        localError: localResult.error
       })
     }
   }

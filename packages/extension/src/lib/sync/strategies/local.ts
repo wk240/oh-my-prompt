@@ -42,14 +42,11 @@ export class LocalSyncStrategy extends BaseSyncStrategy {
       return { success: false, error: 'PERMISSION_DENIED' as SyncResultError }
     }
 
-    // Check permission
+    // Check permission - Service Worker cannot requestPermission()
+    // If permission not granted, return error and let UI handle via offscreen document
     const permission = await checkFolderPermission(handle, 'readwrite')
     if (permission !== 'granted') {
-      // Try to request permission
-      const requested = await handle.requestPermission({ mode: 'readwrite' })
-      if (requested !== 'granted') {
-        return { success: false, error: 'PERMISSION_DENIED' as SyncResultError }
-      }
+      return { success: false, error: 'PERMISSION_DENIED' as SyncResultError }
     }
 
     try {

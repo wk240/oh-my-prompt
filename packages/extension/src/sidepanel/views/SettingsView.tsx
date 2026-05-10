@@ -1,7 +1,6 @@
 import { useState, lazy, Suspense } from 'react'
 import { ArrowLeft } from 'lucide-react'
-import { BackupSection } from '../settings/BackupSection'
-import { CloudSyncSection } from '../components/CloudSync'
+import { UnifiedSyncSection } from '../settings/UnifiedSyncSection'
 import { LoadingSpinner } from '../components/LoadingSpinner'
 
 const VisionSection = lazy(() =>
@@ -15,17 +14,16 @@ interface SettingsViewProps {
   onBack: () => void
 }
 
-type SettingsTab = 'cloud-sync' | 'backup' | 'vision' | 'import-export'
+type SettingsTab = 'sync' | 'vision' | 'import-export'
 
 const tabLabels: Record<SettingsTab, string> = {
-  'cloud-sync': '云端同步',
-  backup: '本地备份',
+  sync: '同步与备份',
   vision: 'AI识图',
   'import-export': '导入导出'
 }
 
 export default function SettingsView({ onBack }: SettingsViewProps) {
-  const [activeTab, setActiveTab] = useState<SettingsTab>('cloud-sync')
+  const [activeTab, setActiveTab] = useState<SettingsTab>('sync')
 
   return (
     <div className="h-full flex flex-col bg-white">
@@ -60,8 +58,7 @@ export default function SettingsView({ onBack }: SettingsViewProps) {
 
       {/* Tab Content - Scrollable with full width */}
       <div className="flex-1 w-full overflow-y-auto">
-        {activeTab === 'cloud-sync' && <CloudSyncSection />}
-        {activeTab === 'backup' && <BackupSection />}
+        {activeTab === 'sync' && <UnifiedSyncSection />}
         {activeTab === 'vision' && (
           <Suspense fallback={<LoadingSpinner className="py-8" />}>
             <VisionSection />

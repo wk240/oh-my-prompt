@@ -10,12 +10,15 @@ import { BUILT_IN_CATEGORIES, BUILT_IN_PROMPTS } from '../data/built-in-data'
 import { migrate, isLegacyFormat } from './migrations/index'
 // Import register to ensure migrations are registered before any migrate() calls
 import './migrations/register'
+import { createSyncOrchestrator } from './sync'
+import type { FullBackupData } from './sync/types'
 
 /**
  * StorageManager class for managing extension data persistence
  */
 export class StorageManager {
   private static instance: StorageManager
+  private syncOrchestrator = createSyncOrchestrator()
 
   /**
    * Get singleton instance of StorageManager
@@ -134,11 +137,23 @@ export class StorageManager {
   }
 
   /**
-   * Saves full storage data
+   * Saves full storage data and triggers automatic sync
    */
   async saveData(data: StorageSchema): Promise<void> {
     try {
       await chrome.storage.local.set({ [STORAGE_KEY]: data })
+
+      // Trigger automatic sync (fire-and-forget, non-blocking)
+      const syncData: FullBackupData = {
+        prompts: data.userData?.prompts || [],
+        categories: data.userData?.categories || [],
+        temporaryPrompts: data.temporaryPrompts || [],
+        timestamp: Date.now()
+      }
+
+      this.syncOrchestrator.triggerSync(syncData).catch(err => {
+        console.error('[Oh My Prompt] Auto-sync failed:', err)
+      })
     } catch (error: unknown) {
       console.error('[Oh My Prompt] Failed to save storage data:', error)
       throw error

@@ -32,18 +32,49 @@ export async function getAuthState(): Promise<CloudAuthState> {
   const supabase = getSupabaseClient()
 
   try {
-    const { data: { session }, error } = await supabase.auth.getSession()
+    // Debug: Check storage directly
+    const storageKey = `sb-${SUPABASE_PROJECT_REF}-auth-token`
+    const storageResult = await chrome.storage.local.get(storageKey)
+    console.log('[Oh My Prompt] Storage raw data:', storageResult[storageKey] ? 'exists' : 'missing')
 
-    if (error || !session) {
+    const { data: { session: initialSession }, error } = await supabase.auth.getSession()
+    console.log('[Oh My Prompt] getSession result:', { session: initialSession ? 'exists' : 'missing', error })
+
+    if (error || !initialSession) {
+      console.log('[Oh My Prompt] Returning not_logged_in')
       return { status: 'not_logged_in' }
     }
 
+    // Check if token is expired
+    let session = initialSession
+    const now = Math.floor(Date.now() / 1000)
+    const expiresAt = session.expires_at || 0
+    const isExpired = expiresAt < now
+    console.log('[Oh My Prompt] Token expiry: expiresAt=' + expiresAt + ', now=' + now + ', isExpired=' + isExpired)
+    console.log('[Oh My Prompt] Token preview:', session.access_token ? session.access_token.substring(0, 20) + '...' : 'missing')
+
+    if (isExpired) {
+      console.log('[Oh My Prompt] Token expired, attempting refresh...')
+      const { data: { session: newSession }, error: refreshError } = await supabase.auth.refreshSession()
+      if (refreshError || !newSession) {
+        console.log('[Oh My Prompt] Refresh failed, clearing session')
+        await chrome.storage.local.remove(storageKey)
+        clearSupabaseClient()
+        return { status: 'not_logged_in' }
+      }
+      console.log('[Oh My Prompt] Token refreshed successfully')
+      session = newSession
+    }
+
     // Get subscription status from sync/status API
+    console.log('[Oh My Prompt] Calling sync/status API with token...')
     const statusRes = await fetch(`${WEB_APP_URL}/api/sync/status`, {
       headers: {
         Authorization: `Bearer ${session.access_token}`
       }
     })
+
+    console.log('[Oh My Prompt] sync/status response:', statusRes.status, statusRes.ok)
 
     if (!statusRes.ok) {
       // API unavailable, return basic logged_in state

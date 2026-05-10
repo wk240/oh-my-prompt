@@ -9,11 +9,11 @@ import type { StorageSchema } from '@oh-my-prompt/shared/types/storage'
  * Web app URL for sync API endpoints.
  *
  * For development: Set DEV_WEB_APP_URL in vite.config.ts define option.
- * For production: Defaults to https://ohmyprompt.com.
+ * For production: Defaults to https://oh-my-prompt.com.
  */
 declare const DEV_WEB_APP_URL: string | undefined
 
-const WEB_APP_URL = DEV_WEB_APP_URL ?? 'https://ohmyprompt.com'
+const WEB_APP_URL = DEV_WEB_APP_URL ?? 'https://oh-my-prompt.com'
 
 /**
  * Upload local prompts and categories to cloud.
@@ -27,16 +27,21 @@ const WEB_APP_URL = DEV_WEB_APP_URL ?? 'https://ohmyprompt.com'
  * @returns SyncResult with success status and counts
  */
 export async function uploadToCloud(): Promise<SyncResult> {
+  console.log('[Oh My Prompt] uploadToCloud: starting...')
   const authState = await getAuthState()
+  console.log('[Oh My Prompt] uploadToCloud: authState =', authState)
 
   if (authState.status !== 'logged_in') {
+    console.log('[Oh My Prompt] uploadToCloud: authState.status !== logged_in, returning NOT_LOGGED_IN')
     return { success: false, error: 'NOT_LOGGED_IN' }
   }
 
   const supabase = getSupabaseClient()
   const { data: { session } } = await supabase.auth.getSession()
+  console.log('[Oh My Prompt] uploadToCloud: session =', session ? 'exists' : 'missing')
 
   if (!session) {
+    console.log('[Oh My Prompt] uploadToCloud: session missing, returning NOT_LOGGED_IN')
     return { success: false, error: 'NOT_LOGGED_IN' }
   }
 

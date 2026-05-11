@@ -25,3 +25,5 @@ playwright-report
 test-results
 .claude/worktrees/
 .gstack/
+# GSD workflow planning files
+.planning/

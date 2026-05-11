@@ -24,6 +24,7 @@ import {
   DialogDescription,
   DialogFooter
 } from '@/popup/components/ui/dialog'
+import { AuthModal } from '@/sidepanel/components/CloudSync/AuthModal'
 import type { UnifiedSyncStatus } from '@/lib/sync/types'
 import type { BackupVersion } from '@/lib/sync/file-sync'
 import { MessageType } from '@oh-my-prompt/shared/messages'
@@ -72,6 +73,7 @@ export function UnifiedSyncSection() {
   const [success, setSuccess] = useState<string | null>(null)
   const [showUploadDialog, setShowUploadDialog] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [authModalOpen, setAuthModalOpen] = useState(false)
 
   // Backup history states
   const [showHistory, setShowHistory] = useState(false)
@@ -246,12 +248,18 @@ export function UnifiedSyncSection() {
   }
 
   /**
-   * Open login page for cloud sync
+   * Open AuthModal for cloud sync login
    */
   const handleLogin = () => {
-    // Open web app login page
-    const WEB_APP_URL = 'https://oh-my-prompt.com'
-    chrome.tabs.create({ url: `${WEB_APP_URL}/login` })
+    setAuthModalOpen(true)
+  }
+
+  /**
+   * Handle successful OAuth login
+   */
+  const handleAuthSuccess = async () => {
+    setSuccess('登录成功')
+    await loadStatus()
   }
 
   // Compute status colors
@@ -723,6 +731,13 @@ export function UnifiedSyncSection() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Auth Modal for GitHub OAuth login */}
+      <AuthModal
+        open={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        onSuccess={handleAuthSuccess}
+      />
     </div>
   )
 }

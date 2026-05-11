@@ -34,10 +34,12 @@ async function requestApiHostPermission(baseUrl: string): Promise<boolean> {
     }
 
     // Request permission - shows Chrome's permission dialog
+    // Note: DOMException is thrown if called without user gesture context
     const granted = await chrome.permissions.request({ origins: [origin] })
     return granted
   } catch (error) {
-    console.error('[Oh My Prompt] Permission request error:', error)
+    // DOMException expected when no user gesture (e.g., auto-triggered on load)
+    console.warn('[Oh My Prompt] API permission request failed:', error instanceof Error ? error.name : String(error))
     return false
   }
 }

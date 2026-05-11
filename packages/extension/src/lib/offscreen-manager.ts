@@ -15,11 +15,30 @@ const OFFSCREEN_DOCUMENT_PATH = 'src/offscreen/offscreen.html'
 // Track if offscreen document is already created
 let offscreenDocumentCreated = false
 
+// Track pending creation promise to prevent race conditions
+let pendingCreationPromise: Promise<void> | null = null
+
 /**
  * Ensure offscreen document exists before sending messages
  * Creates document if not already present
+ * Handles race conditions by returning pending promise if creation in progress
  */
 export async function ensureOffscreenDocument(): Promise<void> {
+  // If creation already in progress, wait for it
+  if (pendingCreationPromise) {
+    return pendingCreationPromise
+  }
+
+  // Create new promise and track it
+  pendingCreationPromise = doEnsureOffscreenDocument()
+  try {
+    await pendingCreationPromise
+  } finally {
+    pendingCreationPromise = null
+  }
+}
+
+async function doEnsureOffscreenDocument(): Promise<void> {
   // Always check if offscreen document already exists (Service Worker may restart)
   const existingContexts = await chrome.runtime.getContexts({
     contextTypes: [chrome.runtime.ContextType.OFFSCREEN_DOCUMENT],
@@ -32,7 +51,6 @@ export async function ensureOffscreenDocument(): Promise<void> {
       const response = await chrome.runtime.sendMessage({ type: MessageType.OFFSCREEN_PING })
       if (response?.success) {
         // Document exists and responds - verify it handles expected messages
-        // Try a lightweight check to ensure handlers are loaded
         const permCheck = await chrome.runtime.sendMessage({ type: MessageType.OFFSCREEN_CHECK_PERMISSION })
         if (permCheck?.success !== undefined) {
           offscreenDocumentCreated = true
@@ -51,30 +69,42 @@ export async function ensureOffscreenDocument(): Promise<void> {
     }
   }
 
-  // Create offscreen document
-  try {
-    await chrome.offscreen.createDocument({
-      url: OFFSCREEN_DOCUMENT_PATH,
-      reasons: [chrome.offscreen.Reason.DOM_PARSER],
-      justification: 'File System Access API requires DOM context for permission handling and file operations'
-    })
-    offscreenDocumentCreated = true
-
-    // Wait for offscreen document to initialize (message listener needs to be ready)
-    await waitForOffscreenReady()
-  } catch (error) {
-    // Document might already exist (race condition)
-    if (error instanceof Error && (
-      error.message.includes('already exists') ||
-      error.message.includes('single offscreen document')
-    )) {
+  // Create offscreen document with retries
+  const maxRetries = 3
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      await chrome.offscreen.createDocument({
+        url: OFFSCREEN_DOCUMENT_PATH,
+        reasons: [chrome.offscreen.Reason.DOM_PARSER],
+        justification: 'File System Access API requires DOM context for permission handling and file operations'
+      })
       offscreenDocumentCreated = true
-      // Wait for readiness
+
+      // Wait for offscreen document to initialize (message listener needs to be ready)
       await waitForOffscreenReady()
       return
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error)
+
+      // Document might already exist (race condition) - try to use it
+      if (errorMsg.includes('already exists') || errorMsg.includes('single offscreen document')) {
+        offscreenDocumentCreated = true
+        await waitForOffscreenReady()
+        return
+      }
+
+      // Document closed before loading - retry
+      if (errorMsg.includes('closed before fully loading') && attempt < maxRetries) {
+        console.warn(`[Oh My Prompt] Offscreen document creation attempt ${attempt} failed, retrying...`)
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        continue
+      }
+
+      // Final attempt failed or other error - log and proceed
+      console.error('[Oh My Prompt] Failed to create offscreen document:', errorMsg)
+      // Don't throw - offscreen will be created on next request
+      return
     }
-    console.error('[Oh My Prompt] Failed to create offscreen document:', error)
-    throw error
   }
 }
 

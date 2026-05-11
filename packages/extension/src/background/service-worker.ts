@@ -42,16 +42,25 @@ function createContextMenu(): void {
 createContextMenu()
 
 // Run initial sync on startup (restores data from backup folder including encrypted API config)
+// This also creates the offscreen document and caches folder handle
 initialSync().catch(err => console.error('[Oh My Prompt] Initial sync error:', err))
 
 // Run orchestrator initial sync on startup (cloud-first decision matrix)
 chrome.runtime.onStartup.addListener(async () => {
   console.log('[Oh My Prompt] Extension started, running orchestrator initial sync...')
+
+  // CRITICAL: Explicitly disable openPanelOnActionClick on startup
+  // Chrome may persist the previous behavior across sessions
+  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false }).catch(err => {
+    console.warn('[Oh My Prompt] Failed to set sidePanel behavior on startup:', err)
+  })
+
   try {
     await syncOrchestrator.initialSync()
   } catch (error) {
     console.error('[Oh My Prompt] Orchestrator initial sync failed:', error)
   }
+  // Note: initialSync() above already creates offscreen document, no need to call again
 })
 
 // Also create on install (for clean install)
@@ -59,11 +68,15 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   console.log('[Oh My Prompt] Extension installed/updated:', details.reason)
   createContextMenu()
 
-  // Do NOT set openPanelOnActionClick: true - we handle sidepanel open manually in action.onClicked
-  // This allows us to restore folder permission BEFORE opening sidepanel, preserving user gesture
-  // If we set openPanelOnActionClick: true, action.onClicked never fires and permission restore fails
+  // CRITICAL: Explicitly disable openPanelOnActionClick to ensure action.onClicked fires
+  // Without this, Chrome may auto-open sidepanel on icon click (if user previously opened it manually)
+  // This would bypass action.onClicked and break permission restore (no user gesture)
+  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false }).catch(err => {
+    console.warn('[Oh My Prompt] Failed to set sidePanel behavior:', err)
+  })
 
   // Run initial sync on install (restores data from backup folder including encrypted API config)
+  // This also creates the offscreen document and caches folder handle
   initialSync().catch(err => console.error('[Oh My Prompt] Initial sync on install error:', err))
 
   // Run orchestrator initial sync on install (cloud-first decision matrix)
@@ -72,6 +85,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   } catch (error) {
     console.error('[Oh My Prompt] Orchestrator initial sync on install failed:', error)
   }
+  // Note: initialSync() above already creates offscreen document, no need to call again
 })
 
 // Handle extension icon click: restore folder permission + open sidepanel

@@ -947,43 +947,41 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
     loadFromStorage()
   }, [loadFromStorage])
 
-  // Auto-restore folder permission on sidepanel open
-  // CRITICAL: User gesture from clicking extension icon propagates to sidepanel
-  // We MUST send permission request in SYNC execution path BEFORE any async callback
-  // Chrome preserves gesture only through the first message call, not subsequent async callbacks
+  // Wait for permission restore from action.onClicked, then check status
+  // CRITICAL: action.onClicked sends permission request BEFORE sidePanel.open()
+  // We must NOT send another permission request here - it will fail due to gesture loss
+  // Instead, we wait for the first request to complete, then check the result
   useEffect(() => {
-    // Send permission request IMMEDIATELY in sync path (preserves user gesture)
-    // The offscreen document will check if folder exists and handle accordingly
-    console.log('[Oh My Prompt] Sidepanel opened, attempting permission restore...')
-    chrome.runtime.sendMessage({ type: MessageType.OFFSCREEN_REQUEST_PERMISSION })
-      .then((response) => {
-        if (response?.success) {
-          console.log('[Oh My Prompt] Permission auto-restored from sidepanel open')
-          // Update settings to enable sync and clear unsynced flag
-          chrome.runtime.sendMessage({
-            type: MessageType.SET_SETTINGS_ONLY,
-            payload: { settings: { syncEnabled: true, hasUnsyncedChanges: false } }
-          }).catch(() => {})
-          // Trigger sync after permission restored
-          chrome.runtime.sendMessage({ type: MessageType.TRIGGER_SYNC }).catch(() => {})
-        } else {
-          // Permission not restored (no folder configured, or user denied)
-          console.log('[Oh My Prompt] Permission restore result:', response?.error || 'no folder')
+    // Wait 500ms for action.onClicked's permission request to complete
+    // Then check status (not request permission) to see if it succeeded
+    const timer = setTimeout(() => {
+      console.log('[Oh My Prompt] Sidepanel opened, checking permission status...')
+      chrome.runtime.sendMessage({ type: MessageType.GET_SYNC_STATUS }, (response) => {
+        if (response?.success && response.data) {
+          const syncStatus = response.data
+          setStatus(syncStatus)
+          console.log('[Oh My Prompt] Permission status after action.onClicked:', syncStatus.permissionStatus)
+
+          // If permission still needs restore (prompt), show UI but don't auto-request
+          // User must click restore button manually (which has user gesture)
+          if (syncStatus.hasUnsyncedChanges && syncStatus.permissionStatus !== 'prompt') {
+            setModalStates(prev => ({ ...prev, showBackupReminder: true }))
+          }
         }
       })
-      .catch(err => {
-        console.warn('[Oh My Prompt] Permission request error:', err)
-      })
 
-    // Also cache folder handle for future synchronous permission requests (e.g., button clicks)
-    getFolderHandle().then(handle => {
-      if (handle) {
-        cachedFolderHandleRef.current = handle
-        console.log('[Oh My Prompt] Folder handle cached for future use')
-      }
-    }).catch(err => {
-      console.warn('[Oh My Prompt] Failed to cache folder handle:', err)
-    })
+      // Cache folder handle for future synchronous permission requests (button clicks)
+      getFolderHandle().then(handle => {
+        if (handle) {
+          cachedFolderHandleRef.current = handle
+          console.log('[Oh My Prompt] Folder handle cached for future use')
+        }
+      }).catch(err => {
+        console.warn('[Oh My Prompt] Failed to cache folder handle:', err)
+      })
+    }, 500) // Wait for action.onClicked's request to complete
+
+    return () => clearTimeout(timer)
   }, [])
 
   // Listen for REFRESH_DATA messages from service worker (backup import, sync complete)
@@ -1044,23 +1042,7 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
     })
   }, [])
 
-  // Get sync status immediately on Sidepanel open (for permission restore)
-  // This must run ASAP to capture user gesture from clicking extension icon
-  useEffect(() => {
-    chrome.runtime.sendMessage({ type: MessageType.GET_SYNC_STATUS }, (response) => {
-      if (response?.success && response.data) {
-        const syncStatus = response.data
-        setStatus(syncStatus)
-        // Only show backup reminder if there's actual unsynced content
-        // AND permission is either granted (sync will happen) or denied (can't sync)
-        // Don't show for 'prompt' status - it's normal after extension refresh and will be restored
-        if (syncStatus.hasUnsyncedChanges && syncStatus.permissionStatus !== 'prompt') {
-          setModalStates(prev => ({ ...prev, showBackupReminder: true }))
-        }
-      }
-    })
-  }, []) // Run immediately on mount - don't wait for prompts to load
-
+  
   // Check for first-time backup warning (depends on prompts.length)
   useEffect(() => {
     if (status && !status.hasFolder && !status.dismissedBackupWarning && prompts.length > 0) {

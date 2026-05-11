@@ -84,7 +84,7 @@ _initPromise = initialize()
  * Should only be used when handle couldn't be cached beforehand
  */
 async function handleRequestPermissionFallback(): Promise<MessageResponse> {
-  console.warn('[Oh My Prompt] Permission request fallback - gesture may be lost')
+  console.log('[Oh My Prompt] Permission request fallback - retrieving handle from IndexedDB')
   const handle = await getFolderHandle()
   if (!handle) {
     return { success: false, error: 'FOLDER_NOT_CONFIGURED' }
@@ -93,11 +93,18 @@ async function handleRequestPermissionFallback(): Promise<MessageResponse> {
   // Cache for future requests
   cacheFolderHandle(handle)
 
+  // Check permission first
+  const currentPermission = await handle.queryPermission({ mode: 'readwrite' })
+  if (currentPermission === 'granted') {
+    return { success: true, data: { permission: 'granted' } }
+  }
+
+  // Request permission (may fail due to gesture loss)
   const permission = await requestFolderPermission(handle, 'readwrite')
   if (permission === 'granted') {
     return { success: true, data: { permission: 'granted' } }
   }
-  return { success: false, error: permission === 'denied' ? 'PERMISSION_DENIED' : 'PERMISSION_PROMPT' }
+  return { success: false, error: permission === 'denied' ? 'PERMISSION_DENIED' : 'GESTURE_LOST' }
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -164,40 +171,34 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     case MessageType.OFFSCREEN_REQUEST_PERMISSION:
       // CRITICAL: User gesture must be preserved for permission request
       // Chrome propagates user gesture through message passing, but only if requestPermission()
-      // is called in the SYNC execution path BEFORE any await
+      // is called in the SYNC execution path BEFORE any Promise.then() callback
       //
-      // Strategy:
-      // 1. Check cached handle synchronously - if available, request permission immediately
-      // 2. If not cached, the handle will be retrieved in fallback (async), gesture may be lost
-      // 3. To minimize gesture loss, ensure offscreen document is initialized BEFORE user clicks
-      console.log('[Oh My Prompt] Offscreen received permission request, checking cached handle')
+      // Key insight: requestPermission() returns 'granted' immediately if permission already granted
+      // So we can call it directly without checking first - no dialog for already-granted permission
+      console.log('[Oh My Prompt] Offscreen received permission request')
 
       // Step 1: Get cached handle synchronously (no await)
       const cachedHandle = getCachedFolderHandle()
 
       if (!cachedHandle) {
         // No cached handle - need async retrieval, gesture will break
-        // This happens when:
-        // 1. Offscreen document just created and init not complete
-        // 2. Extension was refreshed/reloaded
-        // 3. Folder was never configured
-        console.warn('[Oh My Prompt] No cached handle, gesture will be lost in fallback path')
+        console.log('[Oh My Prompt] No cached handle, using fallback path')
         handleRequestPermissionFallback()
           .then(result => {
-            console.log('[Oh My Prompt] Fallback permission result:', result)
+            console.log('[Oh My Prompt] Fallback permission result:', result.success ? 'granted' : result.error)
             sendResponse(result)
           })
           .catch(error => {
-            console.error('[Oh My Prompt] Fallback permission error:', error)
+            console.warn('[Oh My Prompt] Fallback error:', error)
             sendResponse({ success: false, error: String(error) })
           })
         return true
       }
 
-      // Step 2: Request permission synchronously BEFORE any await
-      // Even though requestPermission() returns a Promise, calling it synchronously
-      // preserves user gesture - Chrome associates the request with the gesture context
-      console.log('[Oh My Prompt] Calling requestPermission with cached handle:', cachedHandle.name)
+      // Step 2: Request permission DIRECTLY (not via queryPermission first)
+      // This preserves user gesture because requestPermission is called in sync path
+      // If permission already granted, returns 'granted' immediately without dialog
+      console.log('[Oh My Prompt] Calling requestPermission directly for:', cachedHandle.name)
       cachedHandle.requestPermission({ mode: 'readwrite' })
         .then((permission: PermissionState) => {
           console.log('[Oh My Prompt] Permission result:', permission)
@@ -208,8 +209,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           }
         })
         .catch((error: Error) => {
-          console.error('[Oh My Prompt] Permission request error:', error)
-          sendResponse({ success: false, error: String(error) })
+          // SecurityError expected when user gesture lost (extension opened via sidebar panel)
+          // This is normal - user needs to click restore button explicitly
+          const errorName = error.name || 'Unknown'
+          console.warn('[Oh My Prompt] Permission request failed:', errorName)
+          sendResponse({ success: false, error: 'GESTURE_LOST' })
         })
       return true
 

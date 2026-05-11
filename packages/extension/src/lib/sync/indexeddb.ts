@@ -175,7 +175,13 @@ export async function requestFolderPermission(
   try {
     return await handle.requestPermission({ mode })
   } catch (error) {
-    console.warn('[Oh My Prompt] Permission request failed:', error)
+    // SecurityError (DOMException) expected when user gesture lost
+    // This is normal after extension refresh - return 'prompt' to indicate retry needed
+    const errorName = error instanceof Error ? error.name : 'Unknown'
+    if (errorName === 'SecurityError') {
+      return 'prompt' // Signal that permission needs user gesture
+    }
+    console.warn('[Oh My Prompt] Permission request error:', errorName)
     return 'denied'
   }
 }

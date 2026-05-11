@@ -29,8 +29,6 @@ import type { BackupVersion } from '@/lib/sync/file-sync'
 import { MessageType } from '@oh-my-prompt/shared/messages'
 import { getBackupVersions, restoreFromBackup } from '@/lib/sync/sync-manager'
 
-const POLL_INTERVAL = 10000 // 10 seconds
-
 function formatTimestamp(timestamp: number | undefined): string {
   if (!timestamp) return '从未'
   const date = new Date(timestamp)
@@ -66,7 +64,6 @@ function StatusIndicator({ status }: { status: 'green' | 'yellow' | 'red' | 'gra
  * - Cloud Sync status with login prompt, manual sync, restore from cloud
  * - Local Backup status with folder selection, backup now
  * - Pending upload warning for local-only items
- * - Polls status every 10 seconds
  */
 export function UnifiedSyncSection() {
   const [status, setStatus] = useState<UnifiedSyncStatus | null>(null)
@@ -83,7 +80,7 @@ export function UnifiedSyncSection() {
   const [restoreDialog, setRestoreDialog] = useState<{ open: boolean; version: BackupVersion | null }>({ open: false, version: null })
   const [backupBeforeRestore, setBackupBeforeRestore] = useState(true)
 
-  // Load status on mount and poll every 10 seconds
+  // Load status on mount - status updates are triggered by user actions
   const loadStatus = useCallback(async () => {
     try {
       // Use message passing to service worker for consistent permission state
@@ -103,8 +100,6 @@ export function UnifiedSyncSection() {
 
   useEffect(() => {
     loadStatus()
-    const interval = setInterval(loadStatus, POLL_INTERVAL)
-    return () => clearInterval(interval)
   }, [loadStatus])
 
   // Auto-dismiss messages after 3 seconds

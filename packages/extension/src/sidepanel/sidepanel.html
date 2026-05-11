@@ -6,50 +6,8 @@
   <title>Oh My Prompt</title>
   <link rel="stylesheet" href="./index.css">
   <!-- Pre-React script: restore folder permission before React loads (capture user gesture) -->
-  <script>
-  (async function preReactPermissionRestore() {
-    try {
-      const db = await new Promise((resolve, reject) => {
-        const request = indexedDB.open('oh-my-prompt-sync', 1);
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => resolve(request.result);
-        request.onupgradeneeded = (event) => {
-          const database = event.target.result;
-          if (!database.objectStoreNames.contains('handles')) {
-            database.createObjectStore('handles');
-          }
-        };
-      });
-      const handle = await new Promise((resolve) => {
-        try {
-          const transaction = db.transaction(['handles'], 'readonly');
-          const store = transaction.objectStore('handles');
-          const request = store.get('folderHandle');
-          request.onerror = () => resolve(null);
-          request.onsuccess = () => resolve(request.result);
-        } catch { resolve(null); }
-      });
-      if (handle) {
-        const permission = await handle.queryPermission({ mode: 'readwrite' });
-        if (permission === 'prompt') {
-          const result = await handle.requestPermission({ mode: 'readwrite' });
-          if (result === 'granted') {
-            chrome.runtime.sendMessage({
-              type: 'SET_SETTINGS_ONLY',
-              payload: { settings: { syncEnabled: true, hasUnsyncedChanges: false } }
-            }).catch(() => {});
-          }
-        } else if (permission === 'granted') {
-          chrome.runtime.sendMessage({
-            type: 'SET_SETTINGS_ONLY',
-            payload: { settings: { syncEnabled: true } }
-          }).catch(() => {});
-        }
-      }
-      db.close();
-    } catch (e) { console.warn('[Oh My Prompt] Pre-React permission check failed:', e); }
-  })();
-  </script>
+  <!-- Extracted to external file to comply with Chrome MV3 CSP (script-src 'self') -->
+  <script type="module" src="./pre-react-permission.ts"></script>
 </head>
 <body>
   <div id="root"></div>

@@ -50,6 +50,20 @@ After running `npm run dev`, load the extension from `packages/extension/dist/` 
 
 **Note:** `manifest.json` is at `packages/extension/manifest.json` (imported by vite configs), not in `src/`. Vite configs are split: `vite.config.base.ts` (shared), `vite.config.dev.ts` (development), `vite.config.prod.ts` (production).
 
+**⚠️ Dev Environment Checklist (OAuth Login):**
+
+开发时如需测试 OAuth 登录，必须满足以下条件：
+
+1. ✅ 运行 `npm run dev`（Extension dev server, port 5173）—— **不能用 `npm run build`**
+2. ✅ 运行 `npm run web:dev`（Web app dev server, port 3000）
+3. ✅ Chrome 加载 `packages/extension/dist/` 目录（dev 构建输出）
+4. ✅ Supabase Dashboard 配置:
+   - Authentication → URL Configuration
+   - Site URL: `http://localhost:3000`
+   - Redirect URLs: `http://localhost:3000/auth/extension/callback`
+
+**原因:** `DEV_WEB_APP_URL` 仅在 `vite.config.dev.ts` 中定义，生产构建回退到 `https://oh-my-prompt.com`。
+
 ### Web App (Next.js)
 
 ```bash

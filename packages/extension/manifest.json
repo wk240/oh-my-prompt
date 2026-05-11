@@ -4,6 +4,9 @@
   "version": "1.4.0",
   "description": "一键插入预设提示词，提升创作效率",
   "homepage_url": "https://oh-my-prompt.com/",
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' http://localhost:5173; object-src 'self'"
+  },
   "background": {
     "service_worker": "src/background/service-worker.ts",
     "type": "module"

@@ -12,6 +12,7 @@ import { CAPTURED_IMAGE_STORAGE_KEY, VISION_API_CONFIG_STORAGE_KEY, PROVIDER_CON
 import { validateProviderConfig, maskApiKey } from '../lib/config-validator'
 import { sendToOffscreen } from '../lib/offscreen-manager'
 import '../lib/migrations/register' // Register all migrations
+import { clearSupabaseClient } from '../lib/cloud-sync/supabase-client'
 
 // Create sync orchestrator for cloud-first decision matrix
 const syncOrchestrator = createSyncOrchestrator()
@@ -424,12 +425,19 @@ chrome.runtime.onMessage.addListener(
           })
         return true // Required for async response
 
-      
+
       // Cloud Sync: Auth callback from web-app OAuth page
       case MessageType.AUTH_CALLBACK_COMPLETE:
         // Auth callback content script reports success/failure
         const authPayload = message.payload as { success: boolean; error?: string }
         console.log('[Oh My Prompt] Auth callback complete:', authPayload)
+
+        // Clear Supabase client singleton to ensure fresh session state for subsequent auth checks
+        // This is critical because the client may have cached "no session" state before auth
+        if (authPayload.success) {
+          clearSupabaseClient()
+          console.log('[Oh My Prompt] Supabase client cleared after successful auth')
+        }
 
         // Broadcast to sidepanel if open
         chrome.runtime.sendMessage({
@@ -491,7 +499,7 @@ chrome.runtime.onMessage.addListener(
           })
         return true // Required for async response
 
-      
+
       case MessageType.EXPORT_DATA:
         // Export data as JSON file download using data URL (service worker doesn't support blob URLs)
         const exportPayload = message.payload as { version: string; userData: { prompts: unknown[]; categories: unknown[] }; settings: unknown }

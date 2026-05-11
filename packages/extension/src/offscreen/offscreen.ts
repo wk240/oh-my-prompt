@@ -62,7 +62,7 @@ async function initialize(): Promise<void> {
         return
       } else {
         // No handle in IndexedDB - folder not configured
-        console.log(`[Oh My Prompt] Init attempt ${attempt}: No folder handle found (folder not configured)`)
+        console.log(`[Oh My Prompt] Init attempt ${attempt}: No backup folder configured yet`)
       }
     } catch (err) {
       console.warn(`[Oh My Prompt] Init attempt ${attempt} failed with error:`, err)
@@ -72,8 +72,7 @@ async function initialize(): Promise<void> {
     }
   }
 
-  console.warn('[Oh My Prompt] Offscreen init complete - no folder handle cached (folder not configured or IndexedDB issue)')
-}
+  }
 
 // Start initialization immediately
 _initPromise = initialize()

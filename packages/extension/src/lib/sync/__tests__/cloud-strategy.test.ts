@@ -2,8 +2,6 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { CloudSyncStrategy } from '../strategies/cloud'
 import { FullBackupData } from '../types'
 
-// DEV_WEB_APP_URL is defined in vitest.config.ts
-
 describe('CloudSyncStrategy', () => {
   let strategy: CloudSyncStrategy
 

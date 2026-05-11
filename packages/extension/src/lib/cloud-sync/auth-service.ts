@@ -1,22 +1,7 @@
 // packages/extension/src/lib/cloud-sync/auth-service.ts
 import { getSupabaseClient, clearSupabaseClient } from './supabase-client'
+import { WEB_APP_URL, SUPABASE_PROJECT_REF } from '@/lib/config'
 import type { CloudAuthState } from '@oh-my-prompt/shared/types'
-
-/**
- * Web app URL for OAuth callback and sync status API.
- *
- * For development: Set DEV_WEB_APP_URL in vite.config.ts define option.
- * For production: Defaults to https://oh-my-prompt.com.
- *
- * Vite define example (vite.config.ts):
- *   define: { DEV_WEB_APP_URL: '"http://localhost:3000"' }
- */
-declare const DEV_WEB_APP_URL: string | undefined
-
-const WEB_APP_URL = DEV_WEB_APP_URL ?? 'https://oh-my-prompt.com'
-
-// Supabase project reference (extracted from URL)
-const SUPABASE_PROJECT_REF = 'futfxudabvjfldlismun'
 
 /**
  * Get the current authentication state with subscription info.

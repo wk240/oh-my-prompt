@@ -57,7 +57,11 @@ export default defineConfig({
     ...baseConfig.plugins,
     devOffscreenPlugin()
   ],
-  define: {
-    DEV_WEB_APP_URL: '"http://localhost:3000"',
+  resolve: {
+    ...baseConfig.resolve,
+    alias: {
+      ...baseConfig.resolve.alias,
+      '@/lib/config': resolve(__dirname, './src/lib/config.dev.ts'),
+    },
   },
 })

@@ -338,8 +338,14 @@ chrome.runtime.onMessage.addListener(
         return true // Required for async response
 
       case MessageType.TRIGGER_SYNC:
-        // Trigger sync after permission restored (called from sidepanel)
-        storageManager.getData()
+        // Trigger sync (called from sidepanel) - use syncOrchestrator for cloud + local sync
+        // Get status before sync to compare timestamps
+        let beforeSyncTime: number | undefined
+        syncOrchestrator.getStatus()
+          .then(statusBefore => {
+            beforeSyncTime = statusBefore.lastCloudSyncTime
+            return storageManager.getData()
+          })
           .then(data => {
             const backupData = {
               prompts: data.userData?.prompts || [],
@@ -347,10 +353,25 @@ chrome.runtime.onMessage.addListener(
               temporaryPrompts: data.temporaryPrompts || [],
               timestamp: Date.now()
             }
-            return triggerSync(backupData)
+            // Use syncOrchestrator.triggerSync() for unified cloud + local sync
+            return syncOrchestrator.triggerSync(backupData)
           })
-          .then(result => {
-            sendResponse({ success: result.success, error: result.error?.message } as MessageResponse)
+          .then(() => {
+            // syncOrchestrator.triggerSync() returns void, check status to determine success
+            return syncOrchestrator.getStatus()
+          })
+          .then(statusAfter => {
+            // Success if cloud sync time was updated (cloud available and synced)
+            const cloudSynced = statusAfter.lastCloudSyncTime &&
+              (beforeSyncTime === undefined || statusAfter.lastCloudSyncTime > beforeSyncTime)
+            // Also success if cloud was unavailable but local synced (pending state)
+            const localOnlySuccess = !statusAfter.cloudLoggedIn &&
+              statusAfter.lastLocalSyncTime &&
+              statusAfter.permissionStatus === 'granted'
+
+            const success = cloudSynced || localOnlySuccess
+            const error = statusAfter.cloudError || statusAfter.localError
+            sendResponse({ success, error } as MessageResponse)
           })
           .catch(error => {
             console.error('[Oh My Prompt] TRIGGER_SYNC error:', error)

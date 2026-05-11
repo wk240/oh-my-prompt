@@ -1,18 +1,7 @@
 import { BaseSyncStrategy } from './base'
+import { WEB_APP_URL, SUPABASE_PROJECT_REF } from '@/lib/config'
 import { FullBackupData, SyncResult, StrategyStatus, SyncResultError } from '../types'
 
-/**
- * Web app URL for cloud sync API endpoints.
- *
- * For development: Set DEV_WEB_APP_URL in vite.config.ts define option.
- * For production: Defaults to https://oh-my-prompt.com.
- */
-declare const DEV_WEB_APP_URL: string | undefined
-
-const WEB_APP_URL = DEV_WEB_APP_URL ?? 'https://oh-my-prompt.com'
-
-// Supabase project reference for auth token storage key
-const SUPABASE_PROJECT_REF = 'futfxudabvjfldlismun'
 const AUTH_STORAGE_KEY = `sb-${SUPABASE_PROJECT_REF}-auth-token`
 
 /**

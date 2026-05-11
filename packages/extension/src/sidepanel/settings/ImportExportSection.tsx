@@ -56,9 +56,11 @@ const AGENT_INSTRUCTION_PROMPT = `# 任务
 4. 所有id必须唯一，不同提示词和分类不能使用相同id
 5. order字段按提取顺序或素材原有顺序填写
 
-# 输出要求
+# 输出流程
 
-直接输出完整的JSON，不需要额外解释。确保JSON格式正确、可直接解析。
+1. 先展示生成的JSON内容预览，询问用户是否满意
+2. 用户确认后，将JSON写入文件（文件名建议格式：prompts-日期.json，如 prompts-2024-01-15.json）
+3. 如用户不满意，根据反馈调整后重新确认
 
 # 示例
 
@@ -66,7 +68,7 @@ const AGENT_INSTRUCTION_PROMPT = `# 任务
 - "赛博朋克风格：霓虹灯光、未来城市、高科技与低生活对比"
 - "水彩画风格：柔和边缘、透明色彩、自然纹理"
 
-输出：
+Agent先展示预览：
 \`\`\`json
 {
   "version": "1.0.0",
@@ -92,7 +94,10 @@ const AGENT_INSTRUCTION_PROMPT = `# 任务
     ]
   }
 }
-\`\`\``
+\`\`\`
+
+然后询问："以上JSON包含2条提示词，是否确认输出文件？"
+用户确认后，保存为 prompts-2024-01-15.json 文件。`
 
 /**
  * ImportExportSection - Handles import/export of prompts in SidePanel settings

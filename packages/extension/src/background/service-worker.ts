@@ -337,6 +337,24 @@ chrome.runtime.onMessage.addListener(
           })
         return true // Required for async response
 
+      case MessageType.UPLOAD_LOCAL_ONLY:
+        // Upload local-only items to cloud (called from sidepanel pending upload dialog)
+        syncOrchestrator.uploadLocalOnlyItems()
+          .then(() => {
+            // Check status to confirm upload success
+            return syncOrchestrator.getStatus()
+          })
+          .then(statusAfter => {
+            const success = !statusAfter.pendingUpload
+            const error = statusAfter.cloudError
+            sendResponse({ success, error } as MessageResponse)
+          })
+          .catch(error => {
+            console.error('[Oh My Prompt] UPLOAD_LOCAL_ONLY error:', error)
+            sendResponse({ success: false, error: String(error) })
+          })
+        return true // Required for async response
+
       case MessageType.TRIGGER_SYNC:
         // Trigger sync (called from sidepanel) - use syncOrchestrator for cloud + local sync
         // Get status before sync to compare timestamps
@@ -370,7 +388,23 @@ chrome.runtime.onMessage.addListener(
               statusAfter.permissionStatus === 'granted'
 
             const success = cloudSynced || localOnlySuccess
-            const error = statusAfter.cloudError || statusAfter.localError
+
+            // Only report error that matters:
+            // - If cloud synced successfully, ignore local permission errors (user only wanted cloud upload)
+            // - If cloud failed, report cloud error
+            // - If cloud unavailable and local failed, report local error
+            let error: string | undefined
+            if (cloudSynced) {
+              // Cloud sync succeeded - don't report local permission issues
+              error = undefined
+            } else if (!statusAfter.cloudLoggedIn) {
+              // Cloud unavailable - report local error if local also failed
+              error = statusAfter.localError
+            } else {
+              // Cloud available but failed
+              error = statusAfter.cloudError
+            }
+
             sendResponse({ success, error } as MessageResponse)
           })
           .catch(error => {

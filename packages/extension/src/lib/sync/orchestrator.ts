@@ -49,7 +49,8 @@ export class SyncOrchestrator {
           await this.updateSyncStatus({
             lastCloudSyncTime: cloudResult.syncedAt,
             hasUnsyncedChanges: false,
-            pendingCloudSync: false
+            pendingCloudSync: false,
+            cloudError: undefined
           })
         }
       }
@@ -84,7 +85,9 @@ export class SyncOrchestrator {
         lastCloudSyncTime: cloudResult.syncedAt,
         lastLocalSyncTime: Date.now(),
         hasUnsyncedChanges: false,
-        pendingCloudSync: false
+        pendingCloudSync: false,
+        cloudError: undefined,
+        localError: undefined
       })
     } else if (localResult.success) {
       // Local success, cloud failed
@@ -99,7 +102,8 @@ export class SyncOrchestrator {
       await this.updateSyncStatus({
         lastCloudSyncTime: cloudResult.syncedAt,
         hasUnsyncedChanges: true,
-        localError: localResult.error
+        localError: localResult.error,
+        cloudError: undefined
       })
     }
   }
@@ -285,11 +289,13 @@ export class SyncOrchestrator {
     return {
       cloudEnabled: cloudStatus.enabled,
       cloudLoggedIn: await this.cloudStrategy.isAvailable(),
-      lastCloudSyncTime: cloudStatus.lastSyncTime,
-      cloudError: cloudStatus.error,
+      // Use local storage value for lastCloudSyncTime (written immediately after sync)
+      // API value (cloudStatus.lastSyncTime) may be stale or cached
+      lastCloudSyncTime: settings.lastCloudSyncTime || cloudStatus.lastSyncTime,
+      cloudError: cloudStatus.error || settings.cloudError,
       localEnabled: localStatus.enabled,
-      lastLocalSyncTime: localStatus.lastSyncTime,
-      localError: localStatus.error,
+      lastLocalSyncTime: settings.lastLocalSyncTime || localStatus.lastSyncTime,
+      localError: localStatus.error || settings.localError,
       folderName,
       permissionStatus,
       hasUnsyncedChanges: settings.hasUnsyncedChanges || false,

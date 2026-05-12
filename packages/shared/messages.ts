@@ -92,6 +92,7 @@ export enum MessageType {
 
   // Unified sync status (Sidepanel → SW)
   GET_UNIFIED_SYNC_STATUS = 'GET_UNIFIED_SYNC_STATUS',  // Get unified sync status from service worker
+  UPLOAD_LOCAL_ONLY = 'UPLOAD_LOCAL_ONLY',  // Upload local-only items to cloud
 }
 
 export interface Message<T = unknown> {

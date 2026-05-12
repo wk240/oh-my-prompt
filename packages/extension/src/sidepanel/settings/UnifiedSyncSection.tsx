@@ -230,17 +230,20 @@ export function UnifiedSyncSection() {
 
   /**
    * Handle upload local-only items
-   * Note: This feature needs orchestrator in service worker for complex upload logic
    */
   const handleUploadLocalOnly = async () => {
     setUploading(true)
     setError(null)
 
     try {
-      // TODO: Add UPLOAD_LOCAL_ONLY message type in service worker
-      setSuccess('上传功能开发中，请稍后')
-      setShowUploadDialog(false)
-      await loadStatus()
+      const response = await chrome.runtime.sendMessage({ type: MessageType.UPLOAD_LOCAL_ONLY })
+      if (response?.success) {
+        setSuccess('上传成功')
+        setShowUploadDialog(false)
+        await loadStatus()
+      } else {
+        setError(response?.error || '上传失败')
+      }
     } catch (err) {
       console.error('[Oh My Prompt] Upload local-only failed:', err)
       setError('上传失败')

@@ -104,7 +104,7 @@ npm run dev
 
 ## 📖 Usage Guide
 
-### 1. One-Click Insert on Page
+### 1. One-Click Insert Prompts
 
 Next to the input box on Lovart, you'll see a lightning icon button:
 
@@ -114,15 +114,7 @@ Next to the input box on Lovart, you'll see a lightning icon button:
 
 ![Example: Insert prompt via dropdown menu](assets/eg1.gif)
 
-### 2. Backup Management
-
-Click the extension icon in browser toolbar to open the side panel. Click the settings icon in top right, go to "Backup" tab:
-
-- **Enable backup**: Select a local folder, data syncs automatically on changes
-- **Version history**: View list of historical backup files
-- **Restore data**: One-click restore from any historical version
-
-### 3. Image to Prompt
+### 2. Image to Prompt
 
 **Prerequisites**: Need to configure Vision API first (configure API Key in extension settings)
 
@@ -135,6 +127,14 @@ Usage steps:
 6. Prompt auto-saves to temporary library
 
 ![Example: Image to prompt feature demo](assets/eg2.gif)
+
+### 3. Resource Library
+
+Click the extension icon in browser toolbar to open the side panel. Click "Resource Library" in the left navigation:
+
+- **Built-in Templates**: Community curated quality prompts, organized by usage
+- **One-Click Use**: Select template to insert directly into current input box
+- **Favorites Management**: Add favorite templates to your personal collection
 
 ---
 

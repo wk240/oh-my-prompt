@@ -225,12 +225,6 @@ npm run dev
 
 ---
 
-## 🏗️ 架构设计
-
-详见 [商业化架构设计](docs/superpowers/specs/2026-05-08-commercialization-architecture-design.md)
-
----
-
 ## 💬 交流群
 
 如果你需要进群，可以扫下方二维码：

@@ -225,12 +225,6 @@ Social media "Neo与AI": WeChat Official Account, XiaoHongShu, Douyin | [GitHub]
 
 ---
 
-## 🏗️ Architecture Design
-
-See [Commercialization Architecture Design](docs/superpowers/specs/2026-05-08-commercialization-architecture-design.md)
-
----
-
 ## 🤝 Contributing
 
 Issues and Pull Requests are welcome!

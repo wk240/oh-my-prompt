@@ -35,8 +35,16 @@ export class SyncOrchestrator {
    * Trigger sync on data change.
    * Uses sync-manager for local sync (offscreen document for Service Worker context).
    * Cloud sync is done directly via CloudSyncStrategy (fetch works in Service Worker).
+   *
+   * @returns Sync result with status information (avoiding extra getStatus calls)
    */
-  async triggerSync(data: FullBackupData): Promise<void> {
+  async triggerSync(data: FullBackupData): Promise<{
+    cloudSynced: boolean
+    localSynced: boolean
+    cloudError?: string
+    localError?: string
+    syncedAt?: number
+  }> {
     const cloudAvailable = await this.cloudStrategy.isAvailable()
     const localAvailable = await this.localStrategy.isAvailable()
 
@@ -52,9 +60,11 @@ export class SyncOrchestrator {
             pendingCloudSync: false,
             cloudError: undefined
           })
+          return { cloudSynced: true, localSynced: false, syncedAt: cloudResult.syncedAt }
         }
+        return { cloudSynced: false, localSynced: false, cloudError: cloudResult.error }
       }
-      return
+      return { cloudSynced: false, localSynced: false }
     }
 
     if (!cloudAvailable) {
@@ -67,10 +77,11 @@ export class SyncOrchestrator {
           hasUnsyncedChanges: true,
           pendingCloudSync: true
         })
+        return { cloudSynced: false, localSynced: true, syncedAt: localResult.syncedAt }
       } else {
         console.warn('[Oh My Prompt] Local sync failed:', localResult.error)
+        return { cloudSynced: false, localSynced: false, localError: localResult.error }
       }
-      return
     }
 
     // Cloud available: parallel sync
@@ -89,6 +100,11 @@ export class SyncOrchestrator {
         cloudError: undefined,
         localError: undefined
       })
+      return {
+        cloudSynced: true,
+        localSynced: true,
+        syncedAt: cloudResult.syncedAt
+      }
     } else if (localResult.success) {
       // Local success, cloud failed
       await this.updateSyncStatus({
@@ -97,6 +113,11 @@ export class SyncOrchestrator {
         pendingCloudSync: true,
         cloudError: cloudResult.error
       })
+      return {
+        cloudSynced: false,
+        localSynced: true,
+        cloudError: cloudResult.error
+      }
     } else if (cloudResult.success) {
       // Cloud success, local failed
       await this.updateSyncStatus({
@@ -105,6 +126,20 @@ export class SyncOrchestrator {
         localError: localResult.error,
         cloudError: undefined
       })
+      return {
+        cloudSynced: true,
+        localSynced: false,
+        localError: localResult.error,
+        syncedAt: cloudResult.syncedAt
+      }
+    }
+
+    // Both failed
+    return {
+      cloudSynced: false,
+      localSynced: false,
+      cloudError: cloudResult.error,
+      localError: localResult.error
     }
   }
 
@@ -254,10 +289,9 @@ export class SyncOrchestrator {
    * Uses offscreen document for permission checks to ensure consistent state across contexts.
    */
   async getStatus(): Promise<UnifiedSyncStatus> {
-    const [cloudStatus, localStatus] = await Promise.all([
-      this.cloudStrategy.getStatus(),
-      this.localStrategy.getStatus()
-    ])
+    // Single API call: getStatus() already checks availability
+    const cloudStatus = await this.cloudStrategy.getStatus()
+    const localStatus = await this.localStrategy.getStatus()
 
     const settings = await this.getSyncStatus()
 
@@ -288,7 +322,7 @@ export class SyncOrchestrator {
 
     return {
       cloudEnabled: cloudStatus.enabled,
-      cloudLoggedIn: await this.cloudStrategy.isAvailable(),
+      cloudLoggedIn: cloudStatus.enabled, // Reuse getStatus result (no extra API call)
       // Use local storage value for lastCloudSyncTime (written immediately after sync)
       // API value (cloudStatus.lastSyncTime) may be stale or cached
       lastCloudSyncTime: settings.lastCloudSyncTime || cloudStatus.lastSyncTime,

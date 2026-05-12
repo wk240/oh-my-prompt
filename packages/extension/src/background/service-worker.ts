@@ -357,13 +357,8 @@ chrome.runtime.onMessage.addListener(
 
       case MessageType.TRIGGER_SYNC:
         // Trigger sync (called from sidepanel) - use syncOrchestrator for cloud + local sync
-        // Get status before sync to compare timestamps
-        let beforeSyncTime: number | undefined
-        syncOrchestrator.getStatus()
-          .then(statusBefore => {
-            beforeSyncTime = statusBefore.lastCloudSyncTime
-            return storageManager.getData()
-          })
+        // triggerSync now returns result directly, no need for extra getStatus calls
+        storageManager.getData()
           .then(data => {
             const backupData = {
               prompts: data.userData?.prompts || [],
@@ -371,38 +366,19 @@ chrome.runtime.onMessage.addListener(
               temporaryPrompts: data.temporaryPrompts || [],
               timestamp: Date.now()
             }
-            // Use syncOrchestrator.triggerSync() for unified cloud + local sync
             return syncOrchestrator.triggerSync(backupData)
           })
-          .then(() => {
-            // syncOrchestrator.triggerSync() returns void, check status to determine success
-            return syncOrchestrator.getStatus()
-          })
-          .then(statusAfter => {
-            // Success if cloud sync time was updated (cloud available and synced)
-            const cloudSynced = statusAfter.lastCloudSyncTime &&
-              (beforeSyncTime === undefined || statusAfter.lastCloudSyncTime > beforeSyncTime)
-            // Also success if cloud was unavailable but local synced (pending state)
-            const localOnlySuccess = !statusAfter.cloudLoggedIn &&
-              statusAfter.lastLocalSyncTime &&
-              statusAfter.permissionStatus === 'granted'
+          .then(result => {
+            // Use returned result directly (no extra getStatus calls)
+            const success = result.cloudSynced || result.localSynced
 
-            const success = cloudSynced || localOnlySuccess
-
-            // Only report error that matters:
-            // - If cloud synced successfully, ignore local permission errors (user only wanted cloud upload)
-            // - If cloud failed, report cloud error
-            // - If cloud unavailable and local failed, report local error
+            // Report error if sync failed
             let error: string | undefined
-            if (cloudSynced) {
-              // Cloud sync succeeded - don't report local permission issues
-              error = undefined
-            } else if (!statusAfter.cloudLoggedIn) {
-              // Cloud unavailable - report local error if local also failed
-              error = statusAfter.localError
-            } else {
-              // Cloud available but failed
-              error = statusAfter.cloudError
+            if (!result.cloudSynced && !result.localSynced) {
+              error = result.cloudError || result.localError
+            } else if (!result.cloudSynced && result.cloudError) {
+              // Cloud failed but local succeeded - report cloud error
+              error = result.cloudError
             }
 
             sendResponse({ success, error } as MessageResponse)

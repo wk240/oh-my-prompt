@@ -231,6 +231,14 @@ npm run dev
 
 ---
 
+## 💬 交流群
+
+如果你需要进群，可以扫下方二维码：
+
+<img src="assets/group-qrcode.jpg" alt="微信群二维码" width="200">
+
+---
+
 ## 🤝 贡献
 
 欢迎提交 Issue 和 Pull Request！

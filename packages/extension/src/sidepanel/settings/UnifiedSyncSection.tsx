@@ -14,7 +14,8 @@ import {
   History,
   ChevronDown,
   ChevronUp,
-  RotateCcw
+  RotateCcw,
+  ArrowRightLeft
 } from 'lucide-react'
 import { WEB_APP_URL } from '@/lib/config'
 import { Button } from '@/popup/components/ui/button'
@@ -27,7 +28,7 @@ import {
   DialogFooter
 } from '@/popup/components/ui/dialog'
 import { AuthModal } from '@/sidepanel/components/CloudSync/AuthModal'
-import { signOut } from '@/lib/cloud-sync/auth-service'
+import { signOut, checkWebAppSession, syncFromWebApp } from '@/lib/cloud-sync/auth-service'
 import type { UnifiedSyncStatus } from '@/lib/sync/types'
 import type { BackupVersion } from '@/lib/sync/file-sync'
 import { MessageType } from '@oh-my-prompt/shared/messages'
@@ -78,6 +79,9 @@ export function UnifiedSyncSection() {
   const [uploading, setUploading] = useState(false)
   const [authModalOpen, setAuthModalOpen] = useState(false)
 
+  // Web App session detection for bi-directional sync
+  const [webAppSession, setWebAppSession] = useState<{ hasSession: boolean; user?: { id: string; email?: string } } | null>(null)
+
   // Backup history states
   const [showHistory, setShowHistory] = useState(false)
   const [versions, setVersions] = useState<BackupVersion[]>([])
@@ -93,6 +97,15 @@ export function UnifiedSyncSection() {
       if (response?.success && response.data) {
         setStatus(response.data)
         setError(null)
+
+        // Check Web App session when not logged in on Extension
+        if (!response.data.cloudLoggedIn) {
+          const webApp = await checkWebAppSession()
+          setWebAppSession(webApp)
+        } else {
+          // Clear Web App session detection when already logged in
+          setWebAppSession(null)
+        }
       } else {
         console.error('[Oh My Prompt] Failed to load sync status:', response?.error)
         setError('获取状态失败')
@@ -360,6 +373,35 @@ export function UnifiedSyncSection() {
               <LogIn className="w-4 h-4" />
               登录
             </Button>
+
+            {/* Web App session detected - show sync prompt */}
+            {webAppSession?.hasSession && (
+              <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex items-start gap-2">
+                  <ArrowRightLeft className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm text-blue-800 mb-2">
+                      检测到Web端已登录（{webAppSession.user?.email || '用户'}）
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        syncFromWebApp()
+                        // Wait for sync callback, then refresh status
+                        setTimeout(() => {
+                          loadStatus()
+                        }, 3000)
+                      }}
+                      className="h-8 border-blue-400 text-blue-700 hover:bg-blue-100"
+                    >
+                      <ArrowRightLeft className="w-3.5 h-3.5" />
+                      同步到扩展
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           // Logged in - show status and actions

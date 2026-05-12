@@ -4,6 +4,60 @@ import { WEB_APP_URL, SUPABASE_PROJECT_REF } from '@/lib/config'
 import type { CloudAuthState } from '@oh-my-prompt/shared/types'
 
 /**
+ * Check if user has logged in via Web App (cookie session).
+ *
+ * Used for bi-directional login state sync:
+ * - Extension calls this API without Authorization header
+ * - If Web App has cookie session, returns user info
+ * - Extension shows "Sync from Web App" prompt
+ *
+ * @returns Web App session status and user info (without tokens)
+ */
+export async function checkWebAppSession(): Promise<{
+  hasSession: boolean
+  user?: { id: string; email?: string }
+}> {
+  try {
+    const res = await fetch(`${WEB_APP_URL}/api/auth/check`, {
+      // No Authorization header - uses cookie auth
+      credentials: 'include' // Include cookies for cross-origin request
+    })
+
+    if (!res.ok) {
+      return { hasSession: false }
+    }
+
+    const data = await res.json()
+    return data
+  } catch (error) {
+    console.error('[Oh My Prompt] checkWebAppSession failed:', error)
+    return { hasSession: false }
+  }
+}
+
+/**
+ * Open Web App sync page to transfer session to Extension.
+ *
+ * Flow:
+ * 1. User clicks "Sync from Web App" button
+ * 2. Extension opens this URL in new tab
+ * 3. Web App detects existing session, returns tokens in hash
+ * 4. Extension content script extracts tokens and saves to chrome.storage
+ *
+ * @returns Success status
+ */
+export async function syncFromWebApp(): Promise<{ success: boolean }> {
+  try {
+    // Open sync page in new tab
+    chrome.tabs.create({ url: `${WEB_APP_URL}/auth/extension/sync` })
+    return { success: true }
+  } catch (error) {
+    console.error('[Oh My Prompt] syncFromWebApp failed:', error)
+    return { success: false }
+  }
+}
+
+/**
  * Get the current authentication state with subscription info.
  *
  * Flow:

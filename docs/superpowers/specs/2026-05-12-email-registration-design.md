@@ -81,12 +81,43 @@
 ### 注册页（`/auth/register`）
 
 - 标题："创建账号"
-- 表单字段：
-  - 邮箱输入框（必填）
-  - 密码输入框（必填，显示密码强度提示）
-  - 昵称输入框（可选，placeholder: "例如：小明"）
+- 表单字段（垂直排列）：
+  - 邮箱输入框（必填，placeholder: "your@email.com"）
+  - 密码输入框（必填，placeholder: "至少8个字符，包含字母和数字"，右侧眼睛图标切换显示）
+  - 确认密码输入框（必填，placeholder: "请再次输入密码"，右侧匹配状态图标）
+  - 昵称输入框（可选，placeholder: "您的昵称"）
+- 密码显示/隐藏切换：单个眼睛图标同时控制密码和确认密码字段
+- 密码匹配验证：实时显示图标反馈，提交时阻止不匹配的提交
 - "注册"按钮
 - 底部："已有账号？登录"
+
+#### 密码匹配验证规则
+
+**实时反馈：**
+- 确认密码输入时，右侧显示匹配状态图标：
+  - ✓ 绿色勾号：密码匹配（`password === confirmPassword && confirmPassword.length > 0`）
+  - ✗ 红色叉号：密码不匹配（`password !== confirmPassword && confirmPassword.length > 0`）
+  - 无图标：确认密码为空
+
+**提交时验证：**
+- 点击注册按钮时，先验证密码强度，再验证密码匹配
+- 不匹配时显示错误提示："两次输入的密码不一致"
+- 阻止提交，用户必须修正
+
+#### 密码显示/隐藏切换
+
+- 切换按钮（眼睛图标）位于密码输入框右侧
+- 单个按钮同时控制密码和确认密码字段的 `type` 属性
+- 点击切换：`type="password"` ↔ `type="text"`
+- 两个字段同步显示/隐藏，方便用户对比确认
+
+#### 状态管理
+
+新增 state：
+```tsx
+const [confirmPassword, setConfirmPassword] = useState('')
+const [showPassword, setShowPassword] = useState(false)
+```
 
 ### 验证等待页（`/auth/verify`）
 

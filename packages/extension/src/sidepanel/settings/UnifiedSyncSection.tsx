@@ -79,6 +79,9 @@ export function UnifiedSyncSection() {
   const [uploading, setUploading] = useState(false)
   const [authModalOpen, setAuthModalOpen] = useState(false)
 
+  // Auto-sync state - prevent multiple sync attempts per sidepanel session
+  const [syncAttempted, setSyncAttempted] = useState(false)
+
   // Web App session detection for bi-directional sync
   const [webAppSession, setWebAppSession] = useState<{ hasSession: boolean; user?: { id: string; email?: string } } | null>(null)
 
@@ -130,6 +133,28 @@ export function UnifiedSyncSection() {
       return () => clearTimeout(timer)
     }
   }, [success, error])
+
+  // Listen for auth callback completion to refresh status after auto-sync
+  useEffect(() => {
+    const handleMessage = (message: { type: string; payload?: { success: boolean } }) => {
+      if (message.type === 'AUTH_CALLBACK_COMPLETE' && message.payload?.success) {
+        console.log('[Oh My Prompt] Received AUTH_CALLBACK_COMPLETE, refreshing status')
+        loadStatus()
+        setSyncAttempted(false) // Reset for future sessions
+      }
+    }
+    chrome.runtime.onMessage.addListener(handleMessage)
+    return () => chrome.runtime.onMessage.removeListener(handleMessage)
+  }, [loadStatus])
+
+  // Auto-sync: when web session detected but extension not logged in, trigger sync
+  useEffect(() => {
+    if (webAppSession?.hasSession && !syncAttempted && !status?.cloudLoggedIn) {
+      console.log('[Oh My Prompt] Auto-sync triggered: web logged in, extension not logged in')
+      setSyncAttempted(true)
+      syncFromWebApp({ background: true })
+    }
+  }, [webAppSession, syncAttempted, status?.cloudLoggedIn])
 
   // Load versions when history section is expanded
   useEffect(() => {

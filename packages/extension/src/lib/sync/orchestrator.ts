@@ -58,6 +58,12 @@ export class SyncOrchestrator {
             lastCloudSyncTime: cloudResult.syncedAt,
             hasUnsyncedChanges: false,
             pendingCloudSync: false,
+            pendingUpload: false,
+            localOnlyItems: {
+              promptIds: [],
+              categoryIds: [],
+              temporaryPromptIds: []
+            },
             cloudError: undefined
           })
           return { cloudSynced: true, localSynced: false, syncedAt: cloudResult.syncedAt }
@@ -97,6 +103,12 @@ export class SyncOrchestrator {
         lastLocalSyncTime: Date.now(),
         hasUnsyncedChanges: false,
         pendingCloudSync: false,
+        pendingUpload: false,
+        localOnlyItems: {
+          promptIds: [],
+          categoryIds: [],
+          temporaryPromptIds: []
+        },
         cloudError: undefined,
         localError: undefined
       })
@@ -123,6 +135,12 @@ export class SyncOrchestrator {
       await this.updateSyncStatus({
         lastCloudSyncTime: cloudResult.syncedAt,
         hasUnsyncedChanges: true,
+        pendingUpload: false,
+        localOnlyItems: {
+          promptIds: [],
+          categoryIds: [],
+          temporaryPromptIds: []
+        },
         localError: localResult.error,
         cloudError: undefined
       })

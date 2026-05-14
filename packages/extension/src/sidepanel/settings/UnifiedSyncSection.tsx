@@ -92,7 +92,8 @@ export function UnifiedSyncSection() {
   const [backupBeforeRestore, setBackupBeforeRestore] = useState(true)
 
   // Load status on mount - status updates are triggered by user actions
-  const loadStatus = useCallback(async () => {
+  // Returns the loaded status for callers that need to check it immediately
+  const loadStatus = useCallback(async (): Promise<UnifiedSyncStatus | null> => {
     try {
       // Use message passing to service worker for consistent permission state
       const response = await chrome.runtime.sendMessage({ type: MessageType.GET_UNIFIED_SYNC_STATUS })
@@ -108,13 +109,16 @@ export function UnifiedSyncSection() {
           // Clear Web App session detection when already logged in
           setWebAppSession(null)
         }
+        return response.data
       } else {
         console.error('[Oh My Prompt] Failed to load sync status:', response?.error)
         setError('获取状态失败')
+        return null
       }
     } catch (err) {
       console.error('[Oh My Prompt] Failed to load sync status:', err)
       setError('获取状态失败')
+      return null
     }
   }, [])
 
@@ -134,12 +138,25 @@ export function UnifiedSyncSection() {
   }, [success, error])
 
   // Listen for auth callback completion to refresh status after auto-sync
+  // IMPORTANT: Must wait for loadStatus() to complete before resetting syncAttempted
+  // to avoid race condition where auto-sync effect re-triggers before cloudLoggedIn is true
   useEffect(() => {
-    const handleMessage = (message: { type: string; payload?: { success: boolean } }) => {
+    const handleMessage = async (message: { type: string; payload?: { success: boolean } }) => {
       if (message.type === 'AUTH_CALLBACK_COMPLETE' && message.payload?.success) {
         console.log('[Oh My Prompt] Received AUTH_CALLBACK_COMPLETE, refreshing status')
-        loadStatus()
-        setSyncAttempted(false) // Reset for future sessions
+        try {
+          const newStatus = await loadStatus()
+          // Only reset syncAttempted if login was successful (cloudLoggedIn is now true)
+          // This prevents the auto-sync effect from re-triggering and opening more tabs
+          if (newStatus?.cloudLoggedIn) {
+            setSyncAttempted(false) // Reset for future sessions
+          } else {
+            console.warn('[Oh My Prompt] Auth callback completed but not logged in yet')
+          }
+        } catch (err) {
+          console.error('[Oh My Prompt] Failed to refresh status after auth callback:', err)
+          // Don't reset syncAttempted on error - let user retry manually
+        }
       }
     }
     chrome.runtime.onMessage.addListener(handleMessage)

@@ -39,17 +39,21 @@ export async function checkWebAppSession(): Promise<{
  * Open Web App sync page to transfer session to Extension.
  *
  * Flow:
- * 1. User clicks "Sync from Web App" button
- * 2. Extension opens this URL in new tab
- * 3. Web App detects existing session, returns tokens in hash
- * 4. Extension content script extracts tokens and saves to chrome.storage
+ * 1. Extension opens this URL in new tab (foreground or background)
+ * 2. Web App detects existing session, returns tokens in hash
+ * 3. Extension content script extracts tokens and saves to chrome.storage
+ * 4. For sync route: tab auto-closes after success
  *
+ * @param options.background - If true, open tab in background (active: false)
  * @returns Success status
  */
-export async function syncFromWebApp(): Promise<{ success: boolean }> {
+export async function syncFromWebApp(options?: { background?: boolean }): Promise<{ success: boolean }> {
   try {
-    // Open sync page in new tab
-    chrome.tabs.create({ url: `${WEB_APP_URL}/auth/extension/sync` })
+    // Open sync page in new tab (background if specified)
+    chrome.tabs.create({
+      url: `${WEB_APP_URL}/auth/extension/sync`,
+      active: !options?.background
+    })
     return { success: true }
   } catch (error) {
     console.error('[Oh My Prompt] syncFromWebApp failed:', error)

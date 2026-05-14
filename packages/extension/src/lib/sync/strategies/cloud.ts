@@ -137,6 +137,7 @@ export class CloudSyncStrategy extends BaseSyncStrategy {
 
       return {
         success: true,
+        skipped: result.skipped ?? false,
         syncedAt: result.timestamp || data.timestamp,
         promptsCount: data.prompts.length,
         categoriesCount: data.categories.length,

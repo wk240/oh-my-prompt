@@ -44,6 +44,7 @@ export class SyncOrchestrator {
     cloudError?: string
     localError?: string
     syncedAt?: number
+    skipped?: boolean // Cloud sync skipped due to identical data
   }> {
     const cloudAvailable = await this.cloudStrategy.isAvailable()
     const localAvailable = await this.localStrategy.isAvailable()
@@ -97,6 +98,11 @@ export class SyncOrchestrator {
       executeLocalSync(data)
     ])
 
+    // Handle skipped sync (data unchanged)
+    if (cloudResult.skipped) {
+      console.log('[Oh My Prompt] Cloud sync skipped: data unchanged')
+    }
+
     if (cloudResult.success && localResult.success) {
       await this.updateSyncStatus({
         lastCloudSyncTime: cloudResult.syncedAt,
@@ -115,7 +121,8 @@ export class SyncOrchestrator {
       return {
         cloudSynced: true,
         localSynced: true,
-        syncedAt: cloudResult.syncedAt
+        syncedAt: cloudResult.syncedAt,
+        skipped: cloudResult.skipped
       }
     } else if (localResult.success) {
       // Local success, cloud failed

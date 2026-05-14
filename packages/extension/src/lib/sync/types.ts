@@ -16,6 +16,7 @@ export type SyncResultError =
 export interface SyncResult {
   success: boolean
   error?: SyncResultError
+  skipped?: boolean // Data unchanged, no actual sync needed
   syncedAt?: number
   promptsCount?: number
   categoriesCount?: number

@@ -14,13 +14,14 @@ export const claudeAiConfig: PlatformConfig = {
 
   inputDetection: {
     selectors: [
+      'div[data-testid="chat-input"][contenteditable="true"]',
       'div[contenteditable="true"][role="textbox"]',
       '.ProseMirror[contenteditable="true"]',
     ],
   },
 
   uiInjection: {
-    anchorSelector: '.composer-footer',
-    position: 'prepend',
+    anchorSelector: 'button[aria-label="Add files, connectors, and more"]',
+    position: 'before',
   },
 }

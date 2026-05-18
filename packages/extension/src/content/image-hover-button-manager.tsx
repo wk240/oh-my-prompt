@@ -443,14 +443,11 @@ export class ImageHoverButtonManager {
   }
 
   /**
-   * Handle button click - open sidepanel settings FIRST (preserves user gesture), then add task
+   * Handle button click - add task to Vision Modal queue
    */
   private handleButtonClick(imageUrl: string): void {
-    // CRITICAL: Open sidepanel BEFORE any async operations - user gesture must be preserved
-    // Chrome requires sidePanel.open() to be called in sync execution path from user click
-    chrome.runtime.sendMessage({ type: MessageType.OPEN_SIDEPANEL_FOR_SETTINGS })
-
-    // Then handle task queue (can be async, doesn't affect sidepanel opening)
+    // Vision Modal is a floating page-level modal that works independently
+    // No sidepanel interaction needed
     this.processImageTask(imageUrl)
   }
 

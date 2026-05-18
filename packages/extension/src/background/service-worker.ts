@@ -344,6 +344,13 @@ chrome.runtime.onMessage.addListener(
             // Use returned result directly (no extra getStatus calls)
             const success = result.cloudSynced || result.localSynced
 
+            // 如果同步成功，更新 settings.hasUnsyncedChanges
+            // (TRIGGER_SYNC 只更新 syncStatus，但 GET_SYNC_STATUS 读取 settings)
+            if (success) {
+              storageManager.updateSettings({ hasUnsyncedChanges: false })
+                .catch(err => console.warn('[Oh My Prompt] Failed to update hasUnsyncedChanges:', err))
+            }
+
             // Report error if sync failed
             let error: string | undefined
             if (!result.cloudSynced && !result.localSynced) {

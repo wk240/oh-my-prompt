@@ -9,9 +9,10 @@ description: Use when deploying web-app package to Vercel production environment
 
 Deploy `packages/web-app` to Vercel production with safety checks to prevent linking to wrong project and ensure successful deployment.
 
-## Core Problem
+## Core Problems
 
-Multiple Vercel projects with similar names exist. `.vercel/project.json` may link to WRONG project, causing deployment failure and wasted debugging time.
+1. **Wrong Project Link:** Multiple Vercel projects with similar names exist. `.vercel/project.json` may link to WRONG project.
+2. **Wrong Deploy Directory:** Deploying from monorepo root uploads wrong files. Must deploy from `packages/web-app`.
 
 ## Preflight Checks
 
@@ -57,7 +58,7 @@ digraph deploy_flow {
     "Project link correct?" [shape=diamond];
     "Re-link to correct project" [shape=box];
     "User confirms production deploy?" [shape=diamond];
-    "vercel --prod" [shape=box];
+    "cd packages/web-app && vercel --cwd . --prod" [shape=box];
     "Status READY?" [shape=diamond];
     "Fetch build logs" [shape=box];
     "Diagnose failure" [shape=box];
@@ -68,9 +69,9 @@ digraph deploy_flow {
     "Project link correct?" -> "User confirms production deploy?" [label="yes"];
     "Project link correct?" -> "Re-link to correct project" [label="no"];
     "Re-link to correct project" -> "User confirms production deploy?";
-    "User confirms production deploy?" -> "vercel --prod" [label="yes"];
+    "User confirms production deploy?" -> "cd packages/web-app && vercel --cwd . --prod" [label="yes"];
     "User confirms production deploy?" -> "Done" [label="no"];
-    "vercel --prod" -> "Status READY?";
+    "cd packages/web-app && vercel --cwd . --prod" -> "Status READY?";
     "Status READY?" -> "Post-deploy verification" [label="yes"];
     "Status READY?" -> "Fetch build logs" [label="no"];
     "Fetch build logs" -> "Diagnose failure";
@@ -82,9 +83,11 @@ digraph deploy_flow {
 
 ### Production Deploy (requires user confirmation)
 
+**⚠️ CRITICAL:** Must deploy from `packages/web-app` directory, NOT from monorepo root.
+
 ```bash
-# Deploy to production
-vercel --prod
+# Deploy to production (from packages/web-app)
+cd packages/web-app && vercel --cwd . --prod
 
 # Get deployment details
 vercel inspect <deployment-url>
@@ -127,6 +130,7 @@ After READY status:
 
 | Mistake | Fix |
 |---------|-----|
+| Deploying from monorepo root | `cd packages/web-app && vercel --cwd . --prod` |
 | Linked to wrong project | `vercel link --project <correct-name>` |
 | Build fails on Vercel | Test `npm run build` locally first |
 | Missing env vars | `vercel env ls` then add missing vars |

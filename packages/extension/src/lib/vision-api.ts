@@ -7,6 +7,8 @@
 import type { VisionApiConfig, VisionApiErrorPayload, VisionApiResultData, ProviderConfig } from '@oh-my-prompt/shared/types'
 import { MessageType } from '@oh-my-prompt/shared/messages'
 import { extractBase64Data } from './image-utils'
+import { WEB_APP_URL } from '@/lib/config'
+import { getSupabaseClient } from '@/lib/cloud-sync/supabase-client'
 
 /**
  * Get active provider config from storage
@@ -598,6 +600,12 @@ export async function executeVisionApiCallWithProviderConfig(
     throw new Error('NO_CONFIG: 请先配置 Vision API')
   }
 
+  // Official API: use session token authentication
+  if (config.apiFormat === 'omp_official') {
+    return executeOfficialVisionApiCall(imageData, signal)
+  }
+
+  // Third-party API: use API key authentication
   // SECURITY: Validate endpoint starts with https://
   if (!config.apiEndpoint.startsWith('https://')) {
     throw new Error('API 地址必须使用 HTTPS')
@@ -672,6 +680,73 @@ export async function executeVisionApiCallWithProviderConfig(
 
     const data = await response.json()
     return parseVisionResponse(apiFormat, data)
+  } catch (error) {
+    clearTimeout(timeoutId)
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('timeout')
+    }
+    throw error
+  }
+}
+
+/**
+ * Execute Vision API call using official Oh My Prompt service.
+ * Uses Supabase session token for authentication.
+ */
+async function executeOfficialVisionApiCall(
+  imageData: string,
+  signal?: AbortSignal
+): Promise<VisionApiResultData> {
+  // 1. Get Supabase session token
+  const supabase = getSupabaseClient()
+  const { data: { session } } = await supabase.auth.getSession()
+
+  if (!session) {
+    throw new Error('NOT_LOGGED_IN: 请先登录')
+  }
+
+  // 2. Validate image data
+  if (!imageData.startsWith('data:image/')) {
+    throw new Error('Image must be a valid data URL')
+  }
+
+  // 3. Call official API
+  const abortController = new AbortController()
+  const timeoutId = setTimeout(() => abortController.abort(), API_TIMEOUT_MS)
+
+  if (signal) {
+    if (signal.aborted) {
+      clearTimeout(timeoutId)
+      throw new DOMException('Aborted before API call', 'AbortError')
+    }
+    signal.addEventListener('abort', () => abortController.abort())
+  }
+
+  try {
+    const response = await fetch(`${WEB_APP_URL}/api/vision/generate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({ image: imageData }),
+      signal: abortController.signal
+    })
+
+    clearTimeout(timeoutId)
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || `HTTP ${response.status}`)
+    }
+
+    const result = await response.json()
+
+    if (!result.success || !result.data) {
+      throw new Error(result.error || 'Vision API returned invalid response')
+    }
+
+    return result.data as VisionApiResultData
   } catch (error) {
     clearTimeout(timeoutId)
     if (error instanceof Error && error.name === 'AbortError') {

@@ -41,7 +41,7 @@ export function OfficialVisionCard({
   }
 
   // State: logged in but not member
-  if (!subscription || subscription.plan === 'free') {
+  if (!subscription || subscription.planType === 'free') {
     return (
       <div className="p-4 bg-white rounded-lg border border-gray-200">
         <div className="flex items-center justify-between mb-3">
@@ -62,8 +62,8 @@ export function OfficialVisionCard({
   }
 
   // Get quota info from subscription
-  const quota = subscription.quota || { remaining: 0, limit: 50 }
-  const plan = subscription.plan
+  const quota = subscription.optimizationQuota || { remaining: 0, limit: 50 }
+  const plan = subscription.planType
   const isPro = plan === 'pro'
   const isTeam = plan === 'team'
 

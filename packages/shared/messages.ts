@@ -93,6 +93,10 @@ export enum MessageType {
   // Unified sync status (Sidepanel → SW)
   GET_UNIFIED_SYNC_STATUS = 'GET_UNIFIED_SYNC_STATUS',  // Get unified sync status from service worker
   UPLOAD_LOCAL_ONLY = 'UPLOAD_LOCAL_ONLY',  // Upload local-only items to cloud
+
+  // Official Vision API
+  GET_VISION_QUOTA = 'GET_VISION_QUOTA',           // 获取 Vision 额度状态
+  ACTIVATE_OFFICIAL_CONFIG = 'ACTIVATE_OFFICIAL_CONFIG', // 激活官方配置
 }
 
 export interface Message<T = unknown> {

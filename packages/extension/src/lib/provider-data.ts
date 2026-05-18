@@ -18,7 +18,7 @@ interface JsonProvider {
 }
 
 // Supported API formats
-const SUPPORTED_FORMATS = ['anthropic_messages', 'chat_completions', 'openai_responses'] as const
+const SUPPORTED_FORMATS = ['anthropic_messages', 'chat_completions', 'openai_responses', 'omp_official'] as const
 
 // Unsupported formats (3 providers):
 // - gemini_native: Google Gemini (requires separate implementation)
@@ -37,6 +37,7 @@ function generateProviderId(name: string): string {
  */
 function mapProviderType(type: string): Provider['type'] {
   const typeMap: Record<string, Provider['type']> = {
+    'omp_official': 'omp_official',
     'official': 'official',
     'cn_official': 'cn_official',
     'aggregator': 'aggregator',
@@ -104,6 +105,7 @@ export function groupProvidersByType(providers: Provider[]): ProviderGroup[] {
   }
 
   const groupDefinitions: Array<{ type: Provider['type']; label: string; labelEn: string; order: number }> = [
+    { type: 'omp_official', label: '官方服务', labelEn: 'Official', order: 0 },
     { type: 'cn_official', label: '国内提供商', labelEn: 'China Providers', order: 1 },
     { type: 'official', label: '国外 API', labelEn: 'Global', order: 2 },
     { type: 'aggregator', label: '聚合器', labelEn: 'Aggregators', order: 3 },

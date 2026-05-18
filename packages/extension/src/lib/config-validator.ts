@@ -29,7 +29,7 @@ export function validateProviderConfig(config: Partial<ProviderConfig>): ConfigV
   }
 
   // Format validation
-  if (config.apiFormat && !['anthropic_messages', 'chat_completions'].includes(config.apiFormat)) {
+  if (config.apiFormat && !['anthropic_messages', 'chat_completions', 'openai_responses'].includes(config.apiFormat)) {
     errors.push('不支持的 API 格式')
   }
 

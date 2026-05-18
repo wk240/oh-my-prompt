@@ -1,6 +1,21 @@
 {
   "providers": [
     {
+      "name": "Oh My Prompt 官方",
+      "nameCn": "Oh My Prompt 官方",
+      "type": "omp_official",
+      "websiteUrl": "https://oh-my-prompt.com",
+      "apiKeyUrl": "https://oh-my-prompt.com/subscription",
+      "apiEndpoint": "https://oh-my-prompt.com/api/vision",
+      "apiFormat": "omp_official",
+      "models": [
+        { "id": "auto", "visionCapable": true }
+      ],
+      "icon": "omp",
+      "iconColor": "#00B4D8",
+      "requiresAuth": true
+    },
+    {
       "name": "Anthropic Claude",
       "type": "official",
       "websiteUrl": "https://www.anthropic.com/claude-code",
@@ -194,8 +209,9 @@
     "source": "cc-switch",
     "version": "2.0.0",
     "generatedAt": "2026-05-07",
-    "totalProviders": 11,
+    "totalProviders": 12,
     "categories": {
+      "omp_official": "Oh My Prompt official Vision API service (requires membership)",
       "official": "Official API providers (Anthropic, OpenAI, Google)",
       "cn_official": "Chinese official API providers (Zhipu, Alibaba, Kimi, Xiaomi, Volcengine)",
       "aggregator": "API aggregators (OpenRouter)",

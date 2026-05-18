@@ -717,6 +717,7 @@ async function executeOfficialVisionApiCall(
   if (signal) {
     if (signal.aborted) {
       clearTimeout(timeoutId)
+      abortController.abort()
       throw new DOMException('Aborted before API call', 'AbortError')
     }
     signal.addEventListener('abort', () => abortController.abort())

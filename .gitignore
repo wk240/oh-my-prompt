@@ -18,6 +18,7 @@ dist/
 dist.zip
 releases/
 oh-my-prompt-v*
+deploy/
 tests/
 **/.DS_Store
 .worktrees/

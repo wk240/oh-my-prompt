@@ -12,11 +12,15 @@ import {
 } from '@/popup/components/ui/dialog'
 import { Check, ExternalLink, Sparkles } from 'lucide-react'
 import { MessageType } from '@oh-my-prompt/shared/messages'
-import type { ProviderConfig, Provider, ProviderGroup } from '@oh-my-prompt/shared/types'
+import type { ProviderConfig, Provider, ProviderGroup, CloudAuthState } from '@oh-my-prompt/shared/types'
 import { loadSupportedProviders, groupProvidersByType } from '@/lib/provider-data'
 import { ProviderSelect } from '@/popup/components/ProviderSelect'
 import { ModelSelect } from '@/popup/components/ModelSelect'
 import { SavedConfigsList } from '@/popup/components/SavedConfigsList'
+import { OfficialVisionCard } from '@/popup/components/OfficialVisionCard'
+import { CollapsibleSection } from '@/popup/components/CollapsibleSection'
+import { getAuthState } from '@/lib/cloud-sync/auth-service'
+import { WEB_APP_URL } from '@/lib/config'
 
 /**
  * Request host permission for API endpoint
@@ -77,6 +81,10 @@ export function VisionSection() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deletingConfigId, setDeletingConfigId] = useState<string | null>(null)
 
+  // Official Vision API state
+  const [authState, setAuthState] = useState<CloudAuthState | null>(null)
+  const officialConfigId = 'omp-official-default'  // Fixed ID for official config
+
   // Load providers and configs on mount
   useEffect(() => {
     const loadedProviders = loadSupportedProviders()
@@ -84,6 +92,11 @@ export function VisionSection() {
     setProviderGroups(groupProvidersByType(loadedProviders))
     loadConfigs()
     loadVisionSetting()
+  }, [])
+
+  // Load auth state on mount
+  useEffect(() => {
+    getAuthState().then(setAuthState)
   }, [])
 
   // Load vision enabled setting from storage
@@ -335,6 +348,58 @@ export function VisionSection() {
     }
   }
 
+  const handleActivateOfficial = async () => {
+    setLoading(true)
+    try {
+      // Try to activate official config
+      const response = await chrome.runtime.sendMessage({
+        type: MessageType.SET_ACTIVE_CONFIG,
+        payload: { id: officialConfigId }
+      })
+
+      if (response.success) {
+        setActiveConfigId(officialConfigId)
+        setSuccess('已激活官方 Vision API')
+      } else {
+        // If config doesn't exist, create it first
+        const createResponse = await chrome.runtime.sendMessage({
+          type: MessageType.ADD_PROVIDER_CONFIG,
+          payload: {
+            id: officialConfigId,
+            providerId: 'oh-my-prompt-official',
+            providerName: 'Oh My Prompt 官方',
+            apiKey: '',  // No API key for official
+            apiEndpoint: WEB_APP_URL + '/api/vision',
+            apiFormat: 'omp_official',
+            selectedModel: 'auto',
+            isCustom: false,
+            requiresAuth: true
+          }
+        })
+
+        if (createResponse.success) {
+          setActiveConfigId(officialConfigId)
+          setSuccess('已激活官方 Vision API')
+          await loadConfigs()
+        } else {
+          setError(createResponse.error || '激活失败')
+        }
+      }
+    } catch (err) {
+      setError('激活失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleLogin = () => {
+    window.open(WEB_APP_URL + '/auth/login', '_blank')
+  }
+
+  const handleUpgrade = () => {
+    window.open(WEB_APP_URL + '/subscription', '_blank')
+  }
+
   return (
     <div className="w-full space-y-4 p-4">
       {/* Feature Toggle */}
@@ -377,9 +442,24 @@ export function VisionSection() {
         </div>
       )}
 
-      {/* API Configuration - only show when feature is enabled */}
+      {/* Official Vision API Card */}
       {visionEnabled && (
-        <div className="p-4 bg-white rounded-lg border border-gray-200">
+        <OfficialVisionCard
+          authState={authState}
+          isActive={activeConfigId === officialConfigId}
+          onActivate={handleActivateOfficial}
+          onLogin={handleLogin}
+          onUpgrade={handleUpgrade}
+        />
+      )}
+
+      {/* Third-party API Configuration (collapsible) */}
+      {visionEnabled && (
+        <CollapsibleSection
+          title="第三方 API 配置"
+          defaultExpanded={false}
+          hint={configs.filter(c => c.apiFormat !== 'omp_official').length > 0 ? `已有 ${configs.filter(c => c.apiFormat !== 'omp_official').length} 个配置` : undefined}
+        >
           <Tabs defaultValue="quick">
             <TabsList className="w-full">
               <TabsTrigger value="quick" className="flex-1">快速配置</TabsTrigger>
@@ -501,9 +581,9 @@ export function VisionSection() {
           {error && <p className="text-sm text-red-500 mt-4" role="alert">{error}</p>}
           {success && <p className="text-sm text-green-600 mt-4">{success}</p>}
 
-          {/* Saved configs */}
+          {/* Saved configs - filter out official config */}
           <SavedConfigsList
-            configs={configs}
+            configs={configs.filter(c => c.apiFormat !== 'omp_official')}
             activeConfigId={activeConfigId}
             onActivate={handleActivate}
             onDelete={handleDeleteClick}
@@ -512,9 +592,9 @@ export function VisionSection() {
 
           {/* Hint */}
           <div className="text-xs text-gray-500 pt-4 border-t border-gray-100 mt-4">
-            <p>所有配置仅存储在本地，不会上传到云端，即使登录了也不会上传</p>
+            <p>所有配置仅存储在本地</p>
           </div>
-        </div>
+        </CollapsibleSection>
       )}
 
       {/* Disabled state hint */}

@@ -15,6 +15,7 @@ interface JsonProvider {
   icon: string
   iconColor: string
   isPartner?: boolean
+  requiresAuth?: boolean
 }
 
 // Supported API formats

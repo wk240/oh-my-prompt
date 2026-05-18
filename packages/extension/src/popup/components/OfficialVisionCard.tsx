@@ -64,7 +64,6 @@ export function OfficialVisionCard({
   // Get quota info from subscription
   const quota = subscription.optimizationQuota || { remaining: 0, limit: 50 }
   const plan = subscription.planType
-  const isPro = plan === 'pro'
   const isTeam = plan === 'team'
 
   // Badge color

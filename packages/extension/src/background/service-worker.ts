@@ -152,6 +152,24 @@ chrome.runtime.onMessage.addListener(
         sendResponse({ success: true, data: 'pong' } as MessageResponse<string>)
         break
 
+      // Handle OFFSCREEN_PING directly in Service Worker
+      // When Service Worker calls ensureOffscreenDocument, it sends OFFSCREEN_PING to check readiness
+      // If no handler here, message goes to default case and returns error, breaking readiness check
+      case MessageType.OFFSCREEN_PING:
+        getFolderHandle()
+          .then(handle => {
+            sendResponse({
+              success: true,
+              data: 'pong',
+              handleCached: handle !== null
+            })
+          })
+          .catch(error => {
+            console.error('[Oh My Prompt] OFFSCREEN_PING error:', error)
+            sendResponse({ success: true, data: 'pong', handleCached: false })
+          })
+        return true // Required for async response
+
       // Handle OFFSCREEN_CHECK_PERMISSION directly in Service Worker
       // When Service Worker calls sendToOffscreen, the message comes back to Service Worker
       // and gets dropped by default case. Handle it directly here instead.
@@ -1431,8 +1449,8 @@ chrome.runtime.onMessage.addListener(
         return true // Required for async response
 
       default:
-        // Skip OFFSCREEN_* messages - they are handled by offscreen document
-        if (message.type.startsWith('OFFSCREEN_')) {
+        // Skip OFFSCREEN_* messages - they are handled by offscreen document (or this Service Worker handler)
+        if (typeof message.type === 'string' && message.type.startsWith('OFFSCREEN_')) {
           // Don't respond, let offscreen document handle it
           return false
         }

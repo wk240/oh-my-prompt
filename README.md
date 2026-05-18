@@ -28,6 +28,9 @@ packages/
 │   └── constants/  # 常量定义
 │
 └── web-app/        # Web App（私有，官网与云同步服务）
+    ├── app/        # Next.js App Router
+    ├── lib/        # API 客户端
+    └── supabase/   # Supabase 配置
 ```
 
 ---

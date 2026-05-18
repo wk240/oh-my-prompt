@@ -79,8 +79,18 @@ export async function readApiConfigFromFolder(
     console.log('[Oh My Prompt] API config loaded from secrets/', API_CONFIG_FILE)
     return configFile.config
   } catch (error) {
-    // File doesn't exist or parsing failed
-    console.warn('[Oh My Prompt] Failed to read API config:', error)
+    // Check error type for better messaging
+    const errorName = error instanceof DOMException ? error.name : (error instanceof Error ? error.name : 'Unknown')
+
+    // NotFoundError is expected when secrets directory or file doesn't exist (new folder)
+    // This is normal behavior, not an error - silently return null
+    if (errorName === 'NotFoundError') {
+      return null
+    }
+
+    // Other errors (NotAllowedError, SecurityError) indicate permission issues
+    // These are worth logging as warnings
+    console.warn('[Oh My Prompt] Failed to read API config:', errorName, error instanceof Error ? error.message : '')
     return null
   }
 }
@@ -145,8 +155,18 @@ export async function readProviderConfigsFromFolder(
     console.log('[Oh My Prompt] Provider configs loaded from secrets/', PROVIDER_CONFIGS_FILE)
     return configFile.configs
   } catch (error) {
-    // File doesn't exist or parsing failed
-    console.warn('[Oh My Prompt] Failed to read provider configs:', error)
+    // Check error type for better messaging
+    const errorName = error instanceof DOMException ? error.name : (error instanceof Error ? error.name : 'Unknown')
+
+    // NotFoundError is expected when secrets directory or file doesn't exist (new folder)
+    // This is normal behavior, not an error - silently return null
+    if (errorName === 'NotFoundError') {
+      return null
+    }
+
+    // Other errors (NotAllowedError, SecurityError) indicate permission issues
+    // These are worth logging as warnings
+    console.warn('[Oh My Prompt] Failed to read provider configs:', errorName, error instanceof Error ? error.message : '')
     return null
   }
 }

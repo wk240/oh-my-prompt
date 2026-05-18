@@ -29,10 +29,10 @@ export function OfficialVisionCard({
             需要登录
           </span>
         </div>
-        <p className="text-sm text-gray-600 mb-3">会员专享 Vision API，无需配置 API Key</p>
+        <p className="text-sm text-gray-600 mb-3">专业视觉模型，无需配置 API Key</p>
         <button
           onClick={onLogin}
-          className="w-full py-2.5 rounded-md font-medium text-sm bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 transition"
+          className="w-full py-2.5 rounded-md font-medium text-sm bg-gray-900 text-white hover:bg-gray-800 transition"
         >
           登录后使用
         </button>
@@ -50,7 +50,7 @@ export function OfficialVisionCard({
             需要升级
           </span>
         </div>
-        <p className="text-sm text-gray-600 mb-3">会员专享 Vision API，无需配置 API Key</p>
+        <p className="text-sm text-gray-600 mb-3">专业视觉模型，无需配置 API Key</p>
         <button
           onClick={onUpgrade}
           className="w-full py-2.5 rounded-md font-medium text-sm bg-yellow-500/10 text-yellow-700 border border-yellow-500/30 hover:bg-yellow-500/20 transition"
@@ -119,7 +119,7 @@ export function OfficialVisionCard({
           </span>
         </div>
       </div>
-      <p className="text-sm text-gray-600 mb-3">会员专享 Vision API，无需配置 API Key</p>
+      <p className="text-sm text-gray-600 mb-3">专业视觉模型，无需配置 API Key</p>
       <button
         onClick={onActivate}
         className={`w-full py-2.5 rounded-md font-medium text-sm transition ${

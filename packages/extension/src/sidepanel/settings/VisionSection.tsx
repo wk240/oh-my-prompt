@@ -415,7 +415,7 @@ export function VisionSection() {
           <button
             onClick={() => handleVisionToggle(!visionEnabled)}
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-              visionEnabled ? 'bg-purple-500' : 'bg-gray-200'
+              visionEnabled ? 'bg-gray-900' : 'bg-gray-200'
             }`}
             role="switch"
             aria-checked={visionEnabled}
@@ -428,19 +428,6 @@ export function VisionSection() {
           </button>
         </div>
       </div>
-
-      {/* Intro for first-time users */}
-      {configs.length === 0 && visionEnabled && (
-        <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
-          <p className="font-medium text-blue-800 mb-2">一键提取图片提示词</p>
-          <p className="text-sm text-blue-700 leading-relaxed mb-3">
-            看到喜欢的图片？AI帮你分析并生成提示词，直接用于AI绘画创作。
-          </p>
-          <p className="text-sm text-blue-600 leading-relaxed">
-            图片识别需要调用视觉AI模型（如 GPT-4 Vision、Claude Vision 等），请配置你的 API 密钥以启用此功能。
-          </p>
-        </div>
-      )}
 
       {/* Official Vision API Card */}
       {visionEnabled && (

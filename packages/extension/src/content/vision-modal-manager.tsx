@@ -675,8 +675,8 @@ export class VisionModalManager {
       }
 
       .toggle-btn.active {
-        background: #ffffff;
-        color: #171717;
+        background: #171717;
+        color: #ffffff;
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
       }
 

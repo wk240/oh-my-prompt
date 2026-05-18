@@ -14,10 +14,11 @@ export interface ProviderConfig {
   providerName: string          // Display name (e.g., 'Anthropic Claude')
   apiKey: string                // API key — NEVER log this
   apiEndpoint: string           // Full API URL
-  apiFormat: 'anthropic_messages' | 'chat_completions' | 'openai_responses'
+  apiFormat: 'anthropic_messages' | 'chat_completions' | 'openai_responses' | 'omp_official'
   selectedModel: string         // User-selected model
   configuredAt: number          // Timestamp
   isCustom?: boolean            // true for custom configs
+  requiresAuth?: boolean        // 是否需要会员登录（官方 Provider）
 }
 
 // Provider data from providers.json
@@ -25,15 +26,16 @@ export interface Provider {
   id: string                              // Generated from name (slug)
   name: string                            // Display name (English/international)
   nameCn?: string                         // Chinese name for cn_official providers
-  type: 'official' | 'cn_official' | 'aggregator' | 'third_party'
+  type: 'official' | 'cn_official' | 'aggregator' | 'third_party' | 'omp_official'
   apiEndpoint: string                     // Default API URL
-  apiFormat: 'anthropic_messages' | 'chat_completions' | 'openai_responses'
+  apiFormat: 'anthropic_messages' | 'chat_completions' | 'openai_responses' | 'omp_official'
   models: ModelInfo[]                     // Available models with vision info
   icon: string                            // Icon identifier
   iconColor: string                       // Icon color
   websiteUrl?: string                     // Official website
   apiKeyUrl?: string                      // API key management page
   isPartner?: boolean                     // Partner flag
+  requiresAuth?: boolean                  // 是否需要会员登录（官方 Provider）
 }
 
 // Model information with vision capability

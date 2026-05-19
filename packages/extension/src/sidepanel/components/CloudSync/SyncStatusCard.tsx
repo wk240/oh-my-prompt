@@ -1,12 +1,12 @@
 // packages/extension/src/sidepanel/components/CloudSync/SyncStatusCard.tsx
 import { Button } from '@/popup/components/ui/button'
+import { WEB_APP_URL } from '@/lib/config'
 import type { CloudAuthState } from '@oh-my-prompt/shared/types'
 
 interface SyncStatusCardProps {
   authState: CloudAuthState | null
   loading: boolean
   syncing: boolean
-  onLogin: () => void
   onUpload: () => void
   onDownload: () => void
   onLogout: () => void
@@ -26,7 +26,6 @@ export function SyncStatusCard({
   authState,
   loading,
   syncing,
-  onLogin,
   onUpload,
   onDownload,
   onLogout
@@ -41,8 +40,8 @@ export function SyncStatusCard({
         <p className="text-sm text-gray-600">
           未登录，登录后可云端备份
         </p>
-        <Button onClick={onLogin} className="w-full">
-          登录
+        <Button onClick={() => chrome.tabs.create({ url: `${WEB_APP_URL}/auth/extension/sync` })} className="w-full">
+          登录以启用云端同步
         </Button>
       </div>
     )

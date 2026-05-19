@@ -2,6 +2,8 @@ import { CloudSyncStrategy } from './strategies/cloud'
 import { LocalSyncStrategy } from './strategies/local'
 import { executeLocalSync } from './local-sync-executor'
 import { getFolderHandle, checkFolderPermission } from './indexeddb'
+import { RetryManager } from './retry-manager'
+import { MessageType } from '@oh-my-prompt/shared/messages'
 import {
   FullBackupData,
   MergeResult,
@@ -23,10 +25,65 @@ const STORAGE_KEY = 'prompt_script_data'
 export class SyncOrchestrator {
   private cloudStrategy: CloudSyncStrategy
   private localStrategy: LocalSyncStrategy
+  private cloudRetryManager: RetryManager | null = null
+  private localRetryManager: RetryManager | null = null
 
   constructor(cloudStrategy: CloudSyncStrategy, localStrategy: LocalSyncStrategy) {
     this.cloudStrategy = cloudStrategy
     this.localStrategy = localStrategy
+  }
+
+  /**
+   * Create retry callback for cloud sync.
+   */
+  private createCloudRetryCallback(data: FullBackupData): () => Promise<{ success: boolean; error?: string }> {
+    return async () => {
+      const result = await this.cloudStrategy.sync(data)
+      return {
+        success: result.success,
+        error: result.error
+      }
+    }
+  }
+
+  /**
+   * Create retry callback for local sync.
+   */
+  private createLocalRetryCallback(data: FullBackupData): () => Promise<{ success: boolean; error?: string }> {
+    return async () => {
+      const result = await executeLocalSync(data)
+      return {
+        success: result.success,
+        error: result.error
+      }
+    }
+  }
+
+  /**
+   * Notify UI about retry progress.
+   */
+  private notifyRetryProgress(target: 'cloud' | 'local', state: { retryCount: number; retryScheduledAt?: number }): void {
+    chrome.runtime.sendMessage({
+      type: MessageType.BACKUP_RETRY,
+      payload: {
+        target,
+        retryCount: state.retryCount,
+        retryScheduledAt: state.retryScheduledAt
+      }
+    }).catch(() => { /* UI may not be listening */ })
+  }
+
+  /**
+   * Notify UI about backup completion.
+   */
+  private notifyBackupComplete(target: 'cloud' | 'local', success: boolean): void {
+    chrome.runtime.sendMessage({
+      type: MessageType.BACKUP_COMPLETE,
+      payload: {
+        target,
+        success
+      }
+    }).catch(() => { /* UI may not be listening */ })
   }
 
   /**
@@ -44,6 +101,18 @@ export class SyncOrchestrator {
     syncedAt?: number
     skipped?: boolean // Cloud sync skipped due to identical data
   }> {
+    // Notify UI that sync is starting
+    chrome.runtime.sendMessage({
+      type: MessageType.BACKUP_PROGRESS,
+      payload: { cloud: true, local: true }
+    }).catch(() => { /* UI may not be listening */ })
+
+    // Update sync status to indicate syncing
+    await this.updateSyncStatus({
+      cloudSyncing: true,
+      localSyncing: true
+    })
+
     const cloudAvailable = await this.cloudStrategy.isAvailable()
     const localAvailable = await this.localStrategy.isAvailable()
 
@@ -63,12 +132,24 @@ export class SyncOrchestrator {
               categoryIds: [],
               temporaryPromptIds: []
             },
+            cloudSyncing: false,
+            localSyncing: false,
+            cloudRetryCount: 0,
             cloudError: undefined
           })
           return { cloudSynced: true, localSynced: false, syncedAt: cloudResult.syncedAt }
         }
+        await this.updateSyncStatus({
+          cloudSyncing: false,
+          localSyncing: false,
+          cloudError: cloudResult.error
+        })
         return { cloudSynced: false, localSynced: false, cloudError: cloudResult.error }
       }
+      await this.updateSyncStatus({
+        cloudSyncing: false,
+        localSyncing: false
+      })
       return { cloudSynced: false, localSynced: false }
     }
 
@@ -80,11 +161,20 @@ export class SyncOrchestrator {
         await this.updateSyncStatus({
           lastLocalSyncTime: localResult.syncedAt || Date.now(),
           hasUnsyncedChanges: true,
-          pendingCloudSync: true
+          pendingCloudSync: true,
+          cloudSyncing: false,
+          localSyncing: false,
+          localRetryCount: 0,
+          localError: undefined
         })
         return { cloudSynced: false, localSynced: true, syncedAt: localResult.syncedAt }
       } else {
         console.warn('[Oh My Prompt] Local sync failed:', localResult.error)
+        await this.updateSyncStatus({
+          cloudSyncing: false,
+          localSyncing: false,
+          localError: localResult.error
+        })
         return { cloudSynced: false, localSynced: false, localError: localResult.error }
       }
     }
@@ -113,6 +203,10 @@ export class SyncOrchestrator {
           categoryIds: [],
           temporaryPromptIds: []
         },
+        cloudSyncing: false,
+        localSyncing: false,
+        cloudRetryCount: 0,
+        localRetryCount: 0,
         cloudError: undefined,
         localError: undefined
       })
@@ -128,6 +222,9 @@ export class SyncOrchestrator {
         lastLocalSyncTime: Date.now(),
         hasUnsyncedChanges: true,
         pendingCloudSync: true,
+        localSyncing: false,
+        localRetryCount: 0,
+        localError: undefined,
         cloudError: cloudResult.error
       })
       return {
@@ -146,8 +243,10 @@ export class SyncOrchestrator {
           categoryIds: [],
           temporaryPromptIds: []
         },
-        localError: localResult.error,
-        cloudError: undefined
+        cloudSyncing: false,
+        cloudRetryCount: 0,
+        cloudError: undefined,
+        localError: localResult.error
       })
       return {
         cloudSynced: true,
@@ -158,6 +257,12 @@ export class SyncOrchestrator {
     }
 
     // Both failed
+    await this.updateSyncStatus({
+      cloudSyncing: false,
+      localSyncing: false,
+      cloudError: cloudResult.error,
+      localError: localResult.error
+    })
     return {
       cloudSynced: false,
       localSynced: false,

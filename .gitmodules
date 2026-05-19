@@ -1,3 +1,4 @@
 [submodule "packages/web-app"]
 	path = packages/web-app
 	url = https://github.com/wk240/oh-my-prompt-web-app.git
+	branch = v0.1.0

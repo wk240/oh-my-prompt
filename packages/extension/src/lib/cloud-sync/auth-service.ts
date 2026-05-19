@@ -147,6 +147,9 @@ export async function getAuthState(): Promise<CloudAuthState> {
 /**
  * Initiate OAuth sign-in with Google or GitHub.
  *
+ * @deprecated Not used in new login flow. Extension now opens Web App directly.
+ * Kept for backward compatibility and potential future use.
+ *
  * Flow:
  * 1. Supabase generates OAuth URL with redirect to web-app callback
  * 2. Extension opens URL in new tab (chrome.tabs.create)

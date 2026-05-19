@@ -4,6 +4,7 @@ import { History, RotateCcw, AlertTriangle } from 'lucide-react'
 import { Button } from '@/popup/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/popup/components/ui/dialog'
 import type { BackupVersion } from '@/lib/sync/file-sync'
+import { formatBackupTime } from './utils/format-backup-time'
 
 interface HistoryModalProps {
   open: boolean
@@ -12,22 +13,6 @@ interface HistoryModalProps {
   loading: boolean
   error: string | null
   onRestore: (filename: string) => Promise<{ success: boolean; error?: string }>
-}
-
-/**
- * Format backup time to readable string
- */
-function formatBackupTime(isoTime: string): string {
-  if (!isoTime) return '未知时间'
-  const date = new Date(isoTime)
-  return date.toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  })
 }
 
 /**

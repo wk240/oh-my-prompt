@@ -9,6 +9,7 @@ import {
   DialogFooter,
 } from '@/popup/components/ui/dialog'
 import { Button } from '@/popup/components/ui/button'
+import { formatBackupTime } from './utils/format-backup-time'
 
 interface MergeConflictModalProps {
   open: boolean
@@ -25,18 +26,6 @@ export interface MergeResult {
   updatedCount: number
   addedCategories: number
   error?: string
-}
-
-function formatBackupTime(isoTime: string): string {
-  if (!isoTime) return '未知时间'
-  const date = new Date(isoTime)
-  return date.toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 }
 
 export function MergeConflictModal({

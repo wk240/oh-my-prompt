@@ -3,6 +3,7 @@ import { AlertTriangle, RotateCcw, FolderOpen } from 'lucide-react'
 import { Button } from '@/popup/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/popup/components/ui/dialog'
 import type { ExistingBackupInfo } from '@/lib/sync/sync-manager'
+import { formatBackupTime } from './utils/format-backup-time'
 
 interface RestoreDecisionModalProps {
   open: boolean
@@ -11,21 +12,6 @@ interface RestoreDecisionModalProps {
   onContinue: () => void
   onReselect: () => void
   existingBackup: ExistingBackupInfo
-}
-
-/**
- * Format backup time to readable string
- */
-function formatBackupTime(isoTime: string | undefined): string {
-  if (!isoTime) return '未知时间'
-  const date = new Date(isoTime)
-  return date.toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
 }
 
 /**

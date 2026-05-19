@@ -6,9 +6,11 @@ import { BackupStatusRow } from './BackupStatusRow'
 import { BackupMoreOptions } from './BackupMoreOptions'
 import { AuthModal } from '@/sidepanel/components/CloudSync/AuthModal'
 import { MergePreviewModal, MergePreviewData } from './MergePreviewModal'
+import { HistoryModal } from './HistoryModal'
 import { signOut } from '@/lib/cloud-sync/auth-service'
-import { changeSyncFolder, enableSync } from '@/lib/sync/sync-manager'
+import { changeSyncFolder, enableSync, getBackupVersions, restoreFromBackup } from '@/lib/sync/sync-manager'
 import type { BackupStatusStorage, UnifiedSyncStatus } from '@/lib/sync/types'
+import type { BackupVersion } from '@/lib/sync/file-sync'
 import { MessageType } from '@oh-my-prompt/shared/messages'
 
 /**
@@ -61,6 +63,9 @@ export function BackupSection() {
   const [diffModalOpen, setDiffModalOpen] = useState(false)
   const [diffPreview, setDiffPreview] = useState<MergePreviewData | null>(null)
   const [diffLoading, setDiffLoading] = useState(false)
+  const [historyModalOpen, setHistoryModalOpen] = useState(false)
+  const [historyVersions, setHistoryVersions] = useState<BackupVersion[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
 
   /**
    * Load backup status from service worker
@@ -233,11 +238,42 @@ export function BackupSection() {
   }
 
   /**
-   * Handle view backup history (placeholder - will be implemented in future phases)
+   * Load backup versions for history modal
+   */
+  const loadBackupVersions = useCallback(async () => {
+    setHistoryLoading(true)
+    try {
+      const result = await getBackupVersions()
+      if (result.error) {
+        setError(result.error)
+      } else {
+        setHistoryVersions(result.versions)
+      }
+    } catch (err) {
+      console.error('[Oh My Prompt] Failed to load backup versions:', err)
+      setError('加载备份历史失败')
+    } finally {
+      setHistoryLoading(false)
+    }
+  }, [])
+
+  /**
+   * Handle view backup history - open history modal
    */
   const handleViewHistory = () => {
-    // TODO: Open history modal or navigate to history view
-    console.log('[Oh My Prompt] View history clicked - not yet implemented')
+    setHistoryModalOpen(true)
+  }
+
+  /**
+   * Handle restore from backup version
+   */
+  const handleRestoreFromBackup = async (filename: string): Promise<{ success: boolean; error?: string }> => {
+    const result = await restoreFromBackup(filename, true)
+    if (result.success) {
+      setSuccess('数据已恢复')
+      await loadBackupStatus()
+    }
+    return result
   }
 
   /**
@@ -436,6 +472,16 @@ export function BackupSection() {
         preview={diffPreview}
         onConfirm={handleConfirmMerge}
         loading={diffLoading}
+      />
+
+      {/* History Modal for viewing backup versions */}
+      <HistoryModal
+        open={historyModalOpen}
+        onClose={() => setHistoryModalOpen(false)}
+        versions={historyVersions}
+        loading={historyLoading}
+        onLoadVersions={loadBackupVersions}
+        onRestore={handleRestoreFromBackup}
       />
     </div>
   )

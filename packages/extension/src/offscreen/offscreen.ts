@@ -21,6 +21,9 @@ import { IMAGE_DIR_NAME, ALLOWED_IMAGE_EXTENSIONS } from '@oh-my-prompt/shared/c
 // IndexedDB operations are async, so we cache the handle for gesture-preserving permission requests
 let _cachedFolderHandle: FileSystemDirectoryHandle | null = null
 
+// Track initialization completion status (synchronous check)
+let _initComplete = false
+
 // Track initialization promise
 let _initPromise: Promise<void> | null = null
 
@@ -75,7 +78,11 @@ async function initialize(): Promise<void> {
   }
 
 // Start initialization immediately
-_initPromise = initialize()
+_initPromise = initialize().then(() => {
+  _initComplete = true
+}).catch(() => {
+  _initComplete = true // Still mark as complete even on failure
+})
 
 /**
  * Fallback permission request when handle not cached
@@ -111,11 +118,21 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   switch (message.type) {
     // Handle PING for readiness check
     case MessageType.OFFSCREEN_PING:
-      // Wait for initialization to complete before responding
-      // Return success only if init completed (handle cached or no folder configured)
-      // Return failure if init is still pending or failed
+      // Check init completion synchronously first (after init finishes, promise may be null)
+      if (_initComplete) {
+        const handle = getCachedFolderHandle()
+        if (handle) {
+          console.log('[Oh My Prompt] PING: init complete, handle cached')
+          sendResponse({ success: true, data: 'pong', handleCached: true })
+        } else {
+          console.log('[Oh My Prompt] PING: init complete, no handle (folder not configured)')
+          sendResponse({ success: true, data: 'pong', handleCached: false })
+        }
+        return true
+      }
+
+      // Init still running - wait for completion
       _initPromise?.then(() => {
-        // Init completed - check if handle is cached
         const handle = getCachedFolderHandle()
         if (handle) {
           console.log('[Oh My Prompt] PING: init complete, handle cached')
@@ -125,7 +142,6 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           sendResponse({ success: true, data: 'pong', handleCached: false })
         }
       }).catch(() => {
-        // Init failed - still respond but indicate failure
         console.warn('[Oh My Prompt] PING: init failed')
         sendResponse({ success: true, data: 'pong', handleCached: false })
       })

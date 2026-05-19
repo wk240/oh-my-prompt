@@ -7,11 +7,15 @@ import { BackupMoreOptions } from './BackupMoreOptions'
 import { AuthModal } from '@/sidepanel/components/CloudSync/AuthModal'
 import { MergePreviewModal, MergePreviewData } from './MergePreviewModal'
 import { HistoryModal } from './HistoryModal'
+import { RestoreDecisionModal } from './RestoreDecisionModal'
+import { MergeConflictModal, MergeResult } from './MergeConflictModal'
 import { signOut } from '@/lib/cloud-sync/auth-service'
 import { changeSyncFolder, enableSync, getBackupVersions, restoreFromBackup } from '@/lib/sync/sync-manager'
+import type { ExistingBackupInfo } from '@/lib/sync/sync-manager'
 import type { BackupStatusStorage, UnifiedSyncStatus } from '@/lib/sync/types'
 import type { BackupVersion } from '@/lib/sync/file-sync'
 import { MessageType } from '@oh-my-prompt/shared/messages'
+import { BACKUP_FILE_NAME } from '@oh-my-prompt/shared/constants'
 
 /**
  * Transform UnifiedSyncStatus to BackupStatusStorage
@@ -67,6 +71,15 @@ export function BackupSection() {
   const [historyVersions, setHistoryVersions] = useState<BackupVersion[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyError, setHistoryError] = useState<string | null>(null)
+
+  // Restore decision modal state (Step 1)
+  const [decisionModalOpen, setDecisionModalOpen] = useState(false)
+  const [existingBackup, setExistingBackup] = useState<ExistingBackupInfo | null>(null)
+
+  // Merge conflict modal state (Step 2)
+  const [conflictModalOpen, setConflictModalOpen] = useState(false)
+  const [currentDataInfo, setCurrentDataInfo] = useState<{ promptCount: number; categoryCount: number } | null>(null)
+  const [backupDataInfo, setBackupDataInfo] = useState<{ promptCount: number; categoryCount: number; backupTime: string } | null>(null)
 
   /**
    * Load backup status from service worker
@@ -201,7 +214,13 @@ export function BackupSection() {
     try {
       const result = await changeSyncFolder()
       if (result.success) {
-        setSuccess('文件夹已更换')
+        if (result.existingBackup?.hasBackup) {
+          // 有备份数据，打开第一步对话框
+          setExistingBackup(result.existingBackup)
+          setDecisionModalOpen(true)
+        } else {
+          setSuccess('文件夹已更换')
+        }
         await loadBackupStatus()
       } else {
         setError(result.error || '更换文件夹失败')
@@ -225,7 +244,13 @@ export function BackupSection() {
     try {
       const result = await enableSync()
       if (result.success) {
-        setSuccess('备份已启用')
+        if (result.existingBackup?.hasBackup) {
+          // 有备份数据，打开第一步对话框
+          setExistingBackup(result.existingBackup)
+          setDecisionModalOpen(true)
+        } else {
+          setSuccess('备份已启用')
+        }
         await loadBackupStatus()
       } else {
         setError(result.error || '选择文件夹失败')
@@ -258,6 +283,21 @@ export function BackupSection() {
       setHistoryLoading(false)
     }
   }, [])
+
+  /**
+   * Get current data info for conflict detection
+   */
+  const getCurrentDataInfo = async (): Promise<{ promptCount: number; categoryCount: number }> => {
+    const response = await chrome.runtime.sendMessage({ type: MessageType.GET_STORAGE })
+    if (response?.success && response.data) {
+      const userData = response.data.userData
+      return {
+        promptCount: userData?.prompts?.length || 0,
+        categoryCount: userData?.categories?.length || 0,
+      }
+    }
+    return { promptCount: 0, categoryCount: 0 }
+  }
 
   /**
    * Handle view backup history - open history modal and load versions
@@ -375,6 +415,105 @@ export function BackupSection() {
     }
   }
 
+  /**
+   * Handle decision modal restore action
+   */
+  const handleDecisionRestore = async () => {
+    // 获取当前数据信息
+    const currentInfo = await getCurrentDataInfo()
+
+    // 检测是否存在冲突（当前有数据）
+    if (currentInfo.promptCount > 0 || currentInfo.categoryCount > 0) {
+      // 有冲突，打开第二步对话框
+      setCurrentDataInfo(currentInfo)
+      setBackupDataInfo({
+        promptCount: existingBackup!.promptCount || 0,
+        categoryCount: existingBackup!.categoryCount || 0,
+        backupTime: existingBackup!.backupTime || '',
+      })
+      setDecisionModalOpen(false)
+      setConflictModalOpen(true)
+    } else {
+      // 无冲突，直接恢复
+      setLoading(true)
+      try {
+        const result = await restoreFromBackup(BACKUP_FILE_NAME, false, 'replace')
+        if (result.success) {
+          setDecisionModalOpen(false)
+          setExistingBackup(null)
+          setSuccess('数据已恢复')
+          await loadBackupStatus()
+        } else {
+          setError(result.error || '恢复失败')
+        }
+      } catch (err) {
+        console.error('[Oh My Prompt] Restore failed:', err)
+        setError('恢复失败')
+      } finally {
+        setLoading(false)
+      }
+    }
+  }
+
+  /**
+   * Handle decision modal continue action
+   */
+  const handleDecisionContinue = () => {
+    setDecisionModalOpen(false)
+    setExistingBackup(null)
+    setSuccess('备份已启用，当前数据优先')
+  }
+
+  /**
+   * Handle decision modal reselect action
+   */
+  const handleDecisionReselect = () => {
+    setDecisionModalOpen(false)
+    setExistingBackup(null)
+    // 不设置 success，允许用户重新选择
+  }
+
+  /**
+   * Handle merge data action (from conflict modal)
+   */
+  const handleMergeData = async (): Promise<MergeResult> => {
+    const result = await restoreFromBackup(BACKUP_FILE_NAME, false, 'merge')
+    if (result.success) {
+      setSuccess(`合并完成：新增 ${result.addedCount || 0} 条，更新 ${result.updatedCount || 0} 条`)
+      await loadBackupStatus()
+    }
+    return {
+      success: result.success,
+      addedCount: result.addedCount || 0,
+      updatedCount: result.updatedCount || 0,
+      addedCategories: result.addedCategories || 0,
+      error: result.error,
+    }
+  }
+
+  /**
+   * Handle replace data action (from conflict modal)
+   */
+  const handleReplaceData = async (): Promise<{ success: boolean; error?: string }> => {
+    const result = await restoreFromBackup(BACKUP_FILE_NAME, false, 'replace')
+    if (result.success) {
+      setConflictModalOpen(false)
+      setSuccess('数据已恢复')
+      await loadBackupStatus()
+    }
+    return result
+  }
+
+  /**
+   * Handle conflict modal close
+   */
+  const handleConflictClose = () => {
+    setConflictModalOpen(false)
+    setCurrentDataInfo(null)
+    setBackupDataInfo(null)
+    setExistingBackup(null)
+  }
+
   return (
     <div className="w-full p-4">
       <div className="w-full p-4 bg-white rounded-lg border border-gray-200">
@@ -490,6 +629,29 @@ export function BackupSection() {
         loading={historyLoading}
         error={historyError}
         onRestore={handleRestoreFromBackup}
+      />
+
+      {/* Restore Decision Modal - Step 1 */}
+      <RestoreDecisionModal
+        open={decisionModalOpen}
+        onClose={() => {
+          setDecisionModalOpen(false)
+          setExistingBackup(null)
+        }}
+        onRestore={handleDecisionRestore}
+        onContinue={handleDecisionContinue}
+        onReselect={handleDecisionReselect}
+        existingBackup={existingBackup!}
+      />
+
+      {/* Merge Conflict Modal - Step 2 */}
+      <MergeConflictModal
+        open={conflictModalOpen}
+        onClose={handleConflictClose}
+        currentData={currentDataInfo!}
+        backupData={backupDataInfo!}
+        onMerge={handleMergeData}
+        onReplace={handleReplaceData}
       />
       </div>
     </div>

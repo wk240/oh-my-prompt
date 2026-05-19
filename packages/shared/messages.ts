@@ -94,6 +94,7 @@ export enum MessageType {
   GET_UNIFIED_SYNC_STATUS = 'GET_UNIFIED_SYNC_STATUS',  // Get unified sync status from service worker
   UPLOAD_LOCAL_ONLY = 'UPLOAD_LOCAL_ONLY',  // Upload local-only items to cloud
   DOWNLOAD_AND_MERGE = 'DOWNLOAD_AND_MERGE',  // Download cloud data and merge with local
+  PREVIEW_MERGE = 'PREVIEW_MERGE',  // Preview merge diff without actually merging
 
   // Backup progress notifications (transparent auto-backup)
   BACKUP_PROGRESS = 'BACKUP_PROGRESS',  // SW → UI: Notify backup in progress

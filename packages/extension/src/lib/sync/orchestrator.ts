@@ -335,6 +335,181 @@ export class SyncOrchestrator {
   }
 
   /**
+   * Preview merge diff without actually merging.
+   * Returns counts and change details for UI display.
+   */
+  async previewMerge(): Promise<{
+    cloudCount: { prompts: number; categories: number; temporaryPrompts: number }
+    localCount: { prompts: number; categories: number; temporaryPrompts: number }
+    mergedCount: { prompts: number; categories: number; temporaryPrompts: number }
+    changes: {
+      addToLocal: number    // New items from cloud to add locally (cloud-only)
+      addToCloud: number    // New local items to upload (local-only)
+      updateToLocal: number // Cloud items newer than local
+      updateToCloud: number // Local items newer than cloud
+      conflicts: number     // Items with same updatedAt timestamp
+    }
+    cloudOnlyItems: {
+      prompts: Array<{ id: string; name: string; updatedAt?: number }>
+      categories: Array<{ id: string; name: string; updatedAt?: number }>
+      temporaryPrompts: Array<{ id: string; name: string; updatedAt?: number }>
+    }
+    localOnlyItems: {
+      prompts: Array<{ id: string; name: string; updatedAt?: number }>
+      categories: Array<{ id: string; name: string; updatedAt?: number }>
+      temporaryPrompts: Array<{ id: string; name: string; updatedAt?: number }>
+    }
+    conflicts: Array<{ type: 'prompt' | 'category' | 'temporaryPrompt'; cloud: { id: string; name: string; updatedAt?: number }; local: { id: string; name: string; updatedAt?: number } }>
+  }> {
+    const cloudData = await this.cloudStrategy.restore()
+    const localData = await this.getLocalData()
+
+    if (!cloudData) {
+      // No cloud data - everything is local-only
+      return {
+        cloudCount: { prompts: 0, categories: 0, temporaryPrompts: 0 },
+        localCount: {
+          prompts: localData.prompts.length,
+          categories: localData.categories.length,
+          temporaryPrompts: localData.temporaryPrompts.length
+        },
+        mergedCount: {
+          prompts: localData.prompts.length,
+          categories: localData.categories.length,
+          temporaryPrompts: localData.temporaryPrompts.length
+        },
+        changes: {
+          addToLocal: 0,
+          addToCloud: localData.prompts.length + localData.categories.length + localData.temporaryPrompts.length,
+          updateToLocal: 0,
+          updateToCloud: 0,
+          conflicts: 0
+        },
+        cloudOnlyItems: { prompts: [], categories: [], temporaryPrompts: [] },
+        localOnlyItems: {
+          prompts: localData.prompts.map(p => ({ id: p.id, name: p.name, updatedAt: p.updatedAt })),
+          categories: localData.categories.map(c => ({ id: c.id, name: c.name, updatedAt: c.updatedAt })),
+          temporaryPrompts: localData.temporaryPrompts.map(p => ({ id: p.id, name: p.name, updatedAt: p.updatedAt }))
+        },
+        conflicts: []
+      }
+    }
+
+    // Perform merge preview (without applying changes)
+    const promptMerge = this.mergeBidirectional(
+      cloudData.prompts.map(p => ({ ...p, updatedAt: p.updatedAt || 0 })),
+      localData.prompts.map(p => ({ ...p, updatedAt: p.updatedAt || 0 }))
+    )
+
+    const categoryMerge = this.mergeBidirectional(
+      cloudData.categories.map(c => ({ ...c, updatedAt: c.updatedAt || 0 })),
+      localData.categories.map(c => ({ ...c, updatedAt: c.updatedAt || 0 }))
+    )
+
+    const tempMerge = this.mergeBidirectional(
+      cloudData.temporaryPrompts.map(p => ({ ...p, updatedAt: p.updatedAt || 0 })),
+      localData.temporaryPrompts.map(p => ({ ...p, updatedAt: p.updatedAt || 0 }))
+    )
+
+    // Calculate update counts (items newer on one side)
+    const promptUpdates = this.countUpdates(
+      cloudData.prompts.map(p => ({ ...p, updatedAt: p.updatedAt || 0 })),
+      localData.prompts.map(p => ({ ...p, updatedAt: p.updatedAt || 0 }))
+    )
+
+    const categoryUpdates = this.countUpdates(
+      cloudData.categories.map(c => ({ ...c, updatedAt: c.updatedAt || 0 })),
+      localData.categories.map(c => ({ ...c, updatedAt: c.updatedAt || 0 }))
+    )
+
+    const tempUpdates = this.countUpdates(
+      cloudData.temporaryPrompts.map(p => ({ ...p, updatedAt: p.updatedAt || 0 })),
+      localData.temporaryPrompts.map(p => ({ ...p, updatedAt: p.updatedAt || 0 }))
+    )
+
+    return {
+      cloudCount: {
+        prompts: cloudData.prompts.length,
+        categories: cloudData.categories.length,
+        temporaryPrompts: cloudData.temporaryPrompts.length
+      },
+      localCount: {
+        prompts: localData.prompts.length,
+        categories: localData.categories.length,
+        temporaryPrompts: localData.temporaryPrompts.length
+      },
+      mergedCount: {
+        prompts: promptMerge.merged.length,
+        categories: categoryMerge.merged.length,
+        temporaryPrompts: tempMerge.merged.length
+      },
+      changes: {
+        addToLocal: promptMerge.cloudOnly.length + categoryMerge.cloudOnly.length + tempMerge.cloudOnly.length,
+        addToCloud: promptMerge.localOnly.length + categoryMerge.localOnly.length + tempMerge.localOnly.length,
+        updateToLocal: promptUpdates.cloudNewer + categoryUpdates.cloudNewer + tempUpdates.cloudNewer,
+        updateToCloud: promptUpdates.localNewer + categoryUpdates.localNewer + tempUpdates.localNewer,
+        conflicts: promptMerge.conflicts.length + categoryMerge.conflicts.length + tempMerge.conflicts.length
+      },
+      cloudOnlyItems: {
+        prompts: promptMerge.cloudOnly.map(p => ({ id: p.id, name: p.name, updatedAt: p.updatedAt })),
+        categories: categoryMerge.cloudOnly.map(c => ({ id: c.id, name: c.name, updatedAt: c.updatedAt })),
+        temporaryPrompts: tempMerge.cloudOnly.map(p => ({ id: p.id, name: p.name, updatedAt: p.updatedAt }))
+      },
+      localOnlyItems: {
+        prompts: promptMerge.localOnly.map(p => ({ id: p.id, name: p.name, updatedAt: p.updatedAt })),
+        categories: categoryMerge.localOnly.map(c => ({ id: c.id, name: c.name, updatedAt: c.updatedAt })),
+        temporaryPrompts: tempMerge.localOnly.map(p => ({ id: p.id, name: p.name, updatedAt: p.updatedAt }))
+      },
+      conflicts: [
+        ...promptMerge.conflicts.map(c => ({
+          type: 'prompt' as const,
+          cloud: { id: c.cloud.id, name: c.cloud.name, updatedAt: c.cloud.updatedAt },
+          local: { id: c.local.id, name: c.local.name, updatedAt: c.local.updatedAt }
+        })),
+        ...categoryMerge.conflicts.map(c => ({
+          type: 'category' as const,
+          cloud: { id: c.cloud.id, name: c.cloud.name, updatedAt: c.cloud.updatedAt },
+          local: { id: c.local.id, name: c.local.name, updatedAt: c.local.updatedAt }
+        })),
+        ...tempMerge.conflicts.map(c => ({
+          type: 'temporaryPrompt' as const,
+          cloud: { id: c.cloud.id, name: c.cloud.name, updatedAt: c.cloud.updatedAt },
+          local: { id: c.local.id, name: c.local.name, updatedAt: c.local.updatedAt }
+        }))
+      ]
+    }
+  }
+
+  /**
+   * Count items where cloud or local version is newer.
+   */
+  private countUpdates<T extends { id: string; updatedAt?: number }>(
+    cloud: T[],
+    local: T[]
+  ): { cloudNewer: number; localNewer: number } {
+    const cloudMap = new Map(cloud.map(item => [item.id, item]))
+    const localMap = new Map(local.map(item => [item.id, item]))
+
+    let cloudNewer = 0
+    let localNewer = 0
+
+    for (const [id, cloudItem] of cloudMap) {
+      const localItem = localMap.get(id)
+      if (localItem) {
+        const cloudUpdated = cloudItem.updatedAt || 0
+        const localUpdated = localItem.updatedAt || 0
+        if (cloudUpdated > localUpdated) {
+          cloudNewer++
+        } else if (localUpdated > cloudUpdated) {
+          localNewer++
+        }
+      }
+    }
+
+    return { cloudNewer, localNewer }
+  }
+
+  /**
    * Download from cloud and merge with local.
    * Now uses bidirectional merge (keeps latest version based on updatedAt).
    */

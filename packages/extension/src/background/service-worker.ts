@@ -403,6 +403,18 @@ chrome.runtime.onMessage.addListener(
           })
         return true // Required for async response
 
+      case MessageType.PREVIEW_MERGE:
+        // Preview merge diff without actually merging (called from sidepanel)
+        syncOrchestrator.previewMerge()
+          .then(result => {
+            sendResponse({ success: true, data: result } as MessageResponse)
+          })
+          .catch(error => {
+            console.error('[Oh My Prompt] PREVIEW_MERGE error:', error)
+            sendResponse({ success: false, error: String(error) })
+          })
+        return true // Required for async response
+
       case MessageType.TRIGGER_SYNC:
         // Trigger sync (called from sidepanel) - use syncOrchestrator for cloud + local sync
         // triggerSync now returns result directly, no need for extra getStatus calls

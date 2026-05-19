@@ -5,6 +5,7 @@ import { Button } from '@/popup/components/ui/button'
 import { BackupStatusRow } from './BackupStatusRow'
 import { BackupMoreOptions } from './BackupMoreOptions'
 import { AuthModal } from '@/sidepanel/components/CloudSync/AuthModal'
+import { MergePreviewModal, MergePreviewData } from './MergePreviewModal'
 import { signOut } from '@/lib/cloud-sync/auth-service'
 import { changeSyncFolder, enableSync } from '@/lib/sync/sync-manager'
 import type { BackupStatusStorage, UnifiedSyncStatus } from '@/lib/sync/types'
@@ -57,6 +58,9 @@ export function BackupSection() {
   const [success, setSuccess] = useState<string | null>(null)
   const [showMoreOptions, setShowMoreOptions] = useState(false)
   const [authModalOpen, setAuthModalOpen] = useState(false)
+  const [diffModalOpen, setDiffModalOpen] = useState(false)
+  const [diffPreview, setDiffPreview] = useState<MergePreviewData | null>(null)
+  const [diffLoading, setDiffLoading] = useState(false)
 
   /**
    * Load backup status from service worker
@@ -261,11 +265,51 @@ export function BackupSection() {
   }
 
   /**
-   * Handle view diff (placeholder - will be implemented in future phases)
+   * Handle view diff - show modal comparing cloud vs local data
    */
-  const handleViewDiff = () => {
-    // TODO: Open diff modal showing cloud vs local data differences
-    console.log('[Oh My Prompt] View diff clicked - not yet implemented')
+  const handleViewDiff = async () => {
+    setDiffLoading(true)
+    setError(null)
+
+    try {
+      const response = await chrome.runtime.sendMessage({ type: MessageType.PREVIEW_MERGE })
+      if (response?.success && response.data) {
+        setDiffPreview(response.data as MergePreviewData)
+        setDiffModalOpen(true)
+      } else {
+        setError(response?.error || '获取差异失败')
+      }
+    } catch (err) {
+      console.error('[Oh My Prompt] Preview merge failed:', err)
+      setError('获取差异失败')
+    } finally {
+      setDiffLoading(false)
+    }
+  }
+
+  /**
+   * Handle confirm merge from diff modal
+   */
+  const handleConfirmMerge = async () => {
+    setDiffModalOpen(false)
+    setLoading(true)
+    setError(null)
+    setSuccess(null)
+
+    try {
+      const response = await chrome.runtime.sendMessage({ type: MessageType.DOWNLOAD_AND_MERGE })
+      if (response?.success) {
+        setSuccess('合并成功')
+        await loadBackupStatus()
+      } else {
+        setError(response?.error || '合并失败')
+      }
+    } catch (err) {
+      console.error('[Oh My Prompt] Merge from cloud failed:', err)
+      setError('合并失败')
+    } finally {
+      setLoading(false)
+    }
   }
 
   /**
@@ -383,6 +427,15 @@ export function BackupSection() {
         open={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
         onSuccess={handleAuthSuccess}
+      />
+
+      {/* Merge Preview Modal for viewing cloud vs local diff */}
+      <MergePreviewModal
+        open={diffModalOpen}
+        onClose={() => setDiffModalOpen(false)}
+        preview={diffPreview}
+        onConfirm={handleConfirmMerge}
+        loading={diffLoading}
       />
     </div>
   )

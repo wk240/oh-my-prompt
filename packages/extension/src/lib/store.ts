@@ -403,7 +403,8 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
     const newPrompt: Prompt = {
       ...prompt,
       id: generateId(),
-      order: maxOrder + 1
+      order: maxOrder + 1,
+      updatedAt: Date.now()
     }
     set((state) => ({
       prompts: [...state.prompts, newPrompt]
@@ -416,7 +417,7 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
   updatePrompt: (id: string, updates: Partial<Prompt>) => {
     set((state) => ({
       prompts: state.prompts.map((prompt) =>
-        prompt.id === id ? { ...prompt, ...updates } : prompt
+        prompt.id === id ? { ...prompt, ...updates, updatedAt: Date.now() } : prompt
       )
     }))
     // Debounced save - batches rapid updates
@@ -437,7 +438,8 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
     const newCategory: Category = {
       id: generateId(),
       name,
-      order: categories.length
+      order: categories.length,
+      updatedAt: Date.now()
     }
     set((state) => ({
       categories: [...state.categories, newCategory]
@@ -449,7 +451,7 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
   updateCategory: (id: string, name: string) => {
     set((state) => ({
       categories: state.categories.map((cat) =>
-        cat.id === id ? { ...cat, name } : cat
+        cat.id === id ? { ...cat, name, updatedAt: Date.now() } : cat
       )
     }))
     // Debounced save - batches rapid updates
@@ -480,7 +482,8 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
     set((state) => {
       const updatedCategories = state.categories.map((cat) => ({
         ...cat,
-        order: newOrder.indexOf(cat.id)
+        order: newOrder.indexOf(cat.id),
+        updatedAt: Date.now()
       }))
       return { categories: updatedCategories }
     })
@@ -495,7 +498,8 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
         if (prompt.categoryId === categoryId) {
           return {
             ...prompt,
-            order: newOrder.indexOf(prompt.id)
+            order: newOrder.indexOf(prompt.id),
+            updatedAt: Date.now()
           }
         }
         return prompt
@@ -514,7 +518,8 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
         if (newIndex !== -1) {
           return {
             ...prompt,
-            order: newIndex
+            order: newIndex,
+            updatedAt: Date.now()
           }
         }
         return prompt
@@ -563,6 +568,7 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
     // Update prompt for transfer
     promptToTransfer.categoryId = categoryId
     promptToTransfer.order = maxOrder + 1
+    promptToTransfer.updatedAt = Date.now()
 
     // Remove from temporary and add to prompts locally
     const updatedTemporaryPrompts = temporaryPrompts.filter(p => p.id !== promptId)

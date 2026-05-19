@@ -132,7 +132,10 @@ export async function getAuthState(): Promise<CloudAuthState> {
     return {
       status: 'logged_in',
       user: statusData.user,
-      subscription: statusData.subscription,
+      subscription: {
+        ...statusData.subscription,
+        optimizationQuota: statusData.optimizationQuota
+      },
       lastSyncAt: statusData.lastSyncedAt
     }
   } catch (error) {

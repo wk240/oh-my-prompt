@@ -375,6 +375,34 @@ chrome.runtime.onMessage.addListener(
           })
         return true // Required for async response
 
+      case MessageType.DOWNLOAD_AND_MERGE:
+        // Download cloud data and merge with local (called from sidepanel)
+        syncOrchestrator.downloadAndMerge()
+          .then(result => {
+            // Broadcast REFRESH_DATA to all content scripts
+            chrome.tabs.query({}, (tabs) => {
+              tabs.forEach(tab => {
+                if (tab.id !== undefined && tab.id >= 0) {
+                  chrome.tabs.sendMessage(tab.id, { type: MessageType.REFRESH_DATA })
+                    .catch(() => { /* Ignore errors */ })
+                }
+              })
+            })
+            sendResponse({
+              success: true,
+              data: {
+                promptsCount: result.data.prompts.length,
+                categoriesCount: result.data.categories.length,
+                localOnlyCount: result.localOnlyItems.prompts.length + result.localOnlyItems.categories.length
+              }
+            } as MessageResponse)
+          })
+          .catch(error => {
+            console.error('[Oh My Prompt] DOWNLOAD_AND_MERGE error:', error)
+            sendResponse({ success: false, error: String(error) })
+          })
+        return true // Required for async response
+
       case MessageType.TRIGGER_SYNC:
         // Trigger sync (called from sidepanel) - use syncOrchestrator for cloud + local sync
         // triggerSync now returns result directly, no need for extra getStatus calls

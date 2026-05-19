@@ -93,6 +93,7 @@ export enum MessageType {
   // Unified sync status (Sidepanel → SW)
   GET_UNIFIED_SYNC_STATUS = 'GET_UNIFIED_SYNC_STATUS',  // Get unified sync status from service worker
   UPLOAD_LOCAL_ONLY = 'UPLOAD_LOCAL_ONLY',  // Upload local-only items to cloud
+  DOWNLOAD_AND_MERGE = 'DOWNLOAD_AND_MERGE',  // Download cloud data and merge with local
 
   // Official Vision API
   GET_VISION_QUOTA = 'GET_VISION_QUOTA',           // 获取 Vision 额度状态

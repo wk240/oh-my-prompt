@@ -253,7 +253,6 @@ export function UnifiedSyncSection() {
 
   /**
    * Handle download and merge from cloud
-   * Note: This still needs orchestrator in service worker for complex merge logic
    */
   const handleDownloadAndMerge = async () => {
     setLoading(true)
@@ -261,18 +260,13 @@ export function UnifiedSyncSection() {
     setSuccess(null)
 
     try {
-      // Get current storage data
-      const storageResponse = await chrome.runtime.sendMessage({ type: MessageType.GET_STORAGE })
-      if (!storageResponse?.success || !storageResponse.data) {
-        setError('获取数据失败')
-        setLoading(false)
-        return
+      const response = await chrome.runtime.sendMessage({ type: MessageType.DOWNLOAD_AND_MERGE })
+      if (response?.success) {
+        setSuccess('下载成功')
+        await loadStatus()
+      } else {
+        setError(response?.error || '下载失败')
       }
-
-      // For now, show a message that this feature needs to be implemented
-      // TODO: Add DOWNLOAD_AND_MERGE message type in service worker
-      setSuccess('下载功能开发中，请稍后')
-      await loadStatus()
     } catch (err) {
       console.error('[Oh My Prompt] Download and merge failed:', err)
       setError('下载失败')

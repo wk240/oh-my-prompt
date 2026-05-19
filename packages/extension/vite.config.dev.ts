@@ -60,8 +60,11 @@ export default defineConfig({
   resolve: {
     ...baseConfig.resolve,
     alias: {
-      ...baseConfig.resolve.alias,
+      // Note: '@/lib/config' must come BEFORE the spread of baseConfig.resolve.alias
+      // because Vite resolves aliases in order. The '@' alias in baseConfig would
+      // match '@/lib/config' first if it comes before this specific alias.
       '@/lib/config': resolve(__dirname, './src/lib/config.dev.ts'),
+      ...baseConfig.resolve.alias,
     },
   },
 })

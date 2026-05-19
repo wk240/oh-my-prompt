@@ -57,18 +57,21 @@ export default function SettingsView({ onBack }: SettingsViewProps) {
       </div>
 
       {/* Tab Content - Scrollable with full width */}
+      {/* Keep all tabs mounted but hidden to avoid re-querying on tab switch */}
       <div className="flex-1 w-full overflow-y-auto">
-        {activeTab === 'sync' && <UnifiedSyncSection />}
-        {activeTab === 'vision' && (
+        <div className={activeTab === 'sync' ? 'block' : 'hidden'}>
+          <UnifiedSyncSection />
+        </div>
+        <div className={activeTab === 'vision' ? 'block' : 'hidden'}>
           <Suspense fallback={<LoadingSpinner className="py-8" />}>
             <VisionSection />
           </Suspense>
-        )}
-        {activeTab === 'import-export' && (
+        </div>
+        <div className={activeTab === 'import-export' ? 'block' : 'hidden'}>
           <Suspense fallback={<LoadingSpinner className="py-8" />}>
             <ImportExportSection />
           </Suspense>
-        )}
+        </div>
       </div>
     </div>
   )

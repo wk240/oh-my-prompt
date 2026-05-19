@@ -81,7 +81,23 @@ export function BackupSection() {
   const [backupDataInfo, setBackupDataInfo] = useState<{ promptCount: number; categoryCount: number; backupTime: string } | null>(null)
 
   /**
-   * Load backup status from service worker
+   * Load cached syncStatus from storage.local (instant, no network request).
+   * Used for initial display to avoid waiting for slow network calls.
+   */
+  const loadCachedStatus = useCallback(async () => {
+    try {
+      const result = await chrome.storage.local.get('syncStatus')
+      if (result.syncStatus) {
+        setStatus(transformUnifiedToBackup(result.syncStatus))
+      }
+    } catch (err) {
+      console.warn('[Oh My Prompt] Failed to load cached syncStatus:', err)
+    }
+  }, [])
+
+  /**
+   * Refresh backup status from service worker (network request).
+   * Called after cached status is displayed for async update.
    */
   const loadBackupStatus = useCallback(async () => {
     try {
@@ -99,10 +115,11 @@ export function BackupSection() {
     }
   }, [])
 
-  // Load status on mount
+  // Load cached status first (instant), then async refresh from network
   useEffect(() => {
+    loadCachedStatus()
     loadBackupStatus()
-  }, [loadBackupStatus])
+  }, [loadCachedStatus, loadBackupStatus])
 
   // Auto-dismiss messages after 3 seconds
   useEffect(() => {

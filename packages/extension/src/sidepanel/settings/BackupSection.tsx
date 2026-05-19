@@ -376,7 +376,8 @@ export function BackupSection() {
   }
 
   return (
-    <div className="w-full p-4 bg-white rounded-lg border border-gray-200">
+    <div className="w-full p-4">
+      <div className="w-full p-4 bg-white rounded-lg border border-gray-200">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-medium text-gray-900">数据备份</h3>
@@ -490,6 +491,7 @@ export function BackupSection() {
         error={historyError}
         onRestore={handleRestoreFromBackup}
       />
+      </div>
     </div>
   )
 }

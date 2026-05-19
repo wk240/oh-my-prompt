@@ -458,15 +458,27 @@ async function handleCheckPermission(): Promise<MessageResponse> {
 }
 
 async function handleListVersions(): Promise<MessageResponse> {
+  console.log('[Oh My Prompt] handleListVersions: starting...')
   const handle = await getFolderHandle()
   if (!handle) {
+    console.warn('[Oh My Prompt] handleListVersions: no folder handle')
     return { success: false, error: 'FOLDER_NOT_CONFIGURED' }
   }
 
+  // Check permission before reading files
+  const permission = await checkFolderPermission(handle, 'readwrite')
+  console.log('[Oh My Prompt] handleListVersions: permission=', permission)
+  if (permission !== 'granted') {
+    return { success: false, error: permission === 'denied' ? 'PERMISSION_DENIED' : 'PERMISSION_PROMPT' }
+  }
+
   try {
+    console.log('[Oh My Prompt] handleListVersions: calling listBackupVersions...')
     const versions = await listBackupVersions(handle)
+    console.log('[Oh My Prompt] handleListVersions: got versions count=', versions.length)
     return { success: true, data: versions }
   } catch (error) {
+    console.error('[Oh My Prompt] handleListVersions error:', error)
     return { success: false, error: 'READ_FAILED' }
   }
 }

@@ -287,10 +287,15 @@ export async function listBackupVersions(handle: FileSystemDirectoryHandle): Pro
   try {
     // Check latest.json
     try {
+      console.log('[Oh My Prompt] listBackupVersions: reading', BACKUP_FILE_NAME)
       const latestHandle = await handle.getFileHandle(BACKUP_FILE_NAME)
+      console.log('[Oh My Prompt] listBackupVersions: got file handle')
       const latestFile = await latestHandle.getFile()
+      console.log('[Oh My Prompt] listBackupVersions: got file, size=', latestFile.size)
       const content = await latestFile.text()
+      console.log('[Oh My Prompt] listBackupVersions: content length=', content.length)
       const parsed = JSON.parse(content)
+      console.log('[Oh My Prompt] listBackupVersions: parsed, backupTime=', parsed.backupTime, 'promptCount=', parsed.userData?.prompts?.length)
 
       versions.push({
         filename: BACKUP_FILE_NAME,
@@ -301,8 +306,9 @@ export async function listBackupVersions(handle: FileSystemDirectoryHandle): Pro
         isLatest: true,
         contentHash: parsed.contentHash
       })
-    } catch {
-      // latest.json not found
+    } catch (err) {
+      // latest.json read failed
+      console.warn('[Oh My Prompt] Failed to read latest backup file:', err)
     }
 
     // Check history files

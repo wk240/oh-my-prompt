@@ -10,7 +10,7 @@ interface HistoryModalProps {
   onClose: () => void
   versions: BackupVersion[]
   loading: boolean
-  onLoadVersions: () => void
+  error: string | null
   onRestore: (filename: string) => Promise<{ success: boolean; error?: string }>
 }
 
@@ -60,7 +60,7 @@ export function HistoryModal({
   onClose,
   versions,
   loading,
-  onLoadVersions,
+  error,
   onRestore
 }: HistoryModalProps) {
   const [selectedVersion, setSelectedVersion] = useState<BackupVersion | null>(null)
@@ -68,10 +68,11 @@ export function HistoryModal({
   const [restoreLoading, setRestoreLoading] = useState(false)
   const [restoreError, setRestoreError] = useState<string | null>(null)
 
-  // Load versions when modal opens
+  // Load versions when modal opens (only when user closes and reopens)
   const handleOpenChange = (isOpen: boolean) => {
     if (isOpen) {
-      onLoadVersions()
+      // Only load if not already open (prevents duplicate calls when parent sets open=true)
+      // Parent component calls onLoadVersions when opening modal via button click
     } else {
       // Reset state on close
       setSelectedVersion(null)
@@ -137,8 +138,18 @@ export function HistoryModal({
           </div>
         )}
 
-        {/* Empty state */}
-        {!loading && versions.length === 0 && (
+        {/* Error state */}
+        {!loading && error && (
+          <div className="py-8 text-center">
+            <div className="text-red-600 mb-3">{error}</div>
+            <Button variant="outline" onClick={onClose}>
+              关闭
+            </Button>
+          </div>
+        )}
+
+        {/* Empty state (no error) */}
+        {!loading && !error && versions.length === 0 && (
           <div className="py-8 text-center text-gray-500">
             暂无备份历史记录
           </div>

@@ -627,18 +627,36 @@ export async function restorePermission(): Promise<{ success: boolean; error?: s
  * Uses offscreen document for file operations
  */
 export async function getBackupVersions(): Promise<{ versions: BackupVersion[]; error?: string }> {
+  console.log('[Oh My Prompt] getBackupVersions: starting...')
   try {
     await ensureOffscreenDocument()
+    console.log('[Oh My Prompt] getBackupVersions: offscreen ready, sending message...')
     const result = await sendToOffscreen<BackupVersion[]>(MessageType.OFFSCREEN_LIST_VERSIONS)
+    console.log('[Oh My Prompt] getBackupVersions: result=', JSON.stringify(result))
 
     if (result.success && result.data) {
+      console.log('[Oh My Prompt] getBackupVersions: success, versions count=', result.data.length)
       return { versions: result.data }
     }
 
-    return { versions: [], error: result.error || '读取版本列表失败' }
+    // Convert technical errors to user-friendly messages
+    const errorCode = result.error || 'READ_FAILED'
+    console.warn('[Oh My Prompt] getBackupVersions: failed with error=', errorCode)
+    let errorMessage: string
+    if (errorCode === 'PERMISSION_PROMPT') {
+      errorMessage = '文件夹权限需要恢复，请点击"恢复权限"按钮'
+    } else if (errorCode === 'PERMISSION_DENIED') {
+      errorMessage = '文件夹权限被拒绝，请更换文件夹'
+    } else if (errorCode === 'FOLDER_NOT_CONFIGURED') {
+      errorMessage = '请先配置备份文件夹'
+    } else {
+      errorMessage = '读取备份历史失败'
+    }
+
+    return { versions: [], error: errorMessage }
   } catch (error) {
     console.error('[Oh My Prompt] Get backup versions failed:', error)
-    return { versions: [], error: '读取版本列表失败' }
+    return { versions: [], error: '读取备份历史失败' }
   }
 }
 

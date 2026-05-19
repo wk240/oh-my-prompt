@@ -32,7 +32,7 @@ interface BackupMoreOptionsProps {
  * Features:
  * - Emergency export warning when both cloud and local have failed
  * - Cloud backup options (expandable)
- * - Local backup options (expandable)
+ * - Local backup options (always expanded, no collapse)
  * - Multi-device sync options (expandable, only shown if cloud logged in)
  */
 export function BackupMoreOptions({
@@ -46,7 +46,6 @@ export function BackupMoreOptions({
   loading = false
 }: BackupMoreOptionsProps) {
   const [showCloudOptions, setShowCloudOptions] = useState(false)
-  const [showLocalOptions, setShowLocalOptions] = useState(false)
   const [showSyncOptions, setShowSyncOptions] = useState(false)
 
   if (!status) return null
@@ -137,59 +136,45 @@ export function BackupMoreOptions({
         </div>
       )}
 
-      {/* Local backup options (if enabled) */}
+      {/* Local backup options (if enabled) - always expanded */}
       {localEnabled && (
-        <div className="border border-gray-200 rounded-lg">
-          <button
-            onClick={() => setShowLocalOptions(!showLocalOptions)}
-            className="w-full flex items-center justify-between p-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-          >
-            <span className="flex items-center gap-2">
-              <FolderOpen className="w-4 h-4 text-gray-500" />
-              本地备份选项
-            </span>
-            {showLocalOptions ? (
-              <ChevronUp className="w-4 h-4 text-gray-400" />
-            ) : (
-              <ChevronDown className="w-4 h-4 text-gray-400" />
-            )}
-          </button>
+        <div className="p-3 border border-gray-200 rounded-lg space-y-3">
+          <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+            <FolderOpen className="w-4 h-4 text-gray-500" />
+            <span>本地备份选项</span>
+          </div>
 
-          {showLocalOptions && (
-            <div className="p-3 pt-0 space-y-3 border-t border-gray-100">
-              {status.local.folderName && (
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">文件夹</span>
-                  <span className="text-sm text-gray-500 truncate max-w-[140px]" title={status.local.folderName}>
-                    {status.local.folderName}
-                  </span>
-                </div>
-              )}
-
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onChangeFolder}
-                  disabled={loading}
-                  className="flex-1 h-9"
-                >
-                  <FolderOpen className="w-4 h-4" />
-                  更换文件夹
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onViewHistory}
-                  disabled={loading}
-                  className="flex-1 h-9"
-                >
-                  <History className="w-4 h-4" />
-                  查看历史
-                </Button>
-              </div>
+          {status.local.folderName && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">文件夹</span>
+              <span className="text-sm text-gray-500 truncate max-w-[140px]" title={status.local.folderName}>
+                {status.local.folderName}
+              </span>
             </div>
           )}
+
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onChangeFolder}
+              disabled={loading}
+              className="flex-1 h-9"
+            >
+              <FolderOpen className="w-4 h-4" />
+              更换文件夹
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onViewHistory}
+              disabled={loading}
+              className="flex-1 h-9"
+            >
+              <History className="w-4 h-4" />
+              查看历史
+            </Button>
+          </div>
         </div>
       )}
 

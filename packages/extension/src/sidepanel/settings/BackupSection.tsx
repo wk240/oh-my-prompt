@@ -66,6 +66,7 @@ export function BackupSection() {
   const [historyModalOpen, setHistoryModalOpen] = useState(false)
   const [historyVersions, setHistoryVersions] = useState<BackupVersion[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyError, setHistoryError] = useState<string | null>(null)
 
   /**
    * Load backup status from service worker
@@ -242,26 +243,29 @@ export function BackupSection() {
    */
   const loadBackupVersions = useCallback(async () => {
     setHistoryLoading(true)
+    setHistoryError(null) // Clear previous error
     try {
       const result = await getBackupVersions()
       if (result.error) {
-        setError(result.error)
+        setHistoryError(result.error)
       } else {
         setHistoryVersions(result.versions)
       }
     } catch (err) {
       console.error('[Oh My Prompt] Failed to load backup versions:', err)
-      setError('加载备份历史失败')
+      setHistoryError('加载备份历史失败')
     } finally {
       setHistoryLoading(false)
     }
   }, [])
 
   /**
-   * Handle view backup history - open history modal
+   * Handle view backup history - open history modal and load versions
    */
   const handleViewHistory = () => {
     setHistoryModalOpen(true)
+    setHistoryError(null)
+    loadBackupVersions() // Load versions immediately when opening modal
   }
 
   /**
@@ -477,10 +481,13 @@ export function BackupSection() {
       {/* History Modal for viewing backup versions */}
       <HistoryModal
         open={historyModalOpen}
-        onClose={() => setHistoryModalOpen(false)}
+        onClose={() => {
+          setHistoryModalOpen(false)
+          setHistoryError(null) // Clear error on close
+        }}
         versions={historyVersions}
         loading={historyLoading}
-        onLoadVersions={loadBackupVersions}
+        error={historyError}
         onRestore={handleRestoreFromBackup}
       />
     </div>

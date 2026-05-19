@@ -227,6 +227,17 @@ if (extractAndSaveTokens()) {
 
   // Listen for hashchange event (when web-app's JavaScript sets the hash)
   const handleHashChange = () => {
+    // Check if user wants to close the tab
+    const hash = window.location.hash.substring(1)
+    if (hash === 'close') {
+      console.log('[Oh My Prompt] Close signal received, asking service worker to close tab')
+      chrome.runtime.sendMessage({ type: 'CLOSE_AUTH_TAB' }).catch(err => {
+        console.warn('[Oh My Prompt] Failed to send close message:', err)
+      })
+      window.removeEventListener('hashchange', handleHashChange)
+      return
+    }
+
     if (extractAndSaveTokens()) {
       // Success, remove listener
       window.removeEventListener('hashchange', handleHashChange)

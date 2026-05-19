@@ -549,6 +549,20 @@ chrome.runtime.onMessage.addListener(
         sendResponse({ success: true } as MessageResponse)
         break
 
+      case 'CLOSE_AUTH_TAB':
+        // Content script requests closing the auth sync tab
+        // Find the tab with auth/extension/sync URL and close it
+        chrome.tabs.query({ url: ['http://localhost:3000/auth/extension/sync*', 'https://oh-my-prompt.com/auth/extension/sync*'] })
+          .then(tabs => {
+            if (tabs.length > 0) {
+              chrome.tabs.remove(tabs[0].id!)
+              console.log('[Oh My Prompt] Auth sync tab closed')
+            }
+          })
+          .catch(err => console.warn('[Oh My Prompt] Failed to close auth tab:', err))
+        sendResponse({ success: true } as MessageResponse)
+        break
+
       case MessageType.REFRESH_DATA:
         // Broadcast refresh to all content scripts (handled by tabs.sendMessage)
         // This is just a confirmation from backup page

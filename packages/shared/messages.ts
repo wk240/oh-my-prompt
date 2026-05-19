@@ -68,6 +68,7 @@ export enum MessageType {
 
   // Cloud Sync: Auth callback from web-app OAuth
   AUTH_CALLBACK_COMPLETE = 'AUTH_CALLBACK_COMPLETE',  // Web-app callback → SW: Notify auth success/failure
+  AUTH_STATUS_UPDATE = 'AUTH_STATUS_UPDATE',  // SW → Sidepanel: Broadcast auth status change
 
   // Offscreen Document: File system operations (SW → Offscreen)
   OFFSCREEN_PING = 'OFFSCREEN_PING',                   // Ping offscreen document for readiness check

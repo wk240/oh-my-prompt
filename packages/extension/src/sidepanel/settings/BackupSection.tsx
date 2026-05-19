@@ -115,7 +115,7 @@ export function BackupSection() {
     }
   }, [success, error])
 
-  // Listen for backup progress/retry/complete events to refresh status
+  // Listen for backup progress/retry/complete events and auth status updates
   useEffect(() => {
     const handleMessage = (message: { type: string }) => {
       if (
@@ -123,7 +123,7 @@ export function BackupSection() {
           MessageType.BACKUP_PROGRESS,
           MessageType.BACKUP_RETRY,
           MessageType.BACKUP_COMPLETE,
-          MessageType.AUTH_CALLBACK_COMPLETE
+          MessageType.AUTH_STATUS_UPDATE // Broadcast by service-worker after AUTH_CALLBACK_COMPLETE
         ].includes(message.type as MessageType)
       ) {
         loadBackupStatus()

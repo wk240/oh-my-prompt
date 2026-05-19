@@ -4,7 +4,6 @@ import { ChevronDown, ChevronUp, FolderOpen } from 'lucide-react'
 import { Button } from '@/popup/components/ui/button'
 import { BackupStatusRow } from './BackupStatusRow'
 import { BackupMoreOptions } from './BackupMoreOptions'
-import { AuthModal } from '@/sidepanel/components/CloudSync/AuthModal'
 import { MergePreviewModal, MergePreviewData } from './MergePreviewModal'
 import { HistoryModal } from './HistoryModal'
 import { RestoreDecisionModal } from './RestoreDecisionModal'
@@ -16,6 +15,7 @@ import type { BackupStatusStorage, UnifiedSyncStatus } from '@/lib/sync/types'
 import type { BackupVersion } from '@/lib/sync/file-sync'
 import { MessageType } from '@oh-my-prompt/shared/messages'
 import { BACKUP_FILE_NAME } from '@oh-my-prompt/shared/constants'
+import { WEB_APP_URL } from '@/lib/config'
 
 /**
  * Transform UnifiedSyncStatus to BackupStatusStorage
@@ -63,7 +63,6 @@ export function BackupSection() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [showMoreOptions, setShowMoreOptions] = useState(false)
-  const [authModalOpen, setAuthModalOpen] = useState(false)
   const [diffModalOpen, setDiffModalOpen] = useState(false)
   const [diffPreview, setDiffPreview] = useState<MergePreviewData | null>(null)
   const [diffLoading, setDiffLoading] = useState(false)
@@ -135,18 +134,10 @@ export function BackupSection() {
   }, [loadBackupStatus])
 
   /**
-   * Handle cloud login - open AuthModal
+   * Handle cloud login - open Web App sync URL
    */
   const handleLogin = () => {
-    setAuthModalOpen(true)
-  }
-
-  /**
-   * Handle successful OAuth login
-   */
-  const handleAuthSuccess = async () => {
-    setSuccess('登录成功')
-    await loadBackupStatus()
+    chrome.tabs.create({ url: `${WEB_APP_URL}/auth/extension/sync` })
   }
 
   /**
@@ -601,13 +592,6 @@ export function BackupSection() {
       <p className="text-xs text-gray-500 mt-3 leading-relaxed">
         备份在每次编辑提示词后自动触发，无需手动操作
       </p>
-
-      {/* Auth Modal for GitHub OAuth login */}
-      <AuthModal
-        open={authModalOpen}
-        onClose={() => setAuthModalOpen(false)}
-        onSuccess={handleAuthSuccess}
-      />
 
       {/* Merge Preview Modal for viewing cloud vs local diff */}
       <MergePreviewModal

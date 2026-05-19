@@ -1278,20 +1278,6 @@ export function DropdownContainer({
             </>
           ) : (
             <>
-              {/* "全部" category - virtual, not sortable */}
-              <button
-                className={`sidebar-category-item ${selectedCategoryId === 'all' ? 'selected' : ''}`}
-                onClick={() => {
-                  setSelectedCategoryId('all')
-                }}
-                aria-label="全部分类"
-              >
-                <div className="sidebar-category-icon-wrapper">
-                  <FolderOpen className="sidebar-category-icon" />
-                </div>
-                <span>全部分类</span>
-              </button>
-
               {/* "资源库" entry */}
               <button
                 className={`sidebar-category-item ${isResourceLibrary ? 'selected' : ''}`}
@@ -1314,6 +1300,20 @@ export function DropdownContainer({
                   <Clock className="sidebar-category-icon" />
                 </div>
                 <span>临时库</span>
+              </button>
+
+              {/* "全部" category - virtual, not sortable */}
+              <button
+                className={`sidebar-category-item ${selectedCategoryId === 'all' ? 'selected' : ''}`}
+                onClick={() => {
+                  setSelectedCategoryId('all')
+                }}
+                aria-label="全部分类"
+              >
+                <div className="sidebar-category-icon-wrapper">
+                  <FolderOpen className="sidebar-category-icon" />
+                </div>
+                <span>全部分类</span>
               </button>
 
               {/* Sortable local categories */}

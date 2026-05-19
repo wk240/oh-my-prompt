@@ -1756,16 +1756,6 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
           ) : (
             <>
               <button
-                className={`sidebar-category-item ${selectedCategoryId === 'all' ? 'selected' : ''}`}
-                onClick={() => setSelectedCategoryId('all')}
-              >
-                <div className="sidebar-category-icon-wrapper">
-                  <FolderOpen className="sidebar-category-icon" />
-                </div>
-                <span>全部分类</span>
-              </button>
-
-              <button
                 className={`sidebar-category-item ${isResourceLibrary ? 'selected' : ''}`}
                 onClick={() => setIsResourceLibrary(true)}
               >
@@ -1784,6 +1774,16 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
                   <Clock className="sidebar-category-icon" />
                 </div>
                 <span>临时库</span>
+              </button>
+
+              <button
+                className={`sidebar-category-item ${selectedCategoryId === 'all' ? 'selected' : ''}`}
+                onClick={() => setSelectedCategoryId('all')}
+              >
+                <div className="sidebar-category-icon-wrapper">
+                  <FolderOpen className="sidebar-category-icon" />
+                </div>
+                <span>全部分类</span>
               </button>
 
               <DndContext collisionDetection={closestCenter} onDragEnd={handleCategoryDragEnd}>

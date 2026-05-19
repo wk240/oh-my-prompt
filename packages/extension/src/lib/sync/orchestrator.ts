@@ -411,22 +411,11 @@ export class SyncOrchestrator {
       localData.temporaryPrompts.map(p => ({ ...p, updatedAt: p.updatedAt || 0 }))
     )
 
-    // Calculate update counts (items newer on one side)
-    const promptUpdates = this.countUpdates(
-      cloudData.prompts.map(p => ({ ...p, updatedAt: p.updatedAt || 0 })),
-      localData.prompts.map(p => ({ ...p, updatedAt: p.updatedAt || 0 }))
-    )
-
-    const categoryUpdates = this.countUpdates(
-      cloudData.categories.map(c => ({ ...c, updatedAt: c.updatedAt || 0 })),
-      localData.categories.map(c => ({ ...c, updatedAt: c.updatedAt || 0 }))
-    )
-
-    const tempUpdates = this.countUpdates(
-      cloudData.temporaryPrompts.map(p => ({ ...p, updatedAt: p.updatedAt || 0 })),
-      localData.temporaryPrompts.map(p => ({ ...p, updatedAt: p.updatedAt || 0 }))
-    )
-
+    // Use separate arrays from mergeBidirectional to avoid double-counting
+    // - cloudOnly: items only in cloud (need to add to local)
+    // - localOnly: items only in local (need to upload to cloud)
+    // - cloudNewer: items where cloud is newer (need to update local)
+    // - localNewer: items where local is newer (need to update cloud)
     return {
       cloudCount: {
         prompts: cloudData.prompts.length,
@@ -446,8 +435,8 @@ export class SyncOrchestrator {
       changes: {
         addToLocal: promptMerge.cloudOnly.length + categoryMerge.cloudOnly.length + tempMerge.cloudOnly.length,
         addToCloud: promptMerge.localOnly.length + categoryMerge.localOnly.length + tempMerge.localOnly.length,
-        updateToLocal: promptUpdates.cloudNewer + categoryUpdates.cloudNewer + tempUpdates.cloudNewer,
-        updateToCloud: promptUpdates.localNewer + categoryUpdates.localNewer + tempUpdates.localNewer,
+        updateToLocal: promptMerge.cloudNewer.length + categoryMerge.cloudNewer.length + tempMerge.cloudNewer.length,
+        updateToCloud: promptMerge.localNewer.length + categoryMerge.localNewer.length + tempMerge.localNewer.length,
         conflicts: promptMerge.conflicts.length + categoryMerge.conflicts.length + tempMerge.conflicts.length
       },
       cloudOnlyItems: {
@@ -480,35 +469,7 @@ export class SyncOrchestrator {
     }
   }
 
-  /**
-   * Count items where cloud or local version is newer.
-   */
-  private countUpdates<T extends { id: string; updatedAt?: number }>(
-    cloud: T[],
-    local: T[]
-  ): { cloudNewer: number; localNewer: number } {
-    const cloudMap = new Map(cloud.map(item => [item.id, item]))
-    const localMap = new Map(local.map(item => [item.id, item]))
-
-    let cloudNewer = 0
-    let localNewer = 0
-
-    for (const [id, cloudItem] of cloudMap) {
-      const localItem = localMap.get(id)
-      if (localItem) {
-        const cloudUpdated = cloudItem.updatedAt || 0
-        const localUpdated = localItem.updatedAt || 0
-        if (cloudUpdated > localUpdated) {
-          cloudNewer++
-        } else if (localUpdated > cloudUpdated) {
-          localNewer++
-        }
-      }
-    }
-
-    return { cloudNewer, localNewer }
-  }
-
+  
   /**
    * Download from cloud and merge with local.
    * Now uses bidirectional merge (keeps latest version based on updatedAt).
@@ -548,26 +509,30 @@ export class SyncOrchestrator {
         temporaryPrompts: tempMerge.merged as typeof cloudData.temporaryPrompts,
         timestamp: Date.now()
       },
+      // Items to upload to cloud: both truly local-only AND locally-newer versions
       localOnlyItems: {
-        prompts: promptMerge.localOnly as typeof cloudData.prompts,
-        categories: categoryMerge.localOnly as typeof cloudData.categories,
-        temporaryPrompts: tempMerge.localOnly as typeof cloudData.temporaryPrompts
+        prompts: [...promptMerge.localOnly, ...promptMerge.localNewer] as typeof cloudData.prompts,
+        categories: [...categoryMerge.localOnly, ...categoryMerge.localNewer] as typeof cloudData.categories,
+        temporaryPrompts: [...tempMerge.localOnly, ...tempMerge.localNewer] as typeof cloudData.temporaryPrompts
       }
     }
 
     // Apply merged data to storage
     await this.applyData(result.data)
 
-    // Mark pending upload if local items newer than cloud
-    if (promptMerge.localOnly.length > 0 ||
-        categoryMerge.localOnly.length > 0 ||
-        tempMerge.localOnly.length > 0) {
+    // Mark pending upload if there are items to upload to cloud (local-only OR locally-newer)
+    const itemsToUploadCount =
+      promptMerge.localOnly.length + promptMerge.localNewer.length +
+      categoryMerge.localOnly.length + categoryMerge.localNewer.length +
+      tempMerge.localOnly.length + tempMerge.localNewer.length
+
+    if (itemsToUploadCount > 0) {
       await this.updateSyncStatus({
         pendingUpload: true,
         localOnlyItems: {
-          promptIds: promptMerge.localOnly.map(p => p.id),
-          categoryIds: categoryMerge.localOnly.map(c => c.id),
-          temporaryPromptIds: tempMerge.localOnly.map(p => p.id)
+          promptIds: [...promptMerge.localOnly, ...promptMerge.localNewer].map(p => p.id),
+          categoryIds: [...categoryMerge.localOnly, ...categoryMerge.localNewer].map(c => c.id),
+          temporaryPromptIds: [...tempMerge.localOnly, ...tempMerge.localNewer].map(p => p.id)
         }
       })
     }
@@ -769,6 +734,13 @@ export class SyncOrchestrator {
   /**
    * Bidirectional merge - keeps latest version based on updatedAt.
    * This is TRUE multi-device sync (not cloud-wins-all).
+   *
+   * Returns separate arrays for different merge scenarios:
+   * - cloudOnly: items that exist only in cloud (need to add to local)
+   * - localOnly: items that exist only in local (need to upload to cloud)
+   * - localNewer: items where local version is newer than cloud (need to update cloud)
+   * - cloudNewer: items where cloud version is newer than local (need to update local)
+   * - conflicts: items with same timestamp
    */
   private mergeBidirectional<T extends { id: string; updatedAt?: number }>(
     cloud: T[],
@@ -778,11 +750,15 @@ export class SyncOrchestrator {
     merged: T[]
     cloudOnly: T[]
     localOnly: T[]
+    localNewer: T[]
+    cloudNewer: T[]
     conflicts: Array<{ cloud: T; local: T }>
   } {
     const merged = new Map<string, T>()
     const cloudOnly: T[] = []
     const localOnly: T[] = []
+    const localNewer: T[] = []
+    const cloudNewer: T[] = []
     const conflicts: Array<{ cloud: T; local: T }> = []
 
     const cloudMap = new Map(cloud.map(item => [item.id, item]))
@@ -793,7 +769,7 @@ export class SyncOrchestrator {
       const localItem = localMap.get(id)
 
       if (!localItem) {
-        // Cloud only
+        // Cloud only - not in local at all
         cloudOnly.push(cloudItem)
         merged.set(id, cloudItem)
       } else {
@@ -802,10 +778,13 @@ export class SyncOrchestrator {
         const localUpdated = localItem.updatedAt || 0
 
         if (cloudUpdated > localUpdated) {
+          // Cloud version is newer
           merged.set(id, cloudItem)
+          cloudNewer.push(localItem) // Track that cloud version will overwrite local
         } else if (localUpdated > cloudUpdated) {
+          // Local version is newer
           merged.set(id, localItem)
-          localOnly.push(localItem) // Track for upload
+          localNewer.push(localItem) // Track for upload to cloud
         } else {
           // Same timestamp - conflict
           conflicts.push({ cloud: cloudItem, local: localItem })
@@ -816,7 +795,7 @@ export class SyncOrchestrator {
       }
     }
 
-    // Add local-only items
+    // Add local-only items (not in cloud at all)
     for (const [id, localItem] of localMap) {
       if (!cloudMap.has(id)) {
         localOnly.push(localItem)
@@ -828,6 +807,8 @@ export class SyncOrchestrator {
       merged: Array.from(merged.values()),
       cloudOnly,
       localOnly,
+      localNewer,
+      cloudNewer,
       conflicts
     }
   }

@@ -132,7 +132,7 @@ export function MergePreviewModal({ open, onClose, preview, onConfirm, loading }
             {preview.changes.updateToCloud > 0 && (
               <li className="flex items-center gap-2">
                 <span className="text-purple-500">~</span>
-                {preview.changes.updateToCloud} 条本地版本较新（将保留）
+                {preview.changes.updateToCloud} 条本地版本较新（合并后将上传到云端）
               </li>
             )}
             {preview.changes.conflicts > 0 && (

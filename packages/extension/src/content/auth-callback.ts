@@ -239,8 +239,9 @@ if (extractAndSaveTokens()) {
     }
 
     if (extractAndSaveTokens()) {
-      // Success, remove listener
-      window.removeEventListener('hashchange', handleHashChange)
+      // Keep listening for 'close' signal even after token extraction success
+      // This handles the case where window.close() fails due to browser restrictions
+      // and user clicks the "关闭此页面" button on web app's success page
     }
   }
 
@@ -272,7 +273,7 @@ if (extractAndSaveTokens()) {
     pollCount++
     if (extractAndSaveTokens()) {
       clearInterval(pollInterval)
-      window.removeEventListener('hashchange', handleHashChange)
+      // Keep hashchange listener for 'close' signal handling
     } else if (pollCount >= maxPolls) {
       clearInterval(pollInterval)
       window.removeEventListener('hashchange', handleHashChange)

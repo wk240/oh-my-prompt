@@ -405,7 +405,7 @@ export function VisionSection() {
   }
 
   const handleLogin = () => {
-    window.open(WEB_APP_URL + '/auth/login', '_blank')
+    chrome.tabs.create({ url: `${WEB_APP_URL}/auth/extension/sync` })
   }
 
   const handleUpgrade = () => {

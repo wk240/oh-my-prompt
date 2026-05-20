@@ -1,6 +1,7 @@
 // packages/extension/src/lib/cloud-sync/auth-service.ts
 import { getSupabaseClient, clearSupabaseClient } from './supabase-client'
 import { WEB_APP_URL, SUPABASE_PROJECT_REF } from '@/lib/config'
+import { MessageType } from '@oh-my-prompt/shared/messages'
 import type { CloudAuthState } from '@oh-my-prompt/shared/types'
 
 /**
@@ -136,8 +137,18 @@ export async function getAuthState(): Promise<CloudAuthState> {
       }
     })
 
+    // Handle 401 Unauthorized - session invalid (user logged out from Web App)
+    if (statusRes.status === 401) {
+      const storageKey = `sb-${SUPABASE_PROJECT_REF}-auth-token`
+      await chrome.storage.local.remove(storageKey)
+      clearSupabaseClient()
+      cachedSyncStatus = null // Clear cache on auth change
+      return { status: 'not_logged_in' }
+    }
+
     if (!statusRes.ok) {
-      // API unavailable, return basic logged_in state
+      // Other API errors (network, server) - return basic logged_in state
+      // User is authenticated locally, but API temporarily unavailable
       return {
         status: 'logged_in',
         user: { id: session.user.id, email: session.user.email }
@@ -259,12 +270,13 @@ export async function signOut(): Promise<{ success: boolean }> {
   // Clear stored session from chrome.storage.local with correct key format
   await chrome.storage.local.remove([SUPABASE_AUTH_KEY])
 
-  // Broadcast logout to all extension contexts (sidepanel, popup)
+  // Broadcast logout to service worker, which will rebroadcast to all extension contexts (sidepanel, popup)
+  // This ensures VisionSection and other UI components update their auth state
   chrome.runtime.sendMessage({
-    type: 'AUTH_STATUS_UPDATE',
+    type: MessageType.AUTH_STATUS_UPDATE,
     payload: { success: true, logout: true }
   }).catch(() => {
-    // Other contexts may not be open, ignore error
+    // Service worker may not be running or other contexts not open, ignore error
   })
 
   return { success: true }

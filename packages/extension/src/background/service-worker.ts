@@ -140,7 +140,7 @@ chrome.runtime.onInstalled.addListener(async (_details) => {
   // Permission restore is handled by useAutoPermissionRestore hook in sidepanel
   // (triggered on first user interaction inside sidepanel)
   chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(err => {
-    console.warn('[Oh My Prompt] Failed to set sidePanel behavior:', err)
+    console.warn('[Oh My Prompt] Failed to set sidePanel behavior on startup:', err)
   })
 
   // Run initial sync on install (restores data from backup folder including encrypted API config)
@@ -599,6 +599,28 @@ chrome.runtime.onMessage.addListener(
           payload: authPayload
         }).catch(() => {
           // Sidepanel may not be open, ignore error
+        })
+
+        sendResponse({ success: true } as MessageResponse)
+        break
+
+      case MessageType.AUTH_STATUS_UPDATE:
+        // Handle AUTH_STATUS_UPDATE from signOut() in auth-service.ts
+        // Rebroadcast to all extension contexts (sidepanel, popup) so they can refresh auth state
+        // This fixes the bug where VisionSection didn't update after logout
+        const logoutPayload = message.payload as { success: boolean; logout?: boolean }
+
+        // Clear Supabase client singleton to ensure fresh session state
+        if (logoutPayload?.logout) {
+          clearSupabaseClient()
+        }
+
+        // Rebroadcast to all extension contexts
+        chrome.runtime.sendMessage({
+          type: MessageType.AUTH_STATUS_UPDATE,
+          payload: logoutPayload
+        }).catch(() => {
+          // Other contexts may not be open, ignore error
         })
 
         sendResponse({ success: true } as MessageResponse)

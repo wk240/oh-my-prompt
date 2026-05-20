@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh" style="background:#0e0e10">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Oh My Prompt 官方 Vision API - UI 原型</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0e0e10;
+      color: #f9f5f8;
+    }
+    .font-display { font-family: 'Space Grotesk', sans-serif; }
+    .cyan-glow { color: #81ecff; }
+    .cyan-bg { background: linear-gradient(135deg, #81ecff 0%, #00e3fd 100%); }
+    .card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+    }
+    .provider-card {
+      transition: all 0.2s;
+    }
+    .provider-card:hover {
+      background: rgba(255,255,255,0.06);
+      border-color: rgba(129,236,255,0.2);
+    }
+    .provider-card.selected {
+      background: rgba(129,236,255,0.08);
+      border-color: rgba(129,236,255,0.3);
+    }
+    .badge-pro {
+      background: linear-gradient(135deg, #81ecff 0%, #00e3fd 100%);
+      color: #003840;
+    }
+    .badge-team {
+      background: linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%);
+      color: white;
+    }
+  </style>
+</head>
+<body class="min-h-screen p-8">
+  <div class="max-w-4xl mx-auto">
+    <!-- Header -->
+    <div class="mb-8 text-center">
+      <h1 class="font-display text-3xl font-bold mb-2">Vision API UI 原型</h1>
+      <p class="text-gray-400">Oh My Prompt 官方 Provider 显示方案</p>
+    </div>
+
+    <!-- Scene 1: Provider Selection (会员用户) -->
+    <div class="mb-12">
+      <h2 class="font-display text-xl font-semibold mb-4 cyan-glow">场景 1: Provider 选择界面（Pro 会员）</h2>
+      <div class="card p-6">
+        <h3 class="text-lg font-semibold mb-4">选择 Vision API Provider</h3>
+
+        <!-- 官方 Provider -->
+        <div class="provider-card card selected p-4 mb-3 flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-400 to-cyan-500 flex items-center justify-center">
+              <span class="font-display font-bold text-sm text-gray-900">OMP</span>
+            </div>
+            <div>
+              <div class="font-semibold">Oh My Prompt 官方</div>
+              <div class="text-sm text-gray-400 flex items-center gap-2">
+                <span class="badge-pro px-2 py-0.5 rounded text-xs font-medium">Pro</span>
+                <span>剩余 <span class="cyan-glow font-medium">45/50</span> 次</span>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <svg class="w-5 h-5 cyan-glow" fill="currentColor" viewBox="0 0 20 20">
+              <circle cx="10" cy="10" r="6" fill="currentColor" opacity="0.2"/>
+              <circle cx="10" cy="10" r="3" fill="currentColor"/>
+            </svg>
+          </div>
+        </div>
+
+        <!-- 第三方 Provider -->
+        <div class="provider-card card p-4 mb-3 flex items-center justify-between opacity-60">
+          <div class="flex items-center gap-4">
+            <div class="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center">
+              <span class="text-orange-400">🟠</span>
+            </div>
+            <div>
+              <div class="font-semibold">Anthropic Claude</div>
+              <div class="text-sm text-gray-400">使用自己的 API Key</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="provider-card card p-4 mb-3 flex items-center justify-between opacity-60">
+          <div class="flex items-center gap-4">
+            <div class="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
+              <span class="text-green-400">🟢</span>
+            </div>
+            <div>
+              <div class="font-semibold">OpenAI</div>
+              <div class="text-sm text-gray-400">使用自己的 API Key</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scene 2: Provider Selection (未登录) -->
+    <div class="mb-12">
+      <h2 class="font-display text-xl font-semibold mb-4 cyan-glow">场景 2: Provider 选择界面（未登录）</h2>
+      <div class="card p-6">
+        <h3 class="text-lg font-semibold mb-4">选择 Vision API Provider</h3>
+
+        <!-- 官方 Provider - 未登录状态 -->
+        <div class="provider-card card p-4 mb-3 flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-400 to-cyan-500 flex items-center justify-center">
+              <span class="font-display font-bold text-sm text-gray-900">OMP</span>
+            </div>
+            <div>
+              <div class="font-semibold">Oh My Prompt 官方</div>
+              <div class="text-sm text-red-400 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+                <span>需要登录</span>
+              </div>
+            </div>
+          </div>
+          <button class="cyan-bg px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-900">
+            登录
+          </button>
+        </div>
+
+        <!-- 第三方 Provider -->
+        <div class="provider-card card p-4 mb-3 flex items-center justify-between opacity-60">
+          <div class="flex items-center gap-4">
+            <div class="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center">
+              <span class="text-orange-400">🟠</span>
+            </div>
+            <div>
+              <div class="font-semibold">Anthropic Claude</div>
+              <div class="text-sm text-gray-400">使用自己的 API Key</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scene 3: Provider Selection (非会员) -->
+    <div class="mb-12">
+      <h2 class="font-display text-xl font-semibold mb-4 cyan-glow">场景 3: Provider 选择界面（已登录但非会员）</h2>
+      <div class="card p-6">
+        <h3 class="text-lg font-semibold mb-4">选择 Vision API Provider</h3>
+
+        <!-- 官方 Provider - 非会员状态 -->
+        <div class="provider-card card p-4 mb-3 flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-400 to-cyan-500 flex items-center justify-center">
+              <span class="font-display font-bold text-sm text-gray-900">OMP</span>
+            </div>
+            <div>
+              <div class="font-semibold">Oh My Prompt 官方</div>
+              <div class="text-sm text-yellow-400 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                </svg>
+                <span>需要升级会员</span>
+              </div>
+            </div>
+          </div>
+          <button class="bg-yellow-500/20 border border-yellow-500/40 px-3 py-1.5 rounded-lg text-xs font-semibold text-yellow-400">
+            升级 Pro
+          </button>
+        </div>
+
+        <!-- 第三方 Provider -->
+        <div class="provider-card card p-4 mb-3 flex items-center justify-between opacity-60">
+          <div class="flex items-center gap-4">
+            <div class="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center">
+              <span class="text-orange-400">🟠</span>
+            </div>
+            <div>
+              <div class="font-semibold">Anthropic Claude</div>
+              <div class="text-sm text-gray-400">使用自己的 API Key</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scene 4: Vision Modal (额度充足) -->
+    <div class="mb-12">
+      <h2 class="font-display text-xl font-semibold mb-4 cyan-glow">场景 4: Vision Modal 弹窗（额度充足）</h2>
+      <div class="card p-6 max-w-md mx-auto">
+        <!-- Modal Header -->
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-semibold">图片转提示词</h3>
+          <button class="text-gray-400 hover:text-gray-200">✕</button>
+        </div>
+
+        <!-- Image Preview Area -->
+        <div class="bg-gray-800 rounded-lg p-4 mb-4 flex items-center justify-center h-40">
+          <div class="text-center text-gray-500">
+            <svg class="w-12 h-12 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+              <circle cx="8.5" cy="8.5" r="1.5"/>
+              <polyline points="21 15 16 10 5 21"/>
+            </svg>
+            <div>拖拽或点击上传图片</div>
+          </div>
+        </div>
+
+        <!-- Provider Info -->
+        <div class="bg-cyan-500/10 border border-cyan-500/20 rounded-lg p-3 mb-4 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <div class="w-6 h-6 rounded bg-gradient-to-br from-cyan-400 to-cyan-500 flex items-center justify-center">
+              <span class="font-display font-bold text-xs text-gray-900">OMP</span>
+            </div>
+            <span class="text-sm">官方 Vision API</span>
+          </div>
+          <span class="text-sm cyan-glow">剩余 45/50 次</span>
+        </div>
+
+        <!-- Generate Button -->
+        <button class="w-full cyan-bg py-3 rounded-lg font-semibold text-gray-900">
+          生成提示词
+        </button>
+
+        <!-- Note -->
+        <div class="text-center text-xs text-gray-500 mt-3">
+          每次生成消耗 1 次额度
+        </div>
+      </div>
+    </div>
+
+    <!-- Scene 5: Vision Modal (额度不足) -->
+    <div class="mb-12">
+      <h2 class="font-display text-xl font-semibold mb-4 cyan-glow">场景 5: Vision Modal 弹窗（额度不足）</h2>
+      <div class="card p-6 max-w-md mx-auto">
+        <!-- Modal Header -->
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-semibold">图片转提示词</h3>
+          <button class="text-gray-400 hover:text-gray-200">✕</button>
+        </div>
+
+        <!-- Image Preview Area -->
+        <div class="bg-gray-800 rounded-lg p-4 mb-4 flex items-center justify-center h-40">
+          <div class="text-center text-gray-500">
+            <svg class="w-12 h-12 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+              <circle cx="8.5" cy="8.5" r="1.5"/>
+              <polyline points="21 15 16 10 5 21"/>
+            </svg>
+            <div>拖拽或点击上传图片</div>
+          </div>
+        </div>
+
+        <!-- Provider Info - Quota Exceeded -->
+        <div class="bg-red-500/10 border border-red-500/20 rounded-lg p-3 mb-4 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <div class="w-6 h-6 rounded bg-gradient-to-br from-cyan-400 to-cyan-500 flex items-center justify-center">
+              <span class="font-display font-bold text-xs text-gray-900">OMP</span>
+            </div>
+            <span class="text-sm text-red-400">额度已用完</span>
+          </div>
+          <span class="text-sm text-red-400">0/50 次</span>
+        </div>
+
+        <!-- Disabled Button -->
+        <button class="w-full bg-gray-600 py-3 rounded-lg font-semibold text-gray-400 cursor-not-allowed">
+          额度不足，无法生成
+        </button>
+
+        <!-- Upgrade Hint -->
+        <div class="text-center mt-3">
+          <a href="#" class="text-sm cyan-glow underline">升级会员获取更多额度</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scene 6: Team Member -->
+    <div class="mb-12">
+      <h2 class="font-display text-xl font-semibold mb-4 cyan-glow">场景 6: Team 会员（额度更高）</h2>
+      <div class="card p-6">
+        <h3 class="text-lg font-semibold mb-4">选择 Vision API Provider</h3>
+
+        <!-- 官方 Provider - Team 会员 -->
+        <div class="provider-card card selected p-4 mb-3 flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-400 to-cyan-500 flex items-center justify-center">
+              <span class="font-display font-bold text-sm text-gray-900">OMP</span>
+            </div>
+            <div>
+              <div class="font-semibold">Oh My Prompt 官方</div>
+              <div class="text-sm text-gray-400 flex items-center gap-2">
+                <span class="badge-team px-2 py-0.5 rounded text-xs font-medium">Team</span>
+                <span>剩余 <span class="cyan-glow font-medium">185/200</span> 次</span>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <svg class="w-5 h-5 cyan-glow" fill="currentColor" viewBox="0 0 20 20">
+              <circle cx="10" cy="10" r="6" fill="currentColor" opacity="0.2"/>
+              <circle cx="10" cy="10" r="3" fill="currentColor"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="text-center text-gray-500 text-sm mt-8">
+      以上为 UI 原型设计稿 · Oh My Prompt 官方 Vision API
+    </div>
+  </div>
+</body>
+</html>

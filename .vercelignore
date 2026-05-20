@@ -1,0 +1,53 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs (will be rebuilt on Vercel)
+**/.next/
+**/dist/
+**/build/
+
+# Development files
+**/.env.local
+**/.env.development
+.env
+
+# Test files
+**/tests/
+**/test-results/
+**/playwright-report/
+**/*.test.ts
+**/*.spec.ts
+
+# IDE and editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Misc
+*.log
+*.tsbuildinfo
+.git/
+.github/
+
+# Extension package (not needed for web-app)
+packages/extension/
+
+# Planning and docs (project root level)
+.planning/
+docs/
+
+# Keep web-app docs for build
+!packages/web-app/app/docs/
+
+# Assets (large files)
+assets/
+
+# Deploy scripts
+deploy/
+scripts/

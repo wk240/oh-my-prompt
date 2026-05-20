@@ -4,41 +4,78 @@
 
 ## Project Identity
 
-**Oh My Prompt** 是一款 Chrome 浏览器扩展，用于在 AI 设计平台的输入框中一键插入预设提示词模板。
+**Oh My Prompt** 是一款 Chrome 浏览器扩展 + Web App，用于在 AI 设计平台的输入框中一键插入预设提示词模板。
 
 **Core Value:** 保存常用提示词，创作时一键插入，不再重复输入。
 
 **Supported Platforms:** Lovart、ChatGPT、Claude.ai、Gemini、LibLib、即梦、Kimi、星流（可扩展）
 
+**Components:**
+- **Extension** - Chrome Extension（开源）— 页面内一键插入、侧边栏管理
+- **Web App** - Next.js Web App（闭源）— 官网、云同步、用户认证
+- **Shared** - 共享类型定义（开源）— TypeScript 类型、常量
+
 ## System Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Chrome Extension (MV3)                    │
-├──────────────────┬──────────────────┬───────────────────────┤
-│   Content Script │   Background     │      Popup/Sidepanel   │
-│   (Shadow DOM)   │   Service Worker │      (React + Tailwind)│
-│                  │                  │                        │
-│  ┌─────────────┐ │  ┌─────────────┐ │  ┌───────────────────┐ │
-│  │ Coordinator │ │  │ Message     │ │  │ Backup Management │ │
-│  │ Detector    │ │  │ Routing     │ │  │ Prompt CRUD       │ │
-│  │ Injector    │ │  │ Storage Ops │ │  │ Import/Export     │ │
-│  │ Dropdown UI │ │  │ Sync Manager│ │  │ Resource Library  │ │
-│  │ Vision Modal│ │  │             │ │  │                   │ │
-│  └─────────────┘ │  └─────────────┘ │  └───────────────────┘ │
-│        ↓         │        ↓         │          ↓             │
-│  Platform Config │  chrome.storage  │   chrome.storage.local │
-│  (多平台策略)    │  .local          │                        │
-└──────────────────┴──────────────────┴───────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         Oh My Prompt System                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                    Chrome Extension (MV3)                            │   │
+│  ├──────────────────┬──────────────────┬───────────────────────────────┤   │
+│  │   Content Script │   Background     │      Popup/Sidepanel           │   │
+│  │   (Shadow DOM)   │   Service Worker │      (React + Tailwind)        │   │
+│  │                  │                  │                                │   │
+│  │  ┌─────────────┐ │  ┌─────────────┐ │  ┌───────────────────────────┐ │   │
+│  │  │ Coordinator │ │  │ Message     │ │  │ Backup Management         │ │   │
+│  │  │ Detector    │ │  │ Routing     │ │  │ Prompt CRUD               │ │   │
+│  │  │ Injector    │ │  │ Storage Ops │ │  │ Import/Export             │ │   │
+│  │  │ Dropdown UI │ │  │ Sync Manager│ │  │ Resource Library          │ │   │
+│  │  │ Vision Modal│ │  │ Cloud Auth  │ │  │ Provider Config           │ │   │
+│  │  └─────────────┘ │  └─────────────┘ │  └───────────────────────────┘ │   │
+│  │        ↓         │        ↓         │          ↓                     │   │
+│  │  Platform Config │  chrome.storage  │   chrome.storage.local         │   │
+│  │  (多平台策略)    │  .local          │                                │   │
+│  └──────────────────┴──────────────────┴───────────────────────────────┘   │
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                    Web App (Next.js 16)                             │   │
+│  ├─────────────────────────────────────────────────────────────────────┤   │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌───────────────────────────────┐ │   │
+│  │  │ Home Page   │  │ Dashboard   │  │ API Routes                    │ │   │
+│  │  │ (Marketing) │  │ (Cloud Sync)│  │ /api/sync/upload/download     │ │   │
+│  │  │             │  │             │  │ /api/auth/extension/callback  │ │   │
+│  │  └─────────────┘  └─────────────┘  └───────────────────────────────┘ │   │
+│  │        ↓                ↓                    ↓                        │   │
+│  │  Static Assets    Supabase Auth        Supabase Database             │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                    Shared Package (Types)                           │   │
+│  │  types/prompt.ts, storage.ts, vision.ts, sync.ts, messages.ts       │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Three-Part Extension
+## Extension Components
 
 | Context | DOM Access | Storage Access | Responsibilities |
 |---------|------------|----------------|------------------|
 | Content Script | Yes (host page) | Via messaging | UI injection, prompt insertion |
-| Background | No | Direct | Storage ops, sync, message routing |
-| Popup/Sidepanel | Own DOM | Direct | Prompt management, backup UI |
+| Background | No | Direct | Storage ops, sync, message routing, cloud auth |
+| Popup/Sidepanel | Own DOM | Direct | Prompt management, backup UI, provider config |
+
+## Web App Components
+
+| Component | Purpose |
+|-----------|---------|
+| Home Page | Marketing, SEO, download links |
+| Dashboard | Cloud sync status, user settings |
+| API Routes | Extension → Supabase bridge (auth, sync) |
+| Supabase | PostgreSQL database, OAuth authentication
 
 ## Data Model
 
@@ -46,30 +83,65 @@
 
 ```typescript
 interface StorageSchema {
-  version: string           // 数据版本
-  categories: Category[]    // 分类列表
-  prompts: Prompt[]         // 提示词列表
-  settings: Settings        // 用户设置
-  visionApiConfig?: VisionApiConfig  // Vision API 配置
+  version: string              // 数据版本（从 manifest 动态读取）
+  userData: UserData           // 用户数据（嵌套结构）
+  settings: SyncSettings       // 同步和显示设置
+  temporaryPrompts?: Prompt[]  // 临时库提示词（独立存储）
+  _migrationComplete?: boolean // 防止重复迁移
+}
+
+interface UserData {
+  prompts: Prompt[]            // 用户提示词列表
+  categories: Category[]       // 用户分类列表
 }
 
 interface Category {
   id: string
   name: string
+  nameEn?: string              // 英文名称（双语支持）
   order: number
-  createdAt: string
 }
 
 interface Prompt {
   id: string
   categoryId: string
-  title: string
+  name: string
+  nameEn?: string              // 英文名称（双语支持）
   content: string
-  order: number
-  imageId?: string  // 缩略图 ID
-  imageB64?: string // Base64 图片数据
-  createdAt: string
-  updatedAt: string
+  contentEn?: string           // 英文内容（双语支持）
+  description?: string         // 可选描述
+  descriptionEn?: string       // 英文描述
+  order: number                // 分类内排序
+  localImage?: string          // 本地图片路径
+  remoteImageUrl?: string      // 原始网络 URL
+}
+
+interface SyncSettings {
+  showBuiltin: boolean         // 显示资源库引用
+  syncEnabled: boolean         // 本地文件夹同步开关
+  lastSyncTime?: number        // 最后同步时间
+  hasUnsyncedChanges?: boolean // 未同步变更标记
+  dismissedBackupWarning?: boolean
+  resourceLanguage?: 'zh' | 'en'
+  visionEnabled?: boolean      // Vision 功能开关
+  visionDefaultFormat?: 'natural' | 'json'
+}
+```
+
+### ProviderConfigs (Multi-provider Vision API)
+
+```typescript
+interface ProviderConfigsStorage {
+  configs: ProviderConfig[]    // 多 Provider 配置
+  activeConfigId: string       // 当前激活的配置 ID
+}
+
+interface ProviderConfig {
+  providerId: string
+  apiKey: string
+  apiEndpoint: string
+  apiFormat: 'chat_completions' | 'messages'  // OpenAI 或 Anthropic 格式
+  selectedModel: string
 }
 ```
 
@@ -113,17 +185,32 @@ interface PlatformConfig {
 - **UI:** Shadow DOM isolated dropdown
 - **Insertion:** `execCommand('insertText')` + React event dispatch
 
-### 2. Vision API Integration (v1.3.0)
+### 2. Vision API Integration (Multi-provider)
 
-- **Trigger:** 右键菜单 "转提示词"
-- **Providers:** OpenAI GPT-4V, Anthropic Claude Vision
-- **Flow:** 图片 → Vision API → 提示词 → 插入输入框/剪贴板
+- **Trigger:** 右键菜单 "转提示词" 或图片悬停按钮
+- **Providers:** OpenAI GPT-4V, Anthropic Claude Vision, 自定义 Provider
+- **Flow:** 图片 → Vision API → 提示词 → 插入输入框/临时库
+- **Config:** 多 Provider 配置存储，支持切换
 
 ### 3. Local Folder Backup
 
 - **API:** File System Access API
 - **Persistence:** IndexedDB (folder handle)
 - **Files:** `omps-latest.json` + `omps-backup-{timestamp}.json`
+- **Auto-restore:** 扩展更新后自动恢复文件夹权限
+
+### 4. Cloud Sync (Supabase)
+
+- **Auth:** OAuth (Google, GitHub) via Extension → Web App callback
+- **API Routes:** `/api/sync/upload`, `/api/sync/download`, `/api/sync/status`
+- **Storage:** Supabase PostgreSQL (prompts, categories, temporary_prompts)
+- **Flow:** Extension storage → Web App API → Supabase
+
+### 5. Temporary Library
+
+- **Purpose:** Vision 生成的提示词独立存储
+- **Storage:** `temporaryPrompts` in StorageSchema
+- **Transfer:** 可转移到永久分类
 
 ## Communication Patterns
 
@@ -132,8 +219,10 @@ interface PlatformConfig {
 | Content → Background | Storage ops | `chrome.runtime.sendMessage` |
 | Popup → Content | Refresh UI | `chrome.tabs.sendMessage` |
 | Background → All | Storage changed | Native `chrome.storage.onChanged` |
+| Extension → Web App | Cloud sync, OAuth | HTTP fetch to `api/*` routes |
+| Web App → Supabase | Database ops | Supabase SDK |
 
-Message types defined in `src/shared/messages.ts` (MessageType enum).
+Message types defined in `packages/shared/messages.ts` (MessageType enum, 50+ types).
 
 ## Security Constraints
 
@@ -143,10 +232,20 @@ Message types defined in `src/shared/messages.ts` (MessageType enum).
 
 ## Build System
 
+### Extension
 - **Toolchain:** Vite + @crxjs/vite-plugin
-- **Output:** `dist/` directory
+- **Output:** `packages/extension/dist/` directory
 - **Manifest:** Root `manifest.json`, transformed by CRX plugin
+
+### Web App
+- **Toolchain:** Next.js 16
+- **Output:** `packages/web-app/.next/` (dev), deployed to Vercel
+- **API:** Server-side routes for sync and auth
+
+### Shared
+- **TypeScript:** Shared types imported by both Extension and Web App
+- **Path alias:** `@oh-my-prompt/shared/types`
 
 ---
 
-*Last updated: 2026-05-07*
+*Last updated: 2026-05-12*

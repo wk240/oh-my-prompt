@@ -119,8 +119,8 @@ function main() {
   log('green', `✓ package.json: ${oldPackageVersion} → ${version}`);
   updatedFiles.push('package.json');
 
-  // 2. 更新 manifest.json
-  const manifestPath = path.join(rootDir, 'manifest.json');
+  // 2. 更新 manifest.json (在 packages/extension/ 目录下)
+  const manifestPath = path.join(rootDir, 'packages', 'extension', 'manifest.json');
   const manifest = readJson(manifestPath);
   const oldManifestVersion = manifest.version;
   manifest.version = version;

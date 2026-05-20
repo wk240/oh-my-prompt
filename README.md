@@ -1,21 +1,41 @@
 <div align="center">
-  <img src="assets/logo-readme.png" alt="Oh My Prompt - Lovart AI 提示词管理工具" style="max-width: 750px; width: 100%;">
+  <img src="assets/logo-readme.png" alt="Oh My Prompt - AI 提示词管理工具" style="max-width: 750px; width: 100%;">
   <h1>Oh My Prompt</h1>
-  <h3>AI 提示词管理工具 | Prompt Manager for AI</h3>
+  <h3>AI 提示词管理工具</h3>
   <p><strong>告别复制粘贴，一键插入你的提示词，无需离开创造界面</strong></p>
   
   [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Chrome Extension](https://img.shields.io/badge/Chrome-Manifest%20V3-green.svg)]()
-[![Made for Lovart](https://img.shields.io/badge/Made%20for-Lovart%20AI-purple.svg)]()
-  
-  🌐 [官方网站](https://oh-my-prompt.com/) | 📦 [下载安装](https://github.com/wk240/oh-my-prompt/releases)
+[![Made for Prompt](https://img.shields.io/badge/Made%20for-Prompt-purple.svg)]()
+
+  🌐 [官方网站](https://oh-my-prompt.com/) | 📦 [下载安装](https://github.com/wk240/oh-my-prompt/releases) | 🇺🇸 [English](README_EN.md)
 </div>
 
 ---
 
-<!-- SEO Keywords: Lovart AI, prompt manager, Chrome extension, 提示词管理, AI设计工具, prompt template, 提示词模板 -->
+## 项目结构
 
-## ✨ 核心功能 | Features
+本项目采用 **Monorepo** 架构：
+
+```
+packages/
+├── extension/      # Chrome Extension（开源）
+│   ├── src/        # Extension 源码
+│   └── dist/       # 构建产物（Chrome 加载此目录）
+│
+├── shared/         # 共享类型定义（开源）
+│   ├── types/      # TypeScript 类型
+│   └── constants/  # 常量定义
+│
+└── web-app/        # Web App（私有，官网与云同步服务）
+    ├── app/        # Next.js App Router
+    ├── lib/        # API 客户端
+    └── supabase/   # Supabase 配置
+```
+
+---
+
+## ✨ 核心功能
 
 **Oh My Prompt** 是一款专为 AI 设计平台打造的 Chrome 浏览器扩展，帮助你高效管理和使用提示词。
 
@@ -23,7 +43,6 @@
 |------|------|
 | 🚀 **一键插入** | 保存常用提示词，下次创作时一键插入，无需重复输入 |
 | 🖼️ **图片转提示词** | 鼠标悬停任意图片，一键生成双语提示词（需配置 API） |
-| 📁 **分类管理** | 按用途分组管理提示词，支持拖拽排序 |
 | 🎨 **资源库** | 内置优质提示词模板，一键使用社区精选内容 |
 
 **一句话说清楚：** 把常用提示词保存起来，下次创作时一键插入，不再重复输入相同内容。
@@ -65,22 +84,30 @@
 git clone https://github.com/wk240/oh-my-prompt.git
 cd oh-my-prompt
 
-# 安装依赖并构建
+# 安装依赖
 npm install
+
+# 构建（生产版本）
 npm run build
 
-# 在 Chrome 加载扩展
-# 1. 打开 chrome://extensions/
-# 2. 启用「开发者模式」
-# 3. 点击「加载已解压的扩展程序」
-# 4. 选择项目根目录下的 dist 文件夹
+# 或开发模式（带热重载，推荐开发时使用）
+npm run dev
 ```
+
+**在 Chrome 加载扩展**：
+
+1. 打开 `chrome://extensions/`
+2. 启用「开发者模式」（右上角开关）
+3. 点击「加载已解压的扩展程序」
+4. **选择 `packages/extension/dist` 目录**（不是项目根目录或 src 目录）
+
+> ⚠️ **注意**：开发模式下每次修改源码会自动重新构建，但需要在 Chrome 扩展页面点击刷新按钮才能生效。
 
 ---
 
 ## 📖 使用教程
 
-### 1、页面上一键插入
+### 1、一键插入提示词
 
 在 Lovart 的输入框旁，你会看到一个闪电图标按钮：
 
@@ -90,15 +117,7 @@ npm run build
 
 ![示例：下拉菜单插入提示词](assets/eg1.gif)
 
-### 2、备份管理
-
-点击浏览器工具栏的扩展图标，打开侧边栏面板。点击右上角设置图标，进入「备份」标签页：
-
-- **开启备份**：选择本地文件夹，数据变更时自动同步
-- **版本历史**：查看历史备份文件列表
-- **恢复数据**：从任意历史版本一键恢复
-
-### 3、图片转提示词
+### 2、图片转提示词
 
 **前提条件**：需先配置 Vision API（在扩展设置页面配置 API Key）
 
@@ -112,6 +131,14 @@ npm run build
 
 ![示例：图片转提示词功能演示](assets/eg2.gif)
 
+### 3、资源库
+
+点击浏览器工具栏的扩展图标，打开侧边栏面板。在左侧导航点击「资源库」：
+
+- **内置模板**：社区精选优质提示词，按用途分类
+- **一键使用**：选中模板直接插入当前输入框
+- **收藏管理**：喜欢的模板可添加到个人收藏
+
 ---
 
 ## ❓ 常见问题 FAQ
@@ -122,7 +149,7 @@ npm run build
 这个错误说明选择了错误的目录。请按以下步骤重新安装：
 
 1. 移除当前扩展
-2. 确认选择的是项目根目录下的 `dist` 文件夹（不是项目根目录或 `src` 目录）
+2. 确认选择的是 **`packages/extension/dist` 目录**（不是项目根目录、src 目录或整个 packages 目录）
 3. 重新加载扩展
 
 ![安装错误示例](assets/qa1.png)
@@ -170,8 +197,8 @@ npm run build
 需要配置 Vision API 才能使用此功能：
 1. 点击扩展图标打开侧边栏面板，点击右上角设置图标，选择「AI识图」标签页
 2. 填写 API Base URL、API Key、模型名称
-4. 选择 API 格式（OpenAI 格式或 Anthropic 格式）
-5. 保存配置后即可使用
+3. 选择 API 格式（OpenAI 格式或 Anthropic 格式）
+4. 保存配置后即可使用
 
 支持的服务：Claude API、OpenAI GPT-4V、或其他兼容服务。
 </details>
@@ -197,7 +224,15 @@ npm run build
 
 ## 📄 许可证
 
-[MIT License](LICENSE) - 自由使用、修改和分发。
+[MIT License](LICENSE) - Extension 和 Shared 包开源
+
+---
+
+## 💬 交流群
+
+如果你需要进群，可以扫下方二维码：
+
+<img src="assets/group-qrcode.jpg" alt="微信群二维码" width="200">
 
 ---
 

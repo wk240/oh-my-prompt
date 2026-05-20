@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>首页整合 Demo - Oh My Prompt</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#81ecff',
+            secondary: '#a78bfa',
+            tertiary: '#f472b6',
+            // Dark mode
+            surface: '#0a0a0a',
+            'surface-container': '#121212',
+            'surface-container-low': '#1a1a1a',
+            'surface-container-highest': '#262626',
+            'surface-bright': '#2d2d2d',
+            'on-background': '#ffffff',
+            'on-surface-variant': '#a3a3a3',
+            'on-primary-fixed': '#0a0a0a',
+            outline: '#404040',
+            'outline-variant': '#525252',
+            // Light mode
+            'light-surface': '#ffffff',
+            'light-surface-container': '#f5f5f5',
+            'light-surface-container-low': '#fafafa',
+            'light-surface-container-highest': '#e5e5e5',
+            'light-surface-bright': '#f0f0f0',
+            'light-on-background': '#171717',
+            'light-on-surface-variant': '#64748b',
+            'light-outline': '#e5e5e5',
+          },
+          fontFamily: {
+            body: ['Inter', 'sans-serif'],
+            headline: ['Space Grotesk', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .glass-panel {
+      backdrop-filter: blur(12px);
+    }
+    .dark .glass-panel {
+      background: rgba(10, 10, 10, 0.8);
+    }
+    .light .glass-panel {
+      background: rgba(255, 255, 255, 0.9);
+    }
+    .ghost-border {
+      border: 1px solid rgba(129, 236, 255, 0.2);
+    }
+    .light .ghost-border {
+      border: 1px solid rgba(0, 0, 0, 0.1);
+    }
+    .btn-primary-gradient {
+      background: linear-gradient(135deg, #81ecff 0%, #a78bfa 100%);
+    }
+    .glow-primary {
+      box-shadow: 0 0 20px rgba(129, 236, 255, 0.3);
+    }
+    .light .glow-primary {
+      box-shadow: 0 0 20px rgba(129, 236, 255, 0.2);
+    }
+    .bg-grid-cyber {
+      background-image:
+        linear-gradient(rgba(129, 236, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(129, 236, 255, 0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+    .light .bg-grid-cyber {
+      background-image:
+        linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+    }
+    .bg-dots-cyan {
+      background-image: radial-gradient(rgba(129, 236, 255, 0.15) 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+    .light .bg-dots-cyan {
+      background-image: radial-gradient(rgba(129, 236, 255, 0.1) 1px, transparent 1px);
+    }
+    body { font-family: 'Inter', sans-serif; }
+    .font-headline { font-family: 'Space Grotesk', sans-serif; }
+  </style>
+</head>
+<body class="min-h-screen relative overflow-x-hidden">
+  <!-- Background -->
+  <div class="fixed inset-0 pointer-events-none z-[-1] bg-dots-cyan dark:opacity-20 light:opacity-10"></div>
+  <div class="fixed inset-0 pointer-events-none z-0">
+    <div class="absolute inset-0 bg-grid-cyber"></div>
+    <div class="absolute top-0 left-0 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px] dark:opacity-50 light:opacity-30 mix-blend-screen"></div>
+    <div class="absolute bottom-0 right-0 w-[600px] h-[600px] bg-secondary/10 rounded-full blur-[150px] dark:opacity-40 light:opacity-20 mix-blend-screen"></div>
+  </div>
+
+  <!-- 控制面板 -->
+  <div class="fixed top-4 right-4 z-50 flex gap-2">
+    <!-- 登录状态切换 -->
+    <button onclick="showState('logged-out')" class="px-3 py-2 rounded text-xs font-medium transition dark:ghost-border dark:text-on-surface-variant light:border light:border-light-outline light:text-light-on-surface-variant hover:bg-surface-container-highest" id="btn-logged-out">
+      未登录
+    </button>
+    <button onclick="showState('logged-in')" class="px-3 py-2 rounded text-xs font-medium transition dark:ghost-border dark:text-on-surface-variant light:border light:border-light-outline light:text-light-on-surface-variant hover:bg-surface-container-highest" id="btn-logged-in">
+      已登录
+    </button>
+    <!-- 主题切换 -->
+    <button onclick="toggleTheme()" class="px-3 py-2 rounded text-xs font-medium transition dark:ghost-border dark:text-on-surface-variant light:border light:border-light-outline light:text-light-on-surface-variant hover:bg-surface-container-highest flex items-center gap-1" id="btn-theme">
+      <span class="material-symbols-outlined text-sm" id="theme-icon">light_mode</span>
+      <span id="theme-text">浅色</span>
+    </button>
+  </div>
+
+  <!-- ========== 未登录首页 ========== -->
+  <div id="logged-out-state" class="relative z-10">
+    <!-- Header -->
+    <header class="w-full top-0 sticky z-40 border-b dark:border-outline-variant/20 light:border-light-outline glass-panel">
+      <div class="flex justify-between items-center px-8 py-4 max-w-7xl mx-auto">
+        <div class="flex items-center gap-12">
+          <div class="text-2xl font-black tracking-tighter font-headline dark:text-white light:text-light-on-background">
+            Oh My Prompt
+          </div>
+          <nav class="flex items-center gap-6">
+            <a href="#" class="dark:text-on-background light:text-light-on-background font-medium text-sm">首页</a>
+            <a href="#" class="dark:text-on-surface-variant light:text-light-on-surface-variant hover:dark:text-on-background hover:light:text-light-on-background transition text-sm font-medium">文档</a>
+            <a href="#" class="dark:text-on-surface-variant light:text-light-on-surface-variant hover:dark:text-on-background hover:light:text-light-on-background transition text-sm font-medium">订阅</a>
+          </nav>
+        </div>
+        <div class="flex items-center gap-4">
+          <button class="btn-primary-gradient text-on-primary-fixed px-5 py-2 rounded-md text-sm font-bold glow-primary transition-all duration-150 flex items-center gap-2">
+            <span class="material-symbols-outlined text-sm">login</span>
+            登录
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Hero -->
+    <section class="min-h-[600px] flex flex-col justify-center items-center px-6 lg:px-8 max-w-7xl mx-auto py-16 relative">
+      <div class="text-center max-w-4xl mx-auto mb-12">
+        <h1 class="text-5xl md:text-6xl font-headline font-bold tracking-tight mb-6 leading-[1.2]">
+          <span class="dark:text-transparent dark:bg-clip-text dark:bg-gradient-to-r dark:from-on-background dark:via-on-background dark:to-on-surface-variant light:text-light-on-background">
+            告别 <s class="dark:text-on-surface-variant light:text-light-on-surface-variant">复制粘贴</s><br>
+            一键插入你的提示词
+          </span>
+        </h1>
+        <p class="text-lg max-w-2xl mx-auto leading-relaxed mb-8 dark:text-on-surface-variant light:text-light-on-surface-variant">
+          在 AI 平台输入框旁直接管理、选择、插入你的专属提示词库。<br>
+          无需离开创作界面，一键插入。
+        </p>
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <a href="#" class="btn-primary-gradient text-on-primary-fixed px-8 py-3 rounded-md text-base font-bold glow-primary transition-all duration-150 flex items-center gap-2">
+            下载插件
+            <span class="material-symbols-outlined text-sm">arrow_forward</span>
+          </a>
+          <a href="#" class="dark:ghost-border light:border light:border-light-outline dark:text-secondary light:text-light-on-surface-variant px-8 py-3 rounded-md text-base font-medium transition-colors duration-150 flex items-center gap-2">
+            Star on GitHub
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features -->
+    <section class="py-16 px-6 lg:px-8 max-w-7xl mx-auto relative">
+      <div class="mb-8">
+        <h2 class="text-3xl font-headline font-bold dark:text-on-background light:text-light-on-background mb-4">核心特性</h2>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="rounded-lg p-6 ghost-border dark:bg-surface-container-low light:bg-light-surface-container dark:hover:bg-surface-bright light:hover:bg-light-surface-bright transition-colors">
+          <div class="w-10 h-10 rounded-md dark:bg-surface-container-highest light:bg-light-surface-container-highest ghost-border flex items-center justify-center mb-4">
+            <span class="material-symbols-outlined text-primary text-xl" style="font-variation-settings: 'FILL' 1">bolt</span>
+          </div>
+          <h3 class="text-lg font-headline font-bold dark:text-on-background light:text-light-on-background mb-2">一键插入</h3>
+          <p class="dark:text-on-surface-variant light:text-light-on-surface-variant text-sm">点击即可插入预设提示词，无需复制粘贴。</p>
+        </div>
+        <div class="rounded-lg p-6 ghost-border dark:bg-surface-container-low light:bg-light-surface-container dark:hover:bg-surface-bright light:hover:bg-light-surface-bright transition-colors">
+          <div class="w-10 h-10 rounded-md dark:bg-surface-container-highest light:bg-light-surface-container-highest ghost-border flex items-center justify-center mb-4">
+            <span class="material-symbols-outlined text-tertiary text-xl" style="font-variation-settings: 'FILL' 1">folder_copy</span>
+          </div>
+          <h3 class="text-lg font-headline font-bold dark:text-on-background light:text-light-on-background mb-2">分类管理</h3>
+          <p class="dark:text-on-surface-variant light:text-light-on-surface-variant text-sm">按用途分类整理提示词，本地存储安全可控。</p>
+        </div>
+        <div class="rounded-lg p-6 ghost-border dark:bg-surface-container-low light:bg-light-surface-container dark:hover:bg-surface-bright light:hover:bg-light-surface-bright transition-colors">
+          <div class="w-10 h-10 rounded-md dark:bg-surface-container-highest light:bg-light-surface-container-highest ghost-border flex items-center justify-center mb-4">
+            <span class="material-symbols-outlined text-secondary text-xl" style="font-variation-settings: 'FILL' 1">auto_awesome</span>
+          </div>
+          <h3 class="text-lg font-headline font-bold dark:text-on-background light:text-light-on-background mb-2">图片转提示词</h3>
+          <p class="dark:text-on-surface-variant light:text-light-on-surface-variant text-sm">右键图片，一键识别并生成精准提示词。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Pricing -->
+    <section class="py-16 px-6 lg:px-8 max-w-7xl mx-auto relative">
+      <div class="mb-8">
+        <h2 class="text-3xl font-headline font-bold dark:text-on-background light:text-light-on-background mb-4">定价方案</h2>
+        <p class="dark:text-on-surface-variant light:text-light-on-surface-variant">从免费开始，按需升级。</p>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Free -->
+        <div class="rounded-lg p-6 ghost-border dark:bg-surface-container-low light:bg-light-surface-container dark:hover:bg-surface-bright light:hover:bg-light-surface-bright transition-colors">
+          <div class="text-lg font-headline font-bold dark:text-on-background light:text-light-on-background mb-2">Free</div>
+          <div class="text-3xl font-bold dark:text-on-background light:text-light-on-background mb-4">
+            $0<span class="text-lg dark:text-on-surface-variant light:text-light-on-surface-variant">/月</span>
+          </div>
+          <ul class="space-y-2 dark:text-on-surface-variant light:text-light-on-surface-variant mb-6 text-sm">
+            <li class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary text-sm">check</span>
+              Chrome插件完整功能
+            </li>
+            <li class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary text-sm">check</span>
+              本地管理提示词
+            </li>
+            <li class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary text-sm">check</span>
+              导入导出数据
+            </li>
+          </ul>
+          <a href="#" class="block w-full py-3 text-center ghost-border rounded-md dark:text-on-surface light:text-light-on-surface-variant hover:dark:bg-surface-container-highest hover:light:bg-light-surface-container-highest transition text-sm font-medium">
+            下载插件
+          </a>
+        </div>
+
+        <!-- Pro -->
+        <div class="relative rounded-lg p-6 overflow-hidden">
+          <!-- Gradient border -->
+          <div class="absolute inset-0 rounded-lg bg-gradient-to-br from-primary/30 via-secondary/20 to-tertiary/30 dark:opacity-60 light:opacity-40"></div>
+          <div class="absolute inset-[1px] rounded-lg dark:bg-surface-container light:bg-light-surface-container"></div>
+          <!-- Content -->
+          <div class="relative z-10">
+            <div class="flex items-center gap-2 mb-4">
+              <span class="px-2 py-0.5 rounded bg-gradient-to-r from-primary to-secondary text-on-primary-fixed text-xs font-medium">推荐</span>
+            </div>
+            <div class="text-lg font-headline font-bold dark:text-on-background light:text-light-on-background mb-2">Pro</div>
+            <div class="text-3xl font-bold dark:text-on-background light:text-light-on-background mb-4">
+              $9<span class="text-lg dark:text-on-surface-variant light:text-light-on-surface-variant">/月</span>
+            </div>
+            <ul class="space-y-2 dark:text-on-surface-variant light:text-light-on-surface-variant mb-6 text-sm">
+              <li class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1">check</span>
+                Free全部功能
+              </li>
+              <li class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1">check</span>
+                云端备份
+              </li>
+              <li class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1">check</span>
+                多设备同步
+              </li>
+              <li class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1">check</span>
+                AI识图（50次/月）
+              </li>
+            </ul>
+            <a href="#" class="block w-full py-3 text-center btn-primary-gradient rounded-md text-on-primary-fixed font-bold glow-primary transition text-sm">
+              开始订阅
+            </a>
+          </div>
+        </div>
+
+        <!-- Team -->
+        <div class="rounded-lg p-6 ghost-border dark:bg-surface-container-low light:bg-light-surface-container dark:hover:bg-surface-bright light:hover:bg-light-surface-bright transition-colors">
+          <div class="text-lg font-headline font-bold dark:text-on-background light:text-light-on-background mb-2">Team</div>
+          <div class="text-3xl font-bold dark:text-on-background light:text-light-on-background mb-4">
+            $29<span class="text-lg dark:text-on-surface-variant light:text-light-on-surface-variant">/月</span>
+          </div>
+          <ul class="space-y-2 dark:text-on-surface-variant light:text-light-on-surface-variant mb-6 text-sm">
+            <li class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary text-sm">check</span>
+              Pro全部功能
+            </li>
+            <li class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary text-sm">check</span>
+              团队共享库
+            </li>
+            <li class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary text-sm">check</span>
+              5人团队
+            </li>
+            <li class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary text-sm">check</span>
+              AI识图（200次/月）
+            </li>
+          </ul>
+          <a href="#" class="block w-full py-3 text-center ghost-border rounded-md dark:text-on-surface light:text-light-on-surface-variant hover:dark:bg-surface-container-highest hover:light:bg-light-surface-container-highest transition text-sm font-medium">
+            开始订阅
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-8 max-w-7xl mx-auto px-8 border-t dark:border-outline-variant/10 light:border-light-outline mt-16 relative z-10">
+      <div class="flex justify-between items-center">
+        <div>
+          <div class="text-lg font-bold mb-1 font-headline dark:text-white light:text-light-on-background">Oh My Prompt</div>
+          <p class="dark:text-on-surface-variant light:text-light-on-surface-variant text-sm">&copy; 2026 Oh My Prompt.</p>
+        </div>
+        <div class="flex gap-6">
+          <a href="#" class="dark:text-on-surface-variant light:text-light-on-surface-variant hover:dark:text-on-surface hover:light:text-light-on-background transition text-sm">隐私政策</a>
+          <a href="#" class="dark:text-on-surface-variant light:text-light-on-surface-variant hover:dark:text-on-surface hover:light:text-light-on-background transition text-sm">服务条款</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- ========== 已登录首页 ========== -->
+  <div id="logged-in-state" class="relative z-10 hidden">
+    <!-- Header -->
+    <header class="w-full top-0 sticky z-40 border-b dark:border-outline-variant/20 light:border-light-outline glass-panel">
+      <div class="flex justify-between items-center px-8 py-4 max-w-7xl mx-auto">
+        <div class="flex items-center gap-8">
+          <div class="text-2xl font-black tracking-tighter font-headline dark:text-white light:text-light-on-background">
+            Oh My Prompt
+          </div>
+          <nav class="flex items-center gap-4">
+            <a href="#" class="py-2 px-3 text-sm font-medium rounded-lg dark:bg-surface-container-highest dark:text-primary light:bg-light-surface-container-highest light:text-primary">首页</a>
+            <a href="#" class="py-2 px-3 text-sm font-medium rounded-lg dark:text-on-surface-variant light:text-light-on-surface-variant hover:dark:bg-surface-container-highest hover:light:bg-light-surface-container-highest transition">文档</a>
+            <a href="#" class="py-2 px-3 text-sm font-medium rounded-lg dark:text-on-surface-variant light:text-light-on-surface-variant hover:dark:bg-surface-container-highest hover:light:bg-light-surface-container-highest transition">订阅</a>
+            <a href="#" class="py-2 px-3 text-sm font-medium rounded-lg dark:text-on-surface-variant light:text-light-on-surface-variant hover:dark:bg-surface-container-highest hover:light:bg-light-surface-container-highest transition">备份</a>
+            <a href="#" class="py-2 px-3 text-sm font-medium rounded-lg dark:text-on-surface-variant light:text-light-on-surface-variant hover:dark:bg-surface-container-highest hover:light:bg-light-surface-container-highest transition">团队</a>
+          </nav>
+        </div>
+        <div class="flex items-center gap-4">
+          <span class="dark:text-on-surface-variant light:text-light-on-surface-variant text-sm">user@example.com</span>
+          <button class="ghost-border dark:text-on-surface-variant light:text-light-on-surface-variant px-4 py-2 rounded-md text-sm font-medium hover:dark:bg-surface-container-highest hover:light:bg-light-surface-container-highest transition flex items-center gap-2">
+            <span class="material-symbols-outlined text-sm">logout</span>
+            退出
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- 功能界面 -->
+    <main class="max-w-7xl mx-auto px-8 py-8 relative z-10">
+      <!-- 操作栏 -->
+      <div class="flex justify-between items-center mb-6">
+        <div>
+          <h1 class="text-2xl font-headline font-bold dark:text-on-background light:text-light-on-background mb-2">提示词管理</h1>
+          <p class="dark:text-on-surface-variant light:text-light-on-surface-variant text-sm">管理你的专属提示词库</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <button class="ghost-border dark:text-on-surface-variant light:text-light-on-surface-variant px-4 py-2 rounded-md text-sm font-medium hover:dark:bg-surface-container-highest hover:light:bg-light-surface-container-highest transition flex items-center gap-2">
+            <span class="material-symbols-outlined text-sm">sync</span>
+            同步状态
+          </button>
+          <button class="btn-primary-gradient text-on-primary-fixed px-4 py-2 rounded-md text-sm font-bold glow-primary transition flex items-center gap-2">
+            <span class="material-symbols-outlined text-sm">add</span>
+            新建提示词
+          </button>
+        </div>
+      </div>
+
+      <!-- 分类筛选 -->
+      <div class="flex items-center gap-3 mb-6">
+        <button class="btn-primary-gradient text-on-primary-fixed px-3 py-1.5 rounded text-xs font-medium">全部</button>
+        <button class="ghost-border dark:text-on-surface-variant light:text-light-on-surface-variant px-3 py-1.5 rounded text-xs font-medium hover:dark:bg-surface-container-highest hover:light:bg-light-surface-container-highest transition">设计</button>
+        <button class="ghost-border dark:text-on-surface-variant light:text-light-on-surface-variant px-3 py-1.5 rounded text-xs font-medium hover:dark:bg-surface-container-highest hover:light:bg-light-surface-container-highest transition">写作</button>
+        <button class="ghost-border dark:text-on-surface-variant light:text-light-on-surface-variant px-3 py-1.5 rounded text-xs font-medium hover:dark:bg-surface-container-highest hover:light:bg-light-surface-container-highest transition">代码</button>
+        <button class="ghost-border dark:text-on-surface-variant light:text-light-on-surface-variant px-3 py-1.5 rounded text-xs font-medium hover:dark:bg-surface-container-highest hover:light:bg-light-surface-container-highest transition">营销</button>
+      </div>
+
+      <!-- 提示词列表 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="rounded-lg p-4 ghost-border dark:bg-surface-container-low light:bg-light-surface-container dark:hover:bg-surface-bright light:hover:bg-light-surface-bright transition-colors cursor-pointer">
+          <div class="flex justify-between items-start mb-3">
+            <h3 class="text-base font-headline font-bold dark:text-on-background light:text-light-on-background">电商产品图</h3>
+            <span class="material-symbols-outlined dark:text-on-surface-variant light:text-light-on-surface-variant text-sm cursor-pointer hover:text-primary">more_vert</span>
+          </div>
+          <p class="dark:text-on-surface-variant light:text-light-on-surface-variant text-xs mb-3 line-clamp-2">高质量电商产品摄影，白色背景，柔和光线，细节清晰...</p>
+          <div class="flex items-center gap-2">
+            <span class="ghost-border dark:text-on-surface-variant light:text-light-on-surface-variant px-2 py-0.5 rounded text-xs">设计</span>
+            <span class="ghost-border dark:text-on-surface-variant light:text-light-on-surface-variant px-2 py-0.5 rounded text-xs">Lovart</span>
+          </div>
+        </div>
+
+        <div class="rounded-lg p-4 ghost-border dark:bg-surface-container-low light:bg-light-surface-container dark:hover:bg-surface-bright light:hover:bg-light-surface-bright transition-colors cursor-pointer">
+          <div class="flex justify-between items-start mb-3">
+            <h3 class="text-base font-headline font-bold dark:text-on-background light:text-light-on-background">Logo设计</h3>
+            <span class="material-symbols-outlined dark:text-on-surface-variant light:text-light-on-surface-variant text-sm cursor-pointer hover:text-primary">more_vert</span>
+          </div>
+          <p class="dark:text-on-surface-variant light:text-light-on-surface-variant text-xs mb-3 line-clamp-2">现代简约Logo，几何图形，负空间设计...</p>
+          <div class="flex items-center gap-2">
+            <span class="ghost-border dark:text-on-surface-variant light:text-light-on-surface-variant px-2 py-0.5 rounded text-xs">设计</span>
+            <span class="ghost-border dark:text-on-surface-variant light:text-light-on-surface-variant px-2 py-0.5 rounded text-xs">通用</span>
+          </div>
+        </div>
+
+        <div class="rounded-lg p-4 ghost-border dark:bg-surface-container-low light:bg-light-surface-container dark:hover:bg-surface-bright light:hover:bg-light-surface-bright transition-colors cursor-pointer">
+          <div class="flex justify-between items-start mb-3">
+            <h3 class="text-base font-headline font-bold dark:text-on-background light:text-light-on-background">外贸营销文案</h3>
+            <span class="material-symbols-outlined dark:text-on-surface-variant light:text-light-on-surface-variant text-sm cursor-pointer hover:text-primary">more_vert</span>
+          </div>
+          <p class="dark:text-on-surface-variant light:text-light-on-surface-variant text-xs mb-3 line-clamp-2">跨境电商产品描述，英文，突出卖点...</p>
+          <div class="flex items-center gap-2">
+            <span class="ghost-border dark:text-on-surface-variant light:text-light-on-surface-variant px-2 py-0.5 rounded text-xs">营销</span>
+            <span class="ghost-border dark:text-on-surface-variant light:text-light-on-surface-variant px-2 py-0.5 rounded text-xs">ChatGPT</span>
+          </div>
+        </div>
+
+        <div class="rounded-lg p-4 ghost-border dark:bg-surface-container-low light:bg-light-surface-container dark:hover:bg-surface-bright light:hover:bg-light-surface-bright transition-colors cursor-pointer">
+          <div class="flex justify-between items-start mb-3">
+            <h3 class="text-base font-headline font-bold dark:text-on-background light:text-light-on-background">二次元风格</h3>
+            <span class="material-symbols-outlined dark:text-on-surface-variant light:text-light-on-surface-variant text-sm cursor-pointer hover:text-primary">more_vert</span>
+          </div>
+          <p class="dark:text-on-surface-variant light:text-light-on-surface-variant text-xs mb-3 line-clamp-2">动漫风格，日系插画，柔和色调...</p>
+          <div class="flex items-center gap-2">
+            <span class="ghost-border dark:text-on-surface-variant light:text-light-on-surface-variant px-2 py-0.5 rounded text-xs">艺术</span>
+            <span class="ghost-border dark:text-on-surface-variant light:text-light-on-surface-variant px-2 py-0.5 rounded text-xs">Lovart</span>
+          </div>
+        </div>
+
+        <div class="rounded-lg p-4 ghost-border dark:bg-surface-container-low light:bg-light-surface-container dark:hover:bg-surface-bright light:hover:bg-light-surface-bright transition-colors cursor-pointer">
+          <div class="flex justify-between items-start mb-3">
+            <h3 class="text-base font-headline font-bold dark:text-on-background light:text-light-on-background">代码助手</h3>
+            <span class="material-symbols-outlined dark:text-on-surface-variant light:text-light-on-surface-variant text-sm cursor-pointer hover:text-primary">more_vert</span>
+          </div>
+          <p class="dark:text-on-surface-variant light:text-light-on-surface-variant text-xs mb-3 line-clamp-2">帮我写一个函数，实现...</p>
+          <div class="flex items-center gap-2">
+            <span class="ghost-border dark:text-on-surface-variant light:text-light-on-surface-variant px-2 py-0.5 rounded text-xs">代码</span>
+            <span class="ghost-border dark:text-on-surface-variant light:text-light-on-surface-variant px-2 py-0.5 rounded text-xs">Claude</span>
+          </div>
+        </div>
+
+        <!-- 新建卡片 -->
+        <div class="rounded-lg p-4 ghost-border dark:bg-surface-container-low light:bg-light-surface-container dark:hover:bg-surface-bright light:hover:bg-light-surface-bright transition-colors cursor-pointer flex flex-col items-center justify-center min-h-[120px]">
+          <span class="material-symbols-outlined text-primary text-2xl mb-2">add</span>
+          <p class="dark:text-on-surface-variant light:text-light-on-surface-variant text-sm">新建提示词</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    let currentTheme = 'dark';
+
+    function showState(state) {
+      const loggedOut = document.getElementById('logged-out-state');
+      const loggedIn = document.getElementById('logged-in-state');
+      const btnLoggedOut = document.getElementById('btn-logged-out');
+      const btnLoggedIn = document.getElementById('btn-logged-in');
+
+      if (state === 'logged-out') {
+        loggedOut.classList.remove('hidden');
+        loggedIn.classList.add('hidden');
+        btnLoggedOut.classList.add('btn-primary-gradient', 'text-on-primary-fixed', 'glow-primary');
+        btnLoggedOut.classList.remove('ghost-border', 'dark:text-on-surface-variant', 'light:text-light-on-surface-variant', 'light:border', 'light:border-light-outline');
+        btnLoggedIn.classList.remove('btn-primary-gradient', 'text-on-primary-fixed', 'glow-primary');
+        btnLoggedIn.classList.add('ghost-border', 'dark:text-on-surface-variant', 'light:text-light-on-surface-variant');
+      } else {
+        loggedOut.classList.add('hidden');
+        loggedIn.classList.remove('hidden');
+        btnLoggedIn.classList.add('btn-primary-gradient', 'text-on-primary-fixed', 'glow-primary');
+        btnLoggedIn.classList.remove('ghost-border', 'dark:text-on-surface-variant', 'light:text-light-on-surface-variant');
+        btnLoggedOut.classList.remove('btn-primary-gradient', 'text-on-primary-fixed', 'glow-primary');
+        btnLoggedOut.classList.add('ghost-border', 'dark:text-on-surface-variant', 'light:text-light-on-surface-variant');
+      }
+    }
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const body = document.body;
+      const themeIcon = document.getElementById('theme-icon');
+      const themeText = document.getElementById('theme-text');
+      const btnTheme = document.getElementById('btn-theme');
+
+      if (currentTheme === 'dark') {
+        currentTheme = 'light';
+        html.classList.remove('dark');
+        html.classList.add('light');
+        body.classList.remove('bg-surface', 'text-on-background');
+        body.classList.add('bg-light-surface', 'text-light-on-background');
+        themeIcon.textContent = 'dark_mode';
+        themeText.textContent = '深色';
+      } else {
+        currentTheme = 'dark';
+        html.classList.remove('light');
+        html.classList.add('dark');
+        body.classList.remove('bg-light-surface', 'text-light-on-background');
+        body.classList.add('bg-surface', 'text-on-background');
+        themeIcon.textContent = 'light_mode';
+        themeText.textContent = '浅色';
+      }
+    }
+
+    // 默认状态
+    showState('logged-out');
+  </script>
+</body>
+</html>

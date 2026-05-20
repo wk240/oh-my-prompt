@@ -1,0 +1,20 @@
+{
+  "name": "@oh-my-prompt/shared",
+  "version": "1.4.0",
+  "type": "module",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./types": "./types/index.ts",
+    "./constants": "./constants/index.ts",
+    "./messages": "./messages.ts",
+    "./utils": "./utils.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

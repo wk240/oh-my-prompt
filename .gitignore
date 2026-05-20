@@ -1,8 +1,24 @@
+# web-app 作为私有 submodule，不需要额外忽略
+# submodule 文件由私有仓库单独管理
+
+# 环境变量
+.env
+.env.local
+.env.production
+
+# Stripe 密钥
+stripe-keys.txt
+
+# TypeScript incremental build cache
+*.tsbuildinfo
+
+# 现有的忽略项
 node_modules
 dist/
 dist.zip
 releases/
 oh-my-prompt-v*
+deploy/
 tests/
 **/.DS_Store
 .worktrees/
@@ -10,3 +26,6 @@ playwright-report
 test-results
 .claude/worktrees/
 .gstack/
+# GSD workflow planning files
+.planning/
+.vercel

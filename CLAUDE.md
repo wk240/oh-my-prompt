@@ -21,6 +21,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
+### Extension (Chrome Plugin)
+
 ```bash
 # Development with hot reload
 npm run dev
@@ -38,11 +40,50 @@ npx tsc --noEmit
 npm run test           # Run all tests
 npm run test:ui        # Interactive test UI
 npm run test:headed    # Run with visible browser
+
+# Unit tests (Vitest)
+npm run test:unit      # Run unit tests
+npm run test:unit:watch # Watch mode
 ```
 
-After running `npm run dev`, load the extension from `dist/` folder in Chrome via `chrome://extensions` (enable Developer Mode).
+After running `npm run dev`, load the extension from `packages/extension/dist/` folder in Chrome via `chrome://extensions` (enable Developer Mode).
 
-**Note:** `manifest.json` is at project root (imported by `vite.config.ts`), not in `src/`.
+**Note:** `manifest.json` is at `packages/extension/manifest.json` (imported by vite configs), not in `src/`. Vite configs are split: `vite.config.base.ts` (shared), `vite.config.dev.ts` (development), `vite.config.prod.ts` (production).
+
+**⚠️ Dev Environment Checklist (OAuth Login):**
+
+开发时如需测试 OAuth 登录，必须满足以下条件：
+
+1. ✅ 运行 `npm run dev`（Extension dev server, port 5173）—— **不能用 `npm run build`**
+2. ✅ 运行 `npm run web:dev`（Web app dev server, port 3000）
+3. ✅ Chrome 加载 `packages/extension/dist/` 目录（dev 构建输出）
+4. ✅ Supabase Dashboard 配置:
+   - Authentication → URL Configuration
+   - Site URL: `http://localhost:3000`
+   - Redirect URLs: `http://localhost:3000/auth/extension/callback`
+
+**原因:** `DEV_WEB_APP_URL` 仅在 `vite.config.dev.ts` 中定义，生产构建回退到 `https://oh-my-prompt.com`。
+
+### Web App (Next.js)
+
+```bash
+# Development (port 3000)
+npm run web:dev
+
+# Production build
+npm run web:build
+
+# Production start (port 3000)
+npm run web:start
+```
+
+Or run directly in `packages/web-app/`:
+```bash
+cd packages/web-app
+npm run dev
+npm run build
+npm run start
+```
 
 <!-- GSD:stack-start source:research/STACK.md -->
 ## Technology Stack
@@ -53,10 +94,12 @@ After running `npm run dev`, load the extension from `dist/` folder in Chrome vi
 | Chrome Extension Manifest V3 | - | Extension platform |
 | Vite + @crxjs/vite-plugin | 6.x / 2.x | Build tool with CRX bundler |
 | React | 19.x | UI framework |
-| Zustand | 5.x | State management (popup only) |
-| Radix UI primitives | - | UI components (popup dialogs) |
-| Tailwind CSS | 3.x | Styling (popup only) |
+| Zustand | 5.x | State management (popup/sidepanel) |
+| Radix UI primitives | - | UI components (dialogs, dropdowns) |
+| Tailwind CSS | 3.x | Styling (popup/sidepanel) |
+| Supabase | 2.x | Cloud sync backend |
 | chrome.storage.local | - | Data persistence |
+| @dnd-kit | 6.x/10.x | Drag-and-drop reorder |
 
 ### What NOT to Use
 - Manifest V2 (deprecated)
@@ -68,70 +111,80 @@ After running `npm run dev`, load the extension from `dist/` folder in Chrome vi
 <!-- GSD:architecture-start source:ARCHITECTURE.md -->
 ## Architecture
 
-### Three-Part Extension Structure
+### Monorepo Structure
 
 ```
-src/
-├── content/           # Runs on supported platforms (Shadow DOM isolated)
-│   ├── core/               # Core modules (shared across platforms)
-│   │   ├── coordinator.ts  # Entry point, platform matching
-│   │   ├── detector.ts     # Config-driven input detection
-│   │   └── injector.tsx    # Config-driven UI injection
-│   │
-│   ├── platforms/          # Platform configs and strategies
-│   │   ├── registry.ts     # URL → Platform matching
-│   │   ├── base/           # Types and default strategies
-│   │   │   ├── types.ts           # PlatformConfig, UrlPattern, etc.
-│   │   │   ├── strategy-interface.ts  # InsertStrategy, DetectStrategy
-│   │   │   └── default-strategies.ts  # DefaultInserter
-│   │   ├── lovart/         # Lovart (Lexical editor)
-│   │   │   ├── config.ts
-│   │   │   └── strategies.ts
-│   │   ├── chatgpt/        # ChatGPT
-│   │   ├── claude-ai/      # Claude.ai (ProseMirror)
-│   │   ├── gemini/         # Gemini
-│   │   ├── liblib/         # LibLib (国内)
-│   │   ├── jimeng/         # 即梦 (国内)
-│   │   ├── kimi/           # Kimi (Lexical)
-│   │   ├── xingliu/        # 星流 (Lexical)
-│   │   └── ...             # More platforms
-│   │
-│   ├── components/         # Dropdown UI React components
-│   │   ├── DropdownApp.tsx # Main dropdown with InsertStrategy prop
-│   │   ├── TriggerButton.tsx
-│   │   └── ...
-│   │
-│   ├── styles/             # Shadow DOM styles
-│   └── vision-modal-manager.tsx  # Vision modal for image-to-prompt
+packages/
+├── extension/          # Chrome Extension（开源）
+│   ├── src/
+│   │   ├── content/    # Content scripts (Shadow DOM isolated)
+│   │   │   ├── core/        # Core modules (shared across platforms)
+│   │   │   │   ├── coordinator.ts  # Entry point, platform matching
+│   │   │   │   ├── detector.ts     # Config-driven input detection
+│   │   │   │   └── injector.tsx    # Config-driven UI injection
+│   │   │   ├── platforms/    # Platform configs and strategies
+│   │   │   │   ├── registry.ts     # URL → Platform matching
+│   │   │   │   ├── base/           # Types and default strategies
+│   │   │   │   ├── lovart/         # Lovart (Lexical editor)
+│   │   │   │   ├── chatgpt/        # ChatGPT
+│   │   │   │   ├── claude-ai/      # Claude.ai (ProseMirror)
+│   │   │   │   ├── gemini/         # Gemini
+│   │   │   │   ├── liblib/         # LibLib (国内)
+│   │   │   │   ├── jimeng/         # 即梦 (国内)
+│   │   │   │   ├── kimi/           # Kimi (Lexical)
+│   │   │   │   ├── xingliu/        # 星流 (Lexical)
+│   │   │   │   └── ...
+│   │   │   ├── components/    # Dropdown UI React components
+│   │   │   └── vision-modal-manager.tsx
+│   │   ├── background/   # Service worker (no DOM access)
+│   │   ├── popup/        # Quick settings, Vision API provider config
+│   │   ├── sidepanel/    # Main prompt management UI (CRUD, settings, sync)
+│   │   ├── lib/          # Utilities
+│   │   │   ├── store.ts        # Zustand store
+│   │   │   ├── storage.ts      # StorageManager
+│   │   │   ├── import-export.ts
+│   │   │   ├── version-checker.ts
+│   │   │   ├── resource-library.ts
+│   │   │   └── sync/           # Local folder backup sync
+│   │   ├── offscreen/    # Offscreen documents
+│   │   ├── hooks/        # React hooks
+│   │   └── data/         # Built-in data
+│   ├── manifest.json
+│   ├── vite.config.base.ts  # Shared config
+│   ├── vite.config.dev.ts   # Development overrides
+│   └── vite.config.prod.ts  # Production overrides
 │
-├── background/        # Service worker (no DOM access)
-│   └── service-worker.ts    # Message routing, storage ops
+├── web-app/            # Web App (Next.js 16)
+│   ├── app/            # Next.js app router pages
+│   ├── components/     # React components
+│   ├── lib/            # Utilities and API clients
+│   ├── supabase/       # Supabase configuration
+│   ├── tests/          # Playwright E2E tests
+│   └── public/         # Static assets
 │
-├── popup/             # Extension popup (React + Tailwind)
-│   ├── backup.html           # Backup management popup (default action)
-│   ├── backup.tsx            # BackupApp component
-│   ├── App.tsx               # Main management UI (unused in current build)
-│   ├── components/           # Category list, prompt editor, dialogs
-│   └── components/ui/       # Radix UI primitives (button, dialog, etc.)
-│
-├── lib/               # Shared utilities
-│   ├── store.ts             # Zustand store (CRUD + storage sync)
-│   ├── storage.ts           # StorageManager singleton
-│   ├── import-export.ts     # JSON download/upload
-│   ├── version-checker.ts   # GitHub release version check
-│   ├── resource-library.ts  # Resource prompt data loading
-│   └── sync/                # Local folder backup sync
-│       ├── sync-manager.ts  # Sync orchestration
-│       ├── file-sync.ts     # File System Access API operations
-│       └── indexeddb.ts     # Folder handle persistence
-│
-├── shared/            # Cross-context shared
-│   ├── types.ts             # Prompt, Category, StorageSchema
-│   ├── messages.ts          # MessageType enum for communication
-│   └── constants.ts         # STORAGE_KEY, PLATFORM_DOMAIN
-│
-├── data/              # Initial data
-│   └── built-in-data.ts     # Default prompts and categories
+└── shared/             # Shared types（开源）
+    ├── types/
+    │   ├── prompt.ts
+    │   ├── storage.ts
+    │   ├── sync.ts     # Cloud sync types
+    │   └── ...
+    ├── constants/
+    ├── messages.ts     # MessageType enum
+    └── utils.ts
+```
+
+### Import Convention
+
+- Extension imports shared types: `import { Prompt } from '@oh-my-prompt/shared/types'`
+- Path alias: `@/` resolves to `packages/extension/src/`
+
+### Commands
+
+```bash
+# Run from root directory
+npm run dev
+npm run build
+npm run test
 ```
 
 ### Communication Patterns
@@ -141,17 +194,20 @@ src/
 | Content Script | chrome.runtime.sendMessage | Message to service worker for storage |
 | Service Worker | chrome.storage.local | Direct storage access, message routing |
 | Popup | chrome.storage.local + sendMessage | Direct storage + notify content script |
+| Sidepanel | Port connection + sendMessage | Real-time status from content script |
 | Content ↔ Popup | chrome.tabs.sendMessage | Tab-targeted messaging |
+| Content ↔ Sidepanel | chrome.runtime.Port | Bi-directional connection (input status) |
+| Service Worker ↔ Offscreen | sendToOffscreen() | File system operations, permissions |
 
 ### Data Flow
 
 1. **Storage-First:** All state derives from `chrome.storage.local` via `StorageSchema`
-2. **Message Types:** See `src/shared/messages.ts` for full MessageType enum (25 types including `PING`, `GET_STORAGE`, `SET_STORAGE`, `INSERT_PROMPT`, `BACKUP_TO_FOLDER`, `SAVE_IMAGE`, `READ_IMAGE`, `DELETE_IMAGE`, `GET_FOLDER_HANDLE`, `SAVE_FOLDER_HANDLE`, `GET_SYNC_STATUS`, `SET_UNSYNCED_FLAG`, `SYNC_FAILED`, `OPEN_BACKUP_PAGE`, `REFRESH_DATA`, `CHECK_UPDATE`, `GET_UPDATE_STATUS`, `CLEAR_UPDATE_STATUS`, `OPEN_EXTENSIONS`, `EXPORT_DATA`, `DISMISS_BACKUP_WARNING`, `RESTORE_PERMISSION`, `SET_SETTINGS_ONLY`)
+2. **Message Types:** See `packages/shared/messages.ts` for full MessageType enum (50+ types including storage, sync, vision API, provider config, offscreen, sidepanel communication, and temporary library operations)
 3. **Zustand Sync:** Popup store calls `saveToStorage()` after each CRUD operation, which triggers auto-sync if enabled
 
 ### Platform Configuration
 
-Each platform requires a `config.ts` in `src/content/platforms/{platform}/` with:
+Each platform requires a `config.ts` in `packages/extension/src/content/platforms/{platform}/` with:
 
 ```typescript
 export const platformConfig: PlatformConfig = {
@@ -177,7 +233,7 @@ export const platformConfig: PlatformConfig = {
 Complex platforms can override strategies (e.g., Lexical/ProseMirror editors). Most use `DefaultInserter`.
 
 To add a new platform:
-1. Create `src/content/platforms/{platform}/config.ts`
+1. Create `packages/extension/src/content/platforms/{platform}/config.ts`
 2. Import and `registerPlatform()` in `coordinator.ts`
 
 ### Manifest Configuration
@@ -192,6 +248,48 @@ Uses File System Access API for automatic backup to user-selected folder:
 - `triggerSync()` called after each `saveToStorage()` when sync enabled
 - Version history available via `listBackupVersions()`
 - Restore from any backup version via `restoreFromBackup()`
+
+### Key UI Components
+
+| Component | Purpose | Location |
+|-----------|---------|----------|
+| Sidepanel | Main prompt management (CRUD, settings, sync) | `packages/extension/src/sidepanel/` |
+| Popup | Quick settings, Vision API provider config | `packages/extension/src/popup/` |
+| Vision Modal | In-page image-to-prompt conversion | `packages/extension/src/content/vision-modal-manager.tsx` |
+| Dropdown | Prompt selection on platform pages | `packages/extension/src/content/components/` |
+
+### Offscreen Document
+
+Critical for file system operations that require DOM context:
+- Handles permission requests (preserves user gesture)
+- Reads/writes backup files via File System Access API
+- Caches folder handle for quick permission checks
+- Communication: Service Worker → `sendToOffscreen()` → Offscreen Document
+
+### Vision API & Provider Config
+
+Multi-provider architecture (replaces legacy single `VisionApiConfig`):
+- `ProviderConfig`: apiKey, apiEndpoint, apiFormat, selectedModel, providerId
+- `ProviderConfigsStorage`: configs array + activeConfigId
+- Supports OpenAI chat_completions and Anthropic messages formats
+- Active config used for image-to-prompt conversion (Vision Modal)
+- Encrypted backup sync via `syncApiConfigToFolder()`
+
+### Temporary Library
+
+Independent storage for Vision-generated prompts:
+- `temporaryPrompts` array in `StorageSchema`
+- Prompts with `categoryId: 'temporary'` (not in category system)
+- Transfer to permanent categories via `TRANSFER_TEMPORARY_PROMPT`
+- Local image storage when folder configured
+
+### Sync Orchestrator
+
+Cloud-first decision matrix for backup sync:
+- `SyncOrchestrator`: coordinates Cloud + Local strategies
+- `CloudSyncStrategy`: Supabase cloud backup (requires auth)
+- `LocalSyncStrategy`: Local folder backup (File System Access API)
+- Status query via `GET_UNIFIED_SYNC_STATUS`
 <!-- GSD:architecture-end -->
 
 <!-- GSD:conventions-start source:CONVENTIONS.md -->
@@ -199,12 +297,14 @@ Uses File System Access API for automatic backup to user-selected folder:
 
 ### Path Alias
 - Use `@/` for imports: `import { foo } from '@/lib/utils'`
+- Import shared types: `import { Prompt } from '@oh-my-prompt/shared/types'`
 
 ### Storage Key
 - Single key `prompt_script_data` stores entire `StorageSchema` object
 
 ### Category ID
 - `'all'` is reserved for "show all prompts" filter (not a real category)
+- `'temporary'` is a pseudo-category for Vision-generated prompts (stored in `temporaryPrompts`, not `userData.prompts`)
 
 ### Shadow DOM Isolation
 - Content script UI must use Shadow DOM to prevent host page CSS conflicts

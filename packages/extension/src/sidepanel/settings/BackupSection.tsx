@@ -49,7 +49,7 @@ const transformUnifiedToBackup = (unified: UnifiedSyncStatus): BackupStatusStora
  * - Two status rows (cloud + local) using BackupStatusRow
  * - Collapsible "更多选项" section with BackupMoreOptions
  * - NO manual backup button - backup is automatic after each edit
- * - Auto-refreshes on BACKUP_PROGRESS/BACKUP_RETRY/BACKUP_COMPLETE events
+ * - Auto-refreshes on BACKUP_COMPLETE and AUTH_STATUS_UPDATE events only
  * - "选择备份文件夹" button if local not configured
  *
  * Design philosophy:
@@ -132,13 +132,13 @@ export function BackupSection() {
     }
   }, [success, error])
 
-  // Listen for backup progress/retry/complete events and auth status updates
+  // Listen for backup complete and auth status updates only.
+  // BACKUP_PROGRESS/BACKUP_RETRY are informational, no need to query status.
   useEffect(() => {
     const handleMessage = (message: { type: string }) => {
+      // Only refresh on completion events (not progress/retry)
       if (
         [
-          MessageType.BACKUP_PROGRESS,
-          MessageType.BACKUP_RETRY,
           MessageType.BACKUP_COMPLETE,
           MessageType.AUTH_STATUS_UPDATE // Broadcast by service-worker after AUTH_CALLBACK_COMPLETE
         ].includes(message.type as MessageType)

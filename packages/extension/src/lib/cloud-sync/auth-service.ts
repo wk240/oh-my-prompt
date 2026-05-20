@@ -62,11 +62,23 @@ export async function syncFromWebApp(options?: { background?: boolean }): Promis
 }
 
 /**
+ * Cached sync status to reduce API calls.
+ * Shared with CloudSyncStrategy for unified caching.
+ */
+let cachedSyncStatus: {
+  user?: { id: string; email?: string }
+  subscription?: unknown
+  lastSyncAt?: number
+  timestamp: number
+} | null = null
+const STATUS_CACHE_DURATION_MS = 60 * 1000 // 60 seconds
+
+/**
  * Get the current authentication state with subscription info.
  *
  * Flow:
  * 1. Check Supabase session (stored in chrome.storage.local)
- * 2. If session exists, fetch subscription status from web-app API
+ * 2. If session exists, fetch subscription status from web-app API (cached)
  * 3. Return full auth state including user, subscription, and lastSyncAt
  *
  * @returns CloudAuthState with status and optional user/subscription info
@@ -85,6 +97,7 @@ export async function getAuthState(): Promise<CloudAuthState> {
 
     if (error || !initialSession) {
       console.log('[Oh My Prompt] Returning not_logged_in')
+      cachedSyncStatus = null // Clear cache on auth change
       return { status: 'not_logged_in' }
     }
 
@@ -103,10 +116,24 @@ export async function getAuthState(): Promise<CloudAuthState> {
         console.log('[Oh My Prompt] Refresh failed, clearing session')
         await chrome.storage.local.remove(storageKey)
         clearSupabaseClient()
+        cachedSyncStatus = null // Clear cache on auth change
         return { status: 'not_logged_in' }
       }
       console.log('[Oh My Prompt] Token refreshed successfully')
       session = newSession
+      cachedSyncStatus = null // Clear cache after token refresh
+    }
+
+    // Check if cached status is valid
+    const nowMs = Date.now()
+    if (cachedSyncStatus && nowMs - cachedSyncStatus.timestamp < STATUS_CACHE_DURATION_MS) {
+      console.log('[Oh My Prompt] Using cached sync status')
+      return {
+        status: 'logged_in',
+        user: cachedSyncStatus.user,
+        subscription: cachedSyncStatus.subscription,
+        lastSyncAt: cachedSyncStatus.lastSyncAt
+      }
     }
 
     // Get subscription status from sync/status API
@@ -129,19 +156,34 @@ export async function getAuthState(): Promise<CloudAuthState> {
 
     const statusData = await statusRes.json()
 
-    return {
-      status: 'logged_in',
+    // Cache the result
+    cachedSyncStatus = {
       user: statusData.user,
       subscription: {
         ...statusData.subscription,
         optimizationQuota: statusData.optimizationQuota
       },
-      lastSyncAt: statusData.lastSyncedAt
+      lastSyncAt: statusData.lastSyncedAt,
+      timestamp: nowMs
+    }
+
+    return {
+      status: 'logged_in',
+      user: cachedSyncStatus.user,
+      subscription: cachedSyncStatus.subscription,
+      lastSyncAt: cachedSyncStatus.lastSyncAt
     }
   } catch (error) {
     console.error('[Oh My Prompt] Auth state check failed:', error)
     return { status: 'not_logged_in' }
   }
+}
+
+/**
+ * Invalidate cached sync status (called after sync operations).
+ */
+export function invalidateSyncStatusCache(): void {
+  cachedSyncStatus = null
 }
 
 /**

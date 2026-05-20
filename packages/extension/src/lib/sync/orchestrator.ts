@@ -4,6 +4,7 @@ import { executeLocalSync } from './local-sync-executor'
 import { getFolderHandle, checkFolderPermission } from './indexeddb'
 import { RetryManager } from './retry-manager'
 import { MessageType } from '@oh-my-prompt/shared/messages'
+import { invalidateSyncStatusCache } from '../cloud-sync/auth-service'
 import {
   FullBackupData,
   MergeResult,
@@ -167,6 +168,8 @@ export class SyncOrchestrator {
             cloudRetryCount: 0,
             cloudError: undefined
           })
+          // Invalidate auth-service cache after successful cloud sync
+          invalidateSyncStatusCache()
           return { cloudSynced: true, localSynced: false, syncedAt: cloudResult.syncedAt }
         }
         await this.updateSyncStatus({
@@ -273,6 +276,8 @@ export class SyncOrchestrator {
         cloudError: undefined,
         localError: undefined
       })
+      // Invalidate auth-service cache after successful cloud sync
+      invalidateSyncStatusCache()
       return {
         cloudSynced: true,
         localSynced: true,
@@ -311,6 +316,8 @@ export class SyncOrchestrator {
         cloudError: undefined,
         localError: localResult.error
       })
+      // Invalidate auth-service cache after successful cloud sync
+      invalidateSyncStatusCache()
       return {
         cloudSynced: true,
         localSynced: false,

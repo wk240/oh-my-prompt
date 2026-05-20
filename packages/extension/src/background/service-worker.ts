@@ -6,7 +6,7 @@ import { getSyncStatus, triggerSync, restorePermission, initialSync, triggerProv
 import { createSyncOrchestrator, type FullBackupData } from '../lib/sync'
 import { syncApiConfigToFolder } from '../lib/sync/api-config-sync'
 import { checkForUpdate, getUpdateStatus, clearUpdateStatus, type UpdateStatus } from '../lib/version-checker'
-import { executeVisionApiCall, classifyApiError, getLanguagePreference } from '../lib/vision-api'
+import { executeVisionApiCallWithProviderConfig, classifyApiError, getLanguagePreference } from '../lib/vision-api'
 import { asyncCompressImageFromUrl } from '../lib/image-utils'
 import { CAPTURED_IMAGE_STORAGE_KEY, VISION_API_CONFIG_STORAGE_KEY, PROVIDER_CONFIGS_STORAGE_KEY, LEGACY_VISION_API_CONFIG_KEY } from '@oh-my-prompt/shared/constants'
 import { validateProviderConfig, maskApiKey } from '../lib/config-validator'
@@ -1206,7 +1206,17 @@ chrome.runtime.onMessage.addListener(
             }
 
             const activeConfig = storage.configs.find(c => c.id === storage.activeConfigId)
-            if (!activeConfig || !activeConfig.apiKey) {
+            if (!activeConfig) {
+              sendResponse({
+                success: false,
+                error: { type: 'invalid_key', message: '配置不存在', action: 'settings' }
+              })
+              return
+            }
+
+            // Official API (omp_official) uses session token auth, no API key required
+            // Third-party APIs require apiKey validation
+            if (activeConfig.apiFormat !== 'omp_official' && !activeConfig.apiKey) {
               sendResponse({
                 success: false,
                 error: { type: 'invalid_key', message: 'API Key 未配置', action: 'settings' }
@@ -1225,15 +1235,8 @@ chrome.runtime.onMessage.addListener(
                 base64Image = await asyncCompressImageFromUrl(imageUrl)
               }
 
-              // Convert ProviderConfig to VisionApiConfig for backward compatibility
-              const legacyConfig: VisionApiConfig = {
-                baseUrl: activeConfig.apiEndpoint,
-                apiKey: activeConfig.apiKey,
-                modelName: activeConfig.selectedModel,
-                apiFormat: activeConfig.apiFormat === 'anthropic_messages' ? 'anthropic' : 'openai'
-              }
-
-              const resultData = await executeVisionApiCall(legacyConfig, base64Image, 'base64')
+              // Use new function that correctly handles omp_official format
+              const resultData = await executeVisionApiCallWithProviderConfig(base64Image, 'base64')
               const languagePreference = await getLanguagePreference()
               const primaryPrompt = languagePreference === 'en' ? resultData.en.prompt : resultData.zh.prompt
               sendResponse({ success: true, data: { prompt: primaryPrompt, fullData: resultData } })

@@ -138,7 +138,6 @@ export class SyncOrchestrator {
     const localAvailable = await this.localStrategy.isAvailable()
 
     if (!localAvailable) {
-      console.log('[Oh My Prompt] Local sync not available, skipping sync')
       // Still try cloud sync if available
       if (cloudAvailable) {
         // Reset stored result
@@ -254,7 +253,7 @@ export class SyncOrchestrator {
 
     // Handle skipped sync (data unchanged)
     if (cloudResult.skipped) {
-      console.log('[Oh My Prompt] Cloud sync skipped: data unchanged')
+      // Cloud sync skipped: data unchanged
     }
 
     if (cloudSuccess && localSuccess) {
@@ -627,20 +626,6 @@ export class SyncOrchestrator {
     await this.updateSyncStatus({ initialized: true })
   }
 
-  /**
-   * Get unified sync status.
-   *
-   * IMPORTANT: When called from Service Worker context (handling GET_UNIFIED_SYNC_STATUS message),
-   * we MUST NOT use sendToOffscreen() because it causes a deadlock:
-   * - Service Worker is processing a message (inside switch statement)
-   * - sendToOffscreen sends another message (OFFSCREEN_CHECK_PERMISSION)
-   * - New message gets queued waiting for current message to complete
-   * - But current message is waiting for sendToOffscreen response
-   * - DEADLOCK!
-   *
-   * Solution: Call getFolderHandle/checkFolderPermission directly in Service Worker context.
-   * These functions work in Service Worker because IndexedDB is available.
-   */
   async getStatus(): Promise<UnifiedSyncStatus> {
     // Single API call: getStatus() already checks availability
     const cloudStatus = await this.cloudStrategy.getStatus()
@@ -654,19 +639,14 @@ export class SyncOrchestrator {
 
     if (localStatus.enabled) {
       try {
-        console.log('[Oh My Prompt] getStatus: localStatus.enabled=true, calling getFolderHandle directly')
         const handle = await getFolderHandle()
-        console.log('[Oh My Prompt] getStatus: getFolderHandle result=', handle ? handle.name : 'null')
         if (handle) {
           folderName = handle.name
           permissionStatus = await checkFolderPermission(handle, 'readwrite')
-          console.log('[Oh My Prompt] getStatus: folderName=', folderName, 'permissionStatus=', permissionStatus)
         }
       } catch (err) {
         console.warn('[Oh My Prompt] Failed to get permission status:', err)
       }
-    } else {
-      console.log('[Oh My Prompt] getStatus: localStatus.enabled=false')
     }
 
     return {

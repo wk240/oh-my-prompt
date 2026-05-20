@@ -42,7 +42,6 @@ export async function executeLocalSync(backupData: FullBackupData): Promise<Loca
 
     // Handle offscreen sync errors
     const error = result.error || 'UNKNOWN'
-    console.warn('[Oh My Prompt] Offscreen sync failed:', error)
     return { success: false, error }
   } catch (offscreenError) {
     console.error('[Oh My Prompt] Offscreen document unavailable:', offscreenError)

@@ -115,8 +115,6 @@ initialSync().catch(err => console.error('[Oh My Prompt] Initial sync error:', e
 
 // Run orchestrator initial sync on startup (cloud-first decision matrix)
 chrome.runtime.onStartup.addListener(async () => {
-  console.log('[Oh My Prompt] Extension started, running orchestrator initial sync...')
-
   // Enable Chrome's built-in toggle behavior for sidepanel
   // Clicking extension icon will toggle sidepanel open/close
   // Permission restore is handled by useAutoPermissionRestore hook in sidepanel
@@ -134,8 +132,7 @@ chrome.runtime.onStartup.addListener(async () => {
 })
 
 // Also create on install (for clean install)
-chrome.runtime.onInstalled.addListener(async (details) => {
-  console.log('[Oh My Prompt] Extension installed/updated:', details.reason)
+chrome.runtime.onInstalled.addListener(async (_details) => {
   createContextMenu()
 
   // Enable Chrome's built-in toggle behavior for sidepanel
@@ -237,21 +234,14 @@ chrome.runtime.onMessage.addListener(
           })
         return true // Required for async response
 
-      // Handle OFFSCREEN_CHECK_PERMISSION directly in Service Worker
-      // When Service Worker calls sendToOffscreen, the message comes back to Service Worker
-      // and gets dropped by default case. Handle it directly here instead.
       case MessageType.OFFSCREEN_CHECK_PERMISSION:
-        console.log('[Oh My Prompt] Service Worker received OFFSCREEN_CHECK_PERMISSION')
         getFolderHandle()
           .then(async (handle) => {
-            console.log('[Oh My Prompt] getFolderHandle result:', handle ? handle.name : 'null')
             if (!handle) {
-              console.log('[Oh My Prompt] OFFSCREEN_CHECK_PERMISSION: no folder, returning hasFolder=false')
               sendResponse({ success: true, data: { hasFolder: false } })
               return
             }
             const permission = await checkFolderPermission(handle, 'readwrite')
-            console.log('[Oh My Prompt] OFFSCREEN_CHECK_PERMISSION: folderName=', handle.name, 'permission=', permission)
             sendResponse({
               success: true,
               data: {
@@ -593,26 +583,22 @@ chrome.runtime.onMessage.addListener(
         return true // Required for async response
 
 
-      // Cloud Sync: Auth callback from web-app OAuth page
       case MessageType.AUTH_CALLBACK_COMPLETE:
         // Auth callback content script reports success/failure
         const authPayload = message.payload as { success: boolean; error?: string }
-        console.log('[Oh My Prompt] Auth callback complete:', authPayload)
 
         // Clear Supabase client singleton to ensure fresh session state for subsequent auth checks
         // This is critical because the client may have cached "no session" state before auth
         if (authPayload.success) {
           clearSupabaseClient()
-          console.log('[Oh My Prompt] Supabase client cleared after successful auth')
         }
 
         // Broadcast to sidepanel if open
         chrome.runtime.sendMessage({
           type: 'AUTH_STATUS_UPDATE',
           payload: authPayload
-        }).catch(err => {
+        }).catch(() => {
           // Sidepanel may not be open, ignore error
-          console.log('[Oh My Prompt] Sidepanel not reachable for auth update:', err)
         })
 
         sendResponse({ success: true } as MessageResponse)
@@ -625,7 +611,6 @@ chrome.runtime.onMessage.addListener(
           .then(tabs => {
             if (tabs.length > 0) {
               chrome.tabs.remove(tabs[0].id!)
-              console.log('[Oh My Prompt] Auth sync tab closed')
             }
           })
           .catch(err => console.warn('[Oh My Prompt] Failed to close auth tab:', err))
@@ -726,10 +711,8 @@ chrome.runtime.onMessage.addListener(
         // CRITICAL: User gesture propagates through message chain, but only in SYNC execution path
         // We must forward the message immediately without any await
         // The offscreen document uses cached handle for synchronous permission request
-        console.log('[Oh My Prompt] Forwarding permission request to offscreen with gesture')
         chrome.runtime.sendMessage({ type: MessageType.OFFSCREEN_REQUEST_PERMISSION })
           .then((response: MessageResponse) => {
-            console.log('[Oh My Prompt] Offscreen permission response:', response)
             sendResponse(response)
           })
           .catch(error => {
@@ -744,7 +727,6 @@ chrome.runtime.onMessage.addListener(
         if (openTabId && openTabId >= 0) {
           chrome.sidePanel.open({ tabId: openTabId })
             .then(() => {
-              console.log('[Oh My Prompt] Sidepanel opened from content script')
               sendResponse({ success: true } as MessageResponse)
             })
             .catch(error => {
@@ -791,12 +773,10 @@ chrome.runtime.onMessage.addListener(
           // MUST call sidePanel.open() immediately before any await - this preserves user gesture
           chrome.sidePanel.open({ tabId: senderTabId })
             .then(() => {
-              console.log('[Oh My Prompt] Sidepanel opened for permission restore from content script')
               // Now restore permission via offscreen document (async operations after sidepanel is open)
               restorePermission()
                 .then(restoreResult => {
                   if (restoreResult.success) {
-                    console.log('[Oh My Prompt] Permission restored successfully via sidepanel trigger')
                     sendResponse({ success: true } as MessageResponse)
                   } else {
                     console.warn('[Oh My Prompt] Permission restore failed:', restoreResult.error)

@@ -292,7 +292,7 @@ export interface EnableSyncResult {
  * Enable sync - reuse existing folder if permission valid, otherwise select new
  */
 export async function enableSync(): Promise<EnableSyncResult> {
-  // First check if we have a saved handle with valid permission
+  // Check if we have a saved handle with valid permission
   const existingHandle = await getFolderHandle()
 
   if (existingHandle) {
@@ -531,7 +531,6 @@ export async function getSyncStatus(): Promise<SyncStatus> {
 
     // Auto-fix: if folder handle exists but syncEnabled is false, enable sync
     if (!settings.syncEnabled && permResult.data.hasFolder) {
-      console.log('[Oh My Prompt] Auto-fixing syncEnabled: folder exists, enabling sync')
       await storageManager.updateSettings({ syncEnabled: true })
     }
 
@@ -555,7 +554,6 @@ export async function getSyncStatus(): Promise<SyncStatus> {
 
     // Auto-fix: if folder handle exists but syncEnabled is false, enable sync
     if (!settings.syncEnabled && handle) {
-      console.log('[Oh My Prompt] Auto-fixing syncEnabled: folder exists (fallback), enabling sync')
       await storageManager.updateSettings({ syncEnabled: true })
     }
 
@@ -622,26 +620,17 @@ export async function restorePermission(): Promise<{ success: boolean; error?: s
   }
 }
 
-/**
- * Get backup versions list for UI
- * Uses offscreen document for file operations
- */
 export async function getBackupVersions(): Promise<{ versions: BackupVersion[]; error?: string }> {
-  console.log('[Oh My Prompt] getBackupVersions: starting...')
   try {
     await ensureOffscreenDocument()
-    console.log('[Oh My Prompt] getBackupVersions: offscreen ready, sending message...')
     const result = await sendToOffscreen<BackupVersion[]>(MessageType.OFFSCREEN_LIST_VERSIONS)
-    console.log('[Oh My Prompt] getBackupVersions: result=', JSON.stringify(result))
 
     if (result.success && result.data) {
-      console.log('[Oh My Prompt] getBackupVersions: success, versions count=', result.data.length)
       return { versions: result.data }
     }
 
     // Convert technical errors to user-friendly messages
     const errorCode = result.error || 'READ_FAILED'
-    console.warn('[Oh My Prompt] getBackupVersions: failed with error=', errorCode)
     let errorMessage: string
     if (errorCode === 'PERMISSION_PROMPT') {
       errorMessage = '文件夹权限需要恢复，请点击"恢复权限"按钮'
@@ -773,7 +762,6 @@ export async function restoreFromBackup(
       const apiResult = await sendToOffscreen(MessageType.OFFSCREEN_READ_API_CONFIG)
       if (apiResult.success && apiResult.data) {
         await chrome.storage.local.set({ [VISION_API_CONFIG_STORAGE_KEY]: apiResult.data })
-        console.log('[Oh My Prompt] API config restored from backup')
       }
     } catch (apiRestoreError) {
       console.warn('[Oh My Prompt] Failed to restore API config from backup:', apiRestoreError)
@@ -784,7 +772,6 @@ export async function restoreFromBackup(
       const providerResult = await sendToOffscreen(MessageType.OFFSCREEN_READ_PROVIDER_CONFIGS)
       if (providerResult.success && providerResult.data) {
         await chrome.storage.local.set({ [PROVIDER_CONFIGS_STORAGE_KEY]: providerResult.data })
-        console.log('[Oh My Prompt] Provider configs restored from backup')
       }
     } catch (providerRestoreError) {
       console.warn('[Oh My Prompt] Failed to restore provider configs from backup:', providerRestoreError)

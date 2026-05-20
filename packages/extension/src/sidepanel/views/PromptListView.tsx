@@ -960,12 +960,10 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
     // Wait 500ms for action.onClicked's permission request to complete
     // Then check status (not request permission) to see if it succeeded
     const timer = setTimeout(() => {
-      console.log('[Oh My Prompt] Sidepanel opened, checking permission status...')
       chrome.runtime.sendMessage({ type: MessageType.GET_SYNC_STATUS }, (response) => {
         if (response?.success && response.data) {
           const syncStatus = response.data
           setStatus(syncStatus)
-          console.log('[Oh My Prompt] Permission status after action.onClicked:', syncStatus.permissionStatus)
 
           // If permission still needs restore (prompt), show UI but don't auto-request
           // User must click restore button manually (which has user gesture)
@@ -979,7 +977,6 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
       getFolderHandle().then(handle => {
         if (handle) {
           cachedFolderHandleRef.current = handle
-          console.log('[Oh My Prompt] Folder handle cached for future use')
         }
       }).catch(err => {
         console.warn('[Oh My Prompt] Failed to cache folder handle:', err)

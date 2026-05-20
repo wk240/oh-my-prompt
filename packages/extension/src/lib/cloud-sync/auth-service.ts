@@ -92,16 +92,9 @@ export async function getAuthState(): Promise<CloudAuthState> {
   const supabase = getSupabaseClient()
 
   try {
-    // Debug: Check storage directly
-    const storageKey = `sb-${SUPABASE_PROJECT_REF}-auth-token`
-    const storageResult = await chrome.storage.local.get(storageKey)
-    console.log('[Oh My Prompt] Storage raw data:', storageResult[storageKey] ? 'exists' : 'missing')
-
     const { data: { session: initialSession }, error } = await supabase.auth.getSession()
-    console.log('[Oh My Prompt] getSession result:', { session: initialSession ? 'exists' : 'missing', error })
 
     if (error || !initialSession) {
-      console.log('[Oh My Prompt] Returning not_logged_in')
       cachedSyncStatus = null // Clear cache on auth change
       return { status: 'not_logged_in' }
     }
@@ -111,20 +104,16 @@ export async function getAuthState(): Promise<CloudAuthState> {
     const now = Math.floor(Date.now() / 1000)
     const expiresAt = session.expires_at || 0
     const isExpired = expiresAt < now
-    console.log('[Oh My Prompt] Token expiry: expiresAt=' + expiresAt + ', now=' + now + ', isExpired=' + isExpired)
-    console.log('[Oh My Prompt] Token preview:', session.access_token ? session.access_token.substring(0, 20) + '...' : 'missing')
 
     if (isExpired) {
-      console.log('[Oh My Prompt] Token expired, attempting refresh...')
       const { data: { session: newSession }, error: refreshError } = await supabase.auth.refreshSession()
       if (refreshError || !newSession) {
-        console.log('[Oh My Prompt] Refresh failed, clearing session')
+        const storageKey = `sb-${SUPABASE_PROJECT_REF}-auth-token`
         await chrome.storage.local.remove(storageKey)
         clearSupabaseClient()
         cachedSyncStatus = null // Clear cache on auth change
         return { status: 'not_logged_in' }
       }
-      console.log('[Oh My Prompt] Token refreshed successfully')
       session = newSession
       cachedSyncStatus = null // Clear cache after token refresh
     }
@@ -132,7 +121,6 @@ export async function getAuthState(): Promise<CloudAuthState> {
     // Check if cached status is valid
     const nowMs = Date.now()
     if (cachedSyncStatus && nowMs - cachedSyncStatus.timestamp < STATUS_CACHE_DURATION_MS) {
-      console.log('[Oh My Prompt] Using cached sync status')
       return {
         status: 'logged_in',
         user: cachedSyncStatus.user,
@@ -142,14 +130,11 @@ export async function getAuthState(): Promise<CloudAuthState> {
     }
 
     // Get subscription status from sync/status API
-    console.log('[Oh My Prompt] Calling sync/status API with token...')
     const statusRes = await fetch(`${WEB_APP_URL}/api/sync/status`, {
       headers: {
         Authorization: `Bearer ${session.access_token}`
       }
     })
-
-    console.log('[Oh My Prompt] sync/status response:', statusRes.status, statusRes.ok)
 
     if (!statusRes.ok) {
       // API unavailable, return basic logged_in state
@@ -299,11 +284,8 @@ export async function waitForAuthCallback(timeoutMs: number = 60000): Promise<bo
         // Parse and validate session
         const session = JSON.parse(sessionData)
         if (session.access_token && session.user?.id) {
-          console.log('[Oh My Prompt] Auth detected in storage, user:', session.user.id)
-
           // Clear the singleton client so it re-initializes with new session
           clearSupabaseClient()
-
           return true
         }
       } catch (e) {
@@ -314,6 +296,5 @@ export async function waitForAuthCallback(timeoutMs: number = 60000): Promise<bo
     await new Promise(resolve => setTimeout(resolve, 2000))
   }
 
-  console.log('[Oh My Prompt] Auth wait timeout')
   return false
 }

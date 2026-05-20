@@ -278,24 +278,16 @@ async function cleanupOldBackups(handle: FileSystemDirectoryHandle): Promise<voi
   }
 }
 
-/**
- * List all backup versions in folder
- */
 export async function listBackupVersions(handle: FileSystemDirectoryHandle): Promise<BackupVersion[]> {
   const versions: BackupVersion[] = []
 
   try {
     // Check latest.json
     try {
-      console.log('[Oh My Prompt] listBackupVersions: reading', BACKUP_FILE_NAME)
       const latestHandle = await handle.getFileHandle(BACKUP_FILE_NAME)
-      console.log('[Oh My Prompt] listBackupVersions: got file handle')
       const latestFile = await latestHandle.getFile()
-      console.log('[Oh My Prompt] listBackupVersions: got file, size=', latestFile.size)
       const content = await latestFile.text()
-      console.log('[Oh My Prompt] listBackupVersions: content length=', content.length)
       const parsed = JSON.parse(content)
-      console.log('[Oh My Prompt] listBackupVersions: parsed, backupTime=', parsed.backupTime, 'promptCount=', parsed.userData?.prompts?.length)
 
       versions.push({
         filename: BACKUP_FILE_NAME,

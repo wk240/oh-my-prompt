@@ -33,10 +33,8 @@ export function useAutoPermissionRestore() {
         .then(() => {
           // Now send message to cache handle (offscreen document is ready)
           chrome.runtime.sendMessage({ type: MessageType.OFFSCREEN_CHECK_PERMISSION })
-            .then((response) => {
-              if (response?.success && response?.data?.hasFolder) {
-                console.log('[Oh My Prompt] Folder handle pre-cached:', response.data.folderName)
-              }
+            .then((_response) => {
+              // Handle pre-cached (no log needed)
             })
             .catch(() => {})
         })
@@ -58,8 +56,6 @@ export function useAutoPermissionRestore() {
         return
       }
 
-      console.log('[Oh My Prompt] First user interaction detected, sending permission request in sync path...')
-
       // Mark as attempted immediately
       hasAttemptedRestore.current = true
 
@@ -72,12 +68,10 @@ export function useAutoPermissionRestore() {
       chrome.runtime.sendMessage({ type: MessageType.OFFSCREEN_REQUEST_PERMISSION })
         .then((response) => {
           if (response?.success) {
-            console.log('[Oh My Prompt] Permission restored/confirmed:', response?.data?.permission)
             // Trigger sync to clear any pending unsynced changes
             // This will also set syncEnabled: true and hasUnsyncedChanges: false if sync succeeds
             chrome.runtime.sendMessage({ type: MessageType.TRIGGER_SYNC }).catch(() => {})
           } else {
-            console.log('[Oh My Prompt] Permission request result:', response?.error)
             // GESTURE_LOST or PERMISSION_DENIED - user needs to click restore button manually
             // Reset to allow future attempts
             hasAttemptedRestore.current = false

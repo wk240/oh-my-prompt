@@ -138,7 +138,7 @@ export class LocalSyncStrategy extends BaseSyncStrategy {
         timestamp: parsed.backupTime ? new Date(parsed.backupTime).getTime() : Date.now(),
       }
     } catch (error) {
-      console.warn('[Oh My Prompt] Failed to read local backup:', error)
+      // User cancelled or picker failed
       return null
     }
   }

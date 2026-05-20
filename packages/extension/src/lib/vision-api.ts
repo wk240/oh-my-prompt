@@ -9,6 +9,7 @@ import { MessageType } from '@oh-my-prompt/shared/messages'
 import { extractBase64Data } from './image-utils'
 import { WEB_APP_URL } from '@/lib/config'
 import { getSupabaseClient } from '@/lib/cloud-sync/supabase-client'
+import visionConfig from '@/data/vision-config.json'
 
 /**
  * Get active provider config from storage
@@ -35,104 +36,8 @@ const API_TIMEOUT_MS = 300000
 // Max retry count per D-05 (Claude's discretion: 3 retries)
 const MAX_RETRY_COUNT = 3
 
-// Vision system prompt for structured bilingual output
-const VISION_SYSTEM_PROMPT = `You are an extremely rigorous visual analyst, cinematography analyst, and prompt engineer. Always produce highly detailed, visually grounded prompt output for every supported model provider. Return valid JSON only and follow the requested schema exactly. Make zh.prompt and en.prompt richly detailed, production-ready, and information-dense while keeping the requested field order. Make json_prompt the most detailed layer of the output, using nested objects and arrays when useful, but prefer compact factual phrases over verbose prose. Cover composition, lens language, spatial layout, subjects, objects, text, symbols, lighting, color, materials, background, environment, and generation constraints. Do not hallucinate. When uncertain, mark information as uncertain or approximate.
-
-You are also preparing bilingual prompt output for image generation.
-Analyze the provided image and return valid JSON only.
-
-The JSON schema:
-{
-  "zh": {
-    "title": "A concise Chinese title (5-15 characters) summarizing the image content, e.g. '时尚女性肖像' or '城市夜景'.",
-    "prompt": "A highly detailed, production-ready Chinese image generation prompt, ordered as: Subject, Action/Pose, Details/Appearance, Environment/Background, Lighting/Atmosphere, Style/Camera, Colors, Materials, Aspect Ratio.",
-    "analysis": "A compact Chinese explanation that covers the same fields, with extra attention on style and camera language."
-  },
-  "en": {
-    "title": "A concise English title (3-10 words) summarizing the image content, e.g. 'Fashion Portrait' or 'City Night Scene'.",
-    "prompt": "A highly detailed, production-ready English image generation prompt, ordered as: Subject, Action/Pose, Details/Appearance, Environment/Background, Lighting/Atmosphere, Style/Camera, Colors, Materials, Aspect Ratio.",
-    "analysis": "A compact English explanation that covers the same fields, with extra attention on style and camera language."
-  },
-  "zh_style_tags": ["中文标签1", "中文标签2", "中文标签3"],
-  "en_style_tags": ["english tag 1", "english tag 2", "english tag 3"],
-  "zh_json": {
-    "主体": "Main subject in Chinese.",
-    "动作姿态": "Action or pose in Chinese.",
-    "细节外观": "Details, clothing, appearance, accessories or visible design details in Chinese.",
-    "环境背景": "Environment or background in Chinese.",
-    "光影氛围": "Lighting and atmosphere in Chinese.",
-    "风格镜头": "Art style, design language, camera or lens feeling, and technical visual cues in Chinese.",
-    "色彩": ["primary color in Chinese"],
-    "材质": ["material 1 in Chinese"],
-    "宽高比": "4:5",
-    "...any_extra_nested_fields_in_Chinese": {}
-  },
-  "en_json": {
-    "subject": "Main subject.",
-    "action_pose": "Action or pose.",
-    "details_appearance": "Details, clothing, appearance, accessories or visible design details.",
-    "environment_background": "Environment or background.",
-    "lighting_atmosphere": "Lighting and atmosphere.",
-    "style_camera": "Art style, design language, camera or lens feeling, and technical visual cues.",
-    "colors": ["primary color"],
-    "materials": ["material 1"],
-    "aspect_ratio": "4:5",
-    "...any_extra_nested_fields_you_need": {}
-  },
-  "json_prompt": {
-    "subject": "Main subject.",
-    "action_pose": "Action or pose.",
-    "details_appearance": "Details, clothing, appearance, accessories or visible design details.",
-    "environment_background": "Environment or background.",
-    "lighting_atmosphere": "Lighting and atmosphere.",
-    "style_camera": "Art style, design language, camera or lens feeling, and technical visual cues.",
-    "colors": ["primary color"],
-    "materials": ["material 1"],
-    "aspect_ratio": "4:5",
-    "...any_extra_nested_fields_you_need": {}
-  },
-  "confidence": 0.0
-}
-
-Rules:
-- Return JSON only. No markdown fences.
-- Keep prompts directly usable for Midjourney, Flux or SDXL style generation.
-- zh.prompt and en.prompt should be highly detailed, information-dense, and still directly usable without extra rewriting.
-- Be faithful to visually verifiable facts. Do not invent unseen objects, brands, text, camera specs, materials, art movements or lighting setups.
-- If something is uncertain, use broader wording instead of hallucinating specifics.
-- zh_json must have ALL field names and values in Chinese (e.g., "主体", "动作姿态", "光影氛围").
-- en_json must have ALL field names and values in English (e.g., "subject", "action_pose", "lighting_atmosphere").
-- json_prompt is the legacy language-neutral format with English field names, keep for backward compatibility.
-- json_prompt, zh_json, en_json can use nested objects and arrays, but prefer compact factual phrases instead of long prose.
-- json_prompt must always preserve these exact top-level baseline keys:
-  subject, action_pose, details_appearance, environment_background, lighting_atmosphere, style_camera, colors, materials, aspect_ratio
-- zh_json must always preserve these exact Chinese top-level baseline keys:
-  主体, 动作姿态, 细节外观, 环境背景, 光影氛围, 风格镜头, 色彩, 材质, 宽高比
-- en_json must always preserve these exact English top-level baseline keys:
-  subject, action_pose, details_appearance, environment_background, lighting_atmosphere, style_camera, colors, materials, aspect_ratio
-- Beyond those baseline keys, add only the extra fields that materially help reconstruction.
-- Both zh.prompt and en.prompt must follow this exact information order:
-  1. Subject
-  2. Action/Pose
-  3. Details/Appearance
-  4. Environment/Background
-  5. Lighting/Atmosphere
-  6. Style/Camera
-  7. Colors
-  8. Materials
-  9. Aspect Ratio
-- The style/camera part should be richer than before: describe design language, era influence, medium, finish, camera angle, lens feel, framing logic and aesthetic cues when they are visually supported.
-- The analysis should briefly explain all the same fields in natural language, and stay compact.
-- Return 4 to 6 concise style tags in both Chinese and English.
-- zh_style_tags must be Chinese. en_style_tags must be English.
-- Confidence must be a number between 0 and 1.
-
-Analyze this image and output bilingual prompt JSON.
-Prioritize accurate visual grounding over creativity.
-Keep zh.prompt and en.prompt highly detailed, richly descriptive, and directly usable.
-Focus on: subject, action/pose, details/appearance, environment/background, lighting/atmosphere, style/camera, colors, materials and aspect ratio.
-The zh_json, en_json, and json_prompt must preserve the baseline top-level keys while adding only the extra nested fields needed for faithful reconstruction.
-Prefer compact phrases, compact arrays and compact nested objects over long natural-language paragraphs.`
+// Vision system prompt loaded from config file
+const VISION_SYSTEM_PROMPT = visionConfig.systemPrompt
 
 /**
  * Build Anthropic Claude Vision API request
@@ -406,7 +311,7 @@ function extractJsonFromText(text: string): string {
  * @param apiFormat - 'anthropic' or 'openai'
  * @param response - API response JSON
  * @returns VisionApiResultData with bilingual prompts and JSON details
- * @throws Error if parsing or validation fails
+ * @throws Error only if response is completely empty or has no text content
  */
 export function parseVisionResponse(apiFormat: 'anthropic' | 'openai', response: unknown): VisionApiResultData {
   // Extract raw text content
@@ -419,20 +324,81 @@ export function parseVisionResponse(apiFormat: 'anthropic' | 'openai', response:
   // Robustly extract JSON from potentially messy text
   const jsonText = extractJsonFromText(text)
 
-  // Parse JSON
+  // Try to parse JSON
   let data: VisionApiResultData
   try {
     data = JSON.parse(jsonText) as VisionApiResultData
   } catch (parseError) {
-    // Log the problematic text for debugging
-    console.error('[Oh My Prompt] Vision API JSON parse error:', parseError)
-    console.error('[Oh My Prompt] Raw text (first 500 chars):', text.substring(0, 500))
-    console.error('[Oh My Prompt] Extracted JSON (first 500 chars):', jsonText.substring(0, 500))
-    throw new Error('Failed to parse Vision API response as JSON')
+    // JSON parse failed - return raw text as fallback instead of throwing error
+    console.warn('[Oh My Prompt] Vision API JSON parse failed, showing raw response')
+    console.warn('[Oh My Prompt] Raw text (first 500 chars):', text.substring(0, 500))
+    console.warn('[Oh My Prompt] Extracted JSON (first 500 chars):', jsonText.substring(0, 500))
+
+    // Return minimal valid structure with raw JSON text
+    return {
+      zh: {
+        title: 'JSON 格式异常',
+        prompt: jsonText,
+        analysis: 'API 返回的 JSON 格式无法解析，已显示原始内容'
+      },
+      en: {
+        title: 'Invalid JSON Format',
+        prompt: jsonText,
+        analysis: 'API response JSON could not be parsed, showing raw content'
+      },
+      zh_style_tags: [],
+      en_style_tags: [],
+      json_prompt: {
+        subject: '',
+        action_pose: '',
+        details_appearance: '',
+        environment_background: '',
+        lighting_atmosphere: '',
+        style_camera: '',
+        colors: [],
+        materials: [],
+        aspect_ratio: ''
+      },
+      confidence: 0,
+      _rawJsonText: jsonText
+    }
   }
 
-  // Validate required fields
-  validateVisionResult(data)
+  // Validate required fields - on failure, return raw JSON instead of throwing
+  try {
+    validateVisionResult(data)
+  } catch (validationError) {
+    console.warn('[Oh My Prompt] Vision API validation failed:', validationError)
+
+    // Return minimal valid structure with raw JSON text
+    return {
+      zh: {
+        title: data.zh?.title || 'JSON 字段缺失',
+        prompt: data.zh?.prompt || jsonText,
+        analysis: 'API 返回缺少必需字段，已显示原始内容'
+      },
+      en: {
+        title: data.en?.title || 'Missing JSON Fields',
+        prompt: data.en?.prompt || jsonText,
+        analysis: 'API response missing required fields, showing raw content'
+      },
+      zh_style_tags: data.zh_style_tags || [],
+      en_style_tags: data.en_style_tags || [],
+      json_prompt: {
+        subject: '',
+        action_pose: '',
+        details_appearance: '',
+        environment_background: '',
+        lighting_atmosphere: '',
+        style_camera: '',
+        colors: [],
+        materials: [],
+        aspect_ratio: ''
+      },
+      confidence: data.confidence || 0,
+      _rawJsonText: jsonText
+    }
+  }
 
   return data
 }

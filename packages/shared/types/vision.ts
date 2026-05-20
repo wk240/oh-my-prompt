@@ -120,6 +120,8 @@ export interface VisionApiResultData {
   en_json?: JsonPromptSchema  // English JSON with English field names and values (optional for backward compatibility)
   json_prompt: JsonPromptSchema  // Legacy: language-neutral JSON (backward compatible)
   confidence: number
+  // Fallback: raw JSON text when structured parsing fails
+  _rawJsonText?: string
 }
 
 // Phase 11: Vision API error classification

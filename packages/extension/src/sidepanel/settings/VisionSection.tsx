@@ -95,7 +95,7 @@ export function VisionSection() {
     loadVisionSetting()
   }, [])
 
-  // Load auth state on mount
+  // Load auth state on mount (uses shared cache to avoid duplicate API calls)
   useEffect(() => {
     getAuthState().then(setAuthState)
   }, [])
@@ -568,21 +568,18 @@ export function VisionSection() {
           {/* Error/Success messages */}
           {error && <p className="text-sm text-red-500 mt-4" role="alert">{error}</p>}
           {success && <p className="text-sm text-green-600 mt-4">{success}</p>}
-
-          {/* Saved configs - filter out official config */}
-          <SavedConfigsList
-            configs={configs.filter(c => c.apiFormat !== 'omp_official')}
-            activeConfigId={activeConfigId}
-            onActivate={handleActivate}
-            onDelete={handleDeleteClick}
-            onEdit={handleEdit}
-          />
-
-          {/* Hint */}
-          <div className="text-xs text-gray-500 pt-4 border-t border-gray-100 mt-4">
-            <p>所有配置仅存储在本地</p>
-          </div>
         </CollapsibleSection>
+      )}
+
+      {/* Saved configs - separate section, includes all configs */}
+      {visionEnabled && configs.length > 0 && (
+        <SavedConfigsList
+          configs={configs}
+          activeConfigId={activeConfigId}
+          onActivate={handleActivate}
+          onDelete={handleDeleteClick}
+          onEdit={handleEdit}
+        />
       )}
 
       {/* Disabled state hint */}

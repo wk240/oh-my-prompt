@@ -46,7 +46,7 @@ export function ConfigCard({ config, isActive, onActivate, onDelete, onEdit }: C
         </div>
 
         <div className="flex items-center gap-1">
-          {!isActive && !isOfficial && (
+          {!isActive && (
             <Button
               variant="ghost"
               size="sm"

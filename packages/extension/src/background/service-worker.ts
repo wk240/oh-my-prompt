@@ -3,7 +3,7 @@ import type { StorageSchema, SyncSettings, VisionApiConfig, InsertPromptPayload,
 import { StorageManager } from '../lib/storage'
 import { saveFolderHandle, getFolderHandle, checkFolderPermission } from '../lib/sync/indexeddb'
 import { getSyncStatus, triggerSync, restorePermission, initialSync, triggerProviderConfigsSync } from '../lib/sync/sync-manager'
-import { createSyncOrchestrator } from '../lib/sync'
+import { createSyncOrchestrator, type FullBackupData } from '../lib/sync'
 import { syncApiConfigToFolder } from '../lib/sync/api-config-sync'
 import { checkForUpdate, getUpdateStatus, clearUpdateStatus, type UpdateStatus } from '../lib/version-checker'
 import { executeVisionApiCall, classifyApiError, getLanguagePreference } from '../lib/vision-api'
@@ -16,6 +16,73 @@ import { clearSupabaseClient } from '../lib/cloud-sync/supabase-client'
 
 // Create sync orchestrator for cloud-first decision matrix
 const syncOrchestrator = createSyncOrchestrator()
+
+/**
+ * Debounced sync state - batches rapid sync requests from frontend
+ */
+let syncTimeout: ReturnType<typeof setTimeout> | null = null
+let pendingSyncData: FullBackupData | null = null
+let pendingSyncResolve: ((value: { success: boolean; error?: { type: string; message: string } }) => void) | null = null
+const SYNC_DEBOUNCE_MS = 500 // 500ms debounce for sync operations
+
+/**
+ * Debounced triggerSync - batches rapid sync requests
+ * @param backupData - Full backup data to sync
+ * @returns Promise that resolves when sync completes
+ */
+function debouncedTriggerSync(backupData: FullBackupData): Promise<{ success: boolean; error?: { type: string; message: string } }> {
+  // Clear existing timeout
+  if (syncTimeout) {
+    clearTimeout(syncTimeout)
+    syncTimeout = null
+  }
+
+  // Update pending data (newest data supersedes old)
+  pendingSyncData = backupData
+
+  // Resolve previous pending promise if exists (will be superseded)
+  if (pendingSyncResolve) {
+    pendingSyncResolve({ success: true })
+    pendingSyncResolve = null
+  }
+
+  // Create new promise that resolves when sync completes
+  return new Promise((resolve) => {
+    pendingSyncResolve = resolve
+    syncTimeout = setTimeout(async () => {
+      syncTimeout = null
+      try {
+        const dataToSync = pendingSyncData
+        pendingSyncData = null
+
+        if (!dataToSync) {
+          resolve({ success: true })
+          pendingSyncResolve = null
+          return
+        }
+
+        const syncResult = await triggerSync(dataToSync)
+
+        const result = {
+          success: syncResult.success,
+          error: syncResult.error
+        }
+
+        if (pendingSyncResolve) {
+          pendingSyncResolve(result)
+          pendingSyncResolve = null
+        }
+      } catch (error) {
+        console.error('[Oh My Prompt] Debounced sync failed:', error)
+        const result = { success: false, error: { type: 'unknown', message: 'Sync failed' } }
+        if (pendingSyncResolve) {
+          pendingSyncResolve(result)
+          pendingSyncResolve = null
+        }
+      }
+    }, SYNC_DEBOUNCE_MS)
+  })
+}
 
 
 // Create context menu on startup (survives service worker restarts)
@@ -237,13 +304,14 @@ chrome.runtime.onMessage.addListener(
             return storageManager.saveData(mergedData).then(() => mergedData)
           })
           .then((savedData: StorageSchema) => {
-            // Trigger sync with full backup data (including temporary prompts)
+            // Trigger debounced sync with full backup data (including temporary prompts)
+            // Use debounced version to batch rapid updates (e.g., drag reorder)
             const backupData = {
               prompts: savedData.userData.prompts,
               categories: savedData.userData.categories,
               temporaryPrompts: savedData.temporaryPrompts || []
             }
-            return triggerSync(backupData).then(syncResult => {
+            return debouncedTriggerSync(backupData).then(syncResult => {
               if (!syncResult.success) {
                 console.warn('[Oh My Prompt] Sync failed:', syncResult.error?.type, syncResult.error?.message)
 
@@ -891,24 +959,40 @@ chrome.runtime.onMessage.addListener(
           return true
         }
 
-        // Generate full config
-        const newConfig: ProviderConfig = {
-          id: crypto.randomUUID(),
-          providerId: addPayload.providerId || 'custom',
-          providerName: addPayload.providerName || '自定义配置',
-          apiKey: addPayload.apiKey!,
-          apiEndpoint: addPayload.apiEndpoint!,
-          apiFormat: addPayload.apiFormat || 'chat_completions',
-          selectedModel: addPayload.selectedModel!,
-          configuredAt: Date.now(),
-          isCustom: addPayload.isCustom ?? (addPayload.providerId === 'custom')
-        }
+        // Check for existing official config
+        const isOfficial = addPayload.apiFormat === 'omp_official'
+        const officialConfigId = 'omp-official-default'
 
-        // Get existing storage and add new config
+        // Get existing storage first
         chrome.storage.local.get(PROVIDER_CONFIGS_STORAGE_KEY)
           .then((result) => {
             const existingStorage = result[PROVIDER_CONFIGS_STORAGE_KEY] as ProviderConfigsStorage | undefined
             const configs = existingStorage?.configs || []
+
+            // If adding official config, check if it already exists
+            if (isOfficial) {
+              const existingOfficial = configs.find(c => c.id === officialConfigId || c.apiFormat === 'omp_official')
+              if (existingOfficial) {
+                // Return existing config ID, don't create duplicate
+                sendResponse({ success: true, data: { id: existingOfficial.id } })
+                return
+              }
+            }
+
+            // Generate full config
+            const configId = isOfficial ? officialConfigId : crypto.randomUUID()
+            const newConfig: ProviderConfig = {
+              id: configId,
+              providerId: addPayload.providerId || 'custom',
+              providerName: addPayload.providerName || '自定义配置',
+              apiKey: addPayload.apiKey || '',
+              apiEndpoint: addPayload.apiEndpoint || '',
+              apiFormat: addPayload.apiFormat || 'chat_completions',
+              selectedModel: addPayload.selectedModel || 'auto',
+              configuredAt: Date.now(),
+              isCustom: addPayload.isCustom ?? (addPayload.providerId === 'custom')
+            }
+
             const isFirstConfig = configs.length === 0
 
             const updatedStorage: ProviderConfigsStorage = {
@@ -917,11 +1001,11 @@ chrome.runtime.onMessage.addListener(
             }
 
             return chrome.storage.local.set({ [PROVIDER_CONFIGS_STORAGE_KEY]: updatedStorage })
-          })
-          .then(() => {
-            // Trigger sync to backup folder
-            triggerProviderConfigsSync().catch(err => console.warn('[Oh My Prompt] Provider configs sync failed:', err))
-            sendResponse({ success: true, data: { id: newConfig.id } })
+              .then(() => {
+                // Trigger sync to backup folder
+                triggerProviderConfigsSync().catch(err => console.warn('[Oh My Prompt] Provider configs sync failed:', err))
+                sendResponse({ success: true, data: { id: newConfig.id } })
+              })
           })
           .catch(error => {
             console.error('[Oh My Prompt] ADD_PROVIDER_CONFIG error:', error)

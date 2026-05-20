@@ -14,6 +14,15 @@ export function validateProviderConfig(config: Partial<ProviderConfig>): ConfigV
   const errors: string[] = []
   const warnings: string[] = []
 
+  // Skip validation for official config (uses backend auth, no API key needed)
+  if (config.apiFormat === 'omp_official') {
+    return {
+      valid: true,
+      errors: [],
+      warnings: []
+    }
+  }
+
   // Required fields
   if (!config.apiKey?.trim()) {
     errors.push('API Key 不能为空')

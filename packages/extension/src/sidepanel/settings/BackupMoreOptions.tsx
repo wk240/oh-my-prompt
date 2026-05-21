@@ -26,13 +26,12 @@ interface BackupMoreOptionsProps {
 }
 
 /**
- * BackupMoreOptions - Collapsible section with advanced backup options
+ * BackupMoreOptions - Section with backup options
  *
- * Shown when user clicks "更多选项" in BackupSection.
  * Features:
  * - Emergency export warning when both cloud and local have failed
- * - Cloud backup options (expandable)
- * - Local backup options (always expanded, no collapse)
+ * - Cloud backup options (always expanded)
+ * - Local backup options (always expanded)
  * - Multi-device sync options (expandable, only shown if cloud logged in)
  */
 export function BackupMoreOptions({
@@ -45,7 +44,6 @@ export function BackupMoreOptions({
   onEmergencyExport,
   loading = false
 }: BackupMoreOptionsProps) {
-  const [showCloudOptions, setShowCloudOptions] = useState(false)
   const [showSyncOptions, setShowSyncOptions] = useState(false)
 
   if (!status) return null
@@ -84,55 +82,41 @@ export function BackupMoreOptions({
         </div>
       )}
 
-      {/* Cloud backup options (if loggedIn) */}
+      {/* Cloud backup options (if loggedIn) - always expanded */}
       {cloudLoggedIn && (
-        <div className="border border-gray-200 rounded-lg">
-          <button
-            onClick={() => setShowCloudOptions(!showCloudOptions)}
-            className="w-full flex items-center justify-between p-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+        <div className="p-3 border border-gray-200 rounded-lg space-y-3">
+          <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+            <Upload className="w-4 h-4 text-gray-500" />
+            <span>云端备份选项</span>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-600">登录状态</span>
+            <span className="text-sm text-green-600">已登录</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <a
+              href={`${WEB_APP_URL}/backup`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+            >
+              进入Web端管理
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onLogout}
+            disabled={loading}
+            className="w-full h-9"
           >
-            <span className="flex items-center gap-2">
-              <Upload className="w-4 h-4 text-gray-500" />
-              云端备份选项
-            </span>
-            {showCloudOptions ? (
-              <ChevronUp className="w-4 h-4 text-gray-400" />
-            ) : (
-              <ChevronDown className="w-4 h-4 text-gray-400" />
-            )}
-          </button>
-
-          {showCloudOptions && (
-            <div className="p-3 pt-0 space-y-3 border-t border-gray-100">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">登录状态</span>
-                <span className="text-sm text-green-600">已登录</span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <a
-                  href={`${WEB_APP_URL}/backup`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
-                >
-                  进入Web端管理
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
-              </div>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onLogout}
-                disabled={loading}
-                className="w-full h-9"
-              >
-                <LogOut className="w-4 h-4" />
-                {loading ? '退出中...' : '退出登录'}
-              </Button>
-            </div>
-          )}
+            <LogOut className="w-4 h-4" />
+            {loading ? '退出中...' : '退出登录'}
+          </Button>
         </div>
       )}
 

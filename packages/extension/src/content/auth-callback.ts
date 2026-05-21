@@ -8,6 +8,9 @@
  *
  * Timing: Web-app returns HTML with JavaScript that injects tokens into hash.
  * We need to wait for the hash to be set before extracting tokens.
+ *
+ * Fix: Now awaits sendMessage() before showing success UI to ensure sync completes
+ * even if user closes the tab immediately.
  */
 
 console.log('[Oh My Prompt] Auth callback script loaded')
@@ -162,45 +165,22 @@ function createStyledPage(config: {
   desc.style.cssText = `
     color: #adaaad;
     font-size: 15px;
-    margin: 0 0 32px 0;
+    margin: 0 0 24px 0;
     line-height: 1.5;
   `
   desc.innerHTML = config.description
   card.appendChild(desc)
 
-  // Close button with hover effect
-  const button = document.createElement('button')
-  button.style.cssText = `
-    padding: 14px 32px;
-    background: linear-gradient(135deg, #81ecff 0%, #00e3fd 100%);
-    color: #003840;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 600;
-    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-    transition: all 0.2s ease;
-    box-shadow: 0 0 10px 0 rgba(129, 236, 255, 0.3);
-  `
-  button.textContent = '关闭页面'
-  button.addEventListener('mouseenter', () => {
-    button.style.background = 'linear-gradient(135deg, #00d4ec 0%, #00e3fd 100%)'
-    button.style.boxShadow = '0 0 16px 0 rgba(129, 236, 255, 0.5)'
-  })
-  button.addEventListener('mouseleave', () => {
-    button.style.background = 'linear-gradient(135deg, #81ecff 0%, #00e3fd 100%)'
-    button.style.boxShadow = '0 0 10px 0 rgba(129, 236, 255, 0.3)'
-  })
-  button.addEventListener('click', () => {
-    window.close()
-  })
-  card.appendChild(button)
-
   document.body.appendChild(card)
 }
 
-function extractAndSaveTokens(): boolean {
+/**
+ * Extract tokens from URL hash and save to chrome.storage.
+ * Now returns a Promise that resolves when sync is complete.
+ *
+ * @returns Promise<boolean> - true if tokens extracted and sync message sent successfully
+ */
+async function extractAndSaveTokens(): Promise<boolean> {
   // Extract tokens from URL hash
   const hash = window.location.hash.substring(1) // Remove '#'
   if (!hash) {
@@ -259,111 +239,131 @@ function extractAndSaveTokens(): boolean {
   // Key format: sb-{projectRef}-auth-token
   const storageKey = `sb-${SUPABASE_PROJECT_REF}-auth-token`
 
-  chrome.storage.local.set({
+  // Save to storage first
+  await chrome.storage.local.set({
     [storageKey]: sessionData
-  }, () => {
-    console.log('[Oh My Prompt] Session saved to storage with key:', storageKey)
+  })
+  console.log('[Oh My Prompt] Session saved to storage with key:', storageKey)
 
-    // Notify background script that auth completed
-    chrome.runtime.sendMessage({
+  // Notify background script that auth completed - MUST wait for this to complete
+  // before showing UI, otherwise message may be lost if user closes tab quickly
+  try {
+    const response = await chrome.runtime.sendMessage({
       type: 'AUTH_CALLBACK_COMPLETE',
       payload: { success: true }
-    }).catch(err => {
-      console.warn('[Oh My Prompt] Failed to notify background:', err)
     })
+    console.log('[Oh My Prompt] Background script acknowledged:', response)
+  } catch (err) {
+    console.warn('[Oh My Prompt] Failed to notify background:', err)
+    // Still show success UI - storage is saved, sidepanel can detect via storage listener
+  }
 
-    // Show success page with manual close button
-    createStyledPage({
-      iconStroke: '#81ecff',
-      title: '登录成功',
-      description: '云端同步已激活',
-      iconType: 'success'
-    })
+  // Show success page - page will auto-close via hashchange listener
+  createStyledPage({
+    iconStroke: '#81ecff',
+    title: '登录成功',
+    description: '云端同步已激活<br/>页面即将自动关闭',
+    iconType: 'success'
   })
+
+  // Auto-close the tab after showing success message
+  // window.close() only works for tabs opened by script (OAuth flow opens tabs via chrome.tabs.create)
+  setTimeout(() => {
+    window.close()
+    // If window.close() fails (browser restriction), send message to service worker to close tab
+    // This provides a fallback mechanism
+    chrome.runtime.sendMessage({ type: 'CLOSE_AUTH_TAB' }).catch(err => {
+      console.warn('[Oh My Prompt] Failed to send close message:', err)
+    })
+  }, 1500)
 
   return true
 }
 
 // Try immediate extraction (if hash already set)
-if (extractAndSaveTokens()) {
-  // Success, tokens extracted immediately
-} else {
-  // Hash not ready yet, wait for it
-  console.log('[Oh My Prompt] Waiting for tokens in hash...')
+extractAndSaveTokens().then(success => {
+  if (success) {
+    // Success, tokens extracted immediately
+  } else {
+    // Hash not ready yet, wait for it
+    console.log('[Oh My Prompt] Waiting for tokens in hash...')
 
-  // Listen for hashchange event (when web-app's JavaScript sets the hash)
-  const handleHashChange = () => {
-    // Check if user wants to close the tab
-    const hash = window.location.hash.substring(1)
-    if (hash === 'close') {
-      console.log('[Oh My Prompt] Close signal received, asking service worker to close tab')
-      chrome.runtime.sendMessage({ type: 'CLOSE_AUTH_TAB' }).catch(err => {
-        console.warn('[Oh My Prompt] Failed to send close message:', err)
-      })
-      window.removeEventListener('hashchange', handleHashChange)
-      return
-    }
-
-    if (extractAndSaveTokens()) {
-      // Keep listening for 'close' signal even after token extraction success
-      // This handles the case where window.close() fails due to browser restrictions
-      // and user clicks the "关闭此页面" button on web app's success page
-    }
-  }
-
-  window.addEventListener('hashchange', handleHashChange)
-
-  // Also poll periodically as fallback (in case hashchange doesn't fire)
-  let pollCount = 0
-  const maxPolls = 50 // Poll for up to 5 seconds (100ms interval)
-  const pollInterval = setInterval(() => {
-    pollCount++
-    if (extractAndSaveTokens()) {
-      clearInterval(pollInterval)
-      // Keep hashchange listener for 'close' signal handling
-    } else if (pollCount >= maxPolls) {
-      clearInterval(pollInterval)
-      window.removeEventListener('hashchange', handleHashChange)
-
-      // Timeout - check for error in hash
+    // Listen for hashchange event (when web-app's JavaScript sets the hash)
+    const handleHashChange = async () => {
+      // Check if user wants to close the tab
       const hash = window.location.hash.substring(1)
-      const params = new URLSearchParams(hash)
-      const errorCode = params.get('error_code')
-      const errorMsg = params.get('error_description') || params.get('error') || params.get('msg')
-
-      if (errorCode || errorMsg) {
-        console.error('[Oh My Prompt] Auth error:', errorCode, errorMsg)
-
-        chrome.runtime.sendMessage({
-          type: 'AUTH_CALLBACK_COMPLETE',
-          payload: { success: false, error: errorMsg || errorCode }
-        }).catch(err => {
-          console.warn('[Oh My Prompt] Failed to notify background:', err)
+      if (hash === 'close') {
+        console.log('[Oh My Prompt] Close signal received, asking service worker to close tab')
+        chrome.runtime.sendMessage({ type: 'CLOSE_AUTH_TAB' }).catch(err => {
+          console.warn('[Oh My Prompt] Failed to send close message:', err)
         })
+        window.removeEventListener('hashchange', handleHashChange)
+        return
+      }
 
-        createStyledPage({
-          iconStroke: '#ff716c',
-          title: '登录失败',
-          description: errorMsg || errorCode || '未知错误',
-          iconType: 'error'
-        })
-      } else {
-        console.error('[Oh My Prompt] Auth timeout - no tokens received')
-
-        chrome.runtime.sendMessage({
-          type: 'AUTH_CALLBACK_COMPLETE',
-          payload: { success: false, error: '登录超时，未收到认证信息' }
-        }).catch(err => {
-          console.warn('[Oh My Prompt] Failed to notify background:', err)
-        })
-
-        createStyledPage({
-          iconStroke: '#ff716c',
-          title: '登录超时',
-          description: '未收到认证信息，请重试',
-          iconType: 'timeout'
-        })
+      const success = await extractAndSaveTokens()
+      if (success) {
+        // Keep listening for 'close' signal even after token extraction success
+        // This handles the case where window.close() fails due to browser restrictions
+        // and user clicks the "关闭此页面" button on web app's success page
       }
     }
-  }, 100)
-}
+
+    window.addEventListener('hashchange', handleHashChange)
+
+    // Also poll periodically as fallback (in case hashchange doesn't fire)
+    let pollCount = 0
+    const maxPolls = 50 // Poll for up to 5 seconds (100ms interval)
+    const pollInterval = setInterval(async () => {
+      pollCount++
+      const success = await extractAndSaveTokens()
+      if (success) {
+        clearInterval(pollInterval)
+        // Keep hashchange listener for 'close' signal handling
+      } else if (pollCount >= maxPolls) {
+        clearInterval(pollInterval)
+        window.removeEventListener('hashchange', handleHashChange)
+
+        // Timeout - check for error in hash
+        const hash = window.location.hash.substring(1)
+        const params = new URLSearchParams(hash)
+        const errorCode = params.get('error_code')
+        const errorMsg = params.get('error_description') || params.get('error') || params.get('msg')
+
+        if (errorCode || errorMsg) {
+          console.error('[Oh My Prompt] Auth error:', errorCode, errorMsg)
+
+          chrome.runtime.sendMessage({
+            type: 'AUTH_CALLBACK_COMPLETE',
+            payload: { success: false, error: errorMsg || errorCode }
+          }).catch(err => {
+            console.warn('[Oh My Prompt] Failed to notify background:', err)
+          })
+
+          createStyledPage({
+            iconStroke: '#ff716c',
+            title: '登录失败',
+            description: errorMsg || errorCode || '未知错误',
+            iconType: 'error'
+          })
+        } else {
+          console.error('[Oh My Prompt] Auth timeout - no tokens received')
+
+          chrome.runtime.sendMessage({
+            type: 'AUTH_CALLBACK_COMPLETE',
+            payload: { success: false, error: '登录超时，未收到认证信息' }
+          }).catch(err => {
+            console.warn('[Oh My Prompt] Failed to notify background:', err)
+          })
+
+          createStyledPage({
+            iconStroke: '#ff716c',
+            title: '登录超时',
+            description: '未收到认证信息，请重试',
+            iconType: 'timeout'
+          })
+        }
+      }
+    }, 100)
+  }
+})

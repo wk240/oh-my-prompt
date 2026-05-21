@@ -20,6 +20,7 @@ import { SavedConfigsList } from '@/popup/components/SavedConfigsList'
 import { OfficialVisionCard } from '@/popup/components/OfficialVisionCard'
 import { CollapsibleSection } from '@/popup/components/CollapsibleSection'
 import { getAuthState } from '@/lib/cloud-sync/auth-service'
+import { clearSupabaseClient } from '@/lib/cloud-sync/supabase-client'
 import { WEB_APP_URL } from '@/lib/config'
 
 /**
@@ -100,11 +101,18 @@ export function VisionSection() {
     getAuthState().then(setAuthState)
   }, [])
 
-  // Listen for auth status updates (broadcast by service-worker after AUTH_CALLBACK_COMPLETE)
+  // Listen for auth status updates (broadcast by service-worker after AUTH_CALLBACK_COMPLETE or logout)
   useEffect(() => {
-    const handleMessage = (message: { type: string }) => {
+    const handleMessage = (message: { type: string; payload?: { logout?: boolean } }) => {
       if (message.type === MessageType.AUTH_STATUS_UPDATE) {
-        getAuthState().then(setAuthState)
+        // If logout message, set state directly without recreating Supabase client
+        // This avoids "Multiple GoTrueClient instances" warning
+        if (message.payload?.logout) {
+          clearSupabaseClient() // Clear sidepanel's instance
+          setAuthState({ status: 'not_logged_in' })
+        } else {
+          getAuthState().then(setAuthState)
+        }
       }
     }
     chrome.runtime.onMessage.addListener(handleMessage)

@@ -15,7 +15,7 @@ import type { BackupStatusStorage, UnifiedSyncStatus } from '@/lib/sync/types'
 import type { BackupVersion } from '@/lib/sync/file-sync'
 import { MessageType } from '@oh-my-prompt/shared/messages'
 import { BACKUP_FILE_NAME } from '@oh-my-prompt/shared/constants'
-import { WEB_APP_URL } from '@/lib/config'
+import { WEB_APP_URL, SUPABASE_PROJECT_REF } from '@/lib/config'
 
 /**
  * Transform UnifiedSyncStatus to BackupStatusStorage
@@ -41,6 +41,9 @@ const transformUnifiedToBackup = (unified: UnifiedSyncStatus): BackupStatusStora
     folderName: unified.folderName
   }
 })
+
+// Supabase auth token storage key
+const SUPABASE_AUTH_KEY = `sb-${SUPABASE_PROJECT_REF}-auth-token`
 
 /**
  * BackupSection - Main backup UI with transparent auto-backup display
@@ -148,6 +151,32 @@ export function BackupSection() {
     }
     chrome.runtime.onMessage.addListener(handleMessage)
     return () => chrome.runtime.onMessage.removeListener(handleMessage)
+  }, [loadBackupStatus])
+
+  // Backup mechanism: Listen for auth token storage changes directly.
+  // This ensures sidepanel updates even if AUTH_STATUS_UPDATE message is lost
+  // (e.g., user closes callback tab before message delivery completes).
+  useEffect(() => {
+    const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }) => {
+      // Check if auth token was added (login) or removed (logout)
+      if (changes[SUPABASE_AUTH_KEY]) {
+        const newValue = changes[SUPABASE_AUTH_KEY].newValue
+        const oldValue = changes[SUPABASE_AUTH_KEY].oldValue
+
+        // Token added = login success
+        if (newValue && !oldValue) {
+          console.log('[Oh My Prompt] Auth token added via storage, refreshing status')
+          loadBackupStatus()
+        }
+        // Token removed = logout
+        else if (!newValue && oldValue) {
+          console.log('[Oh My Prompt] Auth token removed via storage, refreshing status')
+          loadBackupStatus()
+        }
+      }
+    }
+    chrome.storage.onChanged.addListener(handleStorageChange)
+    return () => chrome.storage.onChanged.removeListener(handleStorageChange)
   }, [loadBackupStatus])
 
   /**

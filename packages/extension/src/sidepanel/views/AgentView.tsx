@@ -4,7 +4,7 @@
  * Agent generates detailed prompt based on template
  */
 
-import { useState, useEffect, useCallback, useRef, Suspense, lazy } from 'react'
+import { useState, useEffect, useCallback, Suspense, lazy } from 'react'
 import type { AgentTemplateCategory, Category } from '@oh-my-prompt/shared/types'
 import { MessageType } from '@oh-my-prompt/shared/messages'
 import { Sparkles, Loader2, AlertTriangle, Copy, Bookmark, RefreshCw, X, Upload } from 'lucide-react'
@@ -37,8 +37,11 @@ export default function AgentView({
   const [showSaveDialog, setShowSaveDialog] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
 
-  // Ref for abort controller
-  const abortControllerRef = useRef<AbortController | null>(null)
+  // Helper for toast notifications
+  const showToast = useCallback((msg: string) => {
+    setToastMessage(msg)
+    setTimeout(() => setToastMessage(null), 2000)
+  }, [])
 
   // Get template info
   const template = getAgentTemplate(selectedTemplate)
@@ -57,8 +60,14 @@ export default function AgentView({
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      setToastMessage('请上传图片文件')
-      setTimeout(() => setToastMessage(null), 2000)
+      showToast('请上传图片文件')
+      return
+    }
+
+    // Validate file size (5MB limit)
+    const MAX_IMAGE_SIZE = 5 * 1024 * 1024 // 5MB
+    if (file.size > MAX_IMAGE_SIZE) {
+      showToast('图片大小不能超过 5MB')
       return
     }
 
@@ -69,11 +78,10 @@ export default function AgentView({
       setImageData(dataUrl)
     }
     reader.onerror = () => {
-      setToastMessage('图片读取失败')
-      setTimeout(() => setToastMessage(null), 2000)
+      showToast('图片读取失败')
     }
     reader.readAsDataURL(file)
-  }, [])
+  }, [showToast])
 
   // Handle remove image
   const handleRemoveImage = useCallback(() => {
@@ -83,14 +91,6 @@ export default function AgentView({
   // Handle generate
   const handleGenerate = useCallback(async () => {
     if (!inputText.trim() || isLoading) return
-
-    // Cancel previous request if still pending
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort()
-    }
-
-    // Create new abort controller
-    abortControllerRef.current = new AbortController()
 
     setIsLoading(true)
     setError(null)
@@ -114,10 +114,10 @@ export default function AgentView({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '生成失败'
 
-      // Handle specific error types
-      if (errorMessage === 'NO_CONFIG: 请先配置 Vision API') {
+      // Parse error by code prefix
+      if (errorMessage.startsWith('NO_CONFIG:')) {
         setError('请先配置 Vision API')
-      } else if (errorMessage === 'UNSUPPORTED_FORMAT: Agent 功能仅支持 Anthropic Messages 和 OpenAI Chat Completions API 格式') {
+      } else if (errorMessage.startsWith('UNSUPPORTED_FORMAT:')) {
         setError('不支持当前 API 格式')
       } else if (errorMessage === 'timeout') {
         setError('请求超时，请重试')
@@ -126,7 +126,6 @@ export default function AgentView({
       }
     } finally {
       setIsLoading(false)
-      abortControllerRef.current = null
     }
   }, [inputText, imageData, selectedTemplate, isLoading])
 
@@ -136,13 +135,11 @@ export default function AgentView({
 
     try {
       await navigator.clipboard.writeText(result)
-      setToastMessage('已复制到剪贴板')
-      setTimeout(() => setToastMessage(null), 2000)
+      showToast('已复制到剪贴板')
     } catch {
-      setToastMessage('复制失败')
-      setTimeout(() => setToastMessage(null), 2000)
+      showToast('复制失败')
     }
-  }, [result])
+  }, [result, showToast])
 
   // Handle save
   const handleSave = useCallback((categoryId: string) => {
@@ -150,17 +147,11 @@ export default function AgentView({
 
     onSave(result, categoryId, selectedTemplate)
     setShowSaveDialog(false)
-    setToastMessage('已保存到分类')
-    setTimeout(() => setToastMessage(null), 2000)
-  }, [result, selectedTemplate, onSave])
+    showToast('已保存到分类')
+  }, [result, selectedTemplate, onSave, showToast])
 
-  // Handle retry
+  // Handle retry/regenerate (same action)
   const handleRetry = useCallback(() => {
-    handleGenerate()
-  }, [handleGenerate])
-
-  // Handle regenerate (clear result and generate again)
-  const handleRegenerate = useCallback(() => {
     handleGenerate()
   }, [handleGenerate])
 
@@ -280,7 +271,7 @@ export default function AgentView({
               </button>
             </Tooltip>
             <Tooltip content="重新生成">
-              <button className="agent-result-btn" onClick={handleRegenerate} disabled={isLoading}>
+              <button className="agent-result-btn" onClick={handleRetry} disabled={isLoading}>
                 <RefreshCw style={{ width: 14, height: 14 }} />
               </button>
             </Tooltip>

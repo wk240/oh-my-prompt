@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useCallback, useMemo, Suspense, lazy, useRef } from 'react'
 import type { Prompt, Category, ResourcePrompt, UpdateStatus } from '@oh-my-prompt/shared/types'
+import type { AgentTemplateCategory, AgentViewMode } from '@oh-my-prompt/shared/types/agent'
 import { truncateText, sortCategoriesByOrder, sortPromptsByOrder, sortProviderCategoriesByOrder, sortResourcePromptsByCategoryOrder } from '@oh-my-prompt/shared/utils'
 import { Sparkles, Palette, Shapes, FolderOpen, Layers, Sparkle, Brush, GripVertical, Database, ArrowLeft, Sun, Frame, Paintbrush, Image, ArrowUpCircle, Plus, Pencil, Trash2, ExternalLink, ArrowUpRight, Bookmark, AlertTriangle, Settings, Loader2, Clock, CheckCircle, Copy } from 'lucide-react'
 import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core'
@@ -12,6 +13,7 @@ import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-
 import { CSS } from '@dnd-kit/utilities'
 import { usePromptStore } from '@/lib/store'
 import { getResourcePrompts, getResourceCategories } from '@/lib/resource-library'
+import { getAgentTemplates, getAgentTemplate } from '@/lib/agent-templates'
 import { MessageType } from '@oh-my-prompt/shared/messages'
 import { STORAGE_KEY } from '@oh-my-prompt/shared/constants'
 import { Tooltip } from '@/content/components/Tooltip'
@@ -20,6 +22,7 @@ import { queueImageLoad } from '@/lib/sync/image-loader-queue'
 import { downloadImageFromUrl, saveImage } from '@/lib/sync/image-sync'
 import { getFolderHandle } from '@/lib/sync/indexeddb'
 import { useAutoPermissionRestore } from '@/sidepanel/hooks/useAutoPermissionRestore'
+import AgentView from '@/sidepanel/views/AgentView'
 
 // Lazy load modal components
 const PromptPreviewModal = lazy(() => import('@/content/components/PromptPreviewModal').then(m => ({ default: m.PromptPreviewModal })))
@@ -594,6 +597,12 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
   const [resourceLanguage, setResourceLanguage] = useState<'zh' | 'en'>('zh')
   const [loadedCount, setLoadedCount] = useState(50)
   const [visionEnabled, setVisionEnabled] = useState(true)
+
+  // Agent state
+  const [agentViewMode, setAgentViewMode] = useState<AgentViewMode>('default')
+  const [agentSelectedTemplate, setAgentSelectedTemplate] = useState<AgentTemplateCategory>('ecommerce')
+  const [agentExtractedText, _setAgentExtractedText] = useState<string>('')
+
   // Sync status for permission restore and UI
   const [status, setStatus] = useState<{ hasFolder: boolean; permissionStatus?: 'granted' | 'prompt' | 'denied'; hasUnsyncedChanges?: boolean; dismissedBackupWarning?: boolean } | null>(null)
 
@@ -1709,7 +1718,37 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
         {/* Sidebar */}
         <div className="side-panel-sidebar">
           <div className="sidebar-categories scrollbar-thin">
-          {isResourceLibrary ? (
+          {/* Agent mode sidebar */}
+          {agentViewMode === 'agent' ? (
+            <>
+              {/* Return button */}
+              <button
+                className="sidebar-category-item"
+                onClick={() => setAgentViewMode('default')}
+              >
+                <div className="sidebar-category-icon-wrapper">
+                  <ArrowLeft className="sidebar-category-icon" />
+                </div>
+                <span>返回</span>
+              </button>
+
+              {/* Template categories */}
+              {getAgentTemplates().map(template => (
+                <button
+                  key={template.id}
+                  className={`sidebar-category-item ${agentSelectedTemplate === template.id ? 'selected' : ''}`}
+                  onClick={() => setAgentSelectedTemplate(template.id)}
+                >
+                  <div className="sidebar-category-icon-wrapper">
+                    <Sparkles className="sidebar-category-icon" style={{ color: agentSelectedTemplate === template.id ? '#A16207' : '#64748B' }} />
+                  </div>
+                  <Tooltip content={template.description} maxWidth={600}>
+                    <span>{template.name}</span>
+                  </Tooltip>
+                </button>
+              ))}
+            </>
+          ) : isResourceLibrary ? (
             <>
               <button
                 className="sidebar-category-item"
@@ -1752,6 +1791,18 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
             </>
           ) : (
             <>
+              {/* Agent entry with NEW tag */}
+              <button
+                className="sidebar-category-item"
+                onClick={() => setAgentViewMode('agent')}
+              >
+                <div className="sidebar-category-icon-wrapper">
+                  <Sparkles className="sidebar-category-icon" style={{ color: '#A16207' }} />
+                </div>
+                <span className="sidebar-category-name" style={{ color: '#A16207' }}>Agent</span>
+                <span className="sidebar-category-new-tag">NEW</span>
+              </button>
+
               <button
                 className={`sidebar-category-item ${isResourceLibrary ? 'selected' : ''}`}
                 onClick={() => setIsResourceLibrary(true)}
@@ -1920,6 +1971,23 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
             <div className="empty-state">
               <div className="empty-message">加载中...</div>
             </div>
+          ) : agentViewMode === 'agent' ? (
+            <AgentView
+              selectedTemplate={agentSelectedTemplate}
+              extractedText={agentExtractedText}
+              categories={sortableCategories}
+              onSave={(prompt: string, categoryId: string, templateCategory: AgentTemplateCategory) => {
+                const template = getAgentTemplate(templateCategory)
+                usePromptStore.getState().addPrompt({
+                  name: `Agent: ${template?.name || '生成'}`,
+                  content: prompt,
+                  categoryId,
+                  order: prompts.filter(p => p.categoryId === categoryId).length,
+                })
+                setToastMessage('已保存到库')
+                setTimeout(hideToast, 2000)
+              }}
+            />
           ) : isResourceLibrary ? (
             paginatedResourcePrompts.length === 0 ? (
               <div className="empty-state">
@@ -1984,7 +2052,7 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
         </div>
 
         {/* FAB add button */}
-        {!isResourceLibrary && selectedCategoryId !== 'temporary' && (
+        {!isResourceLibrary && agentViewMode !== 'agent' && selectedCategoryId !== 'temporary' && (
           <button
             className="fab-add-btn"
             onClick={() => openModal('isPromptAdd')}

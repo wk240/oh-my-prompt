@@ -245,6 +245,16 @@
   white-space: nowrap;
 }
 
+.sidebar-category-new-tag {
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+  font-weight: 600;
+}
+
 .sidebar-category-drag-handle {
   position: absolute;
   top: 50%;

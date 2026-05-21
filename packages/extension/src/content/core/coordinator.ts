@@ -209,12 +209,6 @@ class Coordinator {
     const injectionConfig = this.selectInjectionConfig(inputElement)
     console.log(LOG_PREFIX, 'Injection config:', injectionConfig.anchorSelector, injectionConfig.position)
 
-    // Check if anchor element exists AND is visible (not hidden by display:none)
-    const anchorElement = document.querySelector(injectionConfig.anchorSelector)
-    const anchorExists = anchorElement !== null
-    const anchorVisible = anchorElement ? this.isElementVisible(anchorElement as HTMLElement) : false
-    console.log(LOG_PREFIX, 'Anchor exists:', anchorExists, 'visible:', anchorVisible)
-
     // Check if already injected
     const isInjected = this.injector.isInjected()
     console.log(LOG_PREFIX, 'Is injected:', isInjected)
@@ -231,8 +225,7 @@ class Coordinator {
       // Re-inject if:
       // 1. Button is hidden (e.g., parent panel is display:none)
       // 2. Anchor changed
-      // 3. Anchor doesn't exist or is not visible
-      if (!currentButtonVisible || currentAnchor !== injectionConfig.anchorSelector || !anchorVisible) {
+      if (!currentButtonVisible || currentAnchor !== injectionConfig.anchorSelector) {
         console.log(LOG_PREFIX, 'Re-injecting: button hidden or anchor changed')
         this.injector.remove()
       } else {
@@ -241,12 +234,8 @@ class Coordinator {
       }
     }
 
-    // Don't inject if anchor is not visible (wait for visible panel)
-    if (!anchorVisible) {
-      console.log(LOG_PREFIX, 'Anchor not visible, skipping injection')
-      return
-    }
-
+    // Let Injector handle anchor waiting via waitForAnchor()
+    // Don't check anchorVisible here - Injector will wait if anchor doesn't exist yet
     const inserter = this.platform.strategies?.inserter ?? createDefaultInserter()
 
     this.injector.inject(
@@ -254,14 +243,6 @@ class Coordinator {
       injectionConfig,
       inserter
     )
-  }
-
-  /**
-   * Check if element is visible (not hidden by display:none or visibility:hidden)
-   */
-  private isElementVisible(element: HTMLElement): boolean {
-    const style = window.getComputedStyle(element)
-    return style.display !== 'none' && style.visibility !== 'hidden' && element.offsetWidth > 0
   }
 
   /**

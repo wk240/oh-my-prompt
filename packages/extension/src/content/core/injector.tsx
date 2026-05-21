@@ -354,7 +354,11 @@ export class Injector {
         display: block;
         width: 20px;
         height: 20px;
-        color: inherit;
+        color: #6b7280;
+      }
+
+      .trigger-button:hover .trigger-icon {
+        color: #374151;
       }
     `
   }

@@ -42,6 +42,7 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
 
 /**
  * Helper function to create styled page using DOM APIs (avoiding CSP violations)
+ * Matches web-app's cyber-minimalist design system from globals.css
  */
 function createStyledPage(config: {
   iconStroke: string
@@ -54,16 +55,61 @@ function createStyledPage(config: {
     document.body.removeChild(document.body.firstChild)
   }
 
-  // Set body background
-  document.body.style.cssText = 'min-height: 100vh; background: #0e0e10; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; color: #f9f5f8; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;'
+  // Set body with grid background and atmospheric effects
+  document.body.style.cssText = `
+    min-height: 100vh;
+    background: #0e0e10;
+    background-image: radial-gradient(circle, rgba(249, 245, 248, 0.1) 1.2px, transparent 1.2px);
+    background-size: 24px 24px;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    color: #f9f5f8;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 24px;
+    box-sizing: border-box;
+  `
 
-  // Icon
+  // Create card container (glass panel effect)
+  const card = document.createElement('div')
+  card.style.cssText = `
+    background-color: rgba(38, 37, 40, 0.6);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(72, 71, 74, 0.2);
+    border-radius: 12px;
+    padding: 48px 40px;
+    max-width: 400px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 0 0 40px -10px rgba(249, 245, 248, 0.08);
+  `
+
+  // Icon container with subtle background
+  const iconContainer = document.createElement('div')
+  iconContainer.style.cssText = `
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+    background: ${config.iconType === 'success' ? 'rgba(129, 236, 255, 0.1)' : 'rgba(255, 113, 108, 0.1)'};
+  `
+
+  // Icon SVG
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
   svg.setAttribute('viewBox', '0 0 24 24')
   svg.setAttribute('fill', 'none')
   svg.setAttribute('stroke', config.iconStroke)
   svg.setAttribute('stroke-width', '2')
-  svg.style.cssText = 'width: 64px; height: 64px; margin-bottom: 24px;'
+  svg.setAttribute('stroke-linecap', 'round')
+  svg.setAttribute('stroke-linejoin', 'round')
+  svg.style.cssText = 'width: 48px; height: 48px;'
 
   const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
   circle.setAttribute('cx', '12')
@@ -95,28 +141,63 @@ function createStyledPage(config: {
     svg.appendChild(polyline)
   }
 
-  document.body.appendChild(svg)
+  iconContainer.appendChild(svg)
+  card.appendChild(iconContainer)
 
-  // Title
+  // Title with Space Grotesk font
   const title = document.createElement('h2')
-  title.style.cssText = 'font-size: 22px; font-weight: 600; margin: 0 0 8px 0;'
+  title.style.cssText = `
+    font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    font-size: 24px;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+    color: #f9f5f8;
+    letter-spacing: -0.02em;
+  `
   title.textContent = config.title
-  document.body.appendChild(title)
+  card.appendChild(title)
 
   // Description
   const desc = document.createElement('p')
-  desc.style.cssText = 'color: rgba(173, 170, 173, 0.9); font-size: 14px; margin: 0 0 24px 0;'
+  desc.style.cssText = `
+    color: #adaaad;
+    font-size: 15px;
+    margin: 0 0 32px 0;
+    line-height: 1.5;
+  `
   desc.innerHTML = config.description
-  document.body.appendChild(desc)
+  card.appendChild(desc)
 
-  // Close button
+  // Close button with hover effect
   const button = document.createElement('button')
-  button.style.cssText = 'padding: 14px 28px; background: linear-gradient(135deg, #81ecff 0%, #00e3fd 100%); color: #003840; border: none; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 600;'
+  button.style.cssText = `
+    padding: 14px 32px;
+    background: linear-gradient(135deg, #81ecff 0%, #00e3fd 100%);
+    color: #003840;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    transition: all 0.2s ease;
+    box-shadow: 0 0 10px 0 rgba(129, 236, 255, 0.3);
+  `
   button.textContent = '关闭页面'
+  button.addEventListener('mouseenter', () => {
+    button.style.background = 'linear-gradient(135deg, #00d4ec 0%, #00e3fd 100%)'
+    button.style.boxShadow = '0 0 16px 0 rgba(129, 236, 255, 0.5)'
+  })
+  button.addEventListener('mouseleave', () => {
+    button.style.background = 'linear-gradient(135deg, #81ecff 0%, #00e3fd 100%)'
+    button.style.boxShadow = '0 0 10px 0 rgba(129, 236, 255, 0.3)'
+  })
   button.addEventListener('click', () => {
     window.close()
   })
-  document.body.appendChild(button)
+  card.appendChild(button)
+
+  document.body.appendChild(card)
 }
 
 function extractAndSaveTokens(): boolean {

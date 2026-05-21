@@ -101,20 +101,25 @@ export class Detector {
 
   private tryDetect(): void {
     const previousElement = this.inputElement
+
+    // Use querySelectorAll to find ALL matching elements, then pick the first valid (visible) one
     for (const selector of this.config.selectors) {
-      const element = document.querySelector<HTMLElement>(selector)
-      if (element && this.isValidInput(element)) {
-        if (element !== this.inputElement) {
-          this.inputElement = element
-          this.onDetected(element)
+      const elements = document.querySelectorAll<HTMLElement>(selector)
+      for (const element of elements) {
+        if (this.isValidInput(element)) {
+          if (element !== this.inputElement) {
+            this.inputElement = element
+            this.onDetected(element)
+          }
+          // Notify status change if callback is set
+          if (this.onStatusChanged && previousElement === null) {
+            this.onStatusChanged(true)
+          }
+          return
         }
-        // Notify status change if callback is set
-        if (this.onStatusChanged && previousElement === null) {
-          this.onStatusChanged(true)
-        }
-        return
       }
     }
+
     // No input found - clear and notify if previously had input
     if (this.inputElement !== null) {
       this.inputElement = null

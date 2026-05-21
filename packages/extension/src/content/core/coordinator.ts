@@ -21,6 +21,7 @@ import { liblibConfig } from '../platforms/liblib/config'
 import { jimengConfig } from '../platforms/jimeng/config'
 import { xingliuConfig } from '../platforms/xingliu/config'
 import { kimiConfig } from '../platforms/kimi/config'
+import { runninghubConfig } from '../platforms/runninghub/config'
 import { TaskQueueManager } from './task-queue-manager'
 
 // Register platform configurations
@@ -32,6 +33,7 @@ registerPlatform(liblibConfig)
 registerPlatform(jimengConfig)
 registerPlatform(xingliuConfig)
 registerPlatform(kimiConfig)
+registerPlatform(runninghubConfig)
 
 const LOG_PREFIX = '[Oh My Prompt]'
 
@@ -207,11 +209,13 @@ class Coordinator {
     const injectionConfig = this.selectInjectionConfig(inputElement)
     console.log(LOG_PREFIX, 'Injection config:', injectionConfig.anchorSelector, injectionConfig.position)
 
-    // Check if anchor element exists in DOM
-    const anchorExists = document.querySelector(injectionConfig.anchorSelector) !== null
-    console.log(LOG_PREFIX, 'Anchor exists:', anchorExists)
+    // Check if anchor element exists AND is visible (not hidden by display:none)
+    const anchorElement = document.querySelector(injectionConfig.anchorSelector)
+    const anchorExists = anchorElement !== null
+    const anchorVisible = anchorElement ? this.isElementVisible(anchorElement as HTMLElement) : false
+    console.log(LOG_PREFIX, 'Anchor exists:', anchorExists, 'visible:', anchorVisible)
 
-    // Check if already injected with the same anchor
+    // Check if already injected
     const isInjected = this.injector.isInjected()
     console.log(LOG_PREFIX, 'Is injected:', isInjected)
 
@@ -220,15 +224,27 @@ class Coordinator {
       const currentPosition = this.injector.getCurrentPosition()
       console.log(LOG_PREFIX, 'Current anchor:', currentAnchor, 'Current position:', currentPosition)
 
-      // If anchor and position match AND anchor exists, skip re-injection (avoid flicker)
-      if (currentAnchor === injectionConfig.anchorSelector && currentPosition === injectionConfig.position && anchorExists) {
-        console.log(LOG_PREFIX, 'Same anchor and anchor exists, skipping re-injection')
+      // Check if currently injected button is visible
+      const currentButtonVisible = this.injector.isButtonVisible()
+      console.log(LOG_PREFIX, 'Current button visible:', currentButtonVisible)
+
+      // Re-inject if:
+      // 1. Button is hidden (e.g., parent panel is display:none)
+      // 2. Anchor changed
+      // 3. Anchor doesn't exist or is not visible
+      if (!currentButtonVisible || currentAnchor !== injectionConfig.anchorSelector || !anchorVisible) {
+        console.log(LOG_PREFIX, 'Re-injecting: button hidden or anchor changed')
+        this.injector.remove()
+      } else {
+        console.log(LOG_PREFIX, 'Same visible anchor, skipping re-injection')
         return
       }
+    }
 
-      // Different anchor or anchor was removed, need to remove and re-inject
-      console.log(LOG_PREFIX, 'Different anchor or anchor removed, re-injecting')
-      this.injector.remove()
+    // Don't inject if anchor is not visible (wait for visible panel)
+    if (!anchorVisible) {
+      console.log(LOG_PREFIX, 'Anchor not visible, skipping injection')
+      return
     }
 
     const inserter = this.platform.strategies?.inserter ?? createDefaultInserter()
@@ -238,6 +254,14 @@ class Coordinator {
       injectionConfig,
       inserter
     )
+  }
+
+  /**
+   * Check if element is visible (not hidden by display:none or visibility:hidden)
+   */
+  private isElementVisible(element: HTMLElement): boolean {
+    const style = window.getComputedStyle(element)
+    return style.display !== 'none' && style.visibility !== 'hidden' && element.offsetWidth > 0
   }
 
   /**

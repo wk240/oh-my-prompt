@@ -19,7 +19,6 @@ import type {
 } from '@oh-my-prompt/shared/types'
 import { MessageType } from '@oh-my-prompt/shared/messages'
 import { Sparkles, Loader2, AlertTriangle, Copy, Bookmark, RefreshCw, X, Upload, Settings, LogIn, ArrowLeft, ArrowUpRight } from 'lucide-react'
-import { Tooltip } from '@/content/components/Tooltip'
 import { ToastNotification } from '@/sidepanel/components/ToastNotification'
 import { WEB_APP_URL } from '@/lib/config'
 import ecommerceConfigData from '@/data/ecommerce-config.json'
@@ -457,13 +456,13 @@ export default function EcommerceView({
         </div>
 
         {/* Selectors: Platform + Market */}
-        <div className="ecommerce-section">
-          <label className="ecommerce-label">平台与市场</label>
-          <div className="ecommerce-select-row">
-            <div className="ecommerce-select-wrapper">
-              <span className="ecommerce-select-label">电商平台</span>
+        <div className="ecommerce-panel-section">
+          <label className="ecommerce-panel-label">平台与市场</label>
+          <div className="ecommerce-panel-select-row">
+            <div className="ecommerce-panel-select-wrapper">
+              <span className="ecommerce-panel-select-label">电商平台</span>
               <select
-                className="ecommerce-select"
+                className="ecommerce-panel-select"
                 value={platform}
                 onChange={(e) => setPlatform(e.target.value as EcommercePlatform)}
                 disabled={isLoading}
@@ -473,10 +472,10 @@ export default function EcommerceView({
                 ))}
               </select>
             </div>
-            <div className="ecommerce-select-wrapper">
-              <span className="ecommerce-select-label">目标市场</span>
+            <div className="ecommerce-panel-select-wrapper">
+              <span className="ecommerce-panel-select-label">目标市场</span>
               <select
-                className="ecommerce-select"
+                className="ecommerce-panel-select"
                 value={market}
                 onChange={(e) => setMarket(e.target.value as EcommerceMarket)}
                 disabled={isLoading}
@@ -490,12 +489,12 @@ export default function EcommerceView({
         </div>
 
         {/* Selectors: Language + Aspect Ratio */}
-        <div className="ecommerce-section">
-          <div className="ecommerce-select-row">
-            <div className="ecommerce-select-wrapper">
-              <span className="ecommerce-select-label">输出语言</span>
+        <div className="ecommerce-panel-section">
+          <div className="ecommerce-panel-select-row">
+            <div className="ecommerce-panel-select-wrapper">
+              <span className="ecommerce-panel-select-label">输出语言</span>
               <select
-                className="ecommerce-select"
+                className="ecommerce-panel-select"
                 value={language}
                 onChange={(e) => setLanguage(e.target.value as EcommerceLanguage)}
                 disabled={isLoading}
@@ -505,10 +504,10 @@ export default function EcommerceView({
                 ))}
               </select>
             </div>
-            <div className="ecommerce-select-wrapper">
-              <span className="ecommerce-select-label">图片比例</span>
+            <div className="ecommerce-panel-select-wrapper">
+              <span className="ecommerce-panel-select-label">图片比例</span>
               <select
-                className="ecommerce-select"
+                className="ecommerce-panel-select"
                 value={aspectRatio}
                 onChange={(e) => setAspectRatio(e.target.value as EcommerceAspectRatio)}
                 disabled={isLoading}
@@ -522,13 +521,13 @@ export default function EcommerceView({
         </div>
 
         {/* Selling Points Textarea with AI Write */}
-        <div className="ecommerce-section">
-          <label className="ecommerce-label">
+        <div className="ecommerce-panel-section">
+          <label className="ecommerce-panel-label">
             卖点描述<span style={{ color: '#dc2626', marginLeft: 2 }}>*</span>
           </label>
-          <div className="ecommerce-textarea-section">
+          <div className="ecommerce-panel-textarea-section">
             <textarea
-              className="ecommerce-textarea"
+              className="ecommerce-panel-textarea"
               placeholder="描述商品核心卖点，例如：无线蓝牙耳机、主动降噪、30小时续航..."
               value={sellingPoints}
               onChange={(e) => setSellingPoints(e.target.value)}
@@ -536,7 +535,7 @@ export default function EcommerceView({
               rows={4}
             />
             <button
-              className="ecommerce-ai-write-btn"
+              className="ecommerce-panel-ai-write-btn"
               onClick={handleAiWrite}
               disabled={isAiWriting || !productImage}
             >
@@ -623,13 +622,13 @@ export default function EcommerceView({
 
         {/* Generate Button */}
         <button
-          className={`ecommerce-generate-btn ${isGenerateDisabled ? 'disabled' : ''}`}
+          className={`ecommerce-panel-generate-btn ${isGenerateDisabled ? 'disabled' : ''}`}
           onClick={handleGenerate}
           disabled={isGenerateDisabled}
         >
           {isLoading ? (
             <>
-              <span className="ecommerce-spinner" />
+              <span className="ecommerce-panel-spinner" />
               <span>生成中...</span>
             </>
           ) : (
@@ -642,7 +641,7 @@ export default function EcommerceView({
 
         {/* Error banner */}
         {error && (
-          <div className="ecommerce-error-banner">
+          <div className="ecommerce-panel-error">
             <AlertTriangle style={{ width: 14, height: 14, flexShrink: 0, marginRight: 8, verticalAlign: 'middle' }} />
             <span style={{ flex: 1 }}>{error}</span>
             {errorAction === 'settings' && onOpenSettings && (

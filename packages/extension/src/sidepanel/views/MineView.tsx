@@ -1,6 +1,6 @@
 // packages/extension/src/sidepanel/views/MineView.tsx
 import { useState, useEffect } from 'react'
-import { User, LogIn, Check } from 'lucide-react'
+import { User, LogIn, Check, Sparkles } from 'lucide-react'
 import { Button } from '@/popup/components/ui/button'
 import { MessageType } from '@oh-my-prompt/shared/messages'
 import type { ProviderConfig, CloudAuthState, Provider, ProviderGroup } from '@oh-my-prompt/shared/types'
@@ -23,7 +23,7 @@ export default function MineView() {
   const [activeConfigId, setActiveConfigId] = useState<string | null>(null)
   const [_providers, setProviders] = useState<Provider[]>([])
   const [_providerGroups, setProviderGroups] = useState<ProviderGroup[]>([])
-  const [_visionEnabled, setVisionEnabled] = useState(true)
+  const [visionEnabled, setVisionEnabled] = useState(true)
 
   // UI states
   const [loading, setLoading] = useState(false)
@@ -152,6 +152,25 @@ export default function MineView() {
     }
   }
 
+  const handleVisionToggle = async (enabled: boolean) => {
+    setVisionEnabled(enabled)
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: MessageType.SET_SETTINGS_ONLY,
+        payload: { settings: { visionEnabled: enabled } }
+      })
+      if (response.success) {
+        setSuccess(enabled ? '转提示词功能已开启' : '转提示词功能已关闭')
+      } else {
+        setError('设置保存失败')
+        setVisionEnabled(!enabled)
+      }
+    } catch (err) {
+      setError('设置保存失败')
+      setVisionEnabled(!enabled)
+    }
+  }
+
   return (
     <div className="w-full p-4 space-y-4">
       {/* 账号状态区 */}
@@ -219,7 +238,32 @@ export default function MineView() {
         </div>
       )}
 
-      {/* 其他区块将在后续任务实现 */}
+      {/* 功能开关区 */}
+      <div className="p-4 bg-white rounded-lg border border-gray-200">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Sparkles className="w-5 h-5 text-purple-500" />
+            <div>
+              <p className="text-sm font-medium text-gray-900">图片转提示词</p>
+              <p className="text-xs text-gray-500">鼠标悬停图片时显示转换按钮</p>
+            </div>
+          </div>
+          <button
+            onClick={() => handleVisionToggle(!visionEnabled)}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              visionEnabled ? 'bg-gray-900' : 'bg-gray-200'
+            }`}
+            role="switch"
+            aria-checked={visionEnabled}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                visionEnabled ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

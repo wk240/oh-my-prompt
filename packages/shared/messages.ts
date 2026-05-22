@@ -111,6 +111,7 @@ export enum MessageType {
   AGENT_GENERATE = 'AGENT_GENERATE',           // Request Agent generation
   AGENT_GENERATE_RESULT = 'AGENT_GENERATE_RESULT', // Response with generated prompt
   AGENT_EXTRACT_FROM_CS = 'AGENT_EXTRACT_FROM_CS', // Content Script extract input to Sidepanel
+  AGENT_ECOMMERCE_AI_WRITE = 'AGENT_ECOMMERCE_AI_WRITE', // Ecommerce AI write via Agent
 }
 
 export interface Message<T = unknown> {

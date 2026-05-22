@@ -18,7 +18,7 @@ import type {
   ProviderConfig,
 } from '@oh-my-prompt/shared/types'
 import { MessageType } from '@oh-my-prompt/shared/messages'
-import { Sparkles, Loader2, AlertTriangle, Copy, Bookmark, RefreshCw, X, Upload, Settings, LogIn } from 'lucide-react'
+import { Sparkles, Loader2, AlertTriangle, Copy, Bookmark, RefreshCw, X, Upload, Settings, LogIn, ArrowLeft, ArrowUpRight } from 'lucide-react'
 import { Tooltip } from '@/content/components/Tooltip'
 import { ToastNotification } from '@/sidepanel/components/ToastNotification'
 import { WEB_APP_URL } from '@/lib/config'
@@ -662,47 +662,53 @@ export default function EcommerceView({
           </div>
         )}
 
-        {/* Result section — inline display below the form */}
-        {result && !error && (
-          <div className="ecommerce-result-grid">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: '#64748B' }}>
-                套图生成结果（共 {result.prompts.length} 张）
-              </div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <Tooltip content="复制全部">
-                  <button className="ecommerce-result-btn" onClick={handleCopyAll}>
-                    <Copy style={{ width: 14, height: 14 }} />
-                  </button>
-                </Tooltip>
-                <Tooltip content="重新生成">
-                  <button className="ecommerce-result-btn" onClick={handleRetry} disabled={isLoading}>
-                    <RefreshCw style={{ width: 14, height: 14 }} />
-                  </button>
-                </Tooltip>
-              </div>
+        {/* Result View - full-screen overlay */}
+        {viewMode === 'result' && result && (
+          <div className="ecommerce-panel-result-view">
+            {/* Header */}
+            <div className="ecommerce-panel-result-header">
+              <button className="ecommerce-panel-result-back-btn" onClick={handleBackToForm}>
+                <ArrowLeft style={{ width: 16, height: 16 }} />
+              </button>
+              <span className="ecommerce-panel-result-title">套图生成结果</span>
+              <span className="ecommerce-panel-result-count">
+                共 {result.prompts.length} 张
+              </span>
             </div>
-            {result.prompts.map((p, i) => (
-              <div key={i} className="ecommerce-result-card">
-                <div className="ecommerce-result-card-header">
-                  <span className="ecommerce-result-type-tag">{p.type}</span>
-                  <span style={{ fontSize: 11, color: '#A3A3A3' }}>{p.aspectRatio}</span>
-                </div>
-                <div className="ecommerce-result-text">{p.prompt}</div>
-                <div className="ecommerce-result-actions">
-                  <Tooltip content="复制">
-                    <button className="ecommerce-result-btn" onClick={() => handleCopy(p.prompt)}>
+
+            {/* Body: prompt cards */}
+            <div className="ecommerce-panel-result-body">
+              {result.prompts.map((p, i) => (
+                <div key={i} className="ecommerce-panel-result-card">
+                  <div className="ecommerce-panel-result-card-header">
+                    <span className="ecommerce-panel-result-type-tag">{p.type}</span>
+                    <span style={{ fontSize: 11, color: '#A3A3A3' }}>{p.aspectRatio}</span>
+                  </div>
+                  <div className="ecommerce-panel-result-text">{p.prompt}</div>
+                  <div className="ecommerce-panel-result-actions">
+                    <button className="ecommerce-panel-action-btn ecommerce-panel-insert-btn" onClick={() => handleInsert(p.prompt)} title="插入">
+                      <ArrowUpRight style={{ width: 14, height: 14 }} />
+                    </button>
+                    <button className="ecommerce-panel-action-btn" onClick={() => handleCopy(p.prompt)} title="复制">
                       <Copy style={{ width: 14, height: 14 }} />
                     </button>
-                  </Tooltip>
-                  <Tooltip content="保存到库">
-                    <button className="ecommerce-result-btn" onClick={() => handleSavePrompt(i)}>
+                    <button className="ecommerce-panel-action-btn" onClick={() => handleSavePrompt(i)} title="保存到库">
                       <Bookmark style={{ width: 14, height: 14 }} />
                     </button>
-                  </Tooltip>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+
+            {/* Footer */}
+            <div className="ecommerce-panel-result-footer">
+              <button className="ecommerce-panel-result-footer-btn-secondary" onClick={handleCopyAll}>
+                复制全部
+              </button>
+              <button className="ecommerce-panel-result-footer-btn-primary" onClick={handleRegenerate} disabled={isLoading}>
+                {isLoading ? '重新生成中...' : '重新生成'}
+              </button>
+            </div>
           </div>
         )}
 

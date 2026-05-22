@@ -1,5 +1,5 @@
 import { MessageType, MessageResponse } from '@oh-my-prompt/shared/messages'
-import type { StorageSchema, SyncSettings, VisionApiConfig, InsertPromptPayload, InsertResultPayload, SaveTemporaryPromptPayload, UpdateTemporaryPromptFormatPayload, Prompt, ProviderConfig, ProviderConfigsStorage, AgentGeneratePayload } from '@oh-my-prompt/shared/types'
+import type { StorageSchema, SyncSettings, VisionApiConfig, InsertPromptPayload, InsertResultPayload, SaveTemporaryPromptPayload, UpdateTemporaryPromptFormatPayload, Prompt, ProviderConfig, ProviderConfigsStorage, AgentGeneratePayload, EcommercePlatform, EcommerceLanguage } from '@oh-my-prompt/shared/types'
 import { StorageManager } from '../lib/storage'
 import { saveFolderHandle, getFolderHandle, checkFolderPermission } from '../lib/sync/indexeddb'
 import { getSyncStatus, triggerSync, restorePermission, initialSync, triggerProviderConfigsSync } from '../lib/sync/sync-manager'
@@ -13,7 +13,7 @@ import { validateProviderConfig, maskApiKey } from '../lib/config-validator'
 import { sendToOffscreen } from '../lib/offscreen-manager'
 import '../lib/migrations/register' // Register all migrations
 import { clearSupabaseClient } from '../lib/cloud-sync/supabase-client'
-import { handleAgentGenerate } from './agent-handler'
+import { handleAgentGenerate, handleEcommerceAiWrite } from './agent-handler'
 
 // Create sync orchestrator for cloud-first decision matrix
 const syncOrchestrator = createSyncOrchestrator()
@@ -1600,6 +1600,11 @@ chrome.runtime.onMessage.addListener(
       // Agent: Prompt enhancement using Vision Provider Config infrastructure
       case MessageType.AGENT_GENERATE:
         handleAgentGenerate(message.payload as AgentGeneratePayload, sendResponse)
+        return true
+
+      // Agent: Ecommerce AI write (selling points generation from product image)
+      case MessageType.AGENT_ECOMMERCE_AI_WRITE:
+        handleEcommerceAiWrite(message.payload as { imageData: string; platform: EcommercePlatform; language: EcommerceLanguage }, sendResponse)
         return true
 
       default:

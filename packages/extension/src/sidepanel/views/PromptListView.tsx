@@ -23,6 +23,7 @@ import { downloadImageFromUrl, saveImage } from '@/lib/sync/image-sync'
 import { getFolderHandle } from '@/lib/sync/indexeddb'
 import { useAutoPermissionRestore } from '@/sidepanel/hooks/useAutoPermissionRestore'
 import AgentView from '@/sidepanel/views/AgentView'
+import EcommerceView from '@/sidepanel/views/EcommerceView'
 
 // Lazy load modal components
 const PromptPreviewModal = lazy(() => import('@/content/components/PromptPreviewModal').then(m => ({ default: m.PromptPreviewModal })))
@@ -1982,23 +1983,43 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
               <div className="empty-message">加载中...</div>
             </div>
           ) : agentViewMode === 'agent' ? (
-            <AgentView
-              selectedTemplate={agentSelectedTemplate}
-              extractedText={agentExtractedText}
-              categories={sortableCategories}
-              onOpenSettings={onOpenSettings}
-              onSave={(prompt: string, categoryId: string, templateCategory: AgentTemplateCategory) => {
-                const template = getAgentTemplate(templateCategory)
-                usePromptStore.getState().addPrompt({
-                  name: `Agent: ${template?.name || '生成'}`,
-                  content: prompt,
-                  categoryId,
-                  order: prompts.filter(p => p.categoryId === categoryId).length,
-                })
-                setToastMessage('已保存到库')
-                setTimeout(hideToast, 2000)
-              }}
-            />
+            agentSelectedTemplate === 'ecommerce' ? (
+              <EcommerceView
+                selectedTemplate={agentSelectedTemplate}
+                extractedText={agentExtractedText}
+                categories={sortableCategories}
+                onSave={(prompt: string, categoryId: string, templateCategory: AgentTemplateCategory) => {
+                  const template = getAgentTemplate(templateCategory)
+                  usePromptStore.getState().addPrompt({
+                    name: `Agent: ${template?.name || '生成'}`,
+                    content: prompt,
+                    categoryId,
+                    order: prompts.filter(p => p.categoryId === categoryId).length,
+                  })
+                  setToastMessage('已保存到库')
+                  setTimeout(hideToast, 2000)
+                }}
+                onOpenSettings={onOpenSettings}
+              />
+            ) : (
+              <AgentView
+                selectedTemplate={agentSelectedTemplate}
+                extractedText={agentExtractedText}
+                categories={sortableCategories}
+                onOpenSettings={onOpenSettings}
+                onSave={(prompt: string, categoryId: string, templateCategory: AgentTemplateCategory) => {
+                  const template = getAgentTemplate(templateCategory)
+                  usePromptStore.getState().addPrompt({
+                    name: `Agent: ${template?.name || '生成'}`,
+                    content: prompt,
+                    categoryId,
+                    order: prompts.filter(p => p.categoryId === categoryId).length,
+                  })
+                  setToastMessage('已保存到库')
+                  setTimeout(hideToast, 2000)
+                }}
+              />
+            )
           ) : isResourceLibrary ? (
             paginatedResourcePrompts.length === 0 ? (
               <div className="empty-state">

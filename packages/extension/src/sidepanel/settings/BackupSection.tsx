@@ -8,7 +8,6 @@ import { MergePreviewModal, MergePreviewData } from './MergePreviewModal'
 import { HistoryModal } from './HistoryModal'
 import { RestoreDecisionModal } from './RestoreDecisionModal'
 import { MergeConflictModal, MergeResult } from './MergeConflictModal'
-import { signOut } from '@/lib/cloud-sync/auth-service'
 import { changeSyncFolder, enableSync, getBackupVersions, restoreFromBackup } from '@/lib/sync/sync-manager'
 import type { ExistingBackupInfo } from '@/lib/sync/sync-manager'
 import type { BackupStatusStorage, UnifiedSyncStatus } from '@/lib/sync/types'
@@ -184,30 +183,6 @@ export function BackupSection() {
    */
   const handleLogin = () => {
     chrome.tabs.create({ url: `${WEB_APP_URL}/auth/callback?source=extension` })
-  }
-
-  /**
-   * Handle cloud logout
-   */
-  const handleLogout = async () => {
-    setLoading(true)
-    setError(null)
-    setSuccess(null)
-
-    try {
-      const result = await signOut()
-      if (result.success) {
-        setSuccess('已退出登录')
-        await loadBackupStatus()
-      } else {
-        setError('退出失败')
-      }
-    } catch (err) {
-      console.error('[Oh My Prompt] Logout failed:', err)
-      setError('退出失败')
-    } finally {
-      setLoading(false)
-    }
   }
 
   /**
@@ -631,7 +606,6 @@ export function BackupSection() {
         {showMoreOptions && (
           <BackupMoreOptions
             status={status}
-            onLogout={handleLogout}
             onChangeFolder={handleChangeFolder}
             onViewHistory={handleViewHistory}
             onMergeFromCloud={handleMergeFromCloud}

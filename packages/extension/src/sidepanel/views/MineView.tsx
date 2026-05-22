@@ -1,12 +1,14 @@
 // packages/extension/src/sidepanel/views/MineView.tsx
 import { useState, useEffect } from 'react'
-import { User, LogIn, Check, Sparkles, ExternalLink, ArrowRight } from 'lucide-react'
+import { User, LogIn, Check, Sparkles, ArrowRight } from 'lucide-react'
 import { Button } from '@/popup/components/ui/button'
 import { MessageType } from '@oh-my-prompt/shared/messages'
 import type { ProviderConfig, CloudAuthState, Provider, ProviderGroup } from '@oh-my-prompt/shared/types'
 import { getAuthState, signOut } from '@/lib/cloud-sync/auth-service'
 import { clearSupabaseClient } from '@/lib/cloud-sync/supabase-client'
 import { WEB_APP_URL } from '@/lib/config'
+import { SavedConfigsList } from '@/popup/components/SavedConfigsList'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/popup/components/ui/dialog'
 import { loadSupportedProviders, groupProvidersByType } from '@/lib/provider-data'
 
 export default function MineView() {
@@ -19,18 +21,6 @@ export default function MineView() {
   const [providers, setProviders] = useState<Provider[]>([])
   const [providerGroups, setProviderGroups] = useState<ProviderGroup[]>([])
   const [visionEnabled, setVisionEnabled] = useState(true)
-
-  // Quick config state
-  const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null)
-  const [selectedModel, setSelectedModel] = useState('')
-  const [apiKey, setApiKey] = useState('')
-
-  // Custom config state
-  const [customApiFormat, setCustomApiFormat] = useState<'anthropic_messages' | 'chat_completions'>('chat_completions')
-  const [customEndpoint, setCustomEndpoint] = useState('')
-  const [customModel, setCustomModel] = useState('')
-  const [customApiKey, setCustomApiKey] = useState('')
-  const [customName, setCustomName] = useState('')
 
   // Edit/Delete dialog states
   const [editDialogOpen, setEditDialogOpen] = useState(false)
@@ -69,13 +59,6 @@ export default function MineView() {
     chrome.runtime.onMessage.addListener(handleMessage)
     return () => chrome.runtime.onMessage.removeListener(handleMessage)
   }, [])
-
-  // Auto-select first model when provider changes
-  useEffect(() => {
-    if (selectedProvider?.models.length) {
-      setSelectedModel(selectedProvider.models[0].id)
-    }
-  }, [selectedProvider])
 
   const loadConfigs = async () => {
     setLoading(true)
@@ -207,19 +190,15 @@ export default function MineView() {
     }
   }
 
-  const handleSaveQuickConfig = async () => {
+  const handleSaveQuickConfig = async (provider: Provider, model: string, apiKey: string) => {
     setError(null)
     setSuccess(null)
-    if (!selectedProvider) {
-      setError('请选择服务商')
-      return
-    }
     if (!apiKey.trim()) {
       setError('API Key 不能为空')
       return
     }
 
-    const endpoint = selectedProvider.apiEndpoint
+    const endpoint = provider.apiEndpoint
     const permissionGranted = await requestApiHostPermission(endpoint)
     if (!permissionGranted) {
       setError('API域名访问权限未授予')
@@ -231,17 +210,16 @@ export default function MineView() {
       const response = await chrome.runtime.sendMessage({
         type: MessageType.ADD_PROVIDER_CONFIG,
         payload: {
-          providerId: selectedProvider.id,
-          providerName: selectedProvider.nameCn || selectedProvider.name,
+          providerId: provider.id,
+          providerName: provider.nameCn || provider.name,
           apiKey: apiKey.trim(),
           apiEndpoint: endpoint,
-          apiFormat: selectedProvider.apiFormat,
-          selectedModel: selectedModel
+          apiFormat: provider.apiFormat,
+          selectedModel: model
         }
       })
       if (response.success) {
         setSuccess('配置已保存')
-        setApiKey('')
         await loadConfigs()
       } else {
         setError(response.error || '保存失败')
@@ -253,27 +231,27 @@ export default function MineView() {
     }
   }
 
-  const handleSaveCustomConfig = async () => {
+  const handleSaveCustomConfig = async (name: string, format: 'anthropic_messages' | 'chat_completions', endpoint: string, model: string, apiKey: string) => {
     setError(null)
     setSuccess(null)
-    if (!customEndpoint.trim()) {
+    if (!endpoint.trim()) {
       setError('API 地址不能为空')
       return
     }
-    if (!customEndpoint.startsWith('https://')) {
+    if (!endpoint.startsWith('https://')) {
       setError('API 地址必须使用 HTTPS')
       return
     }
-    if (!customApiKey.trim()) {
+    if (!apiKey.trim()) {
       setError('API Key 不能为空')
       return
     }
-    if (!customModel.trim()) {
+    if (!model.trim()) {
       setError('模型名称不能为空')
       return
     }
 
-    const permissionGranted = await requestApiHostPermission(customEndpoint.trim())
+    const permissionGranted = await requestApiHostPermission(endpoint.trim())
     if (!permissionGranted) {
       setError('API域名访问权限未授予')
       return
@@ -285,20 +263,16 @@ export default function MineView() {
         type: MessageType.ADD_PROVIDER_CONFIG,
         payload: {
           providerId: 'custom',
-          providerName: customName.trim() || '自定义配置',
-          apiKey: customApiKey.trim(),
-          apiEndpoint: customEndpoint.trim(),
-          apiFormat: customApiFormat,
-          selectedModel: customModel.trim(),
+          providerName: name,
+          apiKey: apiKey.trim(),
+          apiEndpoint: endpoint.trim(),
+          apiFormat: format,
+          selectedModel: model.trim(),
           isCustom: true
         }
       })
       if (response.success) {
         setSuccess('配置已保存')
-        setCustomEndpoint('')
-        setCustomApiKey('')
-        setCustomModel('')
-        setCustomName('')
         await loadConfigs()
       } else {
         setError(response.error || '保存失败')
@@ -508,139 +482,8 @@ export default function MineView() {
         </div>
       </div>
 
-      {/* 第三方API配置区 - 功能开启后显示 */}
+      {/* API配置列表 */}
       {visionEnabled && (
-        <div className="p-4 bg-white rounded-lg border border-gray-200">
-          <CollapsibleSection
-            title="第三方 API 配置"
-            defaultExpanded={configs.filter(c => c.apiFormat !== 'omp_official').length === 0}
-            hint={configs.length > 0 ? `已有 ${configs.length} 个配置` : '配置后可使用 Agent 和图片转提示词'}
-          >
-            <Tabs defaultValue="quick">
-              <TabsList className="w-full">
-                <TabsTrigger value="quick" className="flex-1">快速配置</TabsTrigger>
-                <TabsTrigger value="custom" className="flex-1">自定义配置</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="quick">
-                <div className="space-y-4 mt-4">
-                  <ProviderSelect
-                    providers={providers}
-                    groups={providerGroups}
-                    value={selectedProvider}
-                    onChange={setSelectedProvider}
-                    disabled={loading}
-                  />
-                  {selectedProvider && (
-                    <ModelSelect
-                      models={selectedProvider.models}
-                      value={selectedModel}
-                      onChange={setSelectedModel}
-                      disabled={loading}
-                    />
-                  )}
-                  <div>
-                    <label className="text-sm font-medium text-gray-700 block mb-2">API密钥</label>
-                    <input
-                      type="password"
-                      value={apiKey}
-                      onChange={(e) => setApiKey(e.target.value)}
-                      placeholder="sk-..."
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-md focus:border-gray-400"
-                      disabled={loading}
-                    />
-                    {selectedProvider?.apiKeyUrl && (
-                      <a
-                        href={selectedProvider.apiKeyUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 mt-2"
-                      >
-                        获取 API Key <ExternalLink className="w-3 h-3" />
-                      </a>
-                    )}
-                  </div>
-                  <Button onClick={handleSaveQuickConfig} disabled={loading || !selectedProvider} className="w-full h-10">
-                    <Check className="w-4 h-4" />
-                    {loading ? '保存中...' : '保存配置'}
-                  </Button>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="custom">
-                <div className="space-y-4 mt-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-700 block mb-2">配置名称</label>
-                    <input
-                      type="text"
-                      value={customName}
-                      onChange={(e) => setCustomName(e.target.value)}
-                      placeholder="我的自定义配置"
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-md focus:border-gray-400"
-                      disabled={loading}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-700 block mb-2">API 格式</label>
-                    <select
-                      value={customApiFormat}
-                      onChange={(e) => setCustomApiFormat(e.target.value as typeof customApiFormat)}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-md bg-white focus:border-gray-400"
-                      disabled={loading}
-                    >
-                      <option value="anthropic_messages">Anthropic 格式</option>
-                      <option value="chat_completions">OpenAI 格式</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-700 block mb-2">API地址</label>
-                    <input
-                      type="text"
-                      value={customEndpoint}
-                      onChange={(e) => setCustomEndpoint(e.target.value)}
-                      placeholder="https://api.example.com/v1"
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-md focus:border-gray-400"
-                      disabled={loading}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-700 block mb-2">模型名称</label>
-                    <input
-                      type="text"
-                      value={customModel}
-                      onChange={(e) => setCustomModel(e.target.value)}
-                      placeholder="gpt-4o, qwen-vl-max 等"
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-md focus:border-gray-400"
-                      disabled={loading}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-700 block mb-2">API密钥</label>
-                    <input
-                      type="password"
-                      value={customApiKey}
-                      onChange={(e) => setCustomApiKey(e.target.value)}
-                      placeholder="sk-..."
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-md focus:border-gray-400"
-                      disabled={loading}
-                    />
-                  </div>
-                  <Button onClick={handleSaveCustomConfig} disabled={loading} className="w-full h-10">
-                    <Check className="w-4 h-4" />
-                    {loading ? '保存中...' : '保存配置'}
-                  </Button>
-                </div>
-              </TabsContent>
-            </Tabs>
-
-            {error && <p className="text-sm text-red-500 mt-4">{error}</p>}
-            {success && <p className="text-sm text-green-600 mt-4">{success}</p>}
-          </CollapsibleSection>
-        </div>
-      )}
-
-      {/* 已保存配置列表 */}
-      {visionEnabled && configs.length > 0 && (
         <div className="p-4 bg-white rounded-lg border border-gray-200">
           <SavedConfigsList
             configs={configs}
@@ -648,6 +491,13 @@ export default function MineView() {
             onActivate={handleActivate}
             onDelete={handleDeleteClick}
             onEdit={handleEdit}
+            providers={providers}
+            providerGroups={providerGroups}
+            loading={loading}
+            onSaveQuickConfig={handleSaveQuickConfig}
+            onSaveCustomConfig={handleSaveCustomConfig}
+            error={error}
+            success={success}
           />
         </div>
       )}

@@ -15,6 +15,7 @@ interface BackupMoreOptionsProps {
   onViewDiff?: () => void
   onEmergencyExport?: () => void
   loading?: boolean
+  diffLoading?: boolean
 }
 
 /**
@@ -32,7 +33,8 @@ export function BackupMoreOptions({
   onMergeFromCloud,
   onViewDiff,
   onEmergencyExport,
-  loading = false
+  loading = false,
+  diffLoading = false
 }: BackupMoreOptionsProps) {
   if (!status) return null
 
@@ -117,7 +119,7 @@ export function BackupMoreOptions({
         <div className="p-3 border border-gray-200 rounded-lg space-y-3">
           <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
             <Download className="w-4 h-4 text-gray-500" />
-            <span>多设备同步选项</span>
+            <span>云端同步选项</span>
           </div>
 
           <p className="text-sm text-gray-600 leading-relaxed">
@@ -139,10 +141,10 @@ export function BackupMoreOptions({
               variant="ghost"
               size="sm"
               onClick={onViewDiff}
-              disabled={loading}
+              disabled={loading || diffLoading}
               className="flex-1 h-9"
             >
-              查看差异
+              {diffLoading ? '加载中...' : '查看差异'}
             </Button>
           </div>
         </div>

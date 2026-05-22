@@ -612,6 +612,7 @@ export function BackupSection() {
             onViewDiff={handleViewDiff}
             onEmergencyExport={handleEmergencyExport}
             loading={loading}
+            diffLoading={diffLoading}
           />
         )}
       </div>

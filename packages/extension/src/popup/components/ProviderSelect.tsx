@@ -105,7 +105,7 @@ export function ProviderSelect({ providers: _providers, groups, value, onChange,
       {isOpen && createPortal(
         <div
           ref={dropdownRef}
-          className="fixed z-[100] bg-white border border-gray-200 rounded shadow-lg max-h-96 overflow-y-auto"
+          className="fixed z-[200] bg-white border border-gray-200 rounded shadow-lg max-h-96 overflow-y-auto pointer-events-auto"
           style={{
             top: dropdownPosition.top,
             left: dropdownPosition.left,

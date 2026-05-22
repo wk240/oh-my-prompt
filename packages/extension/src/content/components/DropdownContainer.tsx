@@ -1327,7 +1327,6 @@ export function DropdownContainer({
             </>
           ) : (
             <>
-              {/* Agent entry with NEW tag */}
               <button
                 className="sidebar-category-item"
                 onClick={() => setAgentViewMode('agent')}
@@ -1337,7 +1336,6 @@ export function DropdownContainer({
                   <Sparkles className="sidebar-category-icon" style={{ color: '#A16207' }} />
                 </div>
                 <span style={{ color: '#A16207' }}>Agent</span>
-                <span className="sidebar-new-tag">NEW</span>
               </button>
 
               {/* "资源库" entry */}

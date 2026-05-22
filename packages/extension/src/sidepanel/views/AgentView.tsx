@@ -162,23 +162,6 @@ export default function AgentView({
 
   return (
     <div className="agent-view">
-      {/* Header */}
-      <div className="agent-header">
-        <Sparkles className="agent-header-icon" />
-        <span className="agent-header-title">Agent</span>
-        <span className="agent-header-template">{template?.name || selectedTemplate}</span>
-      </div>
-
-      {/* Template hint card */}
-      {template && (
-        <div className="agent-template-hint">
-          <div className="agent-template-hint-title">风格要点</div>
-          <div className="agent-template-hint-keywords">
-            {template.keywords.join('、')}
-          </div>
-        </div>
-      )}
-
       {/* Input section */}
       <div className="agent-input-section">
         <label className="agent-input-label">

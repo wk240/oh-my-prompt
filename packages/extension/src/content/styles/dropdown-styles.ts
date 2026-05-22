@@ -766,21 +766,6 @@ export const DROPDOWN_STYLES = `
     overflow-y: auto;
   }
 
-  #${PORTAL_ID} .agent-panel-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid #E5E5E5;
-  }
-
-  #${PORTAL_ID} .agent-panel-hint {
-    padding: 10px 14px;
-    background: #EFF6FF;
-    border: 1px solid #BFDBFE;
-    border-radius: 8px;
-  }
-
   #${PORTAL_ID} .agent-panel-section {
     display: flex;
     flex-direction: column;
@@ -993,14 +978,4 @@ export const DROPDOWN_STYLES = `
     cursor: not-allowed;
   }
 
-  /* Agent NEW tag in sidebar */
-  #${PORTAL_ID} .sidebar-new-tag {
-    font-size: 9px;
-    font-weight: 700;
-    color: #A16207;
-    background: #FEF3C7;
-    padding: 1px 5px;
-    border-radius: 3px;
-    margin-left: 4px;
-  }
-`
+  `

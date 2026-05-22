@@ -245,16 +245,6 @@
   white-space: nowrap;
 }
 
-.sidebar-category-new-tag {
-  background: #fef3c7;
-  color: #92400e;
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  margin-left: 8px;
-  font-weight: 600;
-}
-
 .sidebar-category-drag-handle {
   position: absolute;
   top: 50%;
@@ -1389,52 +1379,6 @@
   padding: 16px;
   gap: 16px;
   overflow-y: auto;
-}
-
-.agent-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #E5E5E5;
-}
-
-.agent-header-icon {
-  width: 20px;
-  height: 20px;
-  color: #A16207;
-}
-
-.agent-header-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #171717;
-}
-
-.agent-header-template {
-  font-size: 13px;
-  color: #64748B;
-  margin-left: 4px;
-}
-
-.agent-template-hint {
-  padding: 12px 16px;
-  background: #EFF6FF;
-  border: 1px solid #BFDBFE;
-  border-radius: 8px;
-}
-
-.agent-template-hint-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: #1E40AF;
-  margin-bottom: 6px;
-}
-
-.agent-template-hint-keywords {
-  font-size: 12px;
-  color: #2563EB;
-  line-height: 1.4;
 }
 
 .agent-input-section {

@@ -126,21 +126,6 @@ export function AgentPanel({
 
   return (
     <div className="agent-panel">
-      {/* Header */}
-      <div className="agent-panel-header">
-        <Sparkles style={{ width: 18, height: 18, color: '#A16207' }} />
-        <span style={{ fontSize: 14, fontWeight: 600, color: '#171717' }}>Agent</span>
-        <span style={{ fontSize: 12, color: '#64748B', marginLeft: 4 }}>{template?.name || selectedTemplate}</span>
-      </div>
-
-      {/* Template hint */}
-      {template && (
-        <div className="agent-panel-hint">
-          <div style={{ fontSize: 11, fontWeight: 600, color: '#1E40AF', marginBottom: 4 }}>风格要点</div>
-          <div style={{ fontSize: 11, color: '#2563EB', lineHeight: 1.4 }}>{template.keywords.join('、')}</div>
-        </div>
-      )}
-
       {/* Input */}
       <div className="agent-panel-section">
         <label style={{ fontSize: 12, fontWeight: 500, color: '#171717', display: 'block', marginBottom: 6 }}>

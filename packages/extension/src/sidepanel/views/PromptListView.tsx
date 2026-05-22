@@ -1803,7 +1803,6 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
             </>
           ) : (
             <>
-              {/* Agent entry with NEW tag */}
               <button
                 className="sidebar-category-item"
                 onClick={() => setAgentViewMode('agent')}
@@ -1812,7 +1811,6 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
                   <Sparkles className="sidebar-category-icon" style={{ color: '#A16207' }} />
                 </div>
                 <span className="sidebar-category-name" style={{ color: '#A16207' }}>Agent</span>
-                <span className="sidebar-category-new-tag">NEW</span>
               </button>
 
               <button

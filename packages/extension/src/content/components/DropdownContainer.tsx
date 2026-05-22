@@ -20,6 +20,7 @@ import { CategorySelectDialog } from './CategorySelectDialog'
 import { showToast } from './ToastNotification'
 import { Tooltip } from './Tooltip'
 import { AgentPanel } from './AgentPanel'
+import { EcommercePanel } from './EcommercePanel'
 import { getAgentTemplates, getAgentTemplate } from '../../lib/agent-templates'
 // Lazy load Modal components - only loaded when user opens them
 const PromptPreviewModal = lazy(() => import('./PromptPreviewModal').then(m => ({ default: m.PromptPreviewModal })))
@@ -1561,21 +1562,39 @@ export function DropdownContainer({
 
             <div className="dropdown-content" ref={scrollContainerRef} onScroll={handleScroll}>
           {agentViewMode === 'agent' ? (
-            <AgentPanel
-              selectedTemplate={agentSelectedTemplate}
-              extractedText={agentExtractedText}
-              categories={sortableCategories}
-              onSave={(prompt: string, categoryId: string, templateCategory: AgentTemplateCategory) => {
-                const template = getAgentTemplate(templateCategory)
-                usePromptStore.getState().addPrompt({
-                  name: `Agent: ${template?.name || '生成'}`,
-                  content: prompt,
-                  categoryId,
-                  order: localPrompts.filter(p => p.categoryId === categoryId).length,
-                })
-                showToast('已保存到库')
-              }}
-            />
+            agentSelectedTemplate === 'ecommerce' ? (
+              <EcommercePanel
+                selectedTemplate={agentSelectedTemplate}
+                extractedText={agentExtractedText}
+                categories={sortableCategories}
+                onSave={(prompt: string, categoryId: string, templateCategory: AgentTemplateCategory) => {
+                  const template = getAgentTemplate(templateCategory)
+                  usePromptStore.getState().addPrompt({
+                    name: `Agent: ${template?.name || '生成'}`,
+                    content: prompt,
+                    categoryId,
+                    order: localPrompts.filter(p => p.categoryId === categoryId).length,
+                  })
+                  showToast('已保存到库')
+                }}
+              />
+            ) : (
+              <AgentPanel
+                selectedTemplate={agentSelectedTemplate}
+                extractedText={agentExtractedText}
+                categories={sortableCategories}
+                onSave={(prompt: string, categoryId: string, templateCategory: AgentTemplateCategory) => {
+                  const template = getAgentTemplate(templateCategory)
+                  usePromptStore.getState().addPrompt({
+                    name: `Agent: ${template?.name || '生成'}`,
+                    content: prompt,
+                    categoryId,
+                    order: localPrompts.filter(p => p.categoryId === categoryId).length,
+                  })
+                  showToast('已保存到库')
+                }}
+              />
+            )
           ) : isLoading ? (
             <div className="empty-state">
               <div className="empty-message">加载中...</div>

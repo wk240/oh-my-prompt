@@ -1,6 +1,6 @@
 // packages/extension/src/sidepanel/views/MineView.tsx
 import { useState, useEffect } from 'react'
-import { User, LogIn } from 'lucide-react'
+import { User, LogIn, Check } from 'lucide-react'
 import { Button } from '@/popup/components/ui/button'
 import { MessageType } from '@oh-my-prompt/shared/messages'
 import type { ProviderConfig, CloudAuthState, Provider, ProviderGroup } from '@oh-my-prompt/shared/types'
@@ -20,7 +20,7 @@ export default function MineView() {
 
   // Vision/API states
   const [_configs, setConfigs] = useState<ProviderConfig[]>([])
-  const [_activeConfigId, setActiveConfigId] = useState<string | null>(null)
+  const [activeConfigId, setActiveConfigId] = useState<string | null>(null)
   const [_providers, setProviders] = useState<Provider[]>([])
   const [_providerGroups, setProviderGroups] = useState<ProviderGroup[]>([])
   const [_visionEnabled, setVisionEnabled] = useState(true)
@@ -104,6 +104,54 @@ export default function MineView() {
     }
   }
 
+  const officialConfigId = 'omp-official-default'
+
+  const handleActivateOfficial = async () => {
+    setLoading(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      // Try to activate existing config
+      const response = await chrome.runtime.sendMessage({
+        type: MessageType.SET_ACTIVE_CONFIG,
+        payload: { id: officialConfigId }
+      })
+
+      if (response.success) {
+        setActiveConfigId(officialConfigId)
+        setSuccess('已激活官方服务')
+      } else {
+        // Create if not exists
+        const createResponse = await chrome.runtime.sendMessage({
+          type: MessageType.ADD_PROVIDER_CONFIG,
+          payload: {
+            id: officialConfigId,
+            providerId: 'oh-my-prompt-official',
+            providerName: 'Oh My Prompt 官方',
+            apiKey: '',
+            apiEndpoint: WEB_APP_URL + '/api/vision',
+            apiFormat: 'omp_official',
+            selectedModel: 'auto',
+            isCustom: false,
+            requiresAuth: true
+          }
+        })
+
+        if (createResponse.success) {
+          setActiveConfigId(officialConfigId)
+          setSuccess('已激活官方服务')
+          await loadConfigs()
+        } else {
+          setError(createResponse.error || '激活失败')
+        }
+      }
+    } catch (err) {
+      setError('激活失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="w-full p-4 space-y-4">
       {/* 账号状态区 */}
@@ -142,8 +190,34 @@ export default function MineView() {
               </>
             )}
           </div>
+          </div>
         </div>
-      </div>
+
+      {/* 官方服务区 - 登录后显示 */}
+      {authState?.status === 'logged_in' && (
+        <div className="p-4 bg-white rounded-lg border border-gray-200">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-sm font-medium text-gray-900">Oh My Prompt 官方服务</p>
+              <p className="text-xs text-gray-500 mt-1">激活后云端备份、Agent生成、图片转提示词均可使用</p>
+            </div>
+          </div>
+          {activeConfigId === officialConfigId ? (
+            <div className="flex items-center gap-2 text-sm text-green-600">
+              <Check className="w-4 h-4" />
+              已激活
+            </div>
+          ) : (
+            <Button
+              onClick={handleActivateOfficial}
+              disabled={loading}
+              className="w-full h-9"
+            >
+              {loading ? '激活中...' : '激活官方服务'}
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* 其他区块将在后续任务实现 */}
     </div>

@@ -7,10 +7,9 @@
 import { useState, useEffect, useCallback, Suspense, lazy } from 'react'
 import type { AgentTemplateCategory, Category, ProviderConfig } from '@oh-my-prompt/shared/types'
 import { MessageType } from '@oh-my-prompt/shared/messages'
-import { Sparkles, Loader2, AlertTriangle, Copy, Bookmark, RefreshCw, X, Upload, Settings, LogIn } from 'lucide-react'
+import { Sparkles, Loader2, AlertTriangle, Copy, Bookmark, RefreshCw, X, Upload, Settings } from 'lucide-react'
 import { Tooltip } from '@/content/components/Tooltip'
 import { ToastNotification } from '@/sidepanel/components/ToastNotification'
-import { WEB_APP_URL } from '@/lib/config'
 
 // Lazy load dialog component
 const CategorySelectDialog = lazy(() => import('@/content/components/CategorySelectDialog').then(m => ({ default: m.CategorySelectDialog })))
@@ -40,6 +39,12 @@ export default function AgentView({
   const [showSaveDialog, setShowSaveDialog] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [hasConfig, setHasConfig] = useState<boolean | null>(null) // null = checking
+
+  // Navigate to Mine tab for login/config
+  const handleNavigateToMine = () => {
+    chrome.storage.session.set({ sidepanelIntent: 'mine' })
+    onOpenSettings?.()  // Open settings view (which will show mine tab)
+  }
 
   // Helper for toast notifications
   const showToast = useCallback((msg: string) => {
@@ -207,26 +212,16 @@ export default function AgentView({
           <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center mb-4">
             <Settings className="w-6 h-6 text-amber-600" />
           </div>
-          <h3 className="text-sm font-medium text-gray-900 mb-1">尚未配置 API</h3>
-          <p className="text-xs text-gray-500 mb-5 leading-relaxed">
-            使用 Agent 生成提示词前，需要登录官方服务或配置第三方 API
+          <h3 className="text-sm font-medium text-gray-900 mb-2">尚未配置 API</h3>
+          <p className="text-xs text-gray-500 leading-relaxed">
+            使用 Agent 生成提示词前，请先
+            <button
+              onClick={handleNavigateToMine}
+              className="text-blue-600 hover:underline mx-1"
+            >
+              登录或配置API
+            </button>
           </p>
-          <div className="flex flex-col gap-2 w-full max-w-[240px]">
-            <button
-              onClick={() => window.open(`${WEB_APP_URL}/auth/login?source=extension`, '_blank')}
-              className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors"
-            >
-              <LogIn className="w-4 h-4" />
-              登录官方服务
-            </button>
-            <button
-              onClick={() => onOpenSettings?.()}
-              className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
-            >
-              <Settings className="w-4 h-4" />
-              配置第三方 API
-            </button>
-          </div>
         </div>
       )}
 

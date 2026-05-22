@@ -382,7 +382,7 @@ export default function MineView() {
                   {authState.user?.email?.split('@')[0] || '已登录'}
                   {authState.subscription?.planType && (
                     <span
-                      className="ml-2 px-3 py-0.5 rounded-xl text-[10px] font-bold tracking-wide"
+                      className="ml-2 px-3 py-1 rounded-xl text-[10px] font-bold tracking-wide"
                       style={{
                         background: authState.subscription.planType === 'pro' ? '#C9A962'
                           : authState.subscription.planType === 'team' ? '#1a1a1a'

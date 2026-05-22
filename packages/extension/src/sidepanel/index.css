@@ -1827,6 +1827,9 @@
 
 .ecommerce-generate-btn {
   width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 12px 16px;
   background: #171717;
   color: white;
@@ -1937,4 +1940,529 @@
 .ecommerce-result-btn:hover {
   color: #A16207;
   border-color: #A16207;
+}
+
+/* Ecommerce Panel Styles (aligned with ContentScript EcommercePanel) */
+
+/* 单图上传区域 */
+.ecommerce-panel-upload-area {
+  width: 100%;
+  min-height: 100px;
+  border: 1.5px dashed #D4D4D4;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  position: relative;
+}
+
+.ecommerce-panel-upload-area:hover {
+  border-color: #7C3AED;
+}
+
+.ecommerce-panel-upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: #64748B;
+  font-size: 12px;
+}
+
+.ecommerce-panel-upload-preview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: #F9FAFB;
+  border-radius: 8px;
+  width: 100%;
+}
+
+.ecommerce-panel-upload-thumb {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.ecommerce-panel-upload-info {
+  flex: 1;
+  font-size: 12px;
+  color: #171717;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ecommerce-panel-upload-remove {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #FEE2E2;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #DC2626;
+}
+
+.ecommerce-panel-upload-remove:hover {
+  background: #FECACA;
+}
+
+/* 套图结构卡片 */
+.ecommerce-panel-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ecommerce-panel-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #171717;
+}
+
+.ecommerce-panel-select-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.ecommerce-panel-select-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ecommerce-panel-select-label {
+  font-size: 11px;
+  color: #737373;
+}
+
+.ecommerce-panel-select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #E5E7EB;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #171717;
+  background: white;
+  cursor: pointer;
+  outline: none;
+  appearance: auto;
+}
+
+.ecommerce-panel-select:focus {
+  border-color: #7C3AED;
+}
+
+.ecommerce-panel-textarea-section {
+  position: relative;
+}
+
+.ecommerce-panel-textarea {
+  width: 100%;
+  min-height: 88px;
+  padding: 12px 14px;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.ecommerce-panel-textarea:focus {
+  border-color: #7C3AED;
+}
+
+.ecommerce-panel-ai-write-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border: 1px solid #E5E7EB;
+  border-radius: 6px;
+  background: white;
+  font-size: 12px;
+  color: #7C3AED;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.ecommerce-panel-ai-write-btn:hover {
+  background: #F3E8FF;
+  border-color: #7C3AED;
+}
+
+.ecommerce-panel-ai-write-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 结构选择卡片 */
+.ecommerce-panel-structure-card {
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  padding: 12px;
+  background: white;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.ecommerce-panel-structure-card:hover {
+  border-color: #D4D4D4;
+}
+
+.ecommerce-panel-structure-card.active {
+  border: 2px solid #7C3AED;
+  background: #F9FAFB;
+}
+
+.ecommerce-panel-structure-card-header {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.ecommerce-panel-structure-card-checkbox {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 1px solid #E5E7EB;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: transparent;
+  flex-shrink: 0;
+}
+
+.ecommerce-panel-structure-card-checkbox.checked {
+  background: #7C3AED;
+  border-color: #7C3AED;
+  color: white;
+}
+
+.ecommerce-panel-structure-card-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: #171717;
+}
+
+.ecommerce-panel-structure-card-desc {
+  font-size: 11px;
+  color: #64748B;
+  margin-top: 2px;
+}
+
+.ecommerce-panel-structure-card-body {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #E5E7EB;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* 计数器 */
+.ecommerce-panel-counter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ecommerce-panel-counter-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #171717;
+  min-width: 50px;
+}
+
+.ecommerce-panel-counter-desc {
+  font-size: 11px;
+  color: #64748B;
+  flex: 1;
+}
+
+.ecommerce-panel-counter-ai-tag {
+  padding: 2px 6px;
+  background: #F3E8FF;
+  color: #7C3AED;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.ecommerce-panel-counter-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.ecommerce-panel-counter-btn {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #E5E7EB;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+  font-size: 14px;
+  color: #171717;
+}
+
+.ecommerce-panel-counter-btn:hover:not(:disabled) {
+  background: #F3E8FF;
+  border-color: #7C3AED;
+}
+
+.ecommerce-panel-counter-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ecommerce-panel-counter-value {
+  font-size: 13px;
+  font-weight: 500;
+  color: #171717;
+  min-width: 20px;
+  text-align: center;
+}
+
+/* 生成按钮 */
+.ecommerce-panel-generate-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #7C3AED;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.ecommerce-panel-generate-btn:hover:not(:disabled) {
+  background: #6D28D9;
+}
+
+.ecommerce-panel-generate-btn:disabled {
+  background: #D4D4D4;
+  cursor: not-allowed;
+}
+
+.ecommerce-panel-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: omp-spin 0.6s linear infinite;
+}
+
+/* 错误提示 */
+.ecommerce-panel-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #B91C1C;
+}
+
+/* 结果视图 */
+.ecommerce-panel-result-view {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: white;
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+}
+
+.ecommerce-panel-result-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #E5E7EB;
+  background: white;
+}
+
+.ecommerce-panel-result-back-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #171717;
+}
+
+.ecommerce-panel-result-back-btn:hover {
+  background: #F3E8FF;
+  color: #7C3AED;
+}
+
+.ecommerce-panel-result-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #171717;
+}
+
+.ecommerce-panel-result-count {
+  font-size: 12px;
+  color: #64748B;
+  margin-left: auto;
+}
+
+.ecommerce-panel-result-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ecommerce-panel-result-card {
+  background: #F9FAFB;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.ecommerce-panel-result-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.ecommerce-panel-result-type-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  background: #F3E8FF;
+  color: #7C3AED;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.ecommerce-panel-result-text {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #404040;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.ecommerce-panel-result-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.ecommerce-panel-action-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #64748B;
+  transition: all 0.15s;
+}
+
+.ecommerce-panel-action-btn:hover {
+  color: #7C3AED;
+  border-color: #7C3AED;
+}
+
+.ecommerce-panel-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ecommerce-panel-insert-btn {
+  color: #7C3AED;
+}
+
+.ecommerce-panel-result-footer {
+  display: flex;
+  gap: 12px;
+  padding: 12px 16px;
+  border-top: 1px solid #E5E7EB;
+  background: white;
+}
+
+.ecommerce-panel-result-footer-btn-primary {
+  flex: 1;
+  padding: 10px 16px;
+  background: #7C3AED;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.ecommerce-panel-result-footer-btn-primary:hover:not(:disabled) {
+  background: #6D28D9;
+}
+
+.ecommerce-panel-result-footer-btn-primary:disabled {
+  background: #D4D4D4;
+  cursor: not-allowed;
+}
+
+.ecommerce-panel-result-footer-btn-secondary {
+  flex: 1;
+  padding: 10px 16px;
+  background: white;
+  color: #171717;
+  border: 1px solid #E5E7EB;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.ecommerce-panel-result-footer-btn-secondary:hover {
+  background: #F9FAFB;
 }

@@ -1000,7 +1000,7 @@ chrome.runtime.onMessage.addListener(
 
             const updatedStorage: ProviderConfigsStorage = {
               configs: [...configs, newConfig],
-              activeConfigId: isFirstConfig ? newConfig.id : (existingStorage?.activeConfigId || null)
+              activeConfigId: isFirstConfig ? newConfig.id : (existingStorage?.activeConfigId || newConfig.id)
             }
 
             return chrome.storage.local.set({ [PROVIDER_CONFIGS_STORAGE_KEY]: updatedStorage })

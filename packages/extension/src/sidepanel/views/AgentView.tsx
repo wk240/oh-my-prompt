@@ -116,7 +116,9 @@ export default function AgentView({
 
       // Parse error by code prefix
       if (errorMessage.startsWith('NO_CONFIG:')) {
-        setError('请先配置 Vision API')
+        setError('请先配置 API 或登录官方服务')
+      } else if (errorMessage.startsWith('NOT_LOGGED_IN:')) {
+        setError('请先登录会员账号')
       } else if (errorMessage.startsWith('UNSUPPORTED_FORMAT:')) {
         setError('不支持当前 API 格式')
       } else if (errorMessage === 'timeout') {

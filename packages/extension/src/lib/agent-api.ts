@@ -1,13 +1,18 @@
 /**
  * Agent API integration module
  * Handles prompt enhancement using Vision Provider Config infrastructure
- * Supports Anthropic Messages and OpenAI Chat Completions API formats
+ * Supports Anthropic Messages, OpenAI Chat Completions, and OMP Official API formats
+ *
+ * For omp_official: reuses the /api/vision/generate endpoint with mode='agent'
+ * to avoid needing a separate deployed route.
  */
 
 import type { ProviderConfig, AgentGeneratePayload, AgentGenerateResult } from '@oh-my-prompt/shared/types'
 import { MessageType } from '@oh-my-prompt/shared/messages'
 import { buildAgentSystemPrompt } from './agent-templates'
 import { extractBase64Data } from './image-utils'
+import { WEB_APP_URL } from '@/lib/config'
+import { getSupabaseClient } from '@/lib/cloud-sync/supabase-client'
 
 // API call timeout in milliseconds (5 minutes)
 const API_TIMEOUT_MS = 300000
@@ -17,7 +22,8 @@ const ANTHROPIC_VERSION = '2023-06-01'
 
 /**
  * Get active provider config from storage
- * Reuses Vision Provider Config infrastructure
+ * NOTE: Only works from content script / popup / sidepanel contexts.
+ * Service worker CANNOT send messages to itself — use executeAgentApiCallWithProviderConfig() instead.
  */
 async function getActiveProviderConfig(): Promise<ProviderConfig | null> {
   const response = await chrome.runtime.sendMessage({ type: MessageType.GET_ACTIVE_CONFIG })
@@ -163,40 +169,49 @@ function extractTextContent(apiFormat: 'anthropic_messages' | 'chat_completions'
 }
 
 /**
- * Execute Agent API call with timeout
+ * Execute Agent API call with pre-resolved provider config
+ * Use this from service worker context where chrome.runtime.sendMessage to self doesn't work.
  * @param payload - Agent generation payload
  * @param signal - Optional AbortSignal for cancellation
+ * @param providedConfig - Provider config passed directly (avoids nested messaging in service worker)
  * @returns AgentGenerateResult with generated prompt
  * @throws Error on API failure
  */
-export async function executeAgentApiCall(
+export async function executeAgentApiCallWithProviderConfig(
   payload: AgentGeneratePayload,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  providedConfig?: ProviderConfig | null
 ): Promise<AgentGenerateResult> {
-  // 1. Get active provider config
-  const config = await getActiveProviderConfig()
+  // Use provided config if available (service worker passes it directly)
+  // Otherwise fetch from storage (content script / sidepanel context)
+  const config = providedConfig ?? await getActiveProviderConfig()
   if (!config) {
-    throw new Error('NO_CONFIG: 请先配置 Vision API')
+    throw new Error('NO_CONFIG: 请先配置 API 或登录官方服务')
   }
 
-  // 2. Only support anthropic_messages and chat_completions (not omp_official)
+  // Official API: use session token authentication via Vision endpoint
+  if (config.apiFormat === 'omp_official') {
+    return executeOfficialAgentApiCall(payload, signal)
+  }
+
+  // Only support anthropic_messages and chat_completions for third-party APIs
   if (config.apiFormat !== 'anthropic_messages' && config.apiFormat !== 'chat_completions') {
-    throw new Error('UNSUPPORTED_FORMAT: Agent 功能仅支持 Anthropic Messages 和 OpenAI Chat Completions API 格式')
+    throw new Error('UNSUPPORTED_FORMAT: Agent 功能仅支持 Anthropic Messages、OpenAI Chat Completions 和官方服务 API 格式')
   }
 
-  // 3. Validate endpoint security (HTTPS)
+  // Validate endpoint security (HTTPS)
   if (!config.apiEndpoint.startsWith('https://')) {
     throw new Error('API 地址必须使用 HTTPS')
   }
 
-  // 4. Build system prompt
+  // Build system prompt
   const hasImage = !!payload.imageData
   const systemPrompt = buildAgentSystemPrompt(payload.templateCategory, hasImage)
 
-  // 5. Get full endpoint URL
+  // Get full endpoint URL
   const endpointUrl = getFullEndpoint(config.apiEndpoint, config.apiFormat as 'anthropic_messages' | 'chat_completions')
 
-  // 6. Build request body
+  // Build request body
   let requestBody: object
 
   if (config.apiFormat === 'anthropic_messages') {
@@ -227,10 +242,10 @@ export async function executeAgentApiCall(
     requestBody = buildOpenAIRequest(systemPrompt, payload.inputText, config.selectedModel, payload.imageData)
   }
 
-  // 7. Build headers
+  // Build headers
   const headers = buildHeaders(config.apiFormat as 'anthropic_messages' | 'chat_completions', config.apiKey)
 
-  // 8. Execute with timeout and optional external signal
+  // Execute with timeout and optional external signal
   const abortController = new AbortController()
   const timeoutId = setTimeout(() => abortController.abort(), API_TIMEOUT_MS)
 
@@ -279,7 +294,7 @@ export async function executeAgentApiCall(
 
     const data = await response.json()
 
-    // 9. Extract result
+    // Extract result
     const promptText = extractTextContent(config.apiFormat as 'anthropic_messages' | 'chat_completions', data)
 
     if (!promptText) {
@@ -300,6 +315,129 @@ export async function executeAgentApiCall(
       throw new Error('timeout')
     }
 
+    throw error
+  }
+}
+
+/**
+ * Execute Agent API call (convenience wrapper for non-service-worker contexts)
+ * Fetches active provider config via messaging before calling the API.
+ * Do NOT use from service worker — use executeAgentApiCallWithProviderConfig() instead.
+ * @param payload - Agent generation payload
+ * @param signal - Optional AbortSignal for cancellation
+ * @returns AgentGenerateResult with generated prompt
+ * @throws Error on API failure
+ */
+export async function executeAgentApiCall(
+  payload: AgentGeneratePayload,
+  signal?: AbortSignal
+): Promise<AgentGenerateResult> {
+  return executeAgentApiCallWithProviderConfig(payload, signal)
+}
+
+/**
+ * Execute Agent API call via official OMP service
+ * Reuses the /api/vision/generate endpoint with mode='agent' to avoid
+ * needing a separate deployed route.
+ * Uses Supabase session token for authentication (same pattern as Vision API)
+ * @param payload - Agent generation payload
+ * @param signal - Optional AbortSignal for cancellation
+ * @returns AgentGenerateResult with generated prompt
+ * @throws Error on API failure
+ */
+async function executeOfficialAgentApiCall(
+  payload: AgentGeneratePayload,
+  signal?: AbortSignal
+): Promise<AgentGenerateResult> {
+  // 1. Get Supabase client (may be null if cleared after logout)
+  const supabase = getSupabaseClient()
+
+  if (!supabase) {
+    throw new Error('NOT_LOGGED_IN: 请先登录')
+  }
+
+  // 2. Get Supabase session token
+  let sessionResult: { data: { session: { access_token: string } | null }; error: unknown }
+  try {
+    sessionResult = await supabase.auth.getSession()
+  } catch (sessionError) {
+    console.error('[Oh My Prompt] Failed to get Supabase session:', sessionError)
+    throw new Error('NOT_LOGGED_IN: 请先登录')
+  }
+
+  if (sessionResult.error || !sessionResult.data.session || !sessionResult.data.session.access_token) {
+    throw new Error('NOT_LOGGED_IN: 请先登录')
+  }
+
+  const session = sessionResult.data.session
+
+  // 3. Call Vision API endpoint with mode='agent'
+  const abortController = new AbortController()
+  const timeoutId = setTimeout(() => abortController.abort(), API_TIMEOUT_MS)
+
+  if (signal) {
+    if (signal.aborted) {
+      clearTimeout(timeoutId)
+      abortController.abort()
+      throw new DOMException('Aborted before API call', 'AbortError')
+    }
+    signal.addEventListener('abort', () => abortController.abort())
+  }
+
+  try {
+    const response = await fetch(`${WEB_APP_URL}/api/vision/generate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({
+        mode: 'agent',
+        inputText: payload.inputText,
+        imageData: payload.imageData,
+        templateCategory: payload.templateCategory
+      }),
+      signal: abortController.signal
+    })
+
+    clearTimeout(timeoutId)
+
+    if (!response.ok) {
+      let errorMessage = `HTTP ${response.status}`
+      try {
+        const errorData = await response.json()
+        if (errorData && errorData.error) {
+          const errorMessages: Record<string, string> = {
+            'NOT_LOGGED_IN': '请先登录',
+            'NOT_MEMBER': '此功能需要会员订阅',
+            'SUBSCRIPTION_INACTIVE': '订阅已过期',
+            'QUOTA_EXCEEDED': '本月额度已用完',
+            'INVALID_REQUEST': '请求格式无效',
+            'AGENT_API_ERROR': errorData.message || 'Agent API 错误'
+          }
+          errorMessage = errorMessages[errorData.error] || errorData.error
+        }
+      } catch {
+        // Failed to parse error body
+      }
+      throw new Error(errorMessage)
+    }
+
+    const result = await response.json()
+
+    if (!result?.success || !result.data?.prompt) {
+      throw new Error(result?.error || 'Agent API 返回无效响应')
+    }
+
+    return {
+      prompt: result.data.prompt,
+      templateCategory: payload.templateCategory
+    }
+  } catch (error) {
+    clearTimeout(timeoutId)
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('timeout')
+    }
     throw error
   }
 }

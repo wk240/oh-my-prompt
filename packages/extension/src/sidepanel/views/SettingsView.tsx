@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { BackupSection } from '../settings/BackupSection'
 import { LoadingSpinner } from '../components/LoadingSpinner'
@@ -24,6 +24,30 @@ const tabLabels: Record<SettingsTab, string> = {
 
 export default function SettingsView({ onBack }: SettingsViewProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>('sync')
+
+  // Handle sidepanelIntent for navigating to mine tab
+  useEffect(() => {
+    // Check for mine intent on mount
+    chrome.storage.session.get('sidepanelIntent', (result) => {
+      if (result.sidepanelIntent === 'mine') {
+        setActiveTab('mine')
+        chrome.storage.session.remove('sidepanelIntent')
+      }
+    })
+
+    // Listen for storage changes
+    const handleStorageChange = (
+      changes: { [key: string]: chrome.storage.StorageChange },
+      areaName: string
+    ) => {
+      if (areaName === 'session' && changes.sidepanelIntent?.newValue === 'mine') {
+        setActiveTab('mine')
+        chrome.storage.session.remove('sidepanelIntent')
+      }
+    }
+    chrome.storage.onChanged.addListener(handleStorageChange)
+    return () => chrome.storage.onChanged.removeListener(handleStorageChange)
+  }, [])
 
   return (
     <div className="h-full flex flex-col bg-white">

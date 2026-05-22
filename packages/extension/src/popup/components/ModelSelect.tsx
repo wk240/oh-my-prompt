@@ -15,6 +15,7 @@ export function ModelSelect({ models, value, onChange, disabled }: ModelSelectPr
   const [isOpen, setIsOpen] = useState(false)
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 })
   const triggerRef = useRef<HTMLButtonElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   // Update dropdown position when opened
   useEffect(() => {
@@ -28,23 +29,43 @@ export function ModelSelect({ models, value, onChange, disabled }: ModelSelectPr
     }
   }, [isOpen])
 
-  // Close dropdown on outside click
+  // Close dropdown on outside click (use click event, not mousedown)
   useEffect(() => {
+    if (!isOpen) return
+
     const handleClickOutside = (event: MouseEvent) => {
-      if (triggerRef.current && !triggerRef.current.contains(event.target as Node)) {
-        const dropdownEl = document.getElementById('model-select-dropdown')
-        if (dropdownEl && !dropdownEl.contains(event.target as Node)) {
-          setIsOpen(false)
-        }
+      const target = event.target as Node
+      // Check if click is outside both trigger and dropdown
+      if (
+        triggerRef.current &&
+        !triggerRef.current.contains(target) &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(target)
+      ) {
+        setIsOpen(false)
       }
     }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+
+    // Use setTimeout to ensure dropdown is rendered before adding listener
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('click', handleClickOutside)
+    }, 0)
+
+    return () => {
+      clearTimeout(timeoutId)
+      document.removeEventListener('click', handleClickOutside)
+    }
+  }, [isOpen])
 
   const handleSelect = (modelId: string) => {
     onChange(modelId)
     setIsOpen(false)
+  }
+
+  const handleTriggerClick = () => {
+    if (!disabled) {
+      setIsOpen(!isOpen)
+    }
   }
 
   return (
@@ -56,7 +77,7 @@ export function ModelSelect({ models, value, onChange, disabled }: ModelSelectPr
       <button
         ref={triggerRef}
         type="button"
-        onClick={() => !disabled && setIsOpen(!isOpen)}
+        onClick={handleTriggerClick}
         disabled={disabled}
         className="w-full px-3 py-2 border border-gray-200 rounded flex items-center justify-between bg-white hover:border-gray-300 focus:border-gray-400 focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
       >
@@ -68,7 +89,7 @@ export function ModelSelect({ models, value, onChange, disabled }: ModelSelectPr
 
       {isOpen && createPortal(
         <div
-          id="model-select-dropdown"
+          ref={dropdownRef}
           className="fixed z-[100] bg-white border border-gray-200 rounded shadow-lg max-h-60 overflow-y-auto"
           style={{
             top: dropdownPosition.top,
@@ -85,7 +106,10 @@ export function ModelSelect({ models, value, onChange, disabled }: ModelSelectPr
               <button
                 key={model.id}
                 type="button"
-                onClick={() => handleSelect(model.id)}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleSelect(model.id)
+                }}
                 className="w-full px-3 py-2 text-left hover:bg-gray-50 flex items-center justify-between"
               >
                 <span className="text-sm text-gray-900 flex items-center gap-1.5">

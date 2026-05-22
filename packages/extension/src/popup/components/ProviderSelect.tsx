@@ -17,6 +17,7 @@ export function ProviderSelect({ providers: _providers, groups, value, onChange,
   const [searchQuery, setSearchQuery] = useState('')
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 })
   const triggerRef = useRef<HTMLButtonElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   // Filter providers by search query (support both name and nameCn)
   const filteredGroups = groups.map(group => ({
@@ -40,24 +41,44 @@ export function ProviderSelect({ providers: _providers, groups, value, onChange,
     }
   }, [isOpen])
 
-  // Close dropdown on outside click
+  // Close dropdown on outside click (use click event, not mousedown)
   useEffect(() => {
+    if (!isOpen) return
+
     const handleClickOutside = (event: MouseEvent) => {
-      if (triggerRef.current && !triggerRef.current.contains(event.target as Node)) {
-        const dropdownEl = document.getElementById('provider-select-dropdown')
-        if (dropdownEl && !dropdownEl.contains(event.target as Node)) {
-          setIsOpen(false)
-        }
+      const target = event.target as Node
+      // Check if click is outside both trigger and dropdown
+      if (
+        triggerRef.current &&
+        !triggerRef.current.contains(target) &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(target)
+      ) {
+        setIsOpen(false)
       }
     }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+
+    // Use setTimeout to ensure dropdown is rendered before adding listener
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('click', handleClickOutside)
+    }, 0)
+
+    return () => {
+      clearTimeout(timeoutId)
+      document.removeEventListener('click', handleClickOutside)
+    }
+  }, [isOpen])
 
   const handleSelect = (provider: Provider) => {
     onChange(provider)
     setIsOpen(false)
     setSearchQuery('')
+  }
+
+  const handleTriggerClick = () => {
+    if (!disabled) {
+      setIsOpen(!isOpen)
+    }
   }
 
   return (
@@ -70,7 +91,7 @@ export function ProviderSelect({ providers: _providers, groups, value, onChange,
       <button
         ref={triggerRef}
         type="button"
-        onClick={() => !disabled && setIsOpen(!isOpen)}
+        onClick={handleTriggerClick}
         disabled={disabled}
         className="w-full px-3 py-2 border border-gray-200 rounded flex items-center justify-between bg-white hover:border-gray-300 focus:border-gray-400 focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
       >
@@ -83,7 +104,7 @@ export function ProviderSelect({ providers: _providers, groups, value, onChange,
       {/* Dropdown via Portal */}
       {isOpen && createPortal(
         <div
-          id="provider-select-dropdown"
+          ref={dropdownRef}
           className="fixed z-[100] bg-white border border-gray-200 rounded shadow-lg max-h-96 overflow-y-auto"
           style={{
             top: dropdownPosition.top,
@@ -121,13 +142,16 @@ export function ProviderSelect({ providers: _providers, groups, value, onChange,
                   <button
                     key={provider.id}
                     type="button"
-                    onClick={() => handleSelect(provider)}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleSelect(provider)
+                    }}
                     className="w-full px-3 py-2 text-left hover:bg-gray-50 flex items-center justify-between"
                   >
                     <span className="text-sm text-gray-900">
-                        {provider.nameCn || provider.name}
-                        {provider.nameCn && <span className="text-xs text-gray-500 ml-1">({provider.name})</span>}
-                      </span>
+                      {provider.nameCn || provider.name}
+                      {provider.nameCn && <span className="text-xs text-gray-500 ml-1">({provider.name})</span>}
+                    </span>
                     {value?.id === provider.id && (
                       <Check style={{ width: 14, height: 14 }} className="text-green-600" />
                     )}

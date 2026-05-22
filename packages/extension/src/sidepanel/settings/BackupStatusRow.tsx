@@ -100,7 +100,10 @@ export function BackupStatusRow({
     if (target === 'cloud' && !status.loggedIn) {
       return (
         <span
+          role="button"
+          tabIndex={0}
           onClick={onNavigateToMine}
+          onKeyDown={(e) => e.key === 'Enter' && onNavigateToMine?.()}
           className="text-sm text-gray-400 hover:text-gray-600 cursor-pointer transition-colors"
         >
           未登录

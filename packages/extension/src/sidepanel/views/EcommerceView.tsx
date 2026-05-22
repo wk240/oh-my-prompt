@@ -365,9 +365,13 @@ export default function EcommerceView({
   }, [handleGenerate])
 
   // Handle insert - copy to clipboard and show toast
-  const handleInsert = useCallback((text: string) => {
-    navigator.clipboard.writeText(text)
-    showToast('已复制，请在输入框中粘贴')
+  const handleInsert = useCallback(async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      showToast('已复制，请在输入框中粘贴')
+    } catch {
+      showToast('复制失败')
+    }
   }, [showToast])
 
   // Handle back to form

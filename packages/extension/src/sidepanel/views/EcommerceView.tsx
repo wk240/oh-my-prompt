@@ -407,6 +407,7 @@ export default function EcommerceView({
             <button
               onClick={handleNavigateToMine}
               className="text-blue-600 hover:underline mx-1"
+              role="link"
             >
               登录或配置API
             </button>

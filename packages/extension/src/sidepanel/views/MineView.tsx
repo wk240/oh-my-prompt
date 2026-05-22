@@ -378,11 +378,13 @@ export default function MineView() {
                 {(authState.user?.email?.split('@')[0]?.charAt(0)?.toUpperCase() || 'U')}
               </div>
               <div className="flex-1">
-                <p className="text-[15px] font-semibold text-gray-900 leading-[1.4]">
-                  {authState.user?.email?.split('@')[0] || '已登录'}
+                <div className="flex items-center gap-2">
+                  <span className="text-[15px] font-semibold text-gray-900 leading-[1.4]">
+                    {authState.user?.email?.split('@')[0] || '已登录'}
+                  </span>
                   {authState.subscription?.planType && (
                     <span
-                      className="ml-2 px-3 py-1 rounded-xl text-[10px] font-bold tracking-wide"
+                      className="px-3 py-1 rounded-xl text-[10px] font-bold tracking-wide"
                       style={{
                         background: authState.subscription.planType === 'pro' ? '#C9A962'
                           : authState.subscription.planType === 'team' ? '#1a1a1a'
@@ -395,7 +397,7 @@ export default function MineView() {
                       {authState.subscription.planType.toUpperCase()}
                     </span>
                   )}
-                </p>
+                </div>
                 {authState.user?.email && (
                   <p className="text-[11px] text-gray-400 mt-0.5">{authState.user.email}</p>
                 )}

@@ -1,5 +1,6 @@
 // src/popup/components/ProviderSelect.tsx
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { ChevronDown, Search, Check } from 'lucide-react'
 import type { Provider, ProviderGroup } from '@oh-my-prompt/shared/types'
 
@@ -14,7 +15,8 @@ interface ProviderSelectProps {
 export function ProviderSelect({ providers: _providers, groups, value, onChange, disabled }: ProviderSelectProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const containerRef = useRef<HTMLDivElement>(null)
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 })
+  const triggerRef = useRef<HTMLButtonElement>(null)
 
   // Filter providers by search query (support both name and nameCn)
   const filteredGroups = groups.map(group => ({
@@ -26,11 +28,26 @@ export function ProviderSelect({ providers: _providers, groups, value, onChange,
     )
   })).filter(g => g.providers.length > 0)
 
+  // Update dropdown position when opened
+  useEffect(() => {
+    if (isOpen && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect()
+      setDropdownPosition({
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: rect.width
+      })
+    }
+  }, [isOpen])
+
   // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false)
+      if (triggerRef.current && !triggerRef.current.contains(event.target as Node)) {
+        const dropdownEl = document.getElementById('provider-select-dropdown')
+        if (dropdownEl && !dropdownEl.contains(event.target as Node)) {
+          setIsOpen(false)
+        }
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -44,13 +61,14 @@ export function ProviderSelect({ providers: _providers, groups, value, onChange,
   }
 
   return (
-    <div ref={containerRef} className="relative">
+    <div className="relative">
       <label className="text-sm font-medium text-gray-700 block mb-1">
         服务商
       </label>
 
       {/* Trigger button */}
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
@@ -62,9 +80,17 @@ export function ProviderSelect({ providers: _providers, groups, value, onChange,
         <ChevronDown style={{ width: 16, height: 16 }} className="text-gray-400" />
       </button>
 
-      {/* Dropdown */}
-      {isOpen && (
-        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded shadow-lg max-h-96 overflow-y-auto">
+      {/* Dropdown via Portal */}
+      {isOpen && createPortal(
+        <div
+          id="provider-select-dropdown"
+          className="fixed z-[100] bg-white border border-gray-200 rounded shadow-lg max-h-96 overflow-y-auto"
+          style={{
+            top: dropdownPosition.top,
+            left: dropdownPosition.left,
+            width: dropdownPosition.width
+          }}
+        >
           {/* Search input */}
           <div className="p-2 border-b border-gray-100">
             <div className="flex items-center gap-2 px-2 py-1 bg-gray-50 rounded">
@@ -110,7 +136,8 @@ export function ProviderSelect({ providers: _providers, groups, value, onChange,
               </div>
             ))
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

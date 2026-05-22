@@ -1,5 +1,6 @@
 // src/popup/components/ModelSelect.tsx
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { ChevronDown, Check, Eye } from 'lucide-react'
 import type { ModelInfo } from '@oh-my-prompt/shared/types'
 
@@ -12,13 +13,29 @@ interface ModelSelectProps {
 
 export function ModelSelect({ models, value, onChange, disabled }: ModelSelectProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 })
+  const triggerRef = useRef<HTMLButtonElement>(null)
+
+  // Update dropdown position when opened
+  useEffect(() => {
+    if (isOpen && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect()
+      setDropdownPosition({
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: rect.width
+      })
+    }
+  }, [isOpen])
 
   // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false)
+      if (triggerRef.current && !triggerRef.current.contains(event.target as Node)) {
+        const dropdownEl = document.getElementById('model-select-dropdown')
+        if (dropdownEl && !dropdownEl.contains(event.target as Node)) {
+          setIsOpen(false)
+        }
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -31,12 +48,13 @@ export function ModelSelect({ models, value, onChange, disabled }: ModelSelectPr
   }
 
   return (
-    <div ref={containerRef} className="relative">
+    <div className="relative">
       <label className="text-sm font-medium text-gray-700 block mb-1">
         模型
       </label>
 
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
@@ -48,8 +66,16 @@ export function ModelSelect({ models, value, onChange, disabled }: ModelSelectPr
         <ChevronDown style={{ width: 16, height: 16 }} className="text-gray-400" />
       </button>
 
-      {isOpen && (
-        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded shadow-lg max-h-60 overflow-y-auto">
+      {isOpen && createPortal(
+        <div
+          id="model-select-dropdown"
+          className="fixed z-[100] bg-white border border-gray-200 rounded shadow-lg max-h-60 overflow-y-auto"
+          style={{
+            top: dropdownPosition.top,
+            left: dropdownPosition.left,
+            width: dropdownPosition.width
+          }}
+        >
           {models.length === 0 ? (
             <div className="p-3 text-sm text-gray-500 text-center">
               没有可用模型
@@ -76,7 +102,8 @@ export function ModelSelect({ models, value, onChange, disabled }: ModelSelectPr
               </button>
             ))
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

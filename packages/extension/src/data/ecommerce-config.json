@@ -1,0 +1,29 @@
+{
+  "platforms": [
+    { "id": "amazon", "name": "亚马逊", "nameEn": "Amazon" },
+    { "id": "taobao", "name": "淘宝", "nameEn": "Taobao" },
+    { "id": "jd", "name": "京东", "nameEn": "JD.com" },
+    { "id": "pinduoduo", "name": "拼多多", "nameEn": "Pinduoduo" },
+    { "id": "temu", "name": "Temu", "nameEn": "Temu" },
+    { "id": "shein", "name": "Shein", "nameEn": "Shein" }
+  ],
+  "markets": [
+    { "id": "china", "name": "中国", "nameEn": "China" },
+    { "id": "usa", "name": "美国", "nameEn": "USA" },
+    { "id": "europe", "name": "欧洲", "nameEn": "Europe" },
+    { "id": "japan", "name": "日本", "nameEn": "Japan" },
+    { "id": "southeast_asia", "name": "东南亚", "nameEn": "Southeast Asia" }
+  ],
+  "languages": [
+    { "id": "zh", "name": "中文", "nameEn": "Chinese" },
+    { "id": "en", "name": "English", "nameEn": "English" },
+    { "id": "ja", "name": "日本語", "nameEn": "Japanese" }
+  ],
+  "aspectRatios": [
+    { "id": "1:1", "name": "1:1" },
+    { "id": "4:3", "name": "4:3" },
+    { "id": "3:4", "name": "3:4" },
+    { "id": "16:9", "name": "16:9" },
+    { "id": "9:16", "name": "9:16" }
+  ]
+}

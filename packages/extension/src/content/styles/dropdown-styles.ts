@@ -1523,4 +1523,96 @@ export const DROPDOWN_STYLES = `
     border-color: #A16207;
     color: #A16207;
   }
+
+  /* Team Library Styles */
+  #${PORTAL_ID} .team-prompt-card:hover {
+    background: #f8f8f8;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  }
+
+  #${PORTAL_ID} .team-prompt-card:focus {
+    outline: 2px solid #8b5cf6;
+    outline-offset: 2px;
+  }
+
+  #${PORTAL_ID} .team-library-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+    background: #f8fafc;
+    border-radius: 6px;
+  }
+
+  #${PORTAL_ID} .team-library-count {
+    font-size: 12px;
+    color: #64748b;
+  }
+
+  #${PORTAL_ID} .team-sync-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    background: #ffffff;
+    border: 1px solid #E5E5E5;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #171717;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  #${PORTAL_ID} .team-sync-btn:hover:not(:disabled) {
+    background: #f8f8f8;
+  }
+
+  #${PORTAL_ID} .team-sync-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  #${PORTAL_ID} .team-sync-spinner {
+    width: 12px;
+    height: 12px;
+    animation: spin 1s linear infinite;
+  }
+
+  #${PORTAL_ID} .team-library-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 48px 16px;
+    text-align: center;
+  }
+
+  #${PORTAL_ID} .team-library-empty-message {
+    font-size: 12px;
+    color: #64748B;
+  }
+
+  #${PORTAL_ID} .team-library-empty-btn {
+    padding: 8px 16px;
+    background: #8b5cf6;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #ffffff;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  #${PORTAL_ID} .team-library-empty-btn:hover {
+    background: #7c3aed;
+  }
+
+  #${PORTAL_ID} .team-cards-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
 `

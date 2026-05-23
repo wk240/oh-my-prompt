@@ -624,6 +624,7 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
       order: get().prompts.filter(p => p.categoryId === categoryId).length,
       localImage: teamPrompt.localImage,
       remoteImageUrl: teamPrompt.remoteImageUrl,
+      updatedAt: Date.now(),
     }
     get().addPrompt(personalPrompt)
   },

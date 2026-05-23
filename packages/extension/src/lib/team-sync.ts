@@ -1,5 +1,20 @@
 import { WEB_APP_URL } from '@/lib/config'
-import type { TeamPrompt, TeamSyncStatus } from '@oh-my-prompt/shared/types'
+import type { TeamPrompt, TeamSyncStatus, TeamInfo } from '@oh-my-prompt/shared/types'
+
+/**
+ * Helper function to extract auth token from storage
+ */
+async function getAuthToken(): Promise<string | null> {
+  const result = await chrome.storage.local.get('sb-auth-token')
+  const tokenData = result['sb-auth-token']
+  if (!tokenData) return null
+  try {
+    const parsed = JSON.parse(tokenData)
+    return parsed.access_token
+  } catch {
+    return null
+  }
+}
 
 /**
  * Sync team prompts to local storage
@@ -10,19 +25,10 @@ export async function syncTeamPrompts(): Promise<{
   error?: string
 }> {
   try {
-    const result = await chrome.storage.local.get('sb-auth-token')
-    const tokenData = result['sb-auth-token']
+    const token = await getAuthToken()
 
-    if (!tokenData) {
+    if (!token) {
       return { success: false, error: 'NOT_LOGGED_IN' }
-    }
-
-    let token: string
-    try {
-      const parsed = JSON.parse(tokenData)
-      token = parsed.access_token
-    } catch {
-      return { success: false, error: 'INVALID_TOKEN' }
     }
 
     const response = await fetch(`${WEB_APP_URL}/api/teams/prompts`, {
@@ -38,7 +44,7 @@ export async function syncTeamPrompts(): Promise<{
     if (!data.success) return { success: false, error: data.error || 'SYNC_FAILED' }
 
     const teamPrompts: TeamPrompt[] = data.data.prompts || []
-    const teamIds: string[] = data.data.teams?.map((t: { id: string }) => t.id) || []
+    const teamIds: string[] = data.data.teams?.map((t: TeamInfo) => t.id) || []
 
     const syncStatus: TeamSyncStatus = { lastSyncTime: Date.now(), teamIds }
 
@@ -67,18 +73,9 @@ export async function sharePromptToTeam(
   category?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const result = await chrome.storage.local.get('sb-auth-token')
-    const tokenData = result['sb-auth-token']
+    const token = await getAuthToken()
 
-    if (!tokenData) return { success: false, error: 'NOT_LOGGED_IN' }
-
-    let token: string
-    try {
-      const parsed = JSON.parse(tokenData)
-      token = parsed.access_token
-    } catch {
-      return { success: false, error: 'INVALID_TOKEN' }
-    }
+    if (!token) return { success: false, error: 'NOT_LOGGED_IN' }
 
     const response = await fetch(`${WEB_APP_URL}/api/teams/${teamId}/prompts`, {
       method: 'POST',

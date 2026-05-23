@@ -296,7 +296,7 @@ function SortableDropdownItem({
       <div className="prompt-action-buttons">
         {onShare && (
           <button
-            className="prompt-action-btn"
+            className="prompt-action-btn share"
             onClick={(e) => {
               e.stopPropagation()
               onShare(prompt)

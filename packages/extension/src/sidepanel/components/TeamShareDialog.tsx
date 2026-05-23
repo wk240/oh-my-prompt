@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { Loader2 } from 'lucide-react'
 import type { Prompt, TeamInfo } from '@oh-my-prompt/shared/types'
-import { sharePromptToTeam } from '@/lib/team-sync'
+import { sharePromptToTeam, syncTeamPrompts } from '@/lib/team-sync'
 import { usePromptStore } from '@/lib/store'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/popup/components/ui/dialog'
 import { Button } from '@/popup/components/ui/button'
@@ -49,19 +49,27 @@ export function TeamShareDialog({
     if (!open) onClose()
   }
 
+  const loadTeamPrompts = usePromptStore((state) => state.loadTeamPrompts)
+
   // Handle share
   const handleShare = async () => {
     if (!selectedTeamId) return
 
     setSharing(true)
     const result = await sharePromptToTeam(prompt, selectedTeamId)
-    setSharing(false)
 
     if (result.success) {
+      // Sync team prompts from server to local storage
+      await syncTeamPrompts()
+      // Reload team prompts in store to update UI
+      await loadTeamPrompts()
+      setSharing(false)
+
       const team = teams.find(t => t.id === selectedTeamId)
       onSuccess(team?.name || '团队')
       onClose()
     } else {
+      setSharing(false)
       onError(result.error || '共享失败')
     }
   }

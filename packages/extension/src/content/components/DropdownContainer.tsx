@@ -7,14 +7,16 @@
 import { useRef, useState, useMemo, useEffect, useCallback, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
 import type { Prompt, Category } from '@oh-my-prompt/shared/types'
+import type { TeamPrompt, TeamSyncStatus } from '@oh-my-prompt/shared/types'
 import type { AgentTemplateCategory } from '@oh-my-prompt/shared/types/agent'
 import type { ResourcePrompt, ResourceCategory, UpdateStatus } from '@oh-my-prompt/shared/types'
 import { truncateText, sortCategoriesByOrder, sortPromptsByOrder, sortProviderCategoriesByOrder, sortResourcePromptsByCategoryOrder } from '@oh-my-prompt/shared/utils'
-import { Sparkles, Palette, Shapes, ArrowUpRight, FolderOpen, Layers, Sparkle, Brush, GripVertical, Database, ArrowLeft, Sun, Frame, Paintbrush, Image, ArrowUpCircle, Plus, Pencil, Trash2, ExternalLink, AlertTriangle, Settings, Clock, Copy } from 'lucide-react'
+import { Sparkles, Palette, Shapes, ArrowUpRight, FolderOpen, Layers, Sparkle, Brush, GripVertical, Database, ArrowLeft, Sun, Frame, Paintbrush, Image, ArrowUpCircle, Plus, Pencil, Trash2, ExternalLink, AlertTriangle, Settings, Clock, Copy, Users, Loader2 } from 'lucide-react'
 import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { NetworkPromptCard } from './NetworkPromptCard'
+import { TeamPromptCard } from './TeamPromptCard'
 import { ProviderCategoryItem } from './ProviderCategoryItem'
 import { CategorySelectDialog } from './CategorySelectDialog'
 import { showToast } from './ToastNotification'
@@ -440,6 +442,22 @@ export function DropdownContainer({
   // Temporary prompts from store (independent storage field)
   const temporaryPrompts = usePromptStore((state) => state.temporaryPrompts)
 
+  // Team library state
+  const teamPrompts = usePromptStore((state) => state.teamPrompts)
+  const teamSyncStatus = usePromptStore((state) => state.teamSyncStatus)
+  const syncTeamPrompts = usePromptStore((state) => state.syncTeamPrompts)
+  const loadTeamPrompts = usePromptStore((state) => state.loadTeamPrompts)
+
+  // Team syncing state
+  const [teamSyncing, setTeamSyncing] = useState(false)
+
+  // Load team prompts on mount
+  useEffect(() => {
+    if (isOpen) {
+      loadTeamPrompts()
+    }
+  }, [isOpen, loadTeamPrompts])
+
   // Display temporary prompts with language transformation
   const displayTemporaryPrompts = useMemo(() => {
     return temporaryPrompts.map(p => ({
@@ -455,6 +473,7 @@ export function DropdownContainer({
     isPreview: boolean           // Resource prompt preview modal
     isUserPreview: boolean       // User prompt preview modal (thumbnail click)
     isCategoryDialog: boolean    // Category select dialog
+    isTeamCategoryDialog: boolean  // Team prompt category select dialog
     isCategoryAdd: boolean       // Category add modal
     isCategoryEdit: boolean      // Category edit modal
     isCategoryDelete: boolean    // Category delete modal
@@ -471,6 +490,7 @@ export function DropdownContainer({
     isPreview: false,
     isUserPreview: false,
     isCategoryDialog: false,
+    isTeamCategoryDialog: false,
     isCategoryAdd: false,
     isCategoryEdit: false,
     isCategoryDelete: false,
@@ -492,6 +512,7 @@ export function DropdownContainer({
   // Grouped editing states
   interface EditingStates {
     resourcePrompt: ResourcePrompt | null  // Resource prompt for preview/collect
+    teamPrompt: TeamPrompt | null          // Team prompt for save to personal library
     userPrompt: Prompt | null              // User prompt for preview
     category: Category | null              // Category being edited
     prompt: Prompt | null                  // Prompt being edited
@@ -501,6 +522,7 @@ export function DropdownContainer({
 
   const [editingStates, setEditingStates] = useState<EditingStates>({
     resourcePrompt: null,
+    teamPrompt: null,
     userPrompt: null,
     category: null,
     prompt: null,
@@ -657,8 +679,83 @@ export function DropdownContainer({
     }
   }, [onInjectResource, resourceLanguage])
 
-  // Handle collect confirmation - auto-download preview image when available
+  // Handle team prompt injection
+  const handleInjectTeamPrompt = useCallback((teamPrompt: TeamPrompt) => {
+    if (onInjectResource) {
+      const promptToInject = resourceLanguage === 'en' && teamPrompt.contentEn
+        ? { ...teamPrompt, content: teamPrompt.contentEn, name: teamPrompt.nameEn || teamPrompt.name }
+        : teamPrompt
+      onInjectResource(promptToInject as ResourcePrompt)
+      showToast('已注入提示词')
+    }
+  }, [onInjectResource, resourceLanguage])
+
+  // Handle team prompt copy
+  const handleCopyTeamPrompt = useCallback(async (teamPrompt: TeamPrompt) => {
+    const contentToCopy = resourceLanguage === 'en' && teamPrompt.contentEn ? teamPrompt.contentEn : teamPrompt.content
+    try {
+      await navigator.clipboard.writeText(contentToCopy)
+      showToast('已复制到剪贴板')
+    } catch {
+      showToast('复制失败')
+    }
+  }, [resourceLanguage])
+
+  // Handle save team prompt to personal library
+  const handleSaveTeamPrompt = useCallback((teamPrompt: TeamPrompt) => {
+    setEditingItem('teamPrompt', teamPrompt)
+    openModal('isTeamCategoryDialog')
+  }, [setEditingItem, openModal])
+
+  // Handle team sync
+  const handleTeamSync = useCallback(async () => {
+    setTeamSyncing(true)
+    const result = await syncTeamPrompts()
+    setTeamSyncing(false)
+    if (result.success) {
+      showToast(`已同步 ${result.promptsCount || 0} 条团队提示词`)
+    } else {
+      showToast(result.error === 'NOT_LOGGED_IN' ? '请先登录' : '同步失败')
+    }
+  }, [syncTeamPrompts])
+
+  // Handle collect confirmation - support both resource and team prompts
   const handleConfirmCollect = useCallback(async (categoryId: string, newCategoryName?: string) => {
+    // Handle team prompt
+    if (editingStates.teamPrompt) {
+      const teamPrompt = editingStates.teamPrompt
+
+      let targetCategoryId = categoryId
+
+      if (newCategoryName && newCategoryName.trim()) {
+        usePromptStore.getState().addCategory(newCategoryName.trim())
+        const storeCategories = usePromptStore.getState().categories
+        const newCategory = storeCategories.find(c => c.name === newCategoryName.trim())
+        if (newCategory) {
+          targetCategoryId = newCategory.id
+        }
+      }
+
+      usePromptStore.getState().addPrompt({
+        name: teamPrompt.name,
+        nameEn: teamPrompt.nameEn,
+        content: teamPrompt.content,
+        contentEn: teamPrompt.contentEn,
+        categoryId: targetCategoryId,
+        description: teamPrompt.description,
+        descriptionEn: teamPrompt.descriptionEn,
+        order: 0,
+      })
+
+      const categoryName = usePromptStore.getState().categories.find(c => c.id === targetCategoryId)?.name || '未知分类'
+      showToast(`已保存到 ${categoryName}`)
+
+      closeModal('isTeamCategoryDialog')
+      clearEditingItem('teamPrompt')
+      return
+    }
+
+    // Handle resource prompt
     if (!editingStates.resourcePrompt) return
     const resourcePrompt = editingStates.resourcePrompt // Capture reference for async operations
 
@@ -729,7 +826,7 @@ export function DropdownContainer({
     closeModal('isCategoryDialog')
     closeModal('isPreview')
     clearEditingItem('resourcePrompt')
-  }, [editingStates.resourcePrompt])
+  }, [editingStates.teamPrompt, editingStates.resourcePrompt])
 
   const dropdownGap = 8
   const dropdownMaxHeight = 600

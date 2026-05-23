@@ -5,11 +5,12 @@
  */
 
 import { create } from 'zustand'
-import type { Prompt, Category, StorageSchema, TeamPrompt, TeamSyncStatus, CloudAuthState } from '@oh-my-prompt/shared/types'
+import type { Prompt, Category, StorageSchema, TeamPrompt, TeamSyncStatus, CloudAuthState, TeamInfo } from '@oh-my-prompt/shared/types'
 import { MessageType } from '@oh-my-prompt/shared/messages'
 import { sortPromptsByOrder } from '@oh-my-prompt/shared/utils'
-import { syncTeamPrompts } from '@/lib/team-sync'
+import { syncTeamPrompts, getAuthToken } from '@/lib/team-sync'
 import { getAuthState } from '@/lib/cloud-sync/auth-service'
+import { WEB_APP_URL } from '@/lib/config'
 
 interface PromptStore {
   prompts: Prompt[]
@@ -50,6 +51,7 @@ interface PromptStore {
   loadTeamPrompts: () => Promise<void>
   loadAuthState: () => Promise<void>
   saveTeamPromptToPersonal: (teamPrompt: TeamPrompt, categoryId: string) => void
+  getUserTeams: () => Promise<{ success: boolean; teams?: TeamInfo[]; error?: string }>
 
   // Computed getters
   getPromptsByCategory: (categoryId: string) => Prompt[]
@@ -636,6 +638,32 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
       updatedAt: Date.now(),
     }
     get().addPrompt(personalPrompt)
+  },
+
+  getUserTeams: async () => {
+    try {
+      const token = await getAuthToken()
+      if (!token) return { success: false, error: 'NOT_LOGGED_IN' }
+
+      const response = await fetch(`${WEB_APP_URL}/api/teams`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      if (!response.ok) {
+        return { success: false, error: 'FETCH_FAILED' }
+      }
+
+      const data = await response.json()
+      const teams: TeamInfo[] = (data.teams || []).map((t: { id: string; name: string }) => ({
+        id: t.id,
+        name: t.name
+      }))
+
+      return { success: true, teams }
+    } catch (error) {
+      console.error('[Oh My Prompt] Get user teams error:', error)
+      return { success: false, error: 'NETWORK_ERROR' }
+    }
   },
 
   // Flush pending debounced save (for beforeunload)

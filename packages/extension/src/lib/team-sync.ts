@@ -6,7 +6,7 @@ const AUTH_STORAGE_KEY = `sb-${SUPABASE_PROJECT_REF}-auth-token`
 /**
  * Helper function to extract auth token from storage
  */
-async function getAuthToken(): Promise<string | null> {
+export async function getAuthToken(): Promise<string | null> {
   const result = await chrome.storage.local.get(AUTH_STORAGE_KEY)
   const tokenData = result[AUTH_STORAGE_KEY]
   if (!tokenData) return null

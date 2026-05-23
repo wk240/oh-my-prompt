@@ -1,12 +1,14 @@
-import { WEB_APP_URL } from '@/lib/config'
+import { WEB_APP_URL, SUPABASE_PROJECT_REF } from '@/lib/config'
 import type { TeamPrompt, TeamSyncStatus, TeamInfo } from '@oh-my-prompt/shared/types'
+
+const AUTH_STORAGE_KEY = `sb-${SUPABASE_PROJECT_REF}-auth-token`
 
 /**
  * Helper function to extract auth token from storage
  */
 async function getAuthToken(): Promise<string | null> {
-  const result = await chrome.storage.local.get('sb-auth-token')
-  const tokenData = result['sb-auth-token']
+  const result = await chrome.storage.local.get(AUTH_STORAGE_KEY)
+  const tokenData = result[AUTH_STORAGE_KEY]
   if (!tokenData) return null
   try {
     const parsed = JSON.parse(tokenData)

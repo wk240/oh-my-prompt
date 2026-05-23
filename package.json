@@ -19,7 +19,9 @@
     "publish": "npm run publish --workspace=@oh-my-prompt/extension",
     "web:dev": "npm run dev --workspace=@oh-my-prompt/web-app",
     "web:start": "npm run start --workspace=@oh-my-prompt/web-app",
-    "web:build": "npm run build --workspace=@oh-my-prompt/web-app"
+    "web:build": "npm run build --workspace=@oh-my-prompt/web-app",
+    "sync-shared": "./scripts/sync-shared.sh",
+    "check-shared": "./scripts/check-shared-sync.sh"
   },
   "devDependencies": {
     "typescript": "^5.0.0"

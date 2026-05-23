@@ -44,7 +44,7 @@ export default function MineView() {
     loadVisionSetting()
   }, [])
 
-  // Listen for auth updates
+  // Listen for auth updates (message + storage backup)
   useEffect(() => {
     const handleMessage = (message: { type: string; payload?: { logout?: boolean } }) => {
       if (message.type === MessageType.AUTH_STATUS_UPDATE) {
@@ -56,8 +56,23 @@ export default function MineView() {
         }
       }
     }
+
+    // Also listen for storage changes as backup (auth tokens saved by content script)
+    const storageKey = 'sb-futfxudabvjfldlismun-auth-token'
+    const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }) => {
+      if (changes[storageKey]) {
+        // Auth token changed - refresh auth state
+        clearSupabaseClient() // Clear cache to force fresh read
+        getAuthState().then(setAuthState)
+      }
+    }
+
     chrome.runtime.onMessage.addListener(handleMessage)
-    return () => chrome.runtime.onMessage.removeListener(handleMessage)
+    chrome.storage.onChanged.addListener(handleStorageChange)
+    return () => {
+      chrome.runtime.onMessage.removeListener(handleMessage)
+      chrome.storage.onChanged.removeListener(handleStorageChange)
+    }
   }, [])
 
   const loadConfigs = async () => {
@@ -85,7 +100,7 @@ export default function MineView() {
   }
 
   const handleLogin = () => {
-    chrome.tabs.create({ url: `${WEB_APP_URL}/auth/callback?source=extension` })
+    chrome.tabs.create({ url: `${WEB_APP_URL}/auth/login?source=extension` })
   }
 
   const handleLogout = async () => {

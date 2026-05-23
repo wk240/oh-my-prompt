@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>团队库原型 - Oh My Prompt Sidepanel</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f8fafc;
+      display: flex;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .sidepanel-container {
+      width: 400px;
+      height: 600px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Sidebar - 分类列表 */
+    .sidebar {
+      width: 140px;
+      background: #f1f5f9;
+      border-right: 1px solid #e2e8f0;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+
+    .sidebar-header {
+      padding: 12px;
+      font-size: 12px;
+      color: #64748b;
+      font-weight: 600;
+    }
+
+    .sidebar-category-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      cursor: pointer;
+      border-radius: 6px;
+      margin: 4px 8px;
+      font-size: 13px;
+      transition: all 0.15s;
+    }
+
+    .sidebar-category-item:hover {
+      background: #e2e8f0;
+    }
+
+    .sidebar-category-item.selected {
+      background: #3b82f6;
+      color: white;
+    }
+
+    .sidebar-category-item.selected .sidebar-icon {
+      color: white;
+    }
+
+    .sidebar-icon {
+      width: 16px;
+      height: 16px;
+      color: #64748b;
+    }
+
+    .sidebar-category-item.selected .sidebar-icon {
+      color: white;
+    }
+
+    /* 团队库特殊样式 */
+    .sidebar-category-item.team-library {
+      background: #ddd6fe;
+      color: #7c3aed;
+    }
+
+    .sidebar-category-item.team-library:hover {
+      background: #c4b5fd;
+    }
+
+    .sidebar-category-item.team-library.selected {
+      background: #7c3aed;
+      color: white;
+    }
+
+    .sidebar-category-item.team-library .sidebar-icon {
+      color: #7c3aed;
+    }
+
+    .sidebar-category-item.team-library.selected .sidebar-icon {
+      color: white;
+    }
+
+    /* 主内容区 */
+    .main-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      background: white;
+    }
+
+    .content-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .content-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1e293b;
+    }
+
+    .sync-button {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 12px;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      font-size: 12px;
+      color: #64748b;
+      cursor: pointer;
+    }
+
+    .sync-button:hover {
+      background: #e2e8f0;
+    }
+
+    /* 提示词卡片 - 团队库样式 */
+    .team-prompt-card {
+      background: #fafafa;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .team-prompt-card:hover {
+      border-color: #3b82f6;
+      box-shadow: 0 2px 8px rgba(59,130,246,0.1);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #1e293b;
+      flex: 1;
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .card-action-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      background: white;
+      border: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .card-action-btn:hover {
+      background: #f1f5f9;
+    }
+
+    .card-action-btn.collect:hover {
+      background: #fef3c7;
+      border-color: #f59e0b;
+    }
+
+    .card-action-btn.collect:hover svg {
+      color: #f59e0b;
+    }
+
+    .card-action-btn svg {
+      width: 14px;
+      height: 14px;
+      color: #64748b;
+    }
+
+    /* Bookmark图标 - 与资源库一致 */
+    .bookmark-icon {
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+    }
+
+    .bookmark-icon.collected {
+      fill: currentColor;
+    }
+
+    .card-source {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: #7c3aed;
+      margin-bottom: 6px;
+    }
+
+    .card-source-tag {
+      background: #ddd6fe;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .card-preview {
+      font-size: 12px;
+      color: #64748b;
+      line-height: 1.4;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* 分类对话框（模拟弹出） */
+    .category-dialog-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .category-dialog {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      width: 320px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .dialog-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #1e293b;
+    }
+
+    .dialog-category-item {
+      padding: 10px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-bottom: 6px;
+      border: 1px solid #e2e8f0;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dialog-category-item:hover {
+      background: #f1f5f9;
+      border-color: #3b82f6;
+    }
+
+    .dialog-cancel {
+      margin-top: 12px;
+      padding: 8px 16px;
+      background: #f1f5f9;
+      border-radius: 6px;
+      font-size: 13px;
+      color: #64748b;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    /* Toast提示 */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1e293b;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      z-index: 1001;
+      animation: fadeInOut 2s forwards;
+    }
+
+    @keyframes fadeInOut {
+      0% { opacity: 0; transform: translateX(-50%) translateY(10px); }
+      10% { opacity: 1; transform: translateX(-50%) translateY(0); }
+      80% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    /* SVG图标 */
+    .icon-folder { /* FolderOpen */
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+    }
+
+    .icon-database { /* Database */
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+    }
+
+    .icon-clock { /* Clock */
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+    }
+
+    .icon-bookmark { /* Bookmark */
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+    }
+
+    .icon-copy { /* Copy */
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+    }
+
+    .icon-refresh { /* RefreshCw */
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+    }
+
+    .icon-plus { /* Plus */
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+    }
+
+    /* 对比展示 - 资源库卡片 */
+    .section-divider {
+      margin: 24px 0;
+      padding-top: 24px;
+      border-top: 1px solid #e2e8f0;
+    }
+
+    .section-label {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* 资源库卡片样式（对比） */
+    .resource-prompt-card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .resource-card-category {
+      font-size: 11px;
+      color: #64748b;
+      margin-bottom: 4px;
+    }
+
+    .resource-card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #1e293b;
+      margin-bottom: 4px;
+    }
+
+    .resource-card-preview {
+      font-size: 12px;
+      color: #94a3b8;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="sidepanel-container">
+    <!-- Sidebar 分类列表 -->
+    <div class="sidebar">
+      <div class="sidebar-header">分类</div>
+
+      <!-- 团队库 - 新增入口 -->
+      <div class="sidebar-category-item team-library selected" onclick="selectCategory('team')">
+        <svg class="sidebar-icon icon-database" viewBox="0 0 24 24">
+          <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+          <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+          <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+        </svg>
+        <span>团队库</span>
+      </div>
+
+      <!-- 资源库 -->
+      <div class="sidebar-category-item" onclick="selectCategory('resource')">
+        <svg class="sidebar-icon icon-folder" viewBox="0 0 24 24">
+          <path d="M5 19a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4l2 2h4a2 2 0 0 1 2 2v1"></path>
+          <path d="M5 19h14a2 2 0 0 0 2-2V11a2 2 0 0 0-2-2h-4l-2-2H5"></path>
+        </svg>
+        <span>资源库</span>
+      </div>
+
+      <!-- 临时库 -->
+      <div class="sidebar-category-item" onclick="selectCategory('temporary')">
+        <svg class="sidebar-icon icon-clock" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+        <span>临时库</span>
+      </div>
+
+      <!-- 全部分类 -->
+      <div class="sidebar-category-item" onclick="selectCategory('all')">
+        <svg class="sidebar-icon icon-folder" viewBox="0 0 24 24">
+          <path d="M5 19a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4l2 2h4a2 2 0 0 1 2 2v1"></path>
+          <path d="M5 19h14a2 2 0 0 0 2-2V11a2 2 0 0 0-2-2h-4l-2-2H5"></path>
+        </svg>
+        <span>全部分类</span>
+      </div>
+
+      <!-- 个人分类 -->
+      <div class="sidebar-category-item" onclick="selectCategory('ecommerce')">
+        <svg class="sidebar-icon" viewBox="0 0 24 24" style="stroke: currentColor; stroke-width: 2; fill: none;">
+          <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <path d="M16 10a4 4 0 0 1-8 0"></path>
+        </svg>
+        <span>电商</span>
+      </div>
+
+      <div class="sidebar-category-item" onclick="selectCategory('poster')">
+        <svg class="sidebar-icon" viewBox="0 0 24 24" style="stroke: currentColor; stroke-width: 2; fill: none;">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+          <circle cx="8.5" cy="8.5" r="1.5"></circle>
+          <polyline points="21 15 16 10 5 21"></polyline>
+        </svg>
+        <span>海报</span>
+      </div>
+    </div>
+
+    <!-- 主内容区 -->
+    <div class="main-content">
+      <!-- 团队库头部 -->
+      <div class="content-header">
+        <div class="content-title">团队库</div>
+        <div class="sync-button" onclick="showToast('团队库已同步')">
+          <svg class="icon-refresh" viewBox="0 0 24 24" style="width: 12px; height: 12px;">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+          <span>同步</span>
+        </div>
+      </div>
+
+      <!-- 团队提示词卡片 -->
+      <div class="team-prompt-card" onclick="showToast('已插入提示词')">
+        <div class="card-header">
+          <div class="card-title">电商产品图-白底光影</div>
+          <div class="card-actions">
+            <!-- Bookmark图标 - 与资源库一致 -->
+            <div class="card-action-btn collect" onclick="event.stopPropagation(); showCategoryDialog()">
+              <svg class="bookmark-icon" viewBox="0 0 24 24">
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+              </svg>
+            </div>
+            <div class="card-action-btn" onclick="event.stopPropagation(); showToast('已复制到剪贴板')">
+              <svg class="icon-copy" viewBox="0 0 24 24">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+            </div>
+          </div>
+        </div>
+        <div class="card-source">
+          <span class="card-source-tag">来自：设计团队</span>
+        </div>
+        <div class="card-preview">专业产品摄影，白底光影效果，高端质感展示...</div>
+      </div>
+
+      <div class="team-prompt-card" onclick="showToast('已插入提示词')">
+        <div class="card-header">
+          <div class="card-title">海报设计-电影质感</div>
+          <div class="card-actions">
+            <div class="card-action-btn collect" onclick="event.stopPropagation(); showCategoryDialog()">
+              <svg class="bookmark-icon" viewBox="0 0 24 24">
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+              </svg>
+            </div>
+            <div class="card-action-btn" onclick="event.stopPropagation(); showToast('已复制到剪贴板')">
+              <svg class="icon-copy" viewBox="0 0 24 24">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+            </div>
+          </div>
+        </div>
+        <div class="card-source">
+          <span class="card-source-tag">来自：运营团队</span>
+        </div>
+        <div class="card-preview">电影级海报效果，戏剧性光影，史诗级视觉...</div>
+      </div>
+
+      <div class="team-prompt-card" onclick="showToast('已插入提示词')">
+        <div class="card-header">
+          <div class="card-title">Logo设计-极简风格</div>
+          <div class="card-actions">
+            <div class="card-action-btn collect" onclick="event.stopPropagation(); showCategoryDialog()">
+              <svg class="bookmark-icon collected" viewBox="0 0 24 24">
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+              </svg>
+            </div>
+            <div class="card-action-btn" onclick="event.stopPropagation(); showToast('已复制到剪贴板')">
+              <svg class="icon-copy" viewBox="0 0 24 24">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+            </div>
+          </div>
+        </div>
+        <div class="card-source">
+          <span class="card-source-tag">来自：设计团队</span>
+        </div>
+        <div class="card-preview">极简Logo设计，几何图形，现代感品牌标识...</div>
+      </div>
+
+      <!-- 对比展示 - 资源库卡片样式 -->
+      <div class="section-divider">
+        <div class="section-label">对比：资源库卡片样式</div>
+
+        <div class="resource-prompt-card">
+          <div class="resource-card-category">产品摄影</div>
+          <div class="card-header">
+            <div class="resource-card-title">化妆品摄影-高级质感</div>
+            <div class="card-actions">
+              <div class="card-action-btn collect">
+                <svg class="bookmark-icon" viewBox="0 0 24 24">
+                  <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+                </svg>
+              </div>
+            </div>
+          </div>
+          <div class="resource-card-preview">高端化妆品摄影，柔光质感，专业商业展示...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 分类选择对话框 -->
+  <div class="category-dialog-overlay" id="categoryDialog" style="display: none;" onclick="hideCategoryDialog()">
+    <div class="category-dialog" onclick="event.stopPropagation()">
+      <div class="dialog-title">保存到个人库</div>
+
+      <div class="dialog-category-item" onclick="collectToCategory('电商')">
+        <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; stroke: #64748b; stroke-width: 2; fill: none;">
+          <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <path d="M16 10a4 4 0 0 1-8 0"></path>
+        </svg>
+        <span>电商</span>
+      </div>
+
+      <div class="dialog-category-item" onclick="collectToCategory('海报')">
+        <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; stroke: #64748b; stroke-width: 2; fill: none;">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+          <circle cx="8.5" cy="8.5" r="1.5"></circle>
+          <polyline points="21 15 16 10 5 21"></polyline>
+        </svg>
+        <span>海报</span>
+      </div>
+
+      <div class="dialog-category-item" onclick="collectToCategory('Logo')">
+        <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; stroke: #64748b; stroke-width: 2; fill: none;">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="14.31" y1="8" x2="20.05" y2="17.94"></line>
+          <line x1="9.69" y1="8" x2="21.17" y2="8"></line>
+          <line x1="7.38" y1="12" x2="13.12" y2="2.06"></line>
+          <line x1="9.69" y1="16" x2="3.95" y2="6.06"></line>
+          <line x1="14.31" y1="16" x2="2.83" y2="16"></line>
+          <line x1="16.62" y1="12" x2="10.88" y2="21.94"></line>
+        </svg>
+        <span>Logo</span>
+      </div>
+
+      <div class="dialog-category-item" onclick="collectToCategory('新建分类')" style="color: #3b82f6;">
+        <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; stroke: #3b82f6; stroke-width: 2; fill: none;">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        <span>新建分类...</span>
+      </div>
+
+      <div class="dialog-cancel" onclick="hideCategoryDialog()">取消</div>
+    </div>
+  </div>
+
+  <script>
+    function selectCategory(category) {
+      // Remove selected from all
+      document.querySelectorAll('.sidebar-category-item').forEach(item => {
+        item.classList.remove('selected');
+      });
+      // Add selected to clicked
+      event.currentTarget.classList.add('selected');
+    }
+
+    function showCategoryDialog() {
+      document.getElementById('categoryDialog').style.display = 'flex';
+    }
+
+    function hideCategoryDialog() {
+      document.getElementById('categoryDialog').style.display = 'none';
+    }
+
+    function collectToCategory(categoryName) {
+      hideCategoryDialog();
+      showToast('已保存到 ' + categoryName);
+    }
+
+    function showToast(message) {
+      // Remove existing toast
+      const existing = document.querySelector('.toast');
+      if (existing) existing.remove();
+
+      // Create new toast
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.textContent = message;
+      document.body.appendChild(toast);
+
+      // Remove after animation
+      setTimeout(() => toast.remove(), 2000);
+    }
+  </script>
+</body>
+</html>

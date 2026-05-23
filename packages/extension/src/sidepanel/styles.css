@@ -1,0 +1,157 @@
+/* 团队库入口样式 */
+.sidebar-category-item.team-library {
+  background: #ddd6fe;
+  color: #7c3aed;
+}
+
+.sidebar-category-item.team-library:hover {
+  background: #c4b5fd;
+}
+
+.sidebar-category-item.team-library.selected {
+  background: #7c3aed;
+  color: white;
+}
+
+.sidebar-category-item.team-library .sidebar-icon {
+  color: #7c3aed;
+}
+
+.sidebar-category-item.team-library.selected .sidebar-icon {
+  color: white;
+}
+
+/* 团队提示词卡片样式 */
+.team-prompt-card {
+  background: #fafafa;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.team-prompt-card:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 2px 8px rgba(59,130,246,0.1);
+}
+
+.team-prompt-card .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.team-prompt-card .card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+  flex: 1;
+}
+
+.team-prompt-card .card-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.team-prompt-card .card-action-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.team-prompt-card .card-action-btn:hover {
+  background: #f1f5f9;
+}
+
+.team-prompt-card .card-action-btn.collect:hover {
+  background: #fef3c7;
+  border-color: #f59e0b;
+}
+
+.team-prompt-card .card-source {
+  margin-bottom: 6px;
+}
+
+.team-prompt-card .card-preview {
+  font-size: 12px;
+  color: #64748b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 同步按钮样式 */
+.sync-button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.sync-button:hover {
+  background: #e2e8f0;
+}
+
+.sync-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 团队库内容区域 */
+.team-library-content {
+  padding: 16px;
+}
+
+.team-library-content .content-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.team-library-content .content-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.team-library-content .empty-state {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.team-library-content .empty-message {
+  font-size: 14px;
+  color: #64748b;
+}
+
+.team-prompts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.spin-animation {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

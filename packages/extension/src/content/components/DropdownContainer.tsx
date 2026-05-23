@@ -1469,6 +1469,23 @@ export function DropdownContainer({
                 <span>资源库</span>
               </button>
 
+              {/* "团队库" entry - between 资源库 and 临时库 */}
+              <button
+                className={`sidebar-category-item ${selectedCategoryId === 'team' ? 'selected' : ''}`}
+                onClick={() => setSelectedCategoryId('team')}
+                aria-label="团队库"
+              >
+                <div className="sidebar-category-icon-wrapper">
+                  <Users className="sidebar-category-icon" style={{ color: selectedCategoryId === 'team' ? '#8b5cf6' : '#64748B' }} />
+                </div>
+                <span style={{ color: selectedCategoryId === 'team' ? '#8b5cf6' : undefined }}>团队库</span>
+                {teamSyncStatus && (
+                  <span style={{ fontSize: '10px', color: '#94a3b8', marginLeft: 'auto' }}>
+                    {teamPrompts.length}
+                  </span>
+                )}
+              </button>
+
               {/* "临时库" entry - as sidebar category item */}
               <button
                 className={`sidebar-category-item ${selectedCategoryId === 'temporary' ? 'selected' : ''}`}

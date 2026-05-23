@@ -1893,7 +1893,7 @@ export function DropdownContainer({
           )}
         </div>
         {/* FAB add prompt button */}
-            {!isResourceLibrary && selectedCategoryId !== 'temporary' && agentViewMode !== 'agent' && (
+            {!isResourceLibrary && selectedCategoryId !== 'temporary' && selectedCategoryId !== 'team' && agentViewMode !== 'agent' && (
               <button
                 className="fab-add-prompt"
                 onClick={() => openModal('isPromptAdd')}

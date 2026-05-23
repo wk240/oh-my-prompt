@@ -61,6 +61,16 @@ function removeStyles(): void {
 }
 
 /**
+ * Remove portal container from document body
+ */
+function removePortalContainer(): void {
+  const container = document.getElementById(TEAM_SHARE_PORTAL_ID)
+  if (container) {
+    container.remove()
+  }
+}
+
+/**
  * Error message mapping for user-friendly display
  */
 function getErrorMessage(error: string): string {
@@ -85,28 +95,34 @@ export function TeamShareDialog({ prompt, isOpen, onClose }: TeamShareDialogProp
   const getUserTeams = usePromptStore(state => state.getUserTeams)
   const loadTeamPrompts = usePromptStore(state => state.loadTeamPrompts)
 
-  // Load teams when dialog opens
+  // Load teams when dialog opens - does NOT depend on onClose to avoid re-triggering
   const loadTeams = useCallback(async () => {
     setLoading(true)
     setSelectedTeamId(null)
+    console.log('[Oh My Prompt] TeamShareDialog: Loading teams...')
 
     try {
       const result = await getUserTeams()
+      console.log('[Oh My Prompt] TeamShareDialog: getUserTeams result:', result)
+
       if (result.success && result.teams) {
+        console.log('[Oh My Prompt] TeamShareDialog: Teams loaded:', result.teams.length)
         setTeams(result.teams)
       } else if (result.error === 'NOT_LOGGED_IN') {
         showToast('请先登录后再分享到团队')
-        onClose()
+        // Close dialog after showing toast
+        setTimeout(() => onClose(), 100)
       } else {
+        console.error('[Oh My Prompt] TeamShareDialog: Error loading teams:', result.error)
         showToast(getErrorMessage(result.error || 'FETCH_FAILED'))
       }
     } catch (error) {
-      console.error('[Oh My Prompt] Load teams error:', error)
+      console.error('[Oh My Prompt] TeamShareDialog: Load teams exception:', error)
       showToast('获取团队列表失败')
     } finally {
       setLoading(false)
     }
-  }, [getUserTeams, onClose])
+  }, [getUserTeams]) // Removed onClose dependency
 
   // Handle share action
   const handleShare = useCallback(async () => {
@@ -171,10 +187,11 @@ export function TeamShareDialog({ prompt, isOpen, onClose }: TeamShareDialogProp
     }
   }, [isOpen, loadTeams])
 
-  // Cleanup styles when dialog closes
+  // Cleanup styles and portal container when dialog closes
   useEffect(() => {
     if (!isOpen) {
       removeStyles()
+      removePortalContainer()
     }
   }, [isOpen])
 

@@ -1,5 +1,5 @@
 import { WEB_APP_URL, SUPABASE_PROJECT_REF } from '@/lib/config'
-import type { TeamPrompt, TeamSyncStatus, TeamInfo } from '@oh-my-prompt/shared/types'
+import type { Prompt, TeamPrompt, TeamSyncStatus, TeamInfo } from '@oh-my-prompt/shared/types'
 
 const AUTH_STORAGE_KEY = `sb-${SUPABASE_PROJECT_REF}-auth-token`
 
@@ -70,13 +70,11 @@ export async function getTeamSyncStatus(): Promise<TeamSyncStatus | null> {
 }
 
 export async function sharePromptToTeam(
-  promptId: string,
-  teamId: string,
-  category?: string
+  prompt: Prompt,
+  teamId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const token = await getAuthToken()
-
     if (!token) return { success: false, error: 'NOT_LOGGED_IN' }
 
     const response = await fetch(`${WEB_APP_URL}/api/teams/${teamId}/prompts`, {
@@ -85,7 +83,18 @@ export async function sharePromptToTeam(
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ promptId, category })
+      body: JSON.stringify({
+        name: prompt.name,
+        nameEn: prompt.nameEn,
+        content: prompt.content,
+        contentEn: prompt.contentEn,
+        categoryId: prompt.categoryId,
+        description: prompt.description,
+        descriptionEn: prompt.descriptionEn,
+        order: prompt.order,
+        localImage: prompt.localImage,
+        remoteImageUrl: prompt.remoteImageUrl
+      })
     })
 
     if (!response.ok) {
@@ -95,6 +104,7 @@ export async function sharePromptToTeam(
         const data = await response.json()
         return { success: false, error: data.error || 'ALREADY_SHARED' }
       }
+      if (response.status === 404) return { success: false, error: 'TEAM_NOT_FOUND' }
       return { success: false, error: 'SHARE_FAILED' }
     }
 

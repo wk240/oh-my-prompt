@@ -18,6 +18,8 @@ export interface StorageSchema {
   userData: UserData // User's prompts and categories
   settings: SyncSettings // Sync and display settings
   temporaryPrompts?: import('./prompt').Prompt[] // Temporary library prompts (independent storage)
+  teamPrompts?: import('./team').TeamPrompt[] // Team library prompts (shared from teams)
+  teamSyncStatus?: import('./team').TeamSyncStatus // Team sync status
   _migrationComplete?: boolean // Prevents re-migration
 }
 

@@ -106,6 +106,12 @@ export enum MessageType {
   // Official Vision API
   GET_VISION_QUOTA = 'GET_VISION_QUOTA',           // 获取 Vision 额度状态
   ACTIVATE_OFFICIAL_CONFIG = 'ACTIVATE_OFFICIAL_CONFIG', // 激活官方配置
+
+  // Team Library: Team prompt sync operations
+  SYNC_TEAM_PROMPTS = 'SYNC_TEAM_PROMPTS',  // SP → SW: Trigger team prompts sync
+  TEAM_PROMPTS_SYNCED = 'TEAM_PROMPTS_SYNCED',  // SW → SP: Team prompts sync completed
+  SAVE_TEAM_PROMPT_TO_PERSONAL = 'SAVE_TEAM_PROMPT_TO_PERSONAL',  // SP → SW: Save team prompt to personal library
+  SHARE_PROMPT_TO_TEAM = 'SHARE_PROMPT_TO_TEAM',  // SP → SW: Share personal prompt to team
 }
 
 export interface Message<T = unknown> {

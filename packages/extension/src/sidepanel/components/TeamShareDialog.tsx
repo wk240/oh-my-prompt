@@ -1,9 +1,11 @@
 // packages/extension/src/sidepanel/components/TeamShareDialog.tsx
 import { useState, useEffect } from 'react'
-import { X, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import type { Prompt, TeamInfo } from '@oh-my-prompt/shared/types'
 import { sharePromptToTeam } from '@/lib/team-sync'
 import { usePromptStore } from '@/lib/store'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/popup/components/ui/dialog'
+import { Button } from '@/popup/components/ui/button'
 
 interface TeamShareDialogProps {
   prompt: Prompt
@@ -26,9 +28,10 @@ export function TeamShareDialog({
   const [sharing, setSharing] = useState(false)
   const getUserTeams = usePromptStore((state) => state.getUserTeams)
 
-  // Load user teams on open
+  // Reset state when dialog opens
   useEffect(() => {
     if (isOpen) {
+      setSelectedTeamId(null)
       setLoading(true)
       getUserTeams().then((result) => {
         setLoading(false)
@@ -40,6 +43,11 @@ export function TeamShareDialog({
       })
     }
   }, [isOpen, getUserTeams, onError])
+
+  // Handle open change (Radix Dialog handles Escape key and overlay click)
+  const handleOpenChange = (open: boolean) => {
+    if (!open) onClose()
+  }
 
   // Handle share
   const handleShare = async () => {
@@ -58,22 +66,15 @@ export function TeamShareDialog({
     }
   }
 
-  if (!isOpen) return null
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-white rounded-lg shadow-lg w-[320px] p-4">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-medium">选择目标团队</h3>
-          <button
-            onClick={onClose}
-            className="p-1 hover:bg-gray-100 rounded"
-            aria-label="关闭"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>选择目标团队</DialogTitle>
+          <DialogDescription>
+            将「{prompt.name}」共享到团队库，团队成员可查看和使用
+          </DialogDescription>
+        </DialogHeader>
 
         {/* Team list */}
         {loading ? (
@@ -85,7 +86,7 @@ export function TeamShareDialog({
             您还未加入任何团队，请先创建或加入团队
           </div>
         ) : (
-          <div className="space-y-2 mb-4">
+          <div className="space-y-2 py-2">
             {teams.map((team) => (
               <button
                 key={team.id}
@@ -118,29 +119,25 @@ export function TeamShareDialog({
         )}
 
         {/* Actions */}
-        <div className="flex gap-2">
-          <button
-            onClick={onClose}
-            className="flex-1 px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50"
-          >
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
             取消
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleShare}
             disabled={!selectedTeamId || sharing || teams.length === 0}
-            className="flex-1 px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {sharing ? (
-              <span className="flex items-center justify-center gap-2">
+              <span className="flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 共享中...
               </span>
             ) : (
               '确认共享'
             )}
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

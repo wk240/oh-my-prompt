@@ -598,6 +598,8 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
   const [resourceLanguage, setResourceLanguage] = useState<'zh' | 'en'>('zh')
   const [loadedCount, setLoadedCount] = useState(50)
   const [visionEnabled, setVisionEnabled] = useState(true)
+  const [isTeamLibraryOpen, setIsTeamLibraryOpen] = useState(false)
+  const [teamSyncing, setTeamSyncing] = useState(false)
   // Sync status for permission restore and UI
   const [status, setStatus] = useState<{ hasFolder: boolean; permissionStatus?: 'granted' | 'prompt' | 'denied'; hasUnsyncedChanges?: boolean; dismissedBackupWarning?: boolean } | null>(null)
 

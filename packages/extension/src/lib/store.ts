@@ -5,14 +5,17 @@
  */
 
 import { create } from 'zustand'
-import type { Prompt, Category, StorageSchema } from '@oh-my-prompt/shared/types'
+import type { Prompt, Category, StorageSchema, TeamPrompt, TeamSyncStatus } from '@oh-my-prompt/shared/types'
 import { MessageType } from '@oh-my-prompt/shared/messages'
 import { sortPromptsByOrder } from '@oh-my-prompt/shared/utils'
+import { syncTeamPrompts } from '@/lib/team-sync'
 
 interface PromptStore {
   prompts: Prompt[]
   categories: Category[]
   temporaryPrompts: Prompt[]  // Temporary library prompts (independent storage)
+  teamPrompts: TeamPrompt[]   // Team library prompts (shared from teams)
+  teamSyncStatus: TeamSyncStatus | null  // Team sync status
   selectedCategoryId: string | null
   isLoading: boolean
 
@@ -39,6 +42,11 @@ interface PromptStore {
   // Temporary library
   clearTemporaryPrompts: () => void
   transferTemporaryPrompt: (promptId: string, categoryId: string) => void
+
+  // Team library
+  syncTeamPrompts: () => Promise<{ success: boolean; promptsCount?: number; error?: string }>
+  loadTeamPrompts: () => Promise<void>
+  saveTeamPromptToPersonal: (teamPrompt: TeamPrompt, categoryId: string) => void
 
   // Computed getters
   getPromptsByCategory: (categoryId: string) => Prompt[]
@@ -306,6 +314,8 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
   prompts: [],
   categories: [],
   temporaryPrompts: [],
+  teamPrompts: [],
+  teamSyncStatus: null,
   selectedCategoryId: 'all',
   isLoading: true,
 
@@ -584,6 +594,39 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
       type: MessageType.TRANSFER_TEMPORARY_PROMPT,
       payload: { promptId, targetCategoryId: categoryId }
     })
+  },
+
+  // Team library methods
+  syncTeamPrompts: async () => {
+    const result = await syncTeamPrompts()
+    if (result.success) {
+      const stored = await chrome.storage.local.get(['teamPrompts', 'teamSyncStatus'])
+      set({ teamPrompts: stored.teamPrompts || [], teamSyncStatus: stored.teamSyncStatus || null })
+    }
+    return result
+  },
+
+  loadTeamPrompts: async () => {
+    const stored = await chrome.storage.local.get(['teamPrompts', 'teamSyncStatus'])
+    set({ teamPrompts: stored.teamPrompts || [], teamSyncStatus: stored.teamSyncStatus || null })
+  },
+
+  saveTeamPromptToPersonal: (teamPrompt: TeamPrompt, categoryId: string) => {
+    const personalPrompt: Prompt = {
+      id: crypto.randomUUID(),
+      name: teamPrompt.name,
+      nameEn: teamPrompt.nameEn,
+      content: teamPrompt.content,
+      contentEn: teamPrompt.contentEn,
+      categoryId,
+      description: teamPrompt.description,
+      descriptionEn: teamPrompt.descriptionEn,
+      order: get().prompts.filter(p => p.categoryId === categoryId).length,
+      localImage: teamPrompt.localImage,
+      remoteImageUrl: teamPrompt.remoteImageUrl,
+      updatedAt: Date.now(),
+    }
+    get().addPrompt(personalPrompt)
   },
 
   // Flush pending debounced save (for beforeunload)

@@ -1160,9 +1160,10 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
   }, [prompts, displayTemporaryPrompts, selectedCategoryId])
 
   // 团队库显示数据（语言转换）
+  // Team prompts display in server order (sort_order handled by API)
   const displayTeamPrompts: TeamPrompt[] = useMemo(() => {
-    return sortPromptsByOrder(teamPrompts as Prompt[]).map((p, index) => ({
-      ...teamPrompts[index],
+    return teamPrompts.map(p => ({
+      ...p,
       name: resourceLanguage === 'en' && p.nameEn ? p.nameEn : p.name,
       content: resourceLanguage === 'en' && p.contentEn ? p.contentEn : p.content,
       description: resourceLanguage === 'en' && p.descriptionEn ? p.descriptionEn : p.description,
@@ -2005,7 +2006,7 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
             <div className="team-library-content">
               <div className="content-header">
                 <div className="content-title">团队库</div>
-                <button className="sync-button" onClick={handleTeamSync} disabled={teamSyncing}>
+                <button className="sync-button" onClick={handleTeamSync} disabled={teamSyncing} aria-label="同步团队库">
                   {teamSyncing ? (
                     <Loader2 style={{ width: 12, height: 12 }} className="spin-animation" />
                   ) : (
@@ -2028,7 +2029,7 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
               ) : (
                 <div className="team-prompts-list">
                   {displayTeamPrompts.map(prompt => (
-                    <div key={prompt.id} className="team-prompt-card" onClick={() => handleSelectPrompt(prompt)}>
+                    <div key={prompt.id} className="team-prompt-card" onClick={() => handleSelectPrompt(prompt)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSelectPrompt(prompt) } }}>
                       <div className="card-header">
                         <div className="card-title">{prompt.name}</div>
                         <div className="card-actions">

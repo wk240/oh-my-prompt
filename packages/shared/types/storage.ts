@@ -1,4 +1,5 @@
-import type { UserData } from './prompt'
+import type { Category, Prompt, UserData } from './prompt'
+import type { TeamPrompt, TeamSyncStatus } from './team'
 
 // Sync settings for local folder backup
 export interface SyncSettings {
@@ -17,16 +18,16 @@ export interface StorageSchema {
   version: string // From manifest, dynamic read
   userData: UserData // User's prompts and categories
   settings: SyncSettings // Sync and display settings
-  temporaryPrompts?: import('./prompt').Prompt[] // Temporary library prompts (independent storage)
-  teamPrompts?: import('./team').TeamPrompt[] // Team library prompts (shared from teams)
-  teamSyncStatus?: import('./team').TeamSyncStatus // Team sync status
+  temporaryPrompts?: Prompt[] // Temporary library prompts (independent storage)
+  teamPrompts?: TeamPrompt[] // Team library prompts (shared from teams)
+  teamSyncStatus?: TeamSyncStatus // Team sync status
   _migrationComplete?: boolean // Prevents re-migration
 }
 
 // Legacy schema for migration detection
 export interface LegacyStorageSchema {
-  prompts: import('./prompt').Prompt[]
-  categories: import('./prompt').Category[]
+  prompts: Prompt[]
+  categories: Category[]
   version: string
 }
 

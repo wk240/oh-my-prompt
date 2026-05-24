@@ -72,6 +72,7 @@ export interface BackupStatusStorage {
 
 export interface SyncGuardStatus {
   lastUploadedHash?: string
+  lastLocalSyncedHash?: string
   lastUploadStartedAt?: number
   lastCloudUploadAt?: number
   syncInFlight?: boolean

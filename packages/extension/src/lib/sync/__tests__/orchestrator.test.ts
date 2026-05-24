@@ -80,7 +80,7 @@ describe('SyncOrchestrator', () => {
       const hash = await computeBackupDataHash(data)
 
       vi.mocked(chrome.storage.local.get).mockResolvedValue({
-        syncStatus: { guard: { lastUploadedHash: hash } }
+        syncStatus: { guard: { lastUploadedHash: hash, lastLocalSyncedHash: hash } }
       })
       vi.spyOn(cloudStrategy, 'isAvailable').mockResolvedValue(true)
       vi.spyOn(localStrategy, 'isAvailable').mockResolvedValue(true)
@@ -129,7 +129,7 @@ describe('SyncOrchestrator', () => {
       let releaseFirst: (() => void) | undefined
       vi.spyOn(cloudStrategy, 'sync').mockImplementationOnce(() => new Promise(resolve => {
         releaseFirst = () => resolve({ success: true, syncedAt: 1 })
-      }))
+      })).mockResolvedValue({ success: true, syncedAt: 3 })
       vi.spyOn(otherCloudStrategy, 'sync').mockResolvedValue({ success: true, syncedAt: 2 })
 
       const firstRun = orchestrator.triggerSync(first)
@@ -163,26 +163,26 @@ describe('SyncOrchestrator', () => {
       vi.spyOn(otherCloudStrategy, 'isAvailable').mockResolvedValue(true)
       vi.spyOn(otherLocalStrategy, 'isAvailable').mockResolvedValue(true)
 
-      let releaseFirst: (() => void) | undefined
-      vi.spyOn(cloudStrategy, 'sync').mockImplementationOnce(() => new Promise(resolve => {
-        releaseFirst = () => resolve({ success: true, syncedAt: 1 })
+      const releaseSyncs: Array<() => void> = []
+      vi.spyOn(cloudStrategy, 'sync').mockImplementation(() => new Promise(resolve => {
+        releaseSyncs.push(() => resolve({ success: true, syncedAt: 1 }))
       }))
-      vi.spyOn(otherCloudStrategy, 'sync').mockResolvedValue({ success: true, syncedAt: 2 })
+      vi.spyOn(otherCloudStrategy, 'sync').mockImplementation(() => new Promise(resolve => {
+        releaseSyncs.push(() => resolve({ success: true, syncedAt: 2 }))
+      }))
 
       const firstRun = orchestrator.triggerSync(first)
       const secondRun = otherOrchestrator.triggerSync(second)
 
       await vi.waitFor(() => {
-        expect(releaseFirst).toBeTypeOf('function')
+        expect(cloudStrategy.sync.mock.calls.length + otherCloudStrategy.sync.mock.calls.length).toBe(1)
       })
 
-      const secondResult = await secondRun
+      releaseSyncs.forEach(release => release())
+      const [firstResult, secondResult] = await Promise.all([firstRun, secondRun])
 
       expect(cloudStrategy.sync.mock.calls.length + otherCloudStrategy.sync.mock.calls.length).toBe(1)
-      expect(secondResult.skipped).toBe(true)
-
-      releaseFirst()
-      await firstRun
+      expect([firstResult.skipped, secondResult.skipped]).toContain(true)
 
       expect((storageData.syncStatus as any).guard).toEqual(expect.objectContaining({
         syncInFlight: false,
@@ -261,11 +261,12 @@ describe('SyncOrchestrator', () => {
 
     it('should recover a stale persisted in-flight guard and clear durable pending state', async () => {
       const data = makeBackupData({ promptId: 'p1', updatedAt: 100 })
+      const hash = await computeBackupDataHash(data)
 
       storageData.syncStatus = {
         guard: {
           syncInFlight: true,
-          pendingSnapshotHash: 'stale-pending',
+          pendingSnapshotHash: hash,
           lastUploadStartedAt: 1
         }
       }
@@ -297,9 +298,11 @@ describe('SyncOrchestrator', () => {
       vi.spyOn(otherLocalStrategy, 'isAvailable').mockResolvedValue(true)
 
       let releaseFirst: (() => void) | undefined
-      vi.spyOn(cloudStrategy, 'sync').mockImplementationOnce(() => new Promise(resolve => {
-        releaseFirst = () => resolve({ success: true, syncedAt: 1 })
-      }))
+      vi.spyOn(cloudStrategy, 'sync')
+        .mockImplementationOnce(() => new Promise(resolve => {
+          releaseFirst = () => resolve({ success: true, syncedAt: 1 })
+        }))
+        .mockResolvedValue({ success: true, syncedAt: 3 })
       vi.spyOn(otherCloudStrategy, 'sync').mockResolvedValue({ success: true, syncedAt: 2 })
 
       const firstRun = orchestrator.triggerSync(first)
@@ -321,6 +324,15 @@ describe('SyncOrchestrator', () => {
       expect((storageData.syncStatus as any).guard).toEqual(expect.objectContaining({
         syncInFlight: false,
         pendingSnapshotHash: pendingHash
+      }))
+
+      const cloudCallsAfterFirstRun = cloudStrategy.sync.mock.calls.length
+
+      await orchestrator.triggerSync(second)
+
+      expect(cloudStrategy.sync.mock.calls.length).toBe(cloudCallsAfterFirstRun + 1)
+      expect((storageData.syncStatus as any).guard).toEqual(expect.objectContaining({
+        pendingSnapshotHash: undefined
       }))
     })
 

@@ -155,6 +155,7 @@ export class SyncOrchestrator {
     const snapshotHash = await computeBackupDataHash(data)
     const status = await this.getSyncStatus()
     let guard = status.guard || await this.getGuardStatus()
+    const shouldConsumeDurablePending = guard.pendingSnapshotHash === snapshotHash
 
     if (guard.syncInFlight) {
       if (!this.canTakeOverGuardLock(guard)) {
@@ -162,9 +163,6 @@ export class SyncOrchestrator {
         return { cloudSynced: false, localSynced: false, skipped: true }
       }
       guard = { ...guard, syncInFlight: false }
-    } else if (guard.pendingSnapshotHash && !guard.syncInFlight && !this.pendingSnapshot) {
-      await this.updateGuardStatus({ pendingSnapshotHash: undefined })
-      guard = { ...guard, pendingSnapshotHash: undefined }
     }
 
     if (await this.shouldSkipSnapshot(snapshotHash, status, guard)) {
@@ -183,6 +181,12 @@ export class SyncOrchestrator {
           lastUploadedHash: snapshotHash,
           lastCloudUploadAt: Date.now()
         })
+      }
+      if (result.localSynced) {
+        await this.updateGuardStatus({ lastLocalSyncedHash: snapshotHash })
+      }
+      if ((result.cloudSynced || result.localSynced) && shouldConsumeDurablePending) {
+        await this.updateGuardStatus({ pendingSnapshotHash: undefined })
       }
       return result
     } finally {
@@ -914,7 +918,7 @@ export class SyncOrchestrator {
       }
 
       return nextStatus
-    })
+    }, { preserveLatestGuard: !hasGuardUpdate })
   }
 
   private async getSyncStatus(): Promise<Partial<UnifiedSyncStatus & { initialized?: boolean }>> {
@@ -992,10 +996,8 @@ export class SyncOrchestrator {
   ): Promise<boolean> {
     if (guard.lastUploadedHash !== snapshotHash) return false
     if (this.hasPendingRetryNeeds(status)) return false
-    if (!status.lastLocalSyncTime) {
-      const localAvailable = await this.localStrategy.isAvailable()
-      if (localAvailable) return false
-    }
+    const localAvailable = await this.localStrategy.isAvailable()
+    if (localAvailable && guard.lastLocalSyncedHash !== snapshotHash) return false
     return true
   }
 
@@ -1028,12 +1030,23 @@ export class SyncOrchestrator {
   private async enqueueSyncStatusUpdate(
     updater: (
       existing: Partial<UnifiedSyncStatus & { initialized?: boolean }>
-    ) => Partial<UnifiedSyncStatus & { initialized?: boolean }>
+    ) => Partial<UnifiedSyncStatus & { initialized?: boolean }>,
+    options: { preserveLatestGuard?: boolean } = {}
   ): Promise<void> {
     const write = this.syncStatusWriteChain.then(async () => {
       const result = await chrome.storage.local.get('syncStatus')
       const existing = result.syncStatus || {}
       const nextStatus = updater(existing)
+
+      if (options.preserveLatestGuard) {
+        const latest = await chrome.storage.local.get('syncStatus')
+        const latestGuard = latest.syncStatus?.guard
+        if (latestGuard) {
+          nextStatus.guard = latestGuard
+        } else {
+          delete nextStatus.guard
+        }
+      }
 
       await chrome.storage.local.set({
         syncStatus: nextStatus

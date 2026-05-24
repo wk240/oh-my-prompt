@@ -806,7 +806,12 @@
 
 /* Override Tooltip wrapper div width in card actions */
 .network-card-actions > div {
-  width: auto;
+  width: auto !important;
+  display: inline-flex !important;
+  overflow: visible !important;
+  white-space: normal !important;
+  text-overflow: clip !important;
+  flex: 0 0 auto;
   flex-shrink: 0;
 }
 

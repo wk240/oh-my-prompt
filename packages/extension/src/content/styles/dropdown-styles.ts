@@ -1695,7 +1695,12 @@ export const DROPDOWN_STYLES = `
 
   /* Override Tooltip wrapper div width in card actions */
   #${PORTAL_ID} .team-prompt-card-actions > div {
-    width: auto;
+    width: auto !important;
+    display: inline-flex !important;
+    overflow: visible !important;
+    white-space: normal !important;
+    text-overflow: clip !important;
+    flex: 0 0 auto;
     flex-shrink: 0;
   }
 
@@ -1721,6 +1726,12 @@ export const DROPDOWN_STYLES = `
   /* Save/collect button - black style */
   #${PORTAL_ID} .team-prompt-card-btn.save svg {
     color: #171717;
+  }
+
+  #${PORTAL_ID} .team-prompt-card-btn.save:hover {
+    background: #171717;
+    color: #ffffff;
+    border-color: #171717;
   }
 
   #${PORTAL_ID} .team-prompt-card-btn.save:hover svg {

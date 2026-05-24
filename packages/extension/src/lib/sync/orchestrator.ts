@@ -494,7 +494,6 @@ export class SyncOrchestrator {
       updateToLocal: number // Cloud items newer than local
       updateToCloud: number // Local items newer than cloud
       conflicts: number     // Items with same updatedAt timestamp
-      mergedByName: number  // Categories merged by name (same name, different IDs)
     }
     cloudOnlyItems: {
       prompts: Array<{ id: string; name: string; updatedAt?: number }>
@@ -507,7 +506,6 @@ export class SyncOrchestrator {
       temporaryPrompts: Array<{ id: string; name: string; updatedAt?: number }>
     }
     conflicts: Array<{ type: 'prompt' | 'category' | 'temporaryPrompt'; cloud: { id: string; name: string; updatedAt?: number }; local: { id: string; name: string; updatedAt?: number } }>
-    mergedByNameItems: Array<{ type: 'category' | 'prompt' | 'temporaryPrompt'; cloud: { id: string; name: string; updatedAt?: number }; local: { id: string; name: string; updatedAt?: number }; kept: 'cloud' | 'local' }>
   }> {
     const aliasMap = await this.getIdAliasMap()
     const cloudRaw = await this.cloudStrategy.restore()
@@ -533,8 +531,7 @@ export class SyncOrchestrator {
           addToCloud: localData.prompts.length + localData.categories.length + localData.temporaryPrompts.length,
           updateToLocal: 0,
           updateToCloud: 0,
-          conflicts: 0,
-          mergedByName: 0
+          conflicts: 0
         },
         cloudOnlyItems: { prompts: [], categories: [], temporaryPrompts: [] },
         localOnlyItems: {
@@ -542,8 +539,7 @@ export class SyncOrchestrator {
           categories: localData.categories.map(c => ({ id: c.id, name: c.name, updatedAt: c.updatedAt })),
           temporaryPrompts: localData.temporaryPrompts.map(p => ({ id: p.id, name: p.name, updatedAt: p.updatedAt }))
         },
-        conflicts: [],
-        mergedByNameItems: []
+        conflicts: []
       }
     }
 
@@ -585,8 +581,7 @@ export class SyncOrchestrator {
         addToCloud: promptMerge.localOnly.length + categoryMerge.localOnly.length + tempMerge.localOnly.length,
         updateToLocal: promptMerge.cloudNewer.length + categoryMerge.cloudNewer.length + tempMerge.cloudNewer.length,
         updateToCloud: promptMerge.localNewer.length + categoryMerge.localNewer.length + tempMerge.localNewer.length,
-        conflicts: promptMerge.conflicts.length + categoryMerge.conflicts.length + tempMerge.conflicts.length,
-        mergedByName: categoryMerge.mergedByName.length + promptMerge.mergedByName.length + tempMerge.mergedByName.length
+        conflicts: promptMerge.conflicts.length + categoryMerge.conflicts.length + tempMerge.conflicts.length
       },
       cloudOnlyItems: {
         prompts: promptMerge.cloudOnly.map(p => ({ id: p.id, name: p.name, updatedAt: p.updatedAt })),
@@ -613,26 +608,6 @@ export class SyncOrchestrator {
           type: 'temporaryPrompt' as const,
           cloud: { id: c.cloud.id, name: c.cloud.name, updatedAt: c.cloud.updatedAt },
           local: { id: c.local.id, name: c.local.name, updatedAt: c.local.updatedAt }
-        }))
-      ],
-      mergedByNameItems: [
-        ...categoryMerge.mergedByName.map(m => ({
-          type: 'category' as const,
-          cloud: { id: m.cloud.id, name: m.cloud.name!, updatedAt: m.cloud.updatedAt },
-          local: { id: m.local.id, name: m.local.name!, updatedAt: m.local.updatedAt },
-          kept: (m.kept.id === m.cloud.id ? 'cloud' : 'local') as 'cloud' | 'local'
-        })),
-        ...promptMerge.mergedByName.map(m => ({
-          type: 'prompt' as const,
-          cloud: { id: m.cloud.id, name: m.cloud.name!, updatedAt: m.cloud.updatedAt },
-          local: { id: m.local.id, name: m.local.name!, updatedAt: m.local.updatedAt },
-          kept: (m.kept.id === m.cloud.id ? 'cloud' : 'local') as 'cloud' | 'local'
-        })),
-        ...tempMerge.mergedByName.map(m => ({
-          type: 'temporaryPrompt' as const,
-          cloud: { id: m.cloud.id, name: m.cloud.name!, updatedAt: m.cloud.updatedAt },
-          local: { id: m.local.id, name: m.local.name!, updatedAt: m.local.updatedAt },
-          kept: (m.kept.id === m.cloud.id ? 'cloud' : 'local') as 'cloud' | 'local'
         }))
       ]
     }
@@ -1211,7 +1186,6 @@ export class SyncOrchestrator {
     localNewer: T[]
     cloudNewer: T[]
     conflicts: Array<{ cloud: T; local: T }>
-    mergedByName: Array<{ cloud: T; local: T; kept: T }>
   } {
     const merged = new Map<string, T>()
     const cloudOnly: T[] = []
@@ -1267,8 +1241,7 @@ export class SyncOrchestrator {
       localOnly,
       localNewer,
       cloudNewer,
-      conflicts,
-      mergedByName: []
+      conflicts
     }
   }
 }

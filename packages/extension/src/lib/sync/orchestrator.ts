@@ -59,7 +59,6 @@ export class SyncOrchestrator {
   private readonly guardOwnerId = crypto.randomUUID()
   private activeSyncPromise: Promise<SyncTriggerResult> | null = null
   private syncStatusWriteChain: Promise<void> = Promise.resolve()
-  private lastKnownGuard: SyncGuardStatus | undefined = undefined
   private pendingSnapshot: FullBackupData | null = null
   private pendingSnapshotVersion = 0
 
@@ -162,24 +161,13 @@ export class SyncOrchestrator {
         await this.updateGuardStatus({ pendingSnapshotHash: snapshotHash })
         return { cloudSynced: false, localSynced: false, skipped: true }
       }
-
-      await this.updateGuardStatus({
-        syncInFlight: false,
-        lockOwnerId: undefined,
-        pendingSnapshotHash: undefined
-      })
-      guard = {
-        ...guard,
-        syncInFlight: false,
-        lockOwnerId: undefined,
-        pendingSnapshotHash: undefined
-      }
+      guard = { ...guard, syncInFlight: false }
     } else if (guard.pendingSnapshotHash && !guard.syncInFlight && !this.pendingSnapshot) {
       await this.updateGuardStatus({ pendingSnapshotHash: undefined })
       guard = { ...guard, pendingSnapshotHash: undefined }
     }
 
-    if (guard.lastUploadedHash === snapshotHash && !this.hasPendingRetryNeeds(status)) {
+    if (await this.shouldSkipSnapshot(snapshotHash, status, guard)) {
       return { cloudSynced: false, localSynced: false, skipped: true }
     }
 
@@ -936,7 +924,6 @@ export class SyncOrchestrator {
 
   private async getGuardStatus(): Promise<SyncGuardStatus> {
     const status = await this.getSyncStatus()
-    this.lastKnownGuard = status.guard || this.lastKnownGuard
     return status.guard || {}
   }
 
@@ -989,16 +976,27 @@ export class SyncOrchestrator {
       const guard = {
         ...existingGuard,
         syncInFlight: false,
-        lockOwnerId: undefined,
-        pendingSnapshotHash: undefined
+        lockOwnerId: undefined
       }
-      this.lastKnownGuard = guard
-
       return {
         ...existing,
         guard
       }
     })
+  }
+
+  private async shouldSkipSnapshot(
+    snapshotHash: string,
+    status: Partial<UnifiedSyncStatus & { initialized?: boolean }>,
+    guard: SyncGuardStatus
+  ): Promise<boolean> {
+    if (guard.lastUploadedHash !== snapshotHash) return false
+    if (this.hasPendingRetryNeeds(status)) return false
+    if (!status.lastLocalSyncTime) {
+      const localAvailable = await this.localStrategy.isAvailable()
+      if (localAvailable) return false
+    }
+    return true
   }
 
   private hasPendingRetryNeeds(status: Partial<UnifiedSyncStatus & { initialized?: boolean }>): boolean {
@@ -1019,7 +1017,6 @@ export class SyncOrchestrator {
         ...(existing.guard || {}),
         ...updates
       }
-      this.lastKnownGuard = guard
 
       return {
         ...existing,
@@ -1042,9 +1039,6 @@ export class SyncOrchestrator {
         syncStatus: nextStatus
       })
 
-      if (nextStatus.guard) {
-        this.lastKnownGuard = nextStatus.guard
-      }
     })
     this.syncStatusWriteChain = write.catch(() => undefined)
     await write

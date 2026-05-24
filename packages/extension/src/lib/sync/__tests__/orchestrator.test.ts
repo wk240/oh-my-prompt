@@ -153,6 +153,7 @@ describe('SyncOrchestrator', () => {
     it('should not run duplicate cloud syncs when two instances acquire an empty guard concurrently', async () => {
       const first = makeBackupData({ promptId: 'p1', updatedAt: 100 })
       const second = makeBackupData({ promptId: 'p1', updatedAt: 200 })
+      const pendingHash = await computeBackupDataHash(second)
       const otherCloudStrategy = new CloudSyncStrategy()
       const otherLocalStrategy = new LocalSyncStrategy()
       const otherOrchestrator = new SyncOrchestrator(otherCloudStrategy, otherLocalStrategy)
@@ -185,7 +186,76 @@ describe('SyncOrchestrator', () => {
 
       expect((storageData.syncStatus as any).guard).toEqual(expect.objectContaining({
         syncInFlight: false,
-        pendingSnapshotHash: undefined
+        pendingSnapshotHash: pendingHash
+      }))
+    })
+
+    it('should not let stale-lock cleanup erase a fresh owner lock', async () => {
+      const data = makeBackupData({ promptId: 'p1', updatedAt: 100 })
+      const freshOwnerId = 'fresh-owner'
+      let releaseInitialRead: (() => void) | undefined
+
+      storageData.syncStatus = {
+        guard: {
+          syncInFlight: true,
+          lockOwnerId: 'stale-owner',
+          lastUploadStartedAt: 1,
+          pendingSnapshotHash: 'stale-pending'
+        }
+      }
+
+      vi.mocked(chrome.storage.local.get).mockImplementation((key?: string | string[]) => {
+        if (key === 'syncStatus' && !releaseInitialRead) {
+          return new Promise(resolve => {
+            releaseInitialRead = () => resolve({
+              syncStatus: {
+                guard: {
+                  syncInFlight: true,
+                  lockOwnerId: 'stale-owner',
+                  lastUploadStartedAt: 1,
+                  pendingSnapshotHash: 'stale-pending'
+                }
+              }
+            })
+          })
+        }
+        if (!key) return Promise.resolve(storageData)
+        if (typeof key === 'string') {
+          return Promise.resolve({ [key]: storageData[key] })
+        }
+        return Promise.resolve(key.reduce<Record<string, unknown>>((result, storageKey) => {
+          result[storageKey] = storageData[storageKey]
+          return result
+        }, {}))
+      })
+
+      vi.spyOn(cloudStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(localStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(cloudStrategy, 'sync').mockResolvedValue({ success: true, syncedAt: 1 })
+
+      const run = orchestrator.triggerSync(data)
+
+      await vi.waitFor(() => {
+        expect(releaseInitialRead).toBeTypeOf('function')
+      })
+
+      storageData.syncStatus = {
+        guard: {
+          syncInFlight: true,
+          lockOwnerId: freshOwnerId,
+          lastUploadStartedAt: Date.now(),
+          pendingSnapshotHash: undefined
+        }
+      }
+
+      releaseInitialRead()
+      const result = await run
+
+      expect(result.skipped).toBe(true)
+      expect(cloudStrategy.sync).not.toHaveBeenCalled()
+      expect((storageData.syncStatus as any).guard).toEqual(expect.objectContaining({
+        syncInFlight: true,
+        lockOwnerId: freshOwnerId
       }))
     })
 
@@ -210,6 +280,47 @@ describe('SyncOrchestrator', () => {
       expect((storageData.syncStatus as any).guard).toEqual(expect.objectContaining({
         syncInFlight: false,
         pendingSnapshotHash: undefined
+      }))
+    })
+
+    it('should keep cross-instance pending hash durable when skipped snapshot is not drained in memory', async () => {
+      const first = makeBackupData({ promptId: 'p1', updatedAt: 100 })
+      const second = makeBackupData({ promptId: 'p1', updatedAt: 200 })
+      const pendingHash = await computeBackupDataHash(second)
+      const otherCloudStrategy = new CloudSyncStrategy()
+      const otherLocalStrategy = new LocalSyncStrategy()
+      const otherOrchestrator = new SyncOrchestrator(otherCloudStrategy, otherLocalStrategy)
+
+      vi.spyOn(cloudStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(localStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(otherCloudStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(otherLocalStrategy, 'isAvailable').mockResolvedValue(true)
+
+      let releaseFirst: (() => void) | undefined
+      vi.spyOn(cloudStrategy, 'sync').mockImplementationOnce(() => new Promise(resolve => {
+        releaseFirst = () => resolve({ success: true, syncedAt: 1 })
+      }))
+      vi.spyOn(otherCloudStrategy, 'sync').mockResolvedValue({ success: true, syncedAt: 2 })
+
+      const firstRun = orchestrator.triggerSync(first)
+
+      await vi.waitFor(() => {
+        expect(releaseFirst).toBeTypeOf('function')
+      })
+
+      const secondResult = await otherOrchestrator.triggerSync(second)
+
+      expect(secondResult.skipped).toBe(true)
+      expect((storageData.syncStatus as any).guard).toEqual(expect.objectContaining({
+        pendingSnapshotHash: pendingHash
+      }))
+
+      releaseFirst()
+      await firstRun
+
+      expect((storageData.syncStatus as any).guard).toEqual(expect.objectContaining({
+        syncInFlight: false,
+        pendingSnapshotHash: pendingHash
       }))
     })
 
@@ -376,6 +487,24 @@ describe('SyncOrchestrator', () => {
 
       expect(result.skipped).not.toBe(true)
       expect(cloudStrategy.sync).toHaveBeenCalledWith(data)
+      expect(executeLocalSync).toHaveBeenCalledWith(data)
+    })
+
+    it('should not skip identical cloud hash after cloud-only success when local becomes available', async () => {
+      const data = makeBackupData({ promptId: 'p1', updatedAt: 100 })
+
+      vi.spyOn(cloudStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(cloudStrategy, 'sync').mockResolvedValue({ success: true, syncedAt: 1 })
+      vi.spyOn(localStrategy, 'isAvailable')
+        .mockResolvedValueOnce(false)
+        .mockResolvedValueOnce(true)
+        .mockResolvedValueOnce(true)
+
+      const firstResult = await orchestrator.triggerSync(data)
+      const secondResult = await orchestrator.triggerSync(data)
+
+      expect(firstResult.cloudSynced).toBe(true)
+      expect(secondResult.skipped).not.toBe(true)
       expect(executeLocalSync).toHaveBeenCalledWith(data)
     })
 

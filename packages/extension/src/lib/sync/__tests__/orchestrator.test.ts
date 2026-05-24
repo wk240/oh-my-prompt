@@ -336,6 +336,29 @@ describe('SyncOrchestrator', () => {
       }))
     })
 
+    it('should preserve unrelated durable pending hash while another snapshot acquires lock', async () => {
+      const pending = makeBackupData({ promptId: 'p1', updatedAt: 300 })
+      const current = makeBackupData({ promptId: 'p1', updatedAt: 200 })
+      const pendingHash = await computeBackupDataHash(pending)
+
+      storageData.syncStatus = {
+        guard: {
+          pendingSnapshotHash: pendingHash
+        }
+      }
+      vi.spyOn(cloudStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(localStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(cloudStrategy, 'sync').mockResolvedValue({ success: true, syncedAt: 1 })
+
+      await orchestrator.triggerSync(current)
+
+      expect(cloudStrategy.sync).toHaveBeenCalledWith(current)
+      expect((storageData.syncStatus as any).guard).toEqual(expect.objectContaining({
+        syncInFlight: false,
+        pendingSnapshotHash: pendingHash
+      }))
+    })
+
     it('should not let ordinary status writes overwrite another live persisted lock', async () => {
       const data = makeBackupData({ promptId: 'p1', updatedAt: 100 })
       const lockOwnerId = 'other-live-owner'
@@ -370,6 +393,66 @@ describe('SyncOrchestrator', () => {
         syncInFlight: true,
         lockOwnerId,
         pendingSnapshotHash: 'live-pending'
+      }))
+    })
+
+    it('should serialize ordinary status writes with fresh guard acquisition', async () => {
+      const data = makeBackupData({ promptId: 'p1', updatedAt: 100 })
+      const otherCloudStrategy = new CloudSyncStrategy()
+      const otherLocalStrategy = new LocalSyncStrategy()
+      const otherOrchestrator = new SyncOrchestrator(otherCloudStrategy, otherLocalStrategy)
+      let releaseStatusRead: (() => void) | undefined
+      let delayNextSyncStatusRead = true
+
+      vi.mocked(chrome.storage.local.get).mockImplementation((key?: string | string[]) => {
+        if (key === 'syncStatus' && delayNextSyncStatusRead) {
+          delayNextSyncStatusRead = false
+          return new Promise(resolve => {
+            releaseStatusRead = () => resolve({})
+          })
+        }
+        if (!key) return Promise.resolve(storageData)
+        if (typeof key === 'string') {
+          return Promise.resolve({ [key]: storageData[key] })
+        }
+        return Promise.resolve(key.reduce<Record<string, unknown>>((result, storageKey) => {
+          result[storageKey] = storageData[storageKey]
+          return result
+        }, {}))
+      })
+
+      vi.spyOn(cloudStrategy, 'getStatus').mockResolvedValue({ enabled: true, lastSyncTime: 1 })
+      vi.spyOn(localStrategy, 'getStatus').mockResolvedValue({ enabled: true, lastSyncTime: 1 })
+      vi.spyOn(otherCloudStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(otherLocalStrategy, 'isAvailable').mockResolvedValue(true)
+
+      let releaseSync: (() => void) | undefined
+      vi.spyOn(otherCloudStrategy, 'sync').mockImplementationOnce(() => new Promise(resolve => {
+        releaseSync = () => resolve({ success: true, syncedAt: 1 })
+      }))
+
+      const statusRun = orchestrator.getStatus()
+
+      await vi.waitFor(() => {
+        expect(releaseStatusRead).toBeTypeOf('function')
+      })
+
+      const syncRun = otherOrchestrator.triggerSync(data)
+      releaseStatusRead()
+
+      await vi.waitFor(() => {
+        expect(releaseSync).toBeTypeOf('function')
+      })
+
+      expect((storageData.syncStatus as any).guard).toEqual(expect.objectContaining({
+        syncInFlight: true
+      }))
+
+      releaseSync()
+      await Promise.all([statusRun, syncRun])
+
+      expect((storageData.syncStatus as any).guard).toEqual(expect.objectContaining({
+        syncInFlight: false
       }))
     })
 

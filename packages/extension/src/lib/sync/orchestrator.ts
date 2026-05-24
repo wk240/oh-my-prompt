@@ -48,6 +48,7 @@ const SYNC_IN_FLIGHT_STALE_MS = 5 * 60 * 1000
  */
 export class SyncOrchestrator {
   private static lockAcquisitionChain: Promise<void> = Promise.resolve()
+  private static syncStatusWriteChain: Promise<void> = Promise.resolve()
 
   private cloudStrategy: CloudSyncStrategy
   private localStrategy: LocalSyncStrategy
@@ -58,7 +59,6 @@ export class SyncOrchestrator {
   private lastLocalSyncResult: LocalSyncResult | null = null
   private readonly guardOwnerId = crypto.randomUUID()
   private activeSyncPromise: Promise<SyncTriggerResult> | null = null
-  private syncStatusWriteChain: Promise<void> = Promise.resolve()
   private pendingSnapshot: FullBackupData | null = null
   private pendingSnapshotVersion = 0
 
@@ -953,7 +953,9 @@ export class SyncOrchestrator {
         syncInFlight: true,
         lockOwnerId: this.guardOwnerId,
         lastUploadStartedAt: Date.now(),
-        pendingSnapshotHash: undefined
+        pendingSnapshotHash: currentGuard.pendingSnapshotHash === snapshotHash
+          ? undefined
+          : currentGuard.pendingSnapshotHash
       })
 
       const guard = await this.getGuardStatus()
@@ -1033,7 +1035,7 @@ export class SyncOrchestrator {
     ) => Partial<UnifiedSyncStatus & { initialized?: boolean }>,
     options: { preserveLatestGuard?: boolean } = {}
   ): Promise<void> {
-    const write = this.syncStatusWriteChain.then(async () => {
+    const write = SyncOrchestrator.syncStatusWriteChain.then(async () => {
       const result = await chrome.storage.local.get('syncStatus')
       const existing = result.syncStatus || {}
       const nextStatus = updater(existing)
@@ -1053,7 +1055,7 @@ export class SyncOrchestrator {
       })
 
     })
-    this.syncStatusWriteChain = write.catch(() => undefined)
+    SyncOrchestrator.syncStatusWriteChain = write.catch(() => undefined)
     await write
   }
 

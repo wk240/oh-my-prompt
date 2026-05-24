@@ -207,6 +207,7 @@ export class SyncOrchestrator {
     }
 
     if (await this.shouldSkipSnapshot(snapshotHash, status, guard)) {
+      await this.clearPendingSnapshotHashIfCurrent(snapshotHash)
       return { cloudSynced: false, localSynced: false, skipped: true }
     }
 

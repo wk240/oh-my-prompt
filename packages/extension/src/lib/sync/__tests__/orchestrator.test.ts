@@ -143,6 +143,38 @@ describe('SyncOrchestrator', () => {
       expect(cloudStrategy.sync).toHaveBeenCalledWith(data)
     })
 
+    it('should clear pending hash when delayed min-interval follow-up finds unchanged snapshot', async () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(10_000)
+
+      const data = makeBackupData({ promptId: 'p1', updatedAt: 200 })
+      const hash = await computeBackupDataHash(data)
+
+      storageData.syncStatus = {
+        guard: {
+          lastUploadStartedAt: 9_500,
+          lastUploadedHash: hash,
+          lastLocalSyncedHash: hash
+        }
+      }
+      vi.spyOn(cloudStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(localStrategy, 'isAvailable').mockResolvedValue(true)
+
+      const result = await orchestrator.triggerSync(data)
+
+      expect(result.skipped).toBe(true)
+      expect((storageData.syncStatus as any).guard).toEqual(expect.objectContaining({
+        pendingSnapshotHash: hash
+      }))
+
+      await vi.advanceTimersByTimeAsync(1_500)
+
+      expect(cloudStrategy.sync).not.toHaveBeenCalled()
+      expect((storageData.syncStatus as any).guard).toEqual(expect.objectContaining({
+        pendingSnapshotHash: undefined
+      }))
+    })
+
     it('should not drain a stale queued snapshot after a newer trigger follows a min-interval skip', async () => {
       vi.useFakeTimers()
       vi.setSystemTime(10_000)

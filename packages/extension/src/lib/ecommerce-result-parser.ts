@@ -9,6 +9,15 @@ type JsonObject = Record<string, unknown>
 const RAW_RESULT_TYPE = '原始生成结果'
 const RAW_RESULT_TYPE_EN = 'Raw Result'
 const EMPTY_RESULT_ERROR = '生成结果为空'
+const DETAIL_ALIASES = {
+  subject: ['subject', 'mainSubject', 'product', '主体', '产品主体'],
+  scene: ['scene', 'environment', 'background', '场景', '背景'],
+  composition: ['composition', 'layout', 'camera', '构图', '镜头'],
+  lighting: ['lighting', 'light', '光影', '灯光'],
+  style: ['style', 'visualStyle', 'mood', '风格', '调性'],
+  sellingPoint: ['sellingPoint', 'benefit', 'feature', '卖点', '核心卖点'],
+  parameters: ['parameters', 'negativePrompt', 'params', '参数', '补充参数'],
+} satisfies Record<keyof EcommercePromptDetails, readonly string[]>
 
 export function parseEcommerceGenerateResult(data: unknown, fallbackAspectRatio: string): EcommerceResultParseResult {
   const rawText = getStringField(data, 'prompt')
@@ -81,28 +90,34 @@ function normalizeDetails(data: JsonObject): { details?: EcommercePromptDetails 
   const details = getObjectField(data, 'details')
   const sections = getObjectField(data, 'sections')
   const metadata = getObjectField(data, 'metadata')
+  const sources = [details, sections, metadata].filter((source): source is JsonObject => source !== null)
 
   const normalized: EcommercePromptDetails = {}
-  assignString(normalized, 'subject', details?.subject, sections?.subject, sections?.product)
-  assignString(normalized, 'scene', details?.scene, sections?.scene, sections?.background)
-  assignString(normalized, 'composition', details?.composition, sections?.composition, sections?.camera)
-  assignString(normalized, 'lighting', details?.lighting, sections?.lighting, sections?.light)
-  assignString(normalized, 'style', details?.style, metadata?.style, metadata?.visualStyle)
-  assignString(normalized, 'sellingPoint', details?.sellingPoint, metadata?.sellingPoint, metadata?.benefit)
-  assignString(normalized, 'parameters', details?.parameters, metadata?.parameters, metadata?.negativePrompt)
+  for (const [key, aliases] of getDetailAliasEntries()) {
+    const value = getAliasedString(sources, aliases)
+    if (value) {
+      normalized[key] = value
+    }
+  }
 
   return Object.keys(normalized).length > 0 ? { details: normalized } : {}
 }
 
-function assignString(
-  target: EcommercePromptDetails,
-  key: keyof EcommercePromptDetails,
-  ...values: unknown[]
-): void {
-  const value = values.find(candidate => typeof candidate === 'string' && candidate.trim())
-  if (typeof value === 'string') {
-    target[key] = value
+function getDetailAliasEntries(): Array<[keyof EcommercePromptDetails, readonly string[]]> {
+  return Object.entries(DETAIL_ALIASES) as Array<[keyof EcommercePromptDetails, readonly string[]]>
+}
+
+function getAliasedString(sources: JsonObject[], aliases: readonly string[]): string {
+  for (const source of sources) {
+    for (const alias of aliases) {
+      const value = source[alias]
+      if (typeof value === 'string' && value.trim()) {
+        return value
+      }
+    }
   }
+
+  return ''
 }
 
 function createRawResult(rawText: string, fallbackAspectRatio: string): EcommerceGenerateResult {

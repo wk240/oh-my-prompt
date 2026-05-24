@@ -133,6 +133,88 @@ describe('parseEcommerceGenerateResult', () => {
     }
   })
 
+  it('normalizes missing detail aliases across details, sections, and metadata', () => {
+    const parsed = parseEcommerceGenerateResult(
+      {
+        prompt: JSON.stringify({
+          prompts: [
+            {
+              prompt: 'Create a polished ecommerce image',
+              details: {
+                mainSubject: 'Insulated travel mug',
+                场景: 'Morning kitchen counter',
+                镜头: 'Three-quarter close-up',
+              },
+              sections: {
+                光影: 'Warm window light',
+                mood: 'Cozy premium',
+              },
+              metadata: {
+                核心卖点: 'Keeps coffee hot for 8 hours',
+                补充参数: 'No logo, clean background',
+              },
+            },
+          ],
+        }),
+      },
+      '4:5'
+    )
+
+    expect(parsed.ok).toBe(true)
+    if (parsed.ok) {
+      expect(parsed.result.prompts[0].details).toEqual({
+        subject: 'Insulated travel mug',
+        scene: 'Morning kitchen counter',
+        composition: 'Three-quarter close-up',
+        lighting: 'Warm window light',
+        style: 'Cozy premium',
+        sellingPoint: 'Keeps coffee hot for 8 hours',
+        parameters: 'No logo, clean background',
+      })
+    }
+  })
+
+  it('normalizes Chinese detail keys from each supported detail source', () => {
+    const parsed = parseEcommerceGenerateResult(
+      {
+        prompt: JSON.stringify({
+          prompts: [
+            {
+              prompt: 'Create a localized ecommerce image',
+              details: {
+                产品主体: '便携榨汁杯',
+                背景: '夏日露营桌面',
+              },
+              sections: {
+                构图: '产品居中，水果环绕',
+                灯光: '自然逆光',
+              },
+              metadata: {
+                调性: '清爽活力',
+                卖点: '无线便携，快速出汁',
+                参数: '画面干净，无文字',
+              },
+            },
+          ],
+        }),
+      },
+      '1:1'
+    )
+
+    expect(parsed.ok).toBe(true)
+    if (parsed.ok) {
+      expect(parsed.result.prompts[0].details).toEqual({
+        subject: '便携榨汁杯',
+        scene: '夏日露营桌面',
+        composition: '产品居中，水果环绕',
+        lighting: '自然逆光',
+        style: '清爽活力',
+        sellingPoint: '无线便携，快速出汁',
+        parameters: '画面干净，无文字',
+      })
+    }
+  })
+
   it('skips prompts with blank prompt text and keeps valid prompts', () => {
     const parsed = parseEcommerceGenerateResult(
       {

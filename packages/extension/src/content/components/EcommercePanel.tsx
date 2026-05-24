@@ -148,8 +148,8 @@ export function EcommercePanel({
 
   // Pre-fill selling points from extracted text
   useEffect(() => {
-    if (extractedText) {
-      setSellingPoints(extractedText)
+    if (extractedText?.trim()) {
+      setSellingPoints(prev => prev.trim() ? prev : extractedText)
     }
   }, [extractedText])
 

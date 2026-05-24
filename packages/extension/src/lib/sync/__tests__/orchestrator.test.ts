@@ -118,6 +118,90 @@ describe('SyncOrchestrator', () => {
       }))
     })
 
+    it('should run a delayed follow-up for a standalone min-interval skip', async () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(10_000)
+
+      const data = makeBackupData({ promptId: 'p1', updatedAt: 200 })
+
+      storageData.syncStatus = { guard: { lastUploadStartedAt: 9_500 } }
+      vi.spyOn(cloudStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(localStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(cloudStrategy, 'sync').mockResolvedValue({ success: true, syncedAt: 1 })
+
+      const result = await orchestrator.triggerSync(data)
+
+      expect(result.skipped).toBe(true)
+      expect(cloudStrategy.sync).not.toHaveBeenCalled()
+
+      await vi.advanceTimersByTimeAsync(1_499)
+      expect(cloudStrategy.sync).not.toHaveBeenCalled()
+
+      await vi.advanceTimersByTimeAsync(1)
+
+      expect(cloudStrategy.sync).toHaveBeenCalledTimes(1)
+      expect(cloudStrategy.sync).toHaveBeenCalledWith(data)
+    })
+
+    it('should not drain a stale queued snapshot after a newer trigger follows a min-interval skip', async () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(10_000)
+
+      const first = makeBackupData({ promptId: 'p1', updatedAt: 100 })
+      const staleQueued = makeBackupData({ promptId: 'p1', updatedAt: 200 })
+      const newest = makeBackupData({ promptId: 'p1', updatedAt: 300 })
+      const newestHash = await computeBackupDataHash(newest)
+      let releaseInitialRead: (() => void) | undefined
+      let delayInitialSyncStatusRead = true
+
+      storageData.syncStatus = { guard: { lastUploadStartedAt: 9_500 } }
+      vi.mocked(chrome.storage.local.get).mockImplementation((key?: string | string[]) => {
+        if (key === 'syncStatus' && delayInitialSyncStatusRead) {
+          delayInitialSyncStatusRead = false
+          return new Promise(resolve => {
+            releaseInitialRead = () => resolve({ syncStatus: storageData.syncStatus })
+          })
+        }
+        if (!key) return Promise.resolve(storageData)
+        if (typeof key === 'string') {
+          return Promise.resolve({ [key]: storageData[key] })
+        }
+        return Promise.resolve(key.reduce<Record<string, unknown>>((result, storageKey) => {
+          result[storageKey] = storageData[storageKey]
+          return result
+        }, {}))
+      })
+      vi.spyOn(cloudStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(localStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(cloudStrategy, 'sync').mockResolvedValue({ success: true, syncedAt: 1 })
+
+      const firstRun = orchestrator.triggerSync(first)
+
+      await vi.waitFor(() => {
+        expect(releaseInitialRead).toBeTypeOf('function')
+      })
+
+      const staleQueuedResult = await orchestrator.triggerSync(staleQueued)
+      releaseInitialRead!()
+      const firstResult = await firstRun
+
+      expect(firstResult.skipped).toBe(true)
+      expect(staleQueuedResult.skipped).toBe(true)
+      expect(cloudStrategy.sync).not.toHaveBeenCalled()
+
+      vi.setSystemTime(12_000)
+      const newestResult = await orchestrator.triggerSync(newest)
+
+      expect(newestResult.cloudSynced).toBe(true)
+      expect(cloudStrategy.sync).toHaveBeenCalledTimes(1)
+      expect(cloudStrategy.sync).toHaveBeenCalledWith(newest)
+      expect(cloudStrategy.sync).not.toHaveBeenCalledWith(staleQueued)
+      expect((storageData.syncStatus as any).guard).toEqual(expect.objectContaining({
+        pendingSnapshotHash: undefined,
+        lastUploadedHash: newestHash
+      }))
+    })
+
     it('should recover an orphaned persisted in-flight guard and run sync', async () => {
       const data = makeBackupData({ promptId: 'p1', updatedAt: 100 })
 
@@ -1008,6 +1092,46 @@ describe('SyncOrchestrator', () => {
       expect(result.data.prompts).toEqual(localData.prompts)
       expect(result.localOnlyItems).toEqual({ prompts: [], categories: [], temporaryPrompts: [] })
       expect(cloudStrategy.restore).not.toHaveBeenCalled()
+    })
+
+    it('should allow manual download inside cloud upload cooldown', async () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(20_000)
+
+      const cloudData = makeBackupData({ promptId: 'cloud', updatedAt: 200 })
+
+      storageData.syncStatus = { guard: { lastCloudUploadAt: 10_000 } }
+      storageData.prompt_script_data = {
+        userData: { prompts: [], categories: [] },
+        temporaryPrompts: []
+      }
+      vi.spyOn(cloudStrategy, 'restore').mockResolvedValue(cloudData)
+
+      const result = await orchestrator.downloadAndMerge({ reason: 'manual' })
+
+      expect(result.skipped).not.toBe(true)
+      expect(cloudStrategy.restore).toHaveBeenCalled()
+      expect(result.data.prompts).toEqual(cloudData.prompts)
+    })
+
+    it('should allow initial download inside cloud upload cooldown', async () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(20_000)
+
+      const cloudData = makeBackupData({ promptId: 'cloud', updatedAt: 200 })
+
+      storageData.syncStatus = { guard: { lastCloudUploadAt: 10_000 } }
+      storageData.prompt_script_data = {
+        userData: { prompts: [], categories: [] },
+        temporaryPrompts: []
+      }
+      vi.spyOn(cloudStrategy, 'restore').mockResolvedValue(cloudData)
+
+      const result = await orchestrator.downloadAndMerge({ reason: 'initial' })
+
+      expect(result.skipped).not.toBe(true)
+      expect(cloudStrategy.restore).toHaveBeenCalled()
+      expect(result.data.prompts).toEqual(cloudData.prompts)
     })
 
     it('should merge data with cloud priority', async () => {

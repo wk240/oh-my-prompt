@@ -39,6 +39,12 @@ type DownloadAndMergeResult = MergeResult & {
   conflicts?: Array<{ type: 'prompt' | 'category'; cloud: unknown; local: unknown }>
 }
 
+interface TriggerSyncGuardOptions {
+  enforceMinInterval?: boolean
+  pendingVersionAtStart?: number
+  supersededPendingSnapshotHash?: string | null
+}
+
 const STORAGE_KEY = 'prompt_script_data'
 const SYNC_IN_FLIGHT_STALE_MS = 5 * 60 * 1000
 
@@ -67,7 +73,9 @@ export class SyncOrchestrator {
   private readonly guardOwnerId = crypto.randomUUID()
   private activeSyncPromise: Promise<SyncTriggerResult> | null = null
   private pendingSnapshot: FullBackupData | null = null
+  private pendingSnapshotHash: string | null = null
   private pendingSnapshotVersion = 0
+  private pendingSnapshotTimer: ReturnType<typeof setTimeout> | null = null
   private readonly MIN_SYNC_INTERVAL_MS = 2000
   private readonly DOWNLOAD_COOLDOWN_MS = 15000
 
@@ -151,7 +159,16 @@ export class SyncOrchestrator {
       return this.queuePendingSnapshot(data)
     }
 
-    const activePromise = this.triggerSyncWithGuards(data).finally(() => {
+    const supersededPendingSnapshotHash = this.clearPendingSnapshot()
+    return this.startActiveSync(data, {
+      enforceMinInterval: true,
+      pendingVersionAtStart: this.pendingSnapshotVersion,
+      supersededPendingSnapshotHash
+    })
+  }
+
+  private startActiveSync(data: FullBackupData, options: TriggerSyncGuardOptions): Promise<SyncTriggerResult> {
+    const activePromise = this.triggerSyncWithGuards(data, options).finally(() => {
       if (this.activeSyncPromise === activePromise) {
         this.activeSyncPromise = null
       }
@@ -162,7 +179,7 @@ export class SyncOrchestrator {
 
   private async triggerSyncWithGuards(
     data: FullBackupData,
-    options: { enforceMinInterval?: boolean } = { enforceMinInterval: true }
+    options: TriggerSyncGuardOptions = { enforceMinInterval: true }
   ): Promise<SyncTriggerResult> {
     const snapshotHash = await computeBackupDataHash(data)
     const status = await this.getSyncStatus()
@@ -177,8 +194,16 @@ export class SyncOrchestrator {
     }
 
     if (options.enforceMinInterval !== false && this.isInsideMinSyncInterval(guard)) {
-      await this.updateGuardStatus({ pendingSnapshotHash: snapshotHash })
-      return { cloudSynced: false, localSynced: false, skipped: true }
+      const delayMs = this.getRemainingMinSyncIntervalMs(guard)
+      if (
+        options.pendingVersionAtStart !== undefined &&
+        this.pendingSnapshotVersion !== options.pendingVersionAtStart &&
+        this.pendingSnapshot
+      ) {
+        this.schedulePendingSnapshotDrain(delayMs, this.pendingSnapshotVersion)
+        return { cloudSynced: false, localSynced: false, skipped: true }
+      }
+      return this.queuePendingSnapshot(data, { scheduleDelayMs: delayMs })
     }
 
     if (await this.shouldSkipSnapshot(snapshotHash, status, guard)) {
@@ -203,6 +228,9 @@ export class SyncOrchestrator {
       }
       if (result.cloudSynced || result.localSynced) {
         await this.clearPendingSnapshotHashIfCurrent(snapshotHash)
+        if (options.supersededPendingSnapshotHash && options.supersededPendingSnapshotHash !== snapshotHash) {
+          await this.clearPendingSnapshotHashIfCurrent(options.supersededPendingSnapshotHash)
+        }
       }
       return result
     } finally {
@@ -211,13 +239,21 @@ export class SyncOrchestrator {
     }
   }
 
-  private async queuePendingSnapshot(data: FullBackupData): Promise<SyncTriggerResult> {
+  private async queuePendingSnapshot(
+    data: FullBackupData,
+    options: { scheduleDelayMs?: number } = {}
+  ): Promise<SyncTriggerResult> {
     const version = ++this.pendingSnapshotVersion
     this.pendingSnapshot = data
+    this.pendingSnapshotHash = null
 
     const snapshotHash = await computeBackupDataHash(data)
     if (version === this.pendingSnapshotVersion && this.pendingSnapshot === data) {
+      this.pendingSnapshotHash = snapshotHash
       await this.updateGuardStatus({ pendingSnapshotHash: snapshotHash })
+      if (options.scheduleDelayMs !== undefined) {
+        this.schedulePendingSnapshotDrain(options.scheduleDelayMs, version)
+      }
     }
 
     return { cloudSynced: false, localSynced: false, skipped: true }
@@ -969,6 +1005,49 @@ export class SyncOrchestrator {
     return Date.now() - guard.lastUploadStartedAt < this.MIN_SYNC_INTERVAL_MS
   }
 
+  private getRemainingMinSyncIntervalMs(guard: SyncGuardStatus): number {
+    if (!guard.lastUploadStartedAt) return this.MIN_SYNC_INTERVAL_MS
+    return Math.max(0, this.MIN_SYNC_INTERVAL_MS - (Date.now() - guard.lastUploadStartedAt))
+  }
+
+  private schedulePendingSnapshotDrain(delayMs: number, version: number): void {
+    if (this.pendingSnapshotTimer) {
+      clearTimeout(this.pendingSnapshotTimer)
+    }
+
+    this.pendingSnapshotTimer = setTimeout(() => {
+      this.pendingSnapshotTimer = null
+      if (this.pendingSnapshotVersion !== version || !this.pendingSnapshot) return
+      if (this.activeSyncPromise) return
+
+      const pendingSnapshot = this.pendingSnapshot
+      this.pendingSnapshot = null
+      this.pendingSnapshotHash = null
+      this.pendingSnapshotVersion++
+
+      this.startActiveSync(pendingSnapshot, { enforceMinInterval: false })
+        .catch(err => console.warn('[Oh My Prompt] Delayed pending sync failed:', err))
+    }, delayMs)
+  }
+
+  private clearPendingSnapshot(): string | null {
+    if (!this.pendingSnapshot && !this.pendingSnapshotTimer) {
+      return null
+    }
+
+    const hash = this.pendingSnapshotHash
+    this.pendingSnapshot = null
+    this.pendingSnapshotHash = null
+    this.pendingSnapshotVersion++
+
+    if (this.pendingSnapshotTimer) {
+      clearTimeout(this.pendingSnapshotTimer)
+      this.pendingSnapshotTimer = null
+    }
+
+    return hash
+  }
+
   private async acquireGuardLock(snapshotHash: string): Promise<boolean> {
     let acquired = false
 
@@ -1113,19 +1192,28 @@ export class SyncOrchestrator {
     const pendingSnapshot = this.pendingSnapshot
     const pendingVersion = this.pendingSnapshotVersion
     const pendingHash = await computeBackupDataHash(pendingSnapshot)
+    const isLatestPendingSnapshot = pendingVersion === this.pendingSnapshotVersion
 
-    if (pendingVersion === this.pendingSnapshotVersion) {
+    if (isLatestPendingSnapshot) {
       this.pendingSnapshot = null
+      this.pendingSnapshotHash = null
+      this.pendingSnapshotVersion++
+      if (this.pendingSnapshotTimer) {
+        clearTimeout(this.pendingSnapshotTimer)
+        this.pendingSnapshotTimer = null
+      }
     }
 
     if (pendingHash === completedHash) {
-      if (pendingVersion === this.pendingSnapshotVersion) {
+      if (isLatestPendingSnapshot) {
         await this.clearPendingSnapshotHashIfCurrent(completedHash)
       }
       return
     }
 
-    await this.triggerSyncWithGuards(pendingSnapshot, { enforceMinInterval: false })
+    if (isLatestPendingSnapshot) {
+      await this.triggerSyncWithGuards(pendingSnapshot, { enforceMinInterval: false })
+    }
   }
 
   /**

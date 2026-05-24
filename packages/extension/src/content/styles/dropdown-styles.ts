@@ -1419,6 +1419,7 @@ export const DROPDOWN_STYLES = `
     flex: 1;
     overflow-y: auto;
     padding: 12px 16px;
+    padding-bottom: 96px;
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -1457,6 +1458,79 @@ export const DROPDOWN_STYLES = `
     word-break: break-word;
   }
 
+  .ecommerce-panel-result-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 10px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #f8fafc;
+    color: #475569;
+    font-size: 11px;
+    line-height: 1.4;
+  }
+
+  .ecommerce-panel-result-summary span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .ecommerce-panel-result-ratio {
+    flex-shrink: 0;
+    color: #737373;
+    font-size: 11px;
+  }
+
+  .ecommerce-panel-details-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 28px;
+    padding: 4px 0;
+    border: 0;
+    background: transparent;
+    color: #2563eb;
+    cursor: pointer;
+    font-size: 12px;
+  }
+
+  .ecommerce-panel-details {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+    padding: 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #f9fafb;
+  }
+
+  .ecommerce-panel-detail-row {
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr);
+    gap: 8px;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .ecommerce-panel-detail-label {
+    color: #64748b;
+    font-weight: 500;
+  }
+
+  .ecommerce-panel-detail-value {
+    min-width: 0;
+    color: #111827;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+
+  .ecommerce-panel-detail-row-full {
+    padding-top: 8px;
+    border-top: 1px solid #e5e7eb;
+  }
+
   .ecommerce-panel-result-actions {
     display: flex;
     justify-content: flex-end;
@@ -1485,12 +1559,24 @@ export const DROPDOWN_STYLES = `
   }
 
   .ecommerce-panel-result-footer {
-    display: flex;
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
-    padding: 12px 16px;
-    border-top: 1px solid #E5E5E5;
+    padding: 10px 12px;
+    border-top: 1px solid #e5e7eb;
     flex-shrink: 0;
-    background: white;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(8px);
+  }
+
+  .ecommerce-panel-result-footer button {
+    min-width: 0;
+    min-height: 44px;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   .ecommerce-panel-result-footer-btn-primary {

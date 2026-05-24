@@ -397,7 +397,7 @@ export function DropdownContainer({
     productImage: null, productImageName: '', platform: 'amazon', market: 'china',
     language: 'zh', aspectRatio: '1:1', sellingPoints: '', setStructure: 'smart',
     customCounts: { whiteBg: 1, scene: 2, sellingPoint: 2, other: 2 },
-    result: null, viewMode: 'form'
+    result: null, generationConfigSnapshot: null, expandedPromptIndexes: [], viewMode: 'form'
   })
 
   const handleAgentStateChange = useCallback((state: { inputText: string; result: string | null; imageData: string | null }) => {

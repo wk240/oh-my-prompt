@@ -39,8 +39,8 @@ export interface EcommercePersistedState {
   setStructure: 'smart' | 'custom'
   customCounts: EcommerceCustomCounts
   result: EcommerceGenerateResult | null
-  generationConfigSnapshot?: EcommerceConfig | null
-  expandedPromptIndexes?: number[]
+  generationConfigSnapshot: EcommerceConfig | null
+  expandedPromptIndexes: number[]
   viewMode: 'form' | 'result'
 }
 
@@ -126,8 +126,8 @@ export function EcommercePanel({
   const [isLoading, setIsLoading] = useState(false)
   const [viewMode, setViewMode] = useState<'form' | 'result'>(initState.viewMode)
   const [result, setResult] = useState<EcommerceGenerateResult | null>(initState.result)
-  const [generationConfigSnapshot, setGenerationConfigSnapshot] = useState<EcommerceConfig | null>(initState.generationConfigSnapshot ?? null)
-  const [expandedPromptIndexes, setExpandedPromptIndexes] = useState<Set<number>>(() => new Set(initState.expandedPromptIndexes ?? []))
+  const [generationConfigSnapshot, setGenerationConfigSnapshot] = useState<EcommerceConfig | null>(initState.generationConfigSnapshot)
+  const [expandedPromptIndexes, setExpandedPromptIndexes] = useState<Set<number>>(() => new Set(initState.expandedPromptIndexes))
   const [error, setError] = useState<string | null>(null)
   const [hasConfig, setHasConfig] = useState<boolean | null>(null) // null = checking
   const [showSaveDialog, setShowSaveDialog] = useState(false)
@@ -770,7 +770,7 @@ export function EcommercePanel({
             <button className="ecommerce-panel-result-footer-btn-secondary" onClick={handleCopyAll}>
               复制全部
             </button>
-            <button className="ecommerce-panel-result-footer-btn-primary" onClick={handleInsertAll} disabled={!onInsert}>
+            <button className="ecommerce-panel-result-footer-btn-primary" onClick={handleInsertAll}>
               插入全部
             </button>
           </div>

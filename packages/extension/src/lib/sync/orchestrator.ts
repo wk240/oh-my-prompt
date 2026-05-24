@@ -186,7 +186,7 @@ export class SyncOrchestrator {
         await this.updateGuardStatus({ lastLocalSyncedHash: snapshotHash })
       }
       if ((result.cloudSynced || result.localSynced) && shouldConsumeDurablePending) {
-        await this.updateGuardStatus({ pendingSnapshotHash: undefined })
+        await this.clearPendingSnapshotHashIfCurrent(snapshotHash)
       }
       return result
     } finally {
@@ -1025,6 +1025,23 @@ export class SyncOrchestrator {
       return {
         ...existing,
         guard
+      }
+    })
+  }
+
+  private async clearPendingSnapshotHashIfCurrent(completedHash: string): Promise<void> {
+    await this.enqueueSyncStatusUpdate(existing => {
+      const guard = existing.guard || {}
+      if (guard.pendingSnapshotHash !== completedHash) {
+        return existing
+      }
+
+      return {
+        ...existing,
+        guard: {
+          ...guard,
+          pendingSnapshotHash: undefined
+        }
       }
     })
   }

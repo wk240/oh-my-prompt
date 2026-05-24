@@ -336,6 +336,53 @@ describe('SyncOrchestrator', () => {
       }))
     })
 
+    it('should not clear newer pending hash queued while consuming an older pending hash', async () => {
+      const first = makeBackupData({ promptId: 'p1', updatedAt: 100 })
+      const second = makeBackupData({ promptId: 'p1', updatedAt: 200 })
+      const firstHash = await computeBackupDataHash(first)
+      const secondHash = await computeBackupDataHash(second)
+      const otherCloudStrategy = new CloudSyncStrategy()
+      const otherLocalStrategy = new LocalSyncStrategy()
+      const otherOrchestrator = new SyncOrchestrator(otherCloudStrategy, otherLocalStrategy)
+
+      storageData.syncStatus = {
+        guard: {
+          pendingSnapshotHash: firstHash
+        }
+      }
+      vi.spyOn(cloudStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(localStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(otherCloudStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(otherLocalStrategy, 'isAvailable').mockResolvedValue(true)
+
+      let releaseFirst: (() => void) | undefined
+      vi.spyOn(cloudStrategy, 'sync').mockImplementationOnce(() => new Promise(resolve => {
+        releaseFirst = () => resolve({ success: true, syncedAt: 1 })
+      }))
+      vi.spyOn(otherCloudStrategy, 'sync').mockResolvedValue({ success: true, syncedAt: 2 })
+
+      const firstRun = orchestrator.triggerSync(first)
+
+      await vi.waitFor(() => {
+        expect(releaseFirst).toBeTypeOf('function')
+      })
+
+      const secondResult = await otherOrchestrator.triggerSync(second)
+
+      expect(secondResult.skipped).toBe(true)
+      expect((storageData.syncStatus as any).guard).toEqual(expect.objectContaining({
+        pendingSnapshotHash: secondHash
+      }))
+
+      releaseFirst()
+      await firstRun
+
+      expect((storageData.syncStatus as any).guard).toEqual(expect.objectContaining({
+        syncInFlight: false,
+        pendingSnapshotHash: secondHash
+      }))
+    })
+
     it('should preserve unrelated durable pending hash while another snapshot acquires lock', async () => {
       const pending = makeBackupData({ promptId: 'p1', updatedAt: 300 })
       const current = makeBackupData({ promptId: 'p1', updatedAt: 200 })

@@ -18,8 +18,10 @@ import type {
   ProviderConfig,
 } from '@oh-my-prompt/shared/types'
 import { MessageType } from '@oh-my-prompt/shared/messages'
-import { Sparkles, Loader2, AlertTriangle, Copy, Bookmark, RefreshCw, X, Upload, Settings, ArrowLeft, ArrowUpRight } from 'lucide-react'
+import { Sparkles, Loader2, AlertTriangle, Copy, Bookmark, RefreshCw, X, Upload, Settings, ArrowLeft, ArrowUpRight, ChevronDown, ChevronUp } from 'lucide-react'
 import { ToastNotification } from '@/sidepanel/components/ToastNotification'
+import { parseEcommerceGenerateResult } from '@/lib/ecommerce-result-parser'
+import { formatEcommercePromptBundle } from '@/lib/ecommerce-prompt-bundle'
 import ecommerceConfigData from '@/data/ecommerce-config.json'
 
 // Lazy load dialog component
@@ -40,6 +42,20 @@ interface EcommerceConfigData {
 }
 
 const config = ecommerceConfigData as EcommerceConfigData
+
+const DETAIL_ROWS: Array<{ key: keyof NonNullable<EcommerceGenerateResult['prompts'][number]['details']>; label: string }> = [
+  { key: 'subject', label: '主体' },
+  { key: 'scene', label: '场景' },
+  { key: 'composition', label: '构图' },
+  { key: 'lighting', label: '光影' },
+  { key: 'style', label: '风格' },
+  { key: 'sellingPoint', label: '卖点' },
+  { key: 'parameters', label: '参数' },
+]
+
+function getConfigLabel(options: ConfigOption[], id: string): string {
+  return options.find(option => option.id === id)?.name || id
+}
 
 interface EcommerceViewProps {
   selectedTemplate: AgentTemplateCategory
@@ -77,6 +93,8 @@ export default function EcommerceView({
   const [isLoading, setIsLoading] = useState(false)
   const [viewMode, setViewMode] = useState<'form' | 'result'>('form')
   const [result, setResult] = useState<EcommerceGenerateResult | null>(null)
+  const [generationConfigSnapshot, setGenerationConfigSnapshot] = useState<EcommerceConfig | null>(null)
+  const [expandedPromptIndexes, setExpandedPromptIndexes] = useState<Set<number>>(() => new Set())
   const [error, setError] = useState<string | null>(null)
   const [errorAction, setErrorAction] = useState<'settings' | null>(null)
   const [hasConfig, setHasConfig] = useState<boolean | null>(null)
@@ -245,13 +263,14 @@ export default function EcommerceView({
     setResult(null)
 
     try {
+      const configSnapshot = buildEcommerceConfig()
       const response = await chrome.runtime.sendMessage({
         type: MessageType.AGENT_GENERATE,
         payload: {
           inputText: sellingPoints,
           productImage: productImage || undefined,
           templateCategory: 'ecommerce',
-          ecommerceConfig: buildEcommerceConfig(),
+          ecommerceConfig: configSnapshot,
         },
       })
       if (!response?.success) {
@@ -260,47 +279,15 @@ export default function EcommerceView({
 
       const data = response.data
 
-      // Parse result: try ecommercePrompts first, then JSON.parse, then fallback
-      let parsedResult: EcommerceGenerateResult | null = null
+      const parsed = parseEcommerceGenerateResult(data, configSnapshot.aspectRatio)
 
-      if (data?.ecommercePrompts) {
-        parsedResult = data.ecommercePrompts as EcommerceGenerateResult
-      } else if (data?.prompt) {
-        try {
-          const parsed = JSON.parse(data.prompt)
-          if (parsed?.prompts && Array.isArray(parsed.prompts)) {
-            parsedResult = parsed as EcommerceGenerateResult
-          } else {
-            // Single prompt fallback
-            parsedResult = {
-              prompts: [{
-                type: '综合',
-                typeEn: 'General',
-                prompt: data.prompt,
-                aspectRatio,
-              }],
-              templateCategory: 'ecommerce',
-            }
-          }
-        } catch {
-          // Not JSON, treat as single prompt
-          parsedResult = {
-            prompts: [{
-              type: '综合',
-              typeEn: 'General',
-              prompt: data.prompt,
-              aspectRatio,
-            }],
-            templateCategory: 'ecommerce',
-          }
-        }
-      }
-
-      if (parsedResult) {
-        setResult(parsedResult)
-        setViewMode('result')  // Switch to result view on success
+      if (parsed.ok) {
+        setResult(parsed.result)
+        setGenerationConfigSnapshot(configSnapshot)
+        setExpandedPromptIndexes(new Set())
+        setViewMode('result')
       } else {
-        setError('生成结果为空')
+        setError(parsed.error)
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '生成失败'
@@ -320,7 +307,24 @@ export default function EcommerceView({
     } finally {
       setIsLoading(false)
     }
-  }, [isLoading, sellingPoints, productImage, buildEcommerceConfig, aspectRatio])
+  }, [isLoading, sellingPoints, productImage, buildEcommerceConfig])
+
+  const getPromptBundle = useCallback(() => {
+    if (!result || !generationConfigSnapshot) return ''
+    return formatEcommercePromptBundle(result, generationConfigSnapshot)
+  }, [result, generationConfigSnapshot])
+
+  const togglePromptDetails = useCallback((index: number) => {
+    setExpandedPromptIndexes(prev => {
+      const next = new Set(prev)
+      if (next.has(index)) {
+        next.delete(index)
+      } else {
+        next.add(index)
+      }
+      return next
+    })
+  }, [])
 
   // Handle copy single prompt
   const handleCopy = useCallback(async (text: string) => {
@@ -334,17 +338,15 @@ export default function EcommerceView({
 
   // Handle copy all prompts
   const handleCopyAll = useCallback(async () => {
-    if (!result) return
-    const allText = result.prompts
-      .map(p => `[${p.type}]\n${p.prompt}`)
-      .join('\n\n---\n\n')
+    const bundle = getPromptBundle()
+    if (!bundle) return
     try {
-      await navigator.clipboard.writeText(allText)
+      await navigator.clipboard.writeText(bundle)
       showToast('已复制全部提示词')
     } catch {
       showToast('复制失败')
     }
-  }, [result, showToast])
+  }, [getPromptBundle, showToast])
 
   // Handle save single prompt
   const handleSavePrompt = useCallback((index: number) => {
@@ -377,6 +379,17 @@ export default function EcommerceView({
       showToast('复制失败')
     }
   }, [showToast])
+
+  const handleInsertAll = useCallback(async () => {
+    const bundle = getPromptBundle()
+    if (!bundle) return
+    try {
+      await navigator.clipboard.writeText(bundle)
+      showToast('当前页面暂不可直接插入，已复制任务包')
+    } catch {
+      showToast('插入通道不可用，且复制失败')
+    }
+  }, [getPromptBundle, showToast])
 
   // Handle back to form
   const handleBackToForm = useCallback(() => {
@@ -657,51 +670,82 @@ export default function EcommerceView({
           </div>
         )}
 
-        {/* Result View - full-screen overlay */}
         {viewMode === 'result' && result && (
           <div className="ecommerce-panel-result-view">
-            {/* Header */}
             <div className="ecommerce-panel-result-header">
-              <button className="ecommerce-panel-result-back-btn" onClick={handleBackToForm}>
+              <button className="ecommerce-panel-result-back-btn" onClick={handleBackToForm} aria-label="返回表单">
                 <ArrowLeft style={{ width: 16, height: 16 }} />
               </button>
               <span className="ecommerce-panel-result-title">套图生成结果</span>
-              <span className="ecommerce-panel-result-count">
-                共 {result.prompts.length} 张
-              </span>
+              <span className="ecommerce-panel-result-count">共 {result.prompts.length} 张</span>
             </div>
 
-            {/* Body: prompt cards */}
             <div className="ecommerce-panel-result-body">
-              {result.prompts.map((p, i) => (
-                <div key={i} className="ecommerce-panel-result-card">
-                  <div className="ecommerce-panel-result-card-header">
-                    <span className="ecommerce-panel-result-type-tag">{p.type}</span>
-                    <span style={{ fontSize: 11, color: '#A3A3A3' }}>{p.aspectRatio}</span>
-                  </div>
-                  <div className="ecommerce-panel-result-text">{p.prompt}</div>
-                  <div className="ecommerce-panel-result-actions">
-                    <button className="ecommerce-panel-action-btn ecommerce-panel-insert-btn" onClick={() => handleInsert(p.prompt)} title="插入">
-                      <ArrowUpRight style={{ width: 14, height: 14 }} />
-                    </button>
-                    <button className="ecommerce-panel-action-btn" onClick={() => handleCopy(p.prompt)} title="复制">
-                      <Copy style={{ width: 14, height: 14 }} />
-                    </button>
-                    <button className="ecommerce-panel-action-btn" onClick={() => handleSavePrompt(i)} title="保存到库">
-                      <Bookmark style={{ width: 14, height: 14 }} />
-                    </button>
-                  </div>
+              {generationConfigSnapshot && (
+                <div className="ecommerce-panel-result-summary">
+                  <span>平台：{getConfigLabel(config.platforms, generationConfigSnapshot.platform)}</span>
+                  <span>市场：{getConfigLabel(config.markets, generationConfigSnapshot.market)}</span>
+                  <span>语言：{getConfigLabel(config.languages, generationConfigSnapshot.language)}</span>
+                  <span>比例：{generationConfigSnapshot.aspectRatio}</span>
+                  <span>结构：{generationConfigSnapshot.setStructure === 'custom' ? '自定义配图' : '智能配图'}</span>
                 </div>
-              ))}
+              )}
+
+              {result.prompts.map((p, i) => {
+                const isExpanded = expandedPromptIndexes.has(i)
+                const detailRows = DETAIL_ROWS.filter(row => p.details?.[row.key])
+                return (
+                  <div key={`${p.type}-${i}`} className="ecommerce-panel-result-card">
+                    <div className="ecommerce-panel-result-card-header">
+                      <span className="ecommerce-panel-result-type-tag">{p.type}</span>
+                      <span className="ecommerce-panel-result-ratio">{p.aspectRatio}</span>
+                    </div>
+                    <div className="ecommerce-panel-result-text">{p.prompt}</div>
+                    {detailRows.length > 0 && (
+                      <button className="ecommerce-panel-details-toggle" onClick={() => togglePromptDetails(i)}>
+                        {isExpanded ? <ChevronUp style={{ width: 14, height: 14 }} /> : <ChevronDown style={{ width: 14, height: 14 }} />}
+                        <span>{isExpanded ? '收起详情' : '展开详情'}</span>
+                      </button>
+                    )}
+                    {isExpanded && (
+                      <div className="ecommerce-panel-details">
+                        {detailRows.map(row => (
+                          <div key={row.key} className="ecommerce-panel-detail-row">
+                            <span className="ecommerce-panel-detail-label">{row.label}</span>
+                            <span className="ecommerce-panel-detail-value">{p.details?.[row.key]}</span>
+                          </div>
+                        ))}
+                        <div className="ecommerce-panel-detail-row ecommerce-panel-detail-row-full">
+                          <span className="ecommerce-panel-detail-label">完整提示词</span>
+                          <span className="ecommerce-panel-detail-value">{p.prompt}</span>
+                        </div>
+                      </div>
+                    )}
+                    <div className="ecommerce-panel-result-actions">
+                      <button className="ecommerce-panel-action-btn ecommerce-panel-insert-btn" onClick={() => handleInsert(p.prompt)} title="插入">
+                        <ArrowUpRight style={{ width: 14, height: 14 }} />
+                      </button>
+                      <button className="ecommerce-panel-action-btn" onClick={() => handleCopy(p.prompt)} title="复制">
+                        <Copy style={{ width: 14, height: 14 }} />
+                      </button>
+                      <button className="ecommerce-panel-action-btn" onClick={() => handleSavePrompt(i)} title="保存到库">
+                        <Bookmark style={{ width: 14, height: 14 }} />
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
 
-            {/* Footer */}
             <div className="ecommerce-panel-result-footer">
+              <button className="ecommerce-panel-result-footer-btn-secondary" onClick={handleRegenerate} disabled={isLoading}>
+                {isLoading ? '生成中...' : '重新生成'}
+              </button>
               <button className="ecommerce-panel-result-footer-btn-secondary" onClick={handleCopyAll}>
                 复制全部
               </button>
-              <button className="ecommerce-panel-result-footer-btn-primary" onClick={handleRegenerate} disabled={isLoading}>
-                {isLoading ? '重新生成中...' : '重新生成'}
+              <button className="ecommerce-panel-result-footer-btn-primary" onClick={handleInsertAll}>
+                插入全部
               </button>
             </div>
           </div>

@@ -72,6 +72,16 @@ export interface EcommerceConfig {
   customCounts?: EcommerceCustomCounts
 }
 
+export interface EcommercePromptDetails {
+  subject?: string
+  scene?: string
+  composition?: string
+  lighting?: string
+  style?: string
+  sellingPoint?: string
+  parameters?: string
+}
+
 // 电商结构化生成结果
 export interface EcommerceGenerateResult {
   prompts: Array<{
@@ -79,8 +89,10 @@ export interface EcommerceGenerateResult {
     typeEn: string
     prompt: string
     aspectRatio: string
+    details?: EcommercePromptDetails
   }>
   templateCategory: 'ecommerce'
+  rawText?: string
 }
 
 /**

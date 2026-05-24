@@ -114,6 +114,42 @@ describe('SyncOrchestrator', () => {
       }))
     })
 
+    it('should not clear another live orchestrator lock or start a parallel sync', async () => {
+      const first = makeBackupData({ promptId: 'p1', updatedAt: 100 })
+      const second = makeBackupData({ promptId: 'p1', updatedAt: 200 })
+      const otherCloudStrategy = new CloudSyncStrategy()
+      const otherLocalStrategy = new LocalSyncStrategy()
+      const otherOrchestrator = new SyncOrchestrator(otherCloudStrategy, otherLocalStrategy)
+
+      vi.spyOn(cloudStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(localStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(otherCloudStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(otherLocalStrategy, 'isAvailable').mockResolvedValue(true)
+
+      let releaseFirst: (() => void) | undefined
+      vi.spyOn(cloudStrategy, 'sync').mockImplementationOnce(() => new Promise(resolve => {
+        releaseFirst = () => resolve({ success: true, syncedAt: 1 })
+      }))
+      vi.spyOn(otherCloudStrategy, 'sync').mockResolvedValue({ success: true, syncedAt: 2 })
+
+      const firstRun = orchestrator.triggerSync(first)
+
+      await vi.waitFor(() => {
+        expect(releaseFirst).toBeTypeOf('function')
+      })
+
+      const secondResult = await otherOrchestrator.triggerSync(second)
+
+      expect(secondResult.skipped).toBe(true)
+      expect(otherCloudStrategy.sync).not.toHaveBeenCalled()
+      expect((storageData.syncStatus as any).guard).toEqual(expect.objectContaining({
+        syncInFlight: true
+      }))
+
+      releaseFirst()
+      await firstRun
+    })
+
     it('should recover a stale persisted in-flight guard and clear durable pending state', async () => {
       const data = makeBackupData({ promptId: 'p1', updatedAt: 100 })
 
@@ -132,6 +168,40 @@ describe('SyncOrchestrator', () => {
 
       expect(result.cloudSynced).toBe(true)
       expect(cloudStrategy.sync).toHaveBeenCalledWith(data)
+      expect((storageData.syncStatus as any).guard).toEqual(expect.objectContaining({
+        syncInFlight: false,
+        pendingSnapshotHash: undefined
+      }))
+    })
+
+    it('should not let ordinary status writes resurrect stale guard after cleanup', async () => {
+      const data = makeBackupData({ promptId: 'p1', updatedAt: 100 })
+
+      vi.spyOn(cloudStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(localStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(cloudStrategy, 'sync').mockResolvedValue({ success: true, syncedAt: 1 })
+
+      await orchestrator.triggerSync(data)
+
+      const cleanedGuard = (storageData.syncStatus as any).guard
+      expect(cleanedGuard).toEqual(expect.objectContaining({
+        syncInFlight: false,
+        pendingSnapshotHash: undefined
+      }))
+
+      storageData.syncStatus = {
+        ...(storageData.syncStatus as any),
+        guard: {
+          ...cleanedGuard,
+          syncInFlight: true,
+          pendingSnapshotHash: 'stale'
+        }
+      }
+      vi.spyOn(cloudStrategy, 'getStatus').mockResolvedValue({ enabled: true, lastSyncTime: 1 })
+      vi.spyOn(localStrategy, 'getStatus').mockResolvedValue({ enabled: true, lastSyncTime: 1 })
+
+      await orchestrator.getStatus()
+
       expect((storageData.syncStatus as any).guard).toEqual(expect.objectContaining({
         syncInFlight: false,
         pendingSnapshotHash: undefined

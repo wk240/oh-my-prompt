@@ -33,6 +33,7 @@ interface SyncTriggerResult {
 }
 
 const STORAGE_KEY = 'prompt_script_data'
+const SYNC_IN_FLIGHT_STALE_MS = 5 * 60 * 1000
 
 /**
  * SyncOrchestrator coordinates cloud and local sync strategies.
@@ -53,8 +54,10 @@ export class SyncOrchestrator {
   // Store last sync results for access after RetryManager.execute()
   private lastCloudSyncResult: SyncResult | null = null
   private lastLocalSyncResult: LocalSyncResult | null = null
+  private readonly guardOwnerId = crypto.randomUUID()
   private activeSyncPromise: Promise<SyncTriggerResult> | null = null
-  private guardWriteChain: Promise<void> = Promise.resolve()
+  private syncStatusWriteChain: Promise<void> = Promise.resolve()
+  private lastKnownGuard: SyncGuardStatus | undefined = undefined
   private pendingSnapshot: FullBackupData | null = null
   private pendingSnapshotVersion = 0
 
@@ -153,13 +156,20 @@ export class SyncOrchestrator {
     let guard = status.guard || await this.getGuardStatus()
 
     if (guard.syncInFlight) {
+      if (!this.canTakeOverGuardLock(guard)) {
+        await this.updateGuardStatus({ pendingSnapshotHash: snapshotHash })
+        return { cloudSynced: false, localSynced: false, skipped: true }
+      }
+
       await this.updateGuardStatus({
         syncInFlight: false,
+        lockOwnerId: undefined,
         pendingSnapshotHash: undefined
       })
       guard = {
         ...guard,
         syncInFlight: false,
+        lockOwnerId: undefined,
         pendingSnapshotHash: undefined
       }
     } else if (guard.pendingSnapshotHash && !guard.syncInFlight && !this.pendingSnapshot) {
@@ -179,6 +189,7 @@ export class SyncOrchestrator {
 
     await this.updateGuardStatus({
       syncInFlight: true,
+      lockOwnerId: this.guardOwnerId,
       lastUploadStartedAt: Date.now(),
       pendingSnapshotHash: undefined
     })
@@ -193,7 +204,10 @@ export class SyncOrchestrator {
       }
       return result
     } finally {
-      await this.updateGuardStatus({ syncInFlight: false })
+      await this.updateGuardStatus({
+        syncInFlight: false,
+        lockOwnerId: undefined
+      })
       await this.drainPendingSnapshot(snapshotHash)
     }
   }
@@ -903,14 +917,26 @@ export class SyncOrchestrator {
   }
 
   private async updateSyncStatus(updates: Partial<UnifiedSyncStatus & { initialized?: boolean }>): Promise<void> {
-    const result = await chrome.storage.local.get('syncStatus')
-    const existing = result.syncStatus || {}
-
-    await chrome.storage.local.set({
-      syncStatus: {
+    const hasGuardUpdate = Object.prototype.hasOwnProperty.call(updates, 'guard')
+    await this.enqueueSyncStatusUpdate(existing => {
+      const { guard: guardUpdates, ...statusUpdates } = updates
+      const nextStatus: Partial<UnifiedSyncStatus & { initialized?: boolean }> = {
         ...existing,
-        ...updates
+        ...statusUpdates
       }
+
+      if (hasGuardUpdate) {
+        nextStatus.guard = {
+          ...(existing.guard || {}),
+          ...(guardUpdates || {})
+        }
+      } else if (this.lastKnownGuard) {
+        nextStatus.guard = this.lastKnownGuard
+      } else if (existing.guard) {
+        nextStatus.guard = existing.guard
+      }
+
+      return nextStatus
     })
   }
 
@@ -921,7 +947,15 @@ export class SyncOrchestrator {
 
   private async getGuardStatus(): Promise<SyncGuardStatus> {
     const status = await this.getSyncStatus()
+    this.lastKnownGuard = status.guard || this.lastKnownGuard
     return status.guard || {}
+  }
+
+  private canTakeOverGuardLock(guard: SyncGuardStatus): boolean {
+    if (!guard.lockOwnerId) return true
+    if (guard.lockOwnerId === this.guardOwnerId) return true
+    if (!guard.lastUploadStartedAt) return true
+    return Date.now() - guard.lastUploadStartedAt > SYNC_IN_FLIGHT_STALE_MS
   }
 
   private hasPendingRetryNeeds(status: Partial<UnifiedSyncStatus & { initialized?: boolean }>): boolean {
@@ -937,16 +971,39 @@ export class SyncOrchestrator {
   }
 
   private async updateGuardStatus(updates: Partial<SyncGuardStatus>): Promise<void> {
-    const write = this.guardWriteChain.then(async () => {
-      const status = await this.getSyncStatus()
-      await this.updateSyncStatus({
-        guard: {
-          ...(status.guard || {}),
-          ...updates
-        }
-      })
+    await this.enqueueSyncStatusUpdate(existing => {
+      const guard = {
+        ...(existing.guard || {}),
+        ...updates
+      }
+      this.lastKnownGuard = guard
+
+      return {
+        ...existing,
+        guard
+      }
     })
-    this.guardWriteChain = write.catch(() => undefined)
+  }
+
+  private async enqueueSyncStatusUpdate(
+    updater: (
+      existing: Partial<UnifiedSyncStatus & { initialized?: boolean }>
+    ) => Partial<UnifiedSyncStatus & { initialized?: boolean }>
+  ): Promise<void> {
+    const write = this.syncStatusWriteChain.then(async () => {
+      const result = await chrome.storage.local.get('syncStatus')
+      const existing = result.syncStatus || {}
+      const nextStatus = updater(existing)
+
+      await chrome.storage.local.set({
+        syncStatus: nextStatus
+      })
+
+      if (nextStatus.guard) {
+        this.lastKnownGuard = nextStatus.guard
+      }
+    })
+    this.syncStatusWriteChain = write.catch(() => undefined)
     await write
   }
 

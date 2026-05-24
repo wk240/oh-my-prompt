@@ -75,6 +75,7 @@ export interface SyncGuardStatus {
   lastUploadStartedAt?: number
   lastCloudUploadAt?: number
   syncInFlight?: boolean
+  lockOwnerId?: string
   pendingSnapshotHash?: string
 }
 

@@ -4,7 +4,7 @@ import { User, LogIn, Sparkles, ArrowRight } from 'lucide-react'
 import { Button } from '@/popup/components/ui/button'
 import { MessageType } from '@oh-my-prompt/shared/messages'
 import type { ProviderConfig, CloudAuthState, Provider, ProviderGroup } from '@oh-my-prompt/shared/types'
-import { getAuthState, signOut } from '@/lib/cloud-sync/auth-service'
+import { getAuthState, getCachedAuthState, signOut } from '@/lib/cloud-sync/auth-service'
 import { clearSupabaseClient } from '@/lib/cloud-sync/supabase-client'
 import { WEB_APP_URL } from '@/lib/config'
 import { SavedConfigsList } from '@/popup/components/SavedConfigsList'
@@ -34,9 +34,16 @@ export default function MineView() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
+  const refreshAuthState = async () => {
+    const cachedState = await getCachedAuthState()
+    setAuthState(cachedState)
+    const fullState = await getAuthState()
+    setAuthState(fullState)
+  }
+
   // Load initial data
   useEffect(() => {
-    getAuthState().then(setAuthState)
+    refreshAuthState()
     const loadedProviders = loadSupportedProviders()
     setProviders(loadedProviders)
     setProviderGroups(groupProvidersByType(loadedProviders, true)) // exclude official
@@ -52,7 +59,7 @@ export default function MineView() {
           clearSupabaseClient()
           setAuthState({ status: 'not_logged_in' })
         } else {
-          getAuthState().then(setAuthState)
+          refreshAuthState()
         }
       }
     }
@@ -63,7 +70,7 @@ export default function MineView() {
       if (changes[storageKey]) {
         // Auth token changed - refresh auth state
         clearSupabaseClient() // Clear cache to force fresh read
-        getAuthState().then(setAuthState)
+        refreshAuthState()
       }
     }
 

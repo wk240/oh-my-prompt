@@ -9,7 +9,7 @@ import type { Prompt, Category, StorageSchema, TeamPrompt, TeamSyncStatus, Cloud
 import { MessageType } from '@oh-my-prompt/shared/messages'
 import { sortPromptsByOrder } from '@oh-my-prompt/shared/utils'
 import { syncTeamPrompts, getAuthToken } from '@/lib/team-sync'
-import { getAuthState } from '@/lib/cloud-sync/auth-service'
+import { getAuthState, getCachedAuthState } from '@/lib/cloud-sync/auth-service'
 import { WEB_APP_URL } from '@/lib/config'
 
 interface PromptStore {
@@ -618,6 +618,8 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
   },
 
   loadAuthState: async () => {
+    const cachedAuthState = await getCachedAuthState()
+    set({ authState: cachedAuthState })
     const authState = await getAuthState()
     set({ authState })
   },

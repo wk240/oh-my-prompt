@@ -81,6 +81,20 @@ const STATUS_CACHE_DURATION_MS = 60 * 1000 // 60 seconds
 
 const SUPABASE_AUTH_KEY = `sb-${SUPABASE_PROJECT_REF}-auth-token`
 
+function getAuthStateFromCache(): CloudAuthState | null {
+  const nowMs = Date.now()
+  if (!cachedSyncStatus || nowMs - cachedSyncStatus.timestamp >= STATUS_CACHE_DURATION_MS) {
+    return null
+  }
+
+  return {
+    status: 'logged_in',
+    user: cachedSyncStatus.user,
+    subscription: cachedSyncStatus.subscription,
+    lastSyncAt: cachedSyncStatus.lastSyncAt
+  }
+}
+
 /**
  * Get session directly from chrome.storage.local (bypassing Supabase client).
  *
@@ -125,6 +139,32 @@ export async function getSessionFromStorage(): Promise<{
 }
 
 /**
+ * Get auth state quickly from local storage/cache only (no network request).
+ * Useful for instant UI hydration before fetching subscription details.
+ */
+export async function getCachedAuthState(): Promise<CloudAuthState> {
+  try {
+    const directSession = await getSessionFromStorage()
+    if (!directSession) {
+      return { status: 'not_logged_in' }
+    }
+
+    const cachedState = getAuthStateFromCache()
+    if (cachedState) {
+      return cachedState
+    }
+
+    return {
+      status: 'logged_in',
+      user: directSession.user
+    }
+  } catch (error) {
+    console.error('[Oh My Prompt] Cached auth state check failed:', error)
+    return { status: 'not_logged_in' }
+  }
+}
+
+/**
  * Get the current authentication state with subscription info.
  *
  * Flow:
@@ -147,14 +187,9 @@ export async function getAuthState(): Promise<CloudAuthState> {
     }
 
     // Check if cached status is valid (for subscription info)
-    const nowMs = Date.now()
-    if (cachedSyncStatus && nowMs - cachedSyncStatus.timestamp < STATUS_CACHE_DURATION_MS) {
-      return {
-        status: 'logged_in',
-        user: cachedSyncStatus.user,
-        subscription: cachedSyncStatus.subscription,
-        lastSyncAt: cachedSyncStatus.lastSyncAt
-      }
+    const cachedState = getAuthStateFromCache()
+    if (cachedState) {
+      return cachedState
     }
 
     // Get subscription status from sync/status API
@@ -200,7 +235,7 @@ export async function getAuthState(): Promise<CloudAuthState> {
           optimizationQuota: statusData.optimizationQuota
         } : undefined,
         lastSyncAt: statusData.lastSyncedAt,
-        timestamp: nowMs
+        timestamp: Date.now()
       }
 
       return {

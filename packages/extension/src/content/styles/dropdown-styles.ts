@@ -1693,6 +1693,12 @@ export const DROPDOWN_STYLES = `
     width: 100%;
   }
 
+  /* Override Tooltip wrapper div width in card actions */
+  #${PORTAL_ID} .team-prompt-card-actions > div {
+    width: auto;
+    flex-shrink: 0;
+  }
+
   /* Individual action button */
   #${PORTAL_ID} .team-prompt-card-btn {
     width: 24px;

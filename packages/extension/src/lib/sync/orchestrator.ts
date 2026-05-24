@@ -756,7 +756,7 @@ export class SyncOrchestrator {
       }
     }
 
-    return {
+    const fullStatus: UnifiedSyncStatus = {
       cloudEnabled: cloudStatus.enabled,
       cloudLoggedIn: cloudStatus.enabled, // Reuse getStatus result (no extra API call)
       // Use local storage value for lastCloudSyncTime (written immediately after sync)
@@ -777,6 +777,11 @@ export class SyncOrchestrator {
         temporaryPromptIds: []
       }
     }
+
+    // Cache full status for instant load on next open
+    await this.updateSyncStatus(fullStatus)
+
+    return fullStatus
   }
 
   // Private helpers

@@ -804,6 +804,12 @@
   width: 100%;
 }
 
+/* Override Tooltip wrapper div width in card actions */
+.network-card-actions > div {
+  width: auto;
+  flex-shrink: 0;
+}
+
 .network-card-btn {
   width: 24px;
   height: 24px;

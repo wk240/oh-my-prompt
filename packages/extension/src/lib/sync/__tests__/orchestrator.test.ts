@@ -1335,6 +1335,136 @@ describe('SyncOrchestrator', () => {
       expect(result.data.prompts[0].id).toBe('kept-prompt')
       expect(result.data.prompts[0].categoryId).toBe('kept-cat')
     })
+
+    it('should canonicalize cyclic aliases to one stable ID', async () => {
+      storageData.syncStatus = {
+        idAliasMap: {
+          prompts: { a: 'b', b: 'a' }
+        }
+      }
+
+      const cloudData = makeBackupData({
+        prompts: [{ id: 'a', name: 'Cycle', content: 'new', categoryId: 'c1', order: 0, updatedAt: 200 }],
+        categories: [{ id: 'c1', name: 'Category', order: 0, updatedAt: 200 }]
+      })
+      const localData = makeBackupData({
+        prompts: [{ id: 'b', name: 'Cycle', content: 'old', categoryId: 'c1', order: 0, updatedAt: 100 }],
+        categories: [{ id: 'c1', name: 'Category', order: 0, updatedAt: 100 }]
+      })
+
+      vi.spyOn(cloudStrategy, 'restore').mockResolvedValue(cloudData)
+      storageData.prompt_script_data = {
+        userData: { prompts: localData.prompts, categories: localData.categories },
+        temporaryPrompts: localData.temporaryPrompts
+      }
+
+      const result = await orchestrator.downloadAndMerge({ reason: 'manual' })
+
+      expect(result.data.prompts).toHaveLength(1)
+      expect(result.data.prompts[0].id).toBe('a')
+      expect(result.data.prompts[0].content).toBe('new')
+    })
+
+    it('should dedupe equal updatedAt aliases deterministically independent of input order', async () => {
+      storageData.syncStatus = {
+        idAliasMap: {
+          prompts: { old: 'kept' }
+        }
+      }
+
+      const firstLocalData = makeBackupData({
+        prompts: [
+          { id: 'old', name: 'Stable', content: 'B', categoryId: 'c1', order: 0, updatedAt: 100 },
+          { id: 'kept', name: 'Stable', content: 'A', categoryId: 'c1', order: 0, updatedAt: 100 }
+        ],
+        categories: [{ id: 'c1', name: 'Category', order: 0, updatedAt: 100 }]
+      })
+      const secondLocalData = makeBackupData({
+        prompts: [...firstLocalData.prompts].reverse(),
+        categories: firstLocalData.categories
+      })
+      const cloudData = makeBackupData({
+        categories: [{ id: 'c1', name: 'Category', order: 0, updatedAt: 100 }]
+      })
+
+      vi.spyOn(cloudStrategy, 'restore').mockResolvedValue(cloudData)
+      storageData.prompt_script_data = {
+        userData: { prompts: firstLocalData.prompts, categories: firstLocalData.categories },
+        temporaryPrompts: firstLocalData.temporaryPrompts
+      }
+      const firstResult = await orchestrator.downloadAndMerge({ reason: 'manual' })
+
+      storageData.prompt_script_data = {
+        userData: { prompts: secondLocalData.prompts, categories: secondLocalData.categories },
+        temporaryPrompts: secondLocalData.temporaryPrompts
+      }
+      const secondResult = await orchestrator.downloadAndMerge({ reason: 'manual' })
+
+      expect(firstResult.data.prompts).toHaveLength(1)
+      expect(secondResult.data.prompts).toHaveLength(1)
+      expect(firstResult.data.prompts[0].content).toBe('A')
+      expect(secondResult.data.prompts[0].content).toBe('A')
+    })
+
+    it('should remap temporary prompt aliases and keep categoryId temporary', async () => {
+      storageData.syncStatus = {
+        idAliasMap: {
+          temporaryPrompts: { 'old-temp': 'kept-temp' }
+        }
+      }
+
+      const cloudData = makeBackupData({
+        temporaryPrompts: [{ id: 'kept-temp', name: 'Temp', content: 'new', categoryId: 'temporary', order: 0, updatedAt: 200 }]
+      })
+      const localData = makeBackupData({
+        temporaryPrompts: [{ id: 'old-temp', name: 'Temp', content: 'old', categoryId: 'not-temporary', order: 0, updatedAt: 100 }]
+      })
+
+      vi.spyOn(cloudStrategy, 'restore').mockResolvedValue(cloudData)
+      storageData.prompt_script_data = {
+        userData: { prompts: localData.prompts, categories: localData.categories },
+        temporaryPrompts: localData.temporaryPrompts
+      }
+
+      const result = await orchestrator.downloadAndMerge({ reason: 'manual' })
+
+      expect(result.data.temporaryPrompts).toHaveLength(1)
+      expect(result.data.temporaryPrompts[0].id).toBe('kept-temp')
+      expect(result.data.temporaryPrompts[0].categoryId).toBe('temporary')
+      expect(result.data.temporaryPrompts[0].content).toBe('new')
+    })
+
+    it('should apply alias remap when previewing merge', async () => {
+      storageData.syncStatus = {
+        idAliasMap: {
+          categories: { 'old-cat': 'kept-cat' },
+          prompts: { 'old-prompt': 'kept-prompt' }
+        }
+      }
+
+      const cloudData = makeBackupData({
+        categories: [{ id: 'kept-cat', name: 'Ideas', order: 0, updatedAt: 200 }],
+        prompts: [{ id: 'kept-prompt', name: 'A', content: 'new', categoryId: 'kept-cat', order: 0, updatedAt: 200 }]
+      })
+      const localData = makeBackupData({
+        categories: [{ id: 'old-cat', name: 'Ideas', order: 1, updatedAt: 100 }],
+        prompts: [{ id: 'old-prompt', name: 'A', content: 'old', categoryId: 'old-cat', order: 0, updatedAt: 100 }]
+      })
+
+      vi.spyOn(cloudStrategy, 'restore').mockResolvedValue(cloudData)
+      storageData.prompt_script_data = {
+        userData: { prompts: localData.prompts, categories: localData.categories },
+        temporaryPrompts: localData.temporaryPrompts
+      }
+
+      const preview = await orchestrator.previewMerge()
+
+      expect(preview.mergedCount.categories).toBe(1)
+      expect(preview.mergedCount.prompts).toBe(1)
+      expect(preview.cloudOnlyItems.categories).toHaveLength(0)
+      expect(preview.localOnlyItems.categories).toHaveLength(0)
+      expect(preview.changes.updateToLocal).toBe(2)
+    })
   })
 
   describe('uploadLocalOnlyItems', () => {

@@ -896,12 +896,20 @@ export class SyncOrchestrator {
   private resolveAliasId(id: string, map: Record<string, string> = {}): string {
     if (id === 'temporary') return id
 
-    const seen = new Set<string>()
+    const path: string[] = []
+    const seen = new Map<string, number>()
     let current = id
-    while (map[current] && !seen.has(current)) {
-      seen.add(current)
+
+    while (map[current]) {
+      const seenAt = seen.get(current)
+      if (seenAt !== undefined) {
+        return path.slice(seenAt).sort()[0]
+      }
+      seen.set(current, path.length)
+      path.push(current)
       current = map[current]
     }
+
     return current
   }
 
@@ -933,11 +941,38 @@ export class SyncOrchestrator {
     const deduped = new Map<string, T>()
     for (const item of items) {
       const existing = deduped.get(item.id)
-      if (!existing || (item.updatedAt || 0) >= (existing.updatedAt || 0)) {
+      if (!existing || this.shouldReplaceDedupedItem(existing, item)) {
         deduped.set(item.id, item)
       }
     }
     return Array.from(deduped.values())
+  }
+
+  private shouldReplaceDedupedItem<T extends { updatedAt?: number }>(existing: T, candidate: T): boolean {
+    const existingUpdated = existing.updatedAt || 0
+    const candidateUpdated = candidate.updatedAt || 0
+
+    if (candidateUpdated !== existingUpdated) {
+      return candidateUpdated > existingUpdated
+    }
+
+    // Equal timestamps can occur after alias remapping. Pick the lexically
+    // smallest stable object representation so results do not depend on array order.
+    return this.stableStringify(candidate) < this.stableStringify(existing)
+  }
+
+  private stableStringify(value: unknown): string {
+    if (!value || typeof value !== 'object') {
+      return JSON.stringify(value)
+    }
+    if (Array.isArray(value)) {
+      return `[${value.map(item => this.stableStringify(item)).join(',')}]`
+    }
+
+    const record = value as Record<string, unknown>
+    return `{${Object.keys(record).sort().map(key => {
+      return `${JSON.stringify(key)}:${this.stableStringify(record[key])}`
+    }).join(',')}}`
   }
 
   private canTakeOverGuardLock(guard: SyncGuardStatus): boolean {

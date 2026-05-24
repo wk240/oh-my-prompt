@@ -35,10 +35,11 @@ describe('SyncOrchestrator', () => {
   let orchestrator: SyncOrchestrator
   let cloudStrategy: CloudSyncStrategy
   let localStrategy: LocalSyncStrategy
+  let storageData: Record<string, unknown>
 
   beforeEach(() => {
     vi.clearAllMocks()
-    const storageData: Record<string, unknown> = {}
+    storageData = {}
 
     // Create fresh strategy instances
     cloudStrategy = new CloudSyncStrategy()
@@ -88,6 +89,102 @@ describe('SyncOrchestrator', () => {
 
       expect(result.skipped).toBe(true)
       expect(cloudStrategy.sync).not.toHaveBeenCalled()
+    })
+
+    it('should recover an orphaned persisted in-flight guard and run sync', async () => {
+      const data = makeBackupData({ promptId: 'p1', updatedAt: 100 })
+
+      storageData.syncStatus = {
+        guard: {
+          syncInFlight: true,
+          lastUploadStartedAt: Date.now()
+        }
+      }
+      vi.spyOn(cloudStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(localStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(cloudStrategy, 'sync').mockResolvedValue({ success: true, syncedAt: 1 })
+
+      const result = await orchestrator.triggerSync(data)
+
+      expect(result.cloudSynced).toBe(true)
+      expect(cloudStrategy.sync).toHaveBeenCalledWith(data)
+      expect((storageData.syncStatus as any).guard).toEqual(expect.objectContaining({
+        syncInFlight: false,
+        pendingSnapshotHash: undefined
+      }))
+    })
+
+    it('should recover a stale persisted in-flight guard and clear durable pending state', async () => {
+      const data = makeBackupData({ promptId: 'p1', updatedAt: 100 })
+
+      storageData.syncStatus = {
+        guard: {
+          syncInFlight: true,
+          pendingSnapshotHash: 'stale-pending',
+          lastUploadStartedAt: 1
+        }
+      }
+      vi.spyOn(cloudStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(localStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(cloudStrategy, 'sync').mockResolvedValue({ success: true, syncedAt: 1 })
+
+      const result = await orchestrator.triggerSync(data)
+
+      expect(result.cloudSynced).toBe(true)
+      expect(cloudStrategy.sync).toHaveBeenCalledWith(data)
+      expect((storageData.syncStatus as any).guard).toEqual(expect.objectContaining({
+        syncInFlight: false,
+        pendingSnapshotHash: undefined
+      }))
+    })
+
+    it('should leave guard clean after draining the latest pending snapshot', async () => {
+      const first = makeBackupData({ promptId: 'p1', updatedAt: 100 })
+      const second = makeBackupData({ promptId: 'p1', updatedAt: 200 })
+      const third = makeBackupData({ promptId: 'p1', updatedAt: 300 })
+
+      vi.spyOn(cloudStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(localStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.mocked(executeLocalSync).mockResolvedValue({ success: true, syncedAt: 1 })
+
+      let releaseFirst: (() => void) | undefined
+      vi.spyOn(cloudStrategy, 'sync').mockImplementationOnce(() => new Promise(resolve => {
+        releaseFirst = () => resolve({ success: true, syncedAt: 1 })
+      })).mockResolvedValue({ success: true, syncedAt: 2 })
+
+      const firstRun = orchestrator.triggerSync(first)
+      const secondRun = orchestrator.triggerSync(second)
+      const thirdRun = orchestrator.triggerSync(third)
+
+      await vi.waitFor(() => {
+        expect(releaseFirst).toBeTypeOf('function')
+      })
+      releaseFirst()
+      await Promise.all([firstRun, secondRun, thirdRun])
+
+      expect(cloudStrategy.sync).toHaveBeenCalledTimes(2)
+      expect(cloudStrategy.sync).toHaveBeenNthCalledWith(2, third)
+      expect((storageData.syncStatus as any).guard).toEqual(expect.objectContaining({
+        syncInFlight: false,
+        pendingSnapshotHash: undefined
+      }))
+    })
+
+    it('should not throw when runtime messaging is unavailable in tests', async () => {
+      const data = makeBackupData({ promptId: 'p1', updatedAt: 100 })
+
+      global.chrome = {
+        storage: {
+          local: chrome.storage.local
+        }
+      } as any
+      vi.spyOn(cloudStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(localStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(cloudStrategy, 'sync').mockResolvedValue({ success: true, syncedAt: 1 })
+
+      await expect(orchestrator.triggerSync(data)).resolves.toEqual(expect.objectContaining({
+        cloudSynced: true
+      }))
     })
 
     it('should recover a stale persisted in-flight guard and run sync', async () => {

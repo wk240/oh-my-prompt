@@ -33,7 +33,6 @@ interface SyncTriggerResult {
 }
 
 const STORAGE_KEY = 'prompt_script_data'
-const SYNC_IN_FLIGHT_STALE_MS = 5 * 60 * 1000
 
 /**
  * SyncOrchestrator coordinates cloud and local sync strategies.
@@ -55,6 +54,7 @@ export class SyncOrchestrator {
   private lastCloudSyncResult: SyncResult | null = null
   private lastLocalSyncResult: LocalSyncResult | null = null
   private activeSyncPromise: Promise<SyncTriggerResult> | null = null
+  private guardWriteChain: Promise<void> = Promise.resolve()
   private pendingSnapshot: FullBackupData | null = null
   private pendingSnapshotVersion = 0
 
@@ -99,27 +99,31 @@ export class SyncOrchestrator {
    * Notify UI about retry progress.
    */
   private notifyRetryProgress(target: 'cloud' | 'local', state: { retryCount: number; retryScheduledAt?: number }): void {
-    chrome.runtime.sendMessage({
+    this.safeSendMessage({
       type: MessageType.BACKUP_RETRY,
       payload: {
         target,
         retryCount: state.retryCount,
         retryScheduledAt: state.retryScheduledAt
       }
-    }).catch(() => { /* UI may not be listening */ })
+    })
   }
 
   /**
    * Notify UI about backup completion.
    */
   private notifyBackupComplete(target: 'cloud' | 'local', success: boolean): void {
-    chrome.runtime.sendMessage({
+    this.safeSendMessage({
       type: MessageType.BACKUP_COMPLETE,
       payload: {
         target,
         success
       }
-    }).catch(() => { /* UI may not be listening */ })
+    })
+  }
+
+  private safeSendMessage(message: unknown): void {
+    chrome.runtime?.sendMessage?.(message).catch(() => { /* UI may not be listening */ })
   }
 
   /**
@@ -146,9 +150,9 @@ export class SyncOrchestrator {
   private async triggerSyncWithGuards(data: FullBackupData): Promise<SyncTriggerResult> {
     const snapshotHash = await computeBackupDataHash(data)
     const status = await this.getSyncStatus()
-    let guard = await this.getGuardStatus()
+    let guard = status.guard || await this.getGuardStatus()
 
-    if (guard.syncInFlight && this.isGuardStale(guard)) {
+    if (guard.syncInFlight) {
       await this.updateGuardStatus({
         syncInFlight: false,
         pendingSnapshotHash: undefined
@@ -199,7 +203,7 @@ export class SyncOrchestrator {
     this.pendingSnapshot = data
 
     const snapshotHash = await computeBackupDataHash(data)
-    if (version === this.pendingSnapshotVersion) {
+    if (version === this.pendingSnapshotVersion && this.pendingSnapshot === data) {
       await this.updateGuardStatus({ pendingSnapshotHash: snapshotHash })
     }
 
@@ -208,10 +212,10 @@ export class SyncOrchestrator {
 
   private async runSyncNow(data: FullBackupData): Promise<SyncTriggerResult> {
     // Notify UI that sync is starting
-    chrome.runtime.sendMessage({
+    this.safeSendMessage({
       type: MessageType.BACKUP_PROGRESS,
       payload: { cloud: true, local: true }
-    }).catch(() => { /* UI may not be listening */ })
+    })
 
     // Update sync status to indicate syncing
     await this.updateSyncStatus({
@@ -920,11 +924,6 @@ export class SyncOrchestrator {
     return status.guard || {}
   }
 
-  private isGuardStale(guard: SyncGuardStatus): boolean {
-    if (!guard.lastUploadStartedAt) return true
-    return Date.now() - guard.lastUploadStartedAt > SYNC_IN_FLIGHT_STALE_MS
-  }
-
   private hasPendingRetryNeeds(status: Partial<UnifiedSyncStatus & { initialized?: boolean }>): boolean {
     return Boolean(
       status.pendingUpload ||
@@ -938,13 +937,17 @@ export class SyncOrchestrator {
   }
 
   private async updateGuardStatus(updates: Partial<SyncGuardStatus>): Promise<void> {
-    const status = await this.getSyncStatus()
-    await this.updateSyncStatus({
-      guard: {
-        ...(status.guard || {}),
-        ...updates
-      }
+    const write = this.guardWriteChain.then(async () => {
+      const status = await this.getSyncStatus()
+      await this.updateSyncStatus({
+        guard: {
+          ...(status.guard || {}),
+          ...updates
+        }
+      })
     })
+    this.guardWriteChain = write.catch(() => undefined)
+    await write
   }
 
   private async drainPendingSnapshot(completedHash: string): Promise<void> {

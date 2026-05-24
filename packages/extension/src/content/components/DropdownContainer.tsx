@@ -11,7 +11,7 @@ import type { TeamPrompt } from '@oh-my-prompt/shared/types'
 import type { AgentTemplateCategory } from '@oh-my-prompt/shared/types/agent'
 import type { ResourcePrompt, ResourceCategory, UpdateStatus } from '@oh-my-prompt/shared/types'
 import { truncateText, sortCategoriesByOrder, sortPromptsByOrder, sortProviderCategoriesByOrder, sortResourcePromptsByCategoryOrder } from '@oh-my-prompt/shared/utils'
-import { Sparkles, Palette, Shapes, ArrowUpRight, FolderOpen, Layers, Sparkle, Brush, GripVertical, Database, ArrowLeft, Sun, Frame, Paintbrush, Image, ArrowUpCircle, Plus, Pencil, Trash2, ExternalLink, AlertTriangle, Settings, Clock, Copy, Users, Loader2, Share2 } from 'lucide-react'
+import { Sparkles, Palette, Shapes, ArrowUpRight, FolderOpen, Layers, Sparkle, Brush, GripVertical, Database, ArrowLeft, Sun, Frame, Paintbrush, Image, ArrowUpCircle, Plus, Pencil, Trash2, ExternalLink, AlertTriangle, Settings, Clock, Copy, Users, Loader2, Share2, Bot } from 'lucide-react'
 import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -1450,7 +1450,7 @@ export function DropdownContainer({
                   onClick={() => setAgentSelectedTemplate(template.id)}
                 >
                   <div className="sidebar-category-icon-wrapper">
-                    <Sparkles className="sidebar-category-icon" style={{ color: agentSelectedTemplate === template.id ? '#A16207' : '#64748B' }} />
+                    <Bot className="sidebar-category-icon" style={{ color: agentSelectedTemplate === template.id ? '#A16207' : '#64748B' }} />
                   </div>
                   <Tooltip content={template.description} maxWidth={600}>
                     <span>{template.name}</span>
@@ -1506,7 +1506,7 @@ export function DropdownContainer({
                 aria-label="Agent"
               >
                 <div className="sidebar-category-icon-wrapper">
-                  <Sparkles className="sidebar-category-icon" style={{ color: '#A16207' }} />
+                  <Bot className="sidebar-category-icon" style={{ color: '#A16207' }} />
                 </div>
                 <span style={{ color: '#A16207' }}>Agent</span>
               </button>

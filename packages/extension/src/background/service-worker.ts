@@ -8,7 +8,7 @@ import { syncApiConfigToFolder } from '../lib/sync/api-config-sync'
 import { checkForUpdate, getUpdateStatus, clearUpdateStatus, type UpdateStatus } from '../lib/version-checker'
 import { executeVisionApiCallWithProviderConfig, classifyApiError, getLanguagePreference } from '../lib/vision-api'
 import { asyncCompressImageFromUrl } from '../lib/image-utils'
-import { CAPTURED_IMAGE_STORAGE_KEY, VISION_API_CONFIG_STORAGE_KEY, PROVIDER_CONFIGS_STORAGE_KEY, LEGACY_VISION_API_CONFIG_KEY } from '@oh-my-prompt/shared/constants'
+import { CAPTURED_IMAGE_STORAGE_KEY, VISION_API_CONFIG_STORAGE_KEY, PROVIDER_CONFIGS_STORAGE_KEY, LEGACY_VISION_API_CONFIG_KEY, STORAGE_KEY } from '@oh-my-prompt/shared/constants'
 import { validateProviderConfig, maskApiKey } from '../lib/config-validator'
 import { sendToOffscreen } from '../lib/offscreen-manager'
 import '../lib/migrations/register' // Register all migrations
@@ -78,7 +78,7 @@ let pendingSyncResolve: ((value: { success: boolean; error?: { type: string; mes
 const SYNC_DEBOUNCE_MS = 500 // 500ms debounce for sync operations
 
 /**
- * Debounced triggerSync - batches rapid sync requests
+ * Debounced orchestrator auto-sync - batches rapid SET_STORAGE sync requests
  * @param backupData - Full backup data to sync
  * @returns Promise that resolves when sync completes
  */
@@ -113,11 +113,13 @@ function debouncedTriggerSync(backupData: FullBackupData): Promise<{ success: bo
           return
         }
 
-        const syncResult = await triggerSync(dataToSync)
+        const syncResult = await syncOrchestrator.triggerSync(dataToSync)
+        const success = syncResult.cloudSynced || syncResult.localSynced || syncResult.skipped === true
+        const message = syncResult.cloudError || syncResult.localError
 
         const result = {
-          success: syncResult.success,
-          error: syncResult.error
+          success,
+          ...(success || !message ? {} : { error: { type: 'unknown', message } })
         }
 
         if (pendingSyncResolve) {
@@ -325,25 +327,31 @@ chrome.runtime.onMessage.addListener(
           return true
         }
 
-        // Merge with existing settings to preserve syncEnabled, etc.
-        storageManager.getData()
-          .then(existingData => {
+        // Merge with existing stored data directly to avoid StorageManager auto-sync side effects.
+        chrome.storage.local.get(STORAGE_KEY)
+          .then(result => {
+            const existingData = result[STORAGE_KEY] as Partial<StorageSchema> | undefined
             const payload = message.payload as StorageSchema
+            const payloadSettings = payload.settings as Partial<SyncSettings> | undefined
             // Preserve existing settings if payload doesn't have full settings
             const mergedSettings: SyncSettings = {
-              ...existingData.settings,
-              ...payload.settings
+              showBuiltin: true,
+              syncEnabled: false,
+              visionEnabled: true,
+              visionDefaultFormat: 'natural',
+              ...existingData?.settings,
+              ...payloadSettings
             }
 
             const mergedData: StorageSchema = {
               version: payload.version,
               userData: payload.userData,
               settings: mergedSettings,
-              temporaryPrompts: payload.temporaryPrompts ?? existingData.temporaryPrompts,
-              _migrationComplete: payload._migrationComplete ?? existingData._migrationComplete
+              temporaryPrompts: payload.temporaryPrompts ?? existingData?.temporaryPrompts ?? [],
+              _migrationComplete: payload._migrationComplete ?? existingData?._migrationComplete ?? true
             }
 
-            return storageManager.saveData(mergedData).then(() => mergedData)
+            return chrome.storage.local.set({ [STORAGE_KEY]: mergedData }).then(() => mergedData)
           })
           .then((savedData: StorageSchema) => {
             // Trigger debounced sync with full backup data (including temporary prompts)

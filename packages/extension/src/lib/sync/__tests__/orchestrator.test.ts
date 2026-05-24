@@ -3,10 +3,33 @@ import { SyncOrchestrator } from '../orchestrator'
 import { CloudSyncStrategy } from '../strategies/cloud'
 import { LocalSyncStrategy } from '../strategies/local'
 import { FullBackupData, MergeResult } from '../types'
+import { computeBackupDataHash } from '../hash'
+import { executeLocalSync } from '../local-sync-executor'
 
 // Mock the strategies
 vi.mock('../strategies/cloud')
 vi.mock('../strategies/local')
+vi.mock('../local-sync-executor', () => ({
+  executeLocalSync: vi.fn()
+}))
+
+function makeBackupData({ promptId, updatedAt }: { promptId: string; updatedAt: number }): FullBackupData {
+  return {
+    prompts: [
+      {
+        id: promptId,
+        name: `Prompt ${promptId}`,
+        content: `Content ${updatedAt}`,
+        categoryId: 'c1',
+        order: 0,
+        updatedAt
+      }
+    ],
+    categories: [{ id: 'c1', name: 'Category', order: 0, updatedAt }],
+    temporaryPrompts: [],
+    timestamp: updatedAt
+  }
+}
 
 describe('SyncOrchestrator', () => {
   let orchestrator: SyncOrchestrator
@@ -15,6 +38,7 @@ describe('SyncOrchestrator', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    const storageData: Record<string, unknown> = {}
 
     // Create fresh strategy instances
     cloudStrategy = new CloudSyncStrategy()
@@ -23,16 +47,154 @@ describe('SyncOrchestrator', () => {
 
     // Mock chrome.storage.local
     global.chrome = {
+      runtime: {
+        sendMessage: vi.fn().mockResolvedValue(undefined),
+        getManifest: vi.fn().mockReturnValue({ version: '2.0.0' })
+      },
       storage: {
         local: {
-          get: vi.fn().mockResolvedValue({}),
-          set: vi.fn().mockResolvedValue(undefined)
+          get: vi.fn(async (keys?: string | string[]) => {
+            if (!keys) return storageData
+            if (typeof keys === 'string') {
+              return { [keys]: storageData[keys] }
+            }
+            return keys.reduce<Record<string, unknown>>((result, key) => {
+              result[key] = storageData[key]
+              return result
+            }, {})
+          }),
+          set: vi.fn(async (updates: Record<string, unknown>) => {
+            Object.assign(storageData, updates)
+          })
         }
       }
     } as any
+
+    vi.mocked(executeLocalSync).mockResolvedValue({ success: true, syncedAt: 1 })
   })
 
   describe('triggerSync', () => {
+    it('should skip upload when persisted lastUploadedHash matches the current snapshot', async () => {
+      const data = makeBackupData({ promptId: 'p1', updatedAt: 100 })
+      const hash = await computeBackupDataHash(data)
+
+      vi.mocked(chrome.storage.local.get).mockResolvedValue({
+        syncStatus: { guard: { lastUploadedHash: hash } }
+      })
+      vi.spyOn(cloudStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(localStrategy, 'isAvailable').mockResolvedValue(true)
+
+      const result = await orchestrator.triggerSync(data)
+
+      expect(result.skipped).toBe(true)
+      expect(cloudStrategy.sync).not.toHaveBeenCalled()
+    })
+
+    it('should recover a stale persisted in-flight guard and run sync', async () => {
+      const data = makeBackupData({ promptId: 'p1', updatedAt: 100 })
+
+      vi.mocked(chrome.storage.local.get).mockResolvedValue({
+        syncStatus: {
+          guard: {
+            syncInFlight: true,
+            lastUploadStartedAt: 1
+          }
+        }
+      })
+      vi.spyOn(cloudStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(localStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(cloudStrategy, 'sync').mockResolvedValue({ success: true, syncedAt: 1 })
+
+      const result = await orchestrator.triggerSync(data)
+
+      expect(result.cloudSynced).toBe(true)
+      expect(cloudStrategy.sync).toHaveBeenCalledWith(data)
+    })
+
+    it('should coalesce same-tick trigger calls before storage guard writes finish', async () => {
+      const first = makeBackupData({ promptId: 'p1', updatedAt: 100 })
+      const second = makeBackupData({ promptId: 'p1', updatedAt: 200 })
+      const third = makeBackupData({ promptId: 'p1', updatedAt: 300 })
+
+      let releaseStorageRead: (() => void) | undefined
+      let delayNextSyncStatusRead = true
+      vi.mocked(chrome.storage.local.get).mockImplementation((key?: string | string[]) => {
+        if (key === 'syncStatus' && delayNextSyncStatusRead) {
+          delayNextSyncStatusRead = false
+          return new Promise(resolve => {
+            releaseStorageRead = () => resolve({})
+          })
+        }
+        return Promise.resolve({})
+      })
+      vi.spyOn(cloudStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(localStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(cloudStrategy, 'sync').mockResolvedValue({ success: true, syncedAt: 1 })
+
+      const firstRun = orchestrator.triggerSync(first)
+      const secondRun = orchestrator.triggerSync(second)
+      const thirdRun = orchestrator.triggerSync(third)
+
+      await vi.waitFor(() => {
+        expect(releaseStorageRead).toBeTypeOf('function')
+      })
+      releaseStorageRead()
+      await Promise.all([firstRun, secondRun, thirdRun])
+
+      expect(cloudStrategy.sync).toHaveBeenCalledTimes(2)
+      expect(cloudStrategy.sync).toHaveBeenNthCalledWith(1, first)
+      expect(cloudStrategy.sync).toHaveBeenNthCalledWith(2, third)
+    })
+
+    it('should not skip identical cloud hash when local retry state is pending', async () => {
+      const data = makeBackupData({ promptId: 'p1', updatedAt: 100 })
+      const hash = await computeBackupDataHash(data)
+
+      vi.mocked(chrome.storage.local.get).mockResolvedValue({
+        syncStatus: {
+          guard: { lastUploadedHash: hash },
+          localError: 'PERMISSION_DENIED'
+        }
+      })
+      vi.spyOn(cloudStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(localStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(cloudStrategy, 'sync').mockResolvedValue({ success: true, syncedAt: 1 })
+
+      const result = await orchestrator.triggerSync(data)
+
+      expect(result.skipped).not.toBe(true)
+      expect(cloudStrategy.sync).toHaveBeenCalledWith(data)
+      expect(executeLocalSync).toHaveBeenCalledWith(data)
+    })
+
+    it('should run one follow-up sync with the latest pending snapshot after an in-flight sync finishes', async () => {
+      const first = makeBackupData({ promptId: 'p1', updatedAt: 100 })
+      const second = makeBackupData({ promptId: 'p1', updatedAt: 200 })
+      const third = makeBackupData({ promptId: 'p1', updatedAt: 300 })
+
+      vi.spyOn(cloudStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(localStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.mocked(executeLocalSync).mockResolvedValue({ success: true, syncedAt: 1 })
+
+      let releaseFirst: (() => void) | undefined
+      vi.spyOn(cloudStrategy, 'sync').mockImplementationOnce(() => new Promise(resolve => {
+        releaseFirst = () => resolve({ success: true, syncedAt: 1 })
+      })).mockResolvedValue({ success: true, syncedAt: 2 })
+
+      const firstRun = orchestrator.triggerSync(first)
+      const secondRun = orchestrator.triggerSync(second)
+      const thirdRun = orchestrator.triggerSync(third)
+
+      await vi.waitFor(() => {
+        expect(releaseFirst).toBeTypeOf('function')
+      })
+      releaseFirst()
+      await Promise.all([firstRun, secondRun, thirdRun])
+
+      expect(cloudStrategy.sync).toHaveBeenCalledTimes(2)
+      expect(cloudStrategy.sync).toHaveBeenNthCalledWith(2, third)
+    })
+
     it('should trigger sync to both strategies when cloud available', async () => {
       const data: FullBackupData = {
         prompts: [],
@@ -60,7 +222,7 @@ describe('SyncOrchestrator', () => {
       await orchestrator.triggerSync(data)
 
       expect(cloudStrategy.sync).toHaveBeenCalledWith(data)
-      expect(localStrategy.sync).toHaveBeenCalledWith(data)
+      expect(executeLocalSync).toHaveBeenCalledWith(data)
     })
 
     it('should mark pendingCloudSync when cloud unavailable', async () => {
@@ -84,7 +246,7 @@ describe('SyncOrchestrator', () => {
       }))
     })
 
-    it('should skip sync when local unavailable', async () => {
+    it('should sync cloud when local unavailable and cloud available', async () => {
       const data: FullBackupData = {
         prompts: [],
         categories: [],
@@ -93,12 +255,13 @@ describe('SyncOrchestrator', () => {
       }
 
       vi.spyOn(cloudStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(cloudStrategy, 'sync').mockResolvedValue({ success: true, syncedAt: Date.now() })
       vi.spyOn(localStrategy, 'isAvailable').mockResolvedValue(false)
 
       await orchestrator.triggerSync(data)
 
-      expect(cloudStrategy.sync).not.toHaveBeenCalled()
-      expect(localStrategy.sync).not.toHaveBeenCalled()
+      expect(cloudStrategy.sync).toHaveBeenCalledWith(data)
+      expect(executeLocalSync).not.toHaveBeenCalled()
     })
 
     it('should handle cloud sync failure with local success', async () => {

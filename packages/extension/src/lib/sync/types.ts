@@ -70,6 +70,14 @@ export interface BackupStatusStorage {
   local: BackupTargetStatus
 }
 
+export interface SyncGuardStatus {
+  lastUploadedHash?: string
+  lastUploadStartedAt?: number
+  lastCloudUploadAt?: number
+  syncInFlight?: boolean
+  pendingSnapshotHash?: string
+}
+
 export interface UnifiedSyncStatus {
   cloudEnabled: boolean
   cloudLoggedIn: boolean
@@ -94,6 +102,7 @@ export interface UnifiedSyncStatus {
     categoryIds: string[]
     temporaryPromptIds: string[]
   }
+  guard?: SyncGuardStatus
 }
 
 export interface SyncStrategy {

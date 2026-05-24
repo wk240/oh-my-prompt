@@ -5,11 +5,13 @@ import { getFolderHandle, checkFolderPermission } from './indexeddb'
 import { RetryManager } from './retry-manager'
 import { MessageType } from '@oh-my-prompt/shared/messages'
 import { invalidateSyncStatusCache } from '../cloud-sync/auth-service'
+import { computeBackupDataHash } from './hash'
 import {
   FullBackupData,
   MergeResult,
   UnifiedSyncStatus,
-  SyncResult
+  SyncResult,
+  SyncGuardStatus
 } from './types'
 
 /**
@@ -21,7 +23,17 @@ interface LocalSyncResult {
   error?: string
 }
 
+interface SyncTriggerResult {
+  cloudSynced: boolean
+  localSynced: boolean
+  cloudError?: string
+  localError?: string
+  syncedAt?: number
+  skipped?: boolean
+}
+
 const STORAGE_KEY = 'prompt_script_data'
+const SYNC_IN_FLIGHT_STALE_MS = 5 * 60 * 1000
 
 /**
  * SyncOrchestrator coordinates cloud and local sync strategies.
@@ -42,6 +54,9 @@ export class SyncOrchestrator {
   // Store last sync results for access after RetryManager.execute()
   private lastCloudSyncResult: SyncResult | null = null
   private lastLocalSyncResult: LocalSyncResult | null = null
+  private activeSyncPromise: Promise<SyncTriggerResult> | null = null
+  private pendingSnapshot: FullBackupData | null = null
+  private pendingSnapshotVersion = 0
 
   constructor(cloudStrategy: CloudSyncStrategy, localStrategy: LocalSyncStrategy) {
     this.cloudStrategy = cloudStrategy
@@ -114,14 +129,84 @@ export class SyncOrchestrator {
    *
    * @returns Sync result with status information (avoiding extra getStatus calls)
    */
-  async triggerSync(data: FullBackupData): Promise<{
-    cloudSynced: boolean
-    localSynced: boolean
-    cloudError?: string
-    localError?: string
-    syncedAt?: number
-    skipped?: boolean // Cloud sync skipped due to identical data
-  }> {
+  triggerSync(data: FullBackupData): Promise<SyncTriggerResult> {
+    if (this.activeSyncPromise) {
+      return this.queuePendingSnapshot(data)
+    }
+
+    const activePromise = this.triggerSyncWithGuards(data).finally(() => {
+      if (this.activeSyncPromise === activePromise) {
+        this.activeSyncPromise = null
+      }
+    })
+    this.activeSyncPromise = activePromise
+    return activePromise
+  }
+
+  private async triggerSyncWithGuards(data: FullBackupData): Promise<SyncTriggerResult> {
+    const snapshotHash = await computeBackupDataHash(data)
+    const status = await this.getSyncStatus()
+    let guard = await this.getGuardStatus()
+
+    if (guard.syncInFlight && this.isGuardStale(guard)) {
+      await this.updateGuardStatus({
+        syncInFlight: false,
+        pendingSnapshotHash: undefined
+      })
+      guard = {
+        ...guard,
+        syncInFlight: false,
+        pendingSnapshotHash: undefined
+      }
+    } else if (guard.pendingSnapshotHash && !guard.syncInFlight && !this.pendingSnapshot) {
+      await this.updateGuardStatus({ pendingSnapshotHash: undefined })
+      guard = { ...guard, pendingSnapshotHash: undefined }
+    }
+
+    if (guard.lastUploadedHash === snapshotHash && !this.hasPendingRetryNeeds(status)) {
+      return { cloudSynced: false, localSynced: false, skipped: true }
+    }
+
+    if (guard.syncInFlight) {
+      await this.updateGuardStatus({ pendingSnapshotHash: snapshotHash })
+      this.pendingSnapshot = data
+      return { cloudSynced: false, localSynced: false, skipped: true }
+    }
+
+    await this.updateGuardStatus({
+      syncInFlight: true,
+      lastUploadStartedAt: Date.now(),
+      pendingSnapshotHash: undefined
+    })
+
+    try {
+      const result = await this.runSyncNow(data)
+      if (result.cloudSynced) {
+        await this.updateGuardStatus({
+          lastUploadedHash: snapshotHash,
+          lastCloudUploadAt: Date.now()
+        })
+      }
+      return result
+    } finally {
+      await this.updateGuardStatus({ syncInFlight: false })
+      await this.drainPendingSnapshot(snapshotHash)
+    }
+  }
+
+  private async queuePendingSnapshot(data: FullBackupData): Promise<SyncTriggerResult> {
+    const version = ++this.pendingSnapshotVersion
+    this.pendingSnapshot = data
+
+    const snapshotHash = await computeBackupDataHash(data)
+    if (version === this.pendingSnapshotVersion) {
+      await this.updateGuardStatus({ pendingSnapshotHash: snapshotHash })
+    }
+
+    return { cloudSynced: false, localSynced: false, skipped: true }
+  }
+
+  private async runSyncNow(data: FullBackupData): Promise<SyncTriggerResult> {
     // Notify UI that sync is starting
     chrome.runtime.sendMessage({
       type: MessageType.BACKUP_PROGRESS,
@@ -828,6 +913,62 @@ export class SyncOrchestrator {
   private async getSyncStatus(): Promise<Partial<UnifiedSyncStatus & { initialized?: boolean }>> {
     const result = await chrome.storage.local.get('syncStatus')
     return result.syncStatus || {}
+  }
+
+  private async getGuardStatus(): Promise<SyncGuardStatus> {
+    const status = await this.getSyncStatus()
+    return status.guard || {}
+  }
+
+  private isGuardStale(guard: SyncGuardStatus): boolean {
+    if (!guard.lastUploadStartedAt) return true
+    return Date.now() - guard.lastUploadStartedAt > SYNC_IN_FLIGHT_STALE_MS
+  }
+
+  private hasPendingRetryNeeds(status: Partial<UnifiedSyncStatus & { initialized?: boolean }>): boolean {
+    return Boolean(
+      status.pendingUpload ||
+      status.pendingCloudSync ||
+      status.hasUnsyncedChanges ||
+      status.localError ||
+      status.localSyncing ||
+      status.localRetryScheduledAt ||
+      (status.localRetryCount && status.localRetryCount > 0)
+    )
+  }
+
+  private async updateGuardStatus(updates: Partial<SyncGuardStatus>): Promise<void> {
+    const status = await this.getSyncStatus()
+    await this.updateSyncStatus({
+      guard: {
+        ...(status.guard || {}),
+        ...updates
+      }
+    })
+  }
+
+  private async drainPendingSnapshot(completedHash: string): Promise<void> {
+    if (!this.pendingSnapshot) return
+
+    const pendingSnapshot = this.pendingSnapshot
+    const pendingVersion = this.pendingSnapshotVersion
+    const pendingHash = await computeBackupDataHash(pendingSnapshot)
+
+    if (pendingVersion === this.pendingSnapshotVersion) {
+      this.pendingSnapshot = null
+    }
+
+    if (pendingHash === completedHash) {
+      if (pendingVersion === this.pendingSnapshotVersion) {
+        await this.updateGuardStatus({ pendingSnapshotHash: undefined })
+      }
+      return
+    }
+
+    if (pendingVersion === this.pendingSnapshotVersion) {
+      await this.updateGuardStatus({ pendingSnapshotHash: undefined })
+    }
+    await this.triggerSyncWithGuards(pendingSnapshot)
   }
 
   /**

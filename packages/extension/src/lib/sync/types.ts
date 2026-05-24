@@ -80,6 +80,12 @@ export interface SyncGuardStatus {
   pendingSnapshotHash?: string
 }
 
+export interface IdAliasMap {
+  prompts?: Record<string, string>
+  categories?: Record<string, string>
+  temporaryPrompts?: Record<string, string>
+}
+
 export interface UnifiedSyncStatus {
   cloudEnabled: boolean
   cloudLoggedIn: boolean
@@ -105,6 +111,7 @@ export interface UnifiedSyncStatus {
     temporaryPromptIds: string[]
   }
   guard?: SyncGuardStatus
+  idAliasMap?: IdAliasMap
 }
 
 export interface SyncStrategy {

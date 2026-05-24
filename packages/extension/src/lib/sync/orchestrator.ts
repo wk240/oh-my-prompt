@@ -8,6 +8,7 @@ import { invalidateSyncStatusCache } from '../cloud-sync/auth-service'
 import { computeBackupDataHash } from './hash'
 import {
   FullBackupData,
+  IdAliasMap,
   MergeResult,
   UnifiedSyncStatus,
   SyncResult,
@@ -482,7 +483,6 @@ export class SyncOrchestrator {
   /**
    * Preview merge diff without actually merging.
    * Returns counts and change details for UI display.
-   * Now includes mergedByName for categories (same name, different IDs).
    */
   async previewMerge(): Promise<{
     cloudCount: { prompts: number; categories: number; temporaryPrompts: number }
@@ -509,8 +509,10 @@ export class SyncOrchestrator {
     conflicts: Array<{ type: 'prompt' | 'category' | 'temporaryPrompt'; cloud: { id: string; name: string; updatedAt?: number }; local: { id: string; name: string; updatedAt?: number } }>
     mergedByNameItems: Array<{ type: 'category' | 'prompt' | 'temporaryPrompt'; cloud: { id: string; name: string; updatedAt?: number }; local: { id: string; name: string; updatedAt?: number }; kept: 'cloud' | 'local' }>
   }> {
-    const cloudData = await this.cloudStrategy.restore()
-    const localData = await this.getLocalData()
+    const aliasMap = await this.getIdAliasMap()
+    const cloudRaw = await this.cloudStrategy.restore()
+    const localData = this.applyAliasMap(await this.getLocalData(), aliasMap)
+    const cloudData = cloudRaw ? this.applyAliasMap(cloudRaw, aliasMap) : null
 
     if (!cloudData) {
       // No cloud data - everything is local-only
@@ -546,36 +548,14 @@ export class SyncOrchestrator {
     }
 
     // Perform merge preview (without applying changes)
-    // First merge categories to detect name-based duplicates
     const categoryMerge = this.mergeBidirectional(
       cloudData.categories.map(c => ({ ...c, updatedAt: c.updatedAt || 0 })),
       localData.categories.map(c => ({ ...c, updatedAt: c.updatedAt || 0 }))
     )
 
-    // Build category ID mapping for prompts
-    const categoryIdMap = new Map<string, string>()
-    categoryMerge.mergedByName.forEach(merge => {
-      if (merge.kept.id === merge.cloud.id) {
-        categoryIdMap.set(merge.local.id, merge.cloud.id)
-      }
-      if (merge.kept.id === merge.local.id) {
-        categoryIdMap.set(merge.cloud.id, merge.local.id)
-      }
-    })
-
-    // Update prompts' categoryId before merge preview
-    const updatedCloudPrompts = cloudData.prompts.map(p => {
-      const newCategoryId = categoryIdMap.get(p.categoryId)
-      return newCategoryId ? { ...p, categoryId: newCategoryId } : p
-    })
-    const updatedLocalPrompts = localData.prompts.map(p => {
-      const newCategoryId = categoryIdMap.get(p.categoryId)
-      return newCategoryId ? { ...p, categoryId: newCategoryId } : p
-    })
-
     const promptMerge = this.mergeBidirectional(
-      updatedCloudPrompts.map(p => ({ ...p, updatedAt: p.updatedAt || 0 })),
-      updatedLocalPrompts.map(p => ({ ...p, updatedAt: p.updatedAt || 0 }))
+      cloudData.prompts.map(p => ({ ...p, updatedAt: p.updatedAt || 0 })),
+      localData.prompts.map(p => ({ ...p, updatedAt: p.updatedAt || 0 }))
     )
 
     const tempMerge = this.mergeBidirectional(
@@ -662,11 +642,10 @@ export class SyncOrchestrator {
   /**
    * Download from cloud and merge with local.
    * Now uses bidirectional merge (keeps latest version based on updatedAt).
-   * For categories: also merges by name to prevent duplicates.
-   * For prompts: updates categoryId if their category was merged by name.
    */
   async downloadAndMerge(options: { reason: DownloadReason } = { reason: 'manual' }): Promise<DownloadAndMergeResult> {
-    const localData = await this.getLocalData()
+    const aliasMap = await this.getIdAliasMap()
+    const localData = this.applyAliasMap(await this.getLocalData(), aliasMap)
     const guard = await this.getGuardStatus()
 
     if (options.reason === 'auto' && guard.lastCloudUploadAt && Date.now() - guard.lastCloudUploadAt < this.DOWNLOAD_COOLDOWN_MS) {
@@ -677,7 +656,8 @@ export class SyncOrchestrator {
       }
     }
 
-    const cloudData = await this.cloudStrategy.restore()
+    const cloudRaw = await this.cloudStrategy.restore()
+    const cloudData = cloudRaw ? this.applyAliasMap(cloudRaw, aliasMap) : null
 
     if (!cloudData) {
       // No cloud data, use local
@@ -693,76 +673,15 @@ export class SyncOrchestrator {
       localData.categories.map(c => ({ ...c, updatedAt: c.updatedAt || 0 }))
     )
 
-    // Build category ID mapping for prompts (when categories merged by name)
-    // If local category was merged with cloud category by name, update prompt's categoryId
-    const categoryIdMap = new Map<string, string>()
-    categoryMerge.mergedByName.forEach(merge => {
-      // If kept cloud version, map local category ID to cloud category ID
-      if (merge.kept.id === merge.cloud.id) {
-        categoryIdMap.set(merge.local.id, merge.cloud.id)
-      }
-      // If kept local version, map cloud category ID to local category ID
-      if (merge.kept.id === merge.local.id) {
-        categoryIdMap.set(merge.cloud.id, merge.local.id)
-      }
-    })
-
-    // Update prompts' categoryId if needed
-    const updatedCloudPrompts = cloudData.prompts.map(p => {
-      const newCategoryId = categoryIdMap.get(p.categoryId)
-      if (newCategoryId) {
-        console.log(`[Oh My Prompt] Updating prompt "${p.name}" categoryId: ${p.categoryId} -> ${newCategoryId}`)
-        return { ...p, categoryId: newCategoryId }
-      }
-      return p
-    })
-
-    const updatedLocalPrompts = localData.prompts.map(p => {
-      const newCategoryId = categoryIdMap.get(p.categoryId)
-      if (newCategoryId) {
-        console.log(`[Oh My Prompt] Updating prompt "${p.name}" categoryId: ${p.categoryId} -> ${newCategoryId}`)
-        return { ...p, categoryId: newCategoryId }
-      }
-      return p
-    })
-
     const promptMerge = this.mergeBidirectional(
-      updatedCloudPrompts.map(p => ({ ...p, updatedAt: p.updatedAt || 0 })),
-      updatedLocalPrompts.map(p => ({ ...p, updatedAt: p.updatedAt || 0 }))
+      cloudData.prompts.map(p => ({ ...p, updatedAt: p.updatedAt || 0 })),
+      localData.prompts.map(p => ({ ...p, updatedAt: p.updatedAt || 0 }))
     )
 
     const tempMerge = this.mergeBidirectional(
       cloudData.temporaryPrompts.map(p => ({ ...p, updatedAt: p.updatedAt || 0 })),
       localData.temporaryPrompts.map(p => ({ ...p, updatedAt: p.updatedAt || 0 }))
     )
-
-    // Log merged items for debugging
-    if (categoryMerge.mergedByName.length > 0) {
-      console.log('[Oh My Prompt] Categories merged by name:', categoryMerge.mergedByName.map(m => ({
-        name: m.kept.name,
-        cloudId: m.cloud.id,
-        localId: m.local.id,
-        kept: (m.kept.id === m.cloud.id ? 'cloud' : 'local') as 'cloud' | 'local'
-      })))
-    }
-
-    if (promptMerge.mergedByName.length > 0) {
-      console.log('[Oh My Prompt] Prompts merged by name:', promptMerge.mergedByName.map(m => ({
-        name: m.kept.name,
-        cloudId: m.cloud.id,
-        localId: m.local.id,
-        kept: (m.kept.id === m.cloud.id ? 'cloud' : 'local') as 'cloud' | 'local'
-      })))
-    }
-
-    if (tempMerge.mergedByName.length > 0) {
-      console.log('[Oh My Prompt] Temporary prompts merged by name:', tempMerge.mergedByName.map(m => ({
-        name: m.kept.name,
-        cloudId: m.cloud.id,
-        localId: m.local.id,
-        kept: (m.kept.id === m.cloud.id ? 'cloud' : 'local') as 'cloud' | 'local'
-      })))
-    }
 
     const result: MergeResult = {
       data: {
@@ -994,6 +913,58 @@ export class SyncOrchestrator {
     return status.guard || {}
   }
 
+  private async getIdAliasMap(): Promise<IdAliasMap> {
+    const status = await this.getSyncStatus()
+    return status.idAliasMap || {}
+  }
+
+  private resolveAliasId(id: string, map: Record<string, string> = {}): string {
+    if (id === 'temporary') return id
+
+    const seen = new Set<string>()
+    let current = id
+    while (map[current] && !seen.has(current)) {
+      seen.add(current)
+      current = map[current]
+    }
+    return current
+  }
+
+  private applyAliasMap(data: FullBackupData, aliasMap: IdAliasMap): FullBackupData {
+    const categories = data.categories.map(c => ({
+      ...c,
+      id: this.resolveAliasId(c.id, aliasMap.categories)
+    }))
+    const prompts = data.prompts.map(p => ({
+      ...p,
+      id: this.resolveAliasId(p.id, aliasMap.prompts),
+      categoryId: this.resolveAliasId(p.categoryId, aliasMap.categories)
+    }))
+    const temporaryPrompts = data.temporaryPrompts.map(p => ({
+      ...p,
+      id: this.resolveAliasId(p.id, aliasMap.temporaryPrompts),
+      categoryId: 'temporary'
+    }))
+
+    return {
+      ...data,
+      categories: this.dedupeById(categories),
+      prompts: this.dedupeById(prompts),
+      temporaryPrompts: this.dedupeById(temporaryPrompts)
+    }
+  }
+
+  private dedupeById<T extends { id: string; updatedAt?: number }>(items: T[]): T[] {
+    const deduped = new Map<string, T>()
+    for (const item of items) {
+      const existing = deduped.get(item.id)
+      if (!existing || (item.updatedAt || 0) >= (existing.updatedAt || 0)) {
+        deduped.set(item.id, item)
+      }
+    }
+    return Array.from(deduped.values())
+  }
+
   private canTakeOverGuardLock(guard: SyncGuardStatus): boolean {
     if (!guard.lockOwnerId) return true
     if (guard.lockOwnerId === this.guardOwnerId) return true
@@ -1220,9 +1191,7 @@ export class SyncOrchestrator {
   /**
    * Bidirectional merge - keeps latest version based on updatedAt.
    * This is TRUE multi-device sync (not cloud-wins-all).
-   *
-   * For categories: also merges by name to prevent duplicates when same category
-   * was created on different devices with different IDs.
+   * Items merge only by ID; historical IDs must be normalized through idAliasMap first.
    *
    * Returns separate arrays for different merge scenarios:
    * - cloudOnly: items that exist only in cloud (need to add to local)
@@ -1230,7 +1199,6 @@ export class SyncOrchestrator {
    * - localNewer: items where local version is newer than cloud (need to update cloud)
    * - cloudNewer: items where cloud version is newer than local (need to update local)
    * - conflicts: items with same timestamp
-   * - mergedByName: items that were merged by name (same name, different IDs)
    */
   private mergeBidirectional<T extends { id: string; updatedAt?: number; name?: string }>(
     cloud: T[],
@@ -1251,57 +1219,16 @@ export class SyncOrchestrator {
     const localNewer: T[] = []
     const cloudNewer: T[] = []
     const conflicts: Array<{ cloud: T; local: T }> = []
-    const mergedByName: Array<{ cloud: T; local: T; kept: T }> = []
 
     const cloudMap = new Map(cloud.map(item => [item.id, item]))
     const localMap = new Map(local.map(item => [item.id, item]))
 
-    // Build name maps for categories (items with 'name' field)
-    // This helps detect duplicates where same category was created on different devices
-    const cloudNameMap = new Map<string, T>()
-    const localNameMap = new Map<string, T>()
-    cloud.forEach(item => {
-      if (item.name) {
-        cloudNameMap.set(item.name, item)
-      }
-    })
-    local.forEach(item => {
-      if (item.name) {
-        localNameMap.set(item.name, item)
-      }
-    })
-
-    // Process all items by ID first
     for (const [id, cloudItem] of cloudMap) {
       const localItem = localMap.get(id)
 
       if (!localItem) {
-        // No item with same ID in local
-        // Check if there's an item with same NAME in local (for categories)
-        if (cloudItem.name && localNameMap.has(cloudItem.name)) {
-          const localByName = localNameMap.get(cloudItem.name)!
-          // Same name but different IDs -> merge by name
-          const cloudUpdated = cloudItem.updatedAt || 0
-          const localUpdated = localByName.updatedAt || 0
-
-          if (cloudUpdated > localUpdated) {
-            // Keep cloud version, discard local duplicate
-            merged.set(cloudItem.id, cloudItem)
-            mergedByName.push({ cloud: cloudItem, local: localByName, kept: cloudItem })
-          } else if (localUpdated > cloudUpdated) {
-            // Keep local version, discard cloud duplicate
-            merged.set(localByName.id, localByName)
-            mergedByName.push({ cloud: cloudItem, local: localByName, kept: localByName })
-          } else {
-            // Same timestamp - prefer cloud version
-            merged.set(cloudItem.id, cloudItem)
-            mergedByName.push({ cloud: cloudItem, local: localByName, kept: cloudItem })
-          }
-        } else {
-          // Truly cloud-only (no matching ID or name)
-          cloudOnly.push(cloudItem)
-          merged.set(id, cloudItem)
-        }
+        cloudOnly.push(cloudItem)
+        merged.set(id, cloudItem)
       } else {
         // Both exist with same ID - compare updatedAt
         const cloudUpdated = cloudItem.updatedAt || 0
@@ -1325,18 +1252,9 @@ export class SyncOrchestrator {
       }
     }
 
-    // Add local-only items (not in cloud by ID or name)
     for (const [id, localItem] of localMap) {
-      // Skip if already processed (merged by name with a cloud item)
       if (merged.has(id)) continue
 
-      // Check if there's an item with same NAME in cloud
-      if (localItem.name && cloudNameMap.has(localItem.name)) {
-        // Already handled in the cloud loop above (merged by name)
-        continue
-      }
-
-      // Truly local-only (no matching ID or name in cloud)
       if (!cloudMap.has(id)) {
         localOnly.push(localItem)
         merged.set(id, localItem)
@@ -1350,7 +1268,7 @@ export class SyncOrchestrator {
       localNewer,
       cloudNewer,
       conflicts,
-      mergedByName
+      mergedByName: []
     }
   }
 }

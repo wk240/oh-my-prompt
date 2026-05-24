@@ -13,21 +13,35 @@ vi.mock('../local-sync-executor', () => ({
   executeLocalSync: vi.fn()
 }))
 
-function makeBackupData({ promptId, updatedAt }: { promptId: string; updatedAt: number }): FullBackupData {
+type BackupDataInput =
+  | { promptId: string; updatedAt: number }
+  | Partial<Pick<FullBackupData, 'prompts' | 'categories' | 'temporaryPrompts' | 'timestamp'>>
+
+function makeBackupData(input: BackupDataInput): FullBackupData {
+  if ('promptId' in input) {
+    const { promptId, updatedAt } = input
+    return {
+      prompts: [
+        {
+          id: promptId,
+          name: `Prompt ${promptId}`,
+          content: `Content ${updatedAt}`,
+          categoryId: 'c1',
+          order: 0,
+          updatedAt
+        }
+      ],
+      categories: [{ id: 'c1', name: 'Category', order: 0, updatedAt }],
+      temporaryPrompts: [],
+      timestamp: updatedAt
+    }
+  }
+
   return {
-    prompts: [
-      {
-        id: promptId,
-        name: `Prompt ${promptId}`,
-        content: `Content ${updatedAt}`,
-        categoryId: 'c1',
-        order: 0,
-        updatedAt
-      }
-    ],
-    categories: [{ id: 'c1', name: 'Category', order: 0, updatedAt }],
-    temporaryPrompts: [],
-    timestamp: updatedAt
+    prompts: input.prompts || [],
+    categories: input.categories || [],
+    temporaryPrompts: input.temporaryPrompts || [],
+    timestamp: input.timestamp || Date.now()
   }
 }
 
@@ -1266,6 +1280,60 @@ describe('SyncOrchestrator', () => {
           })
         })
       }))
+    })
+
+    it('should keep same-name categories separate when no alias exists', async () => {
+      const cloudData = makeBackupData({
+        categories: [{ id: 'cloud-cat', name: 'Ideas', order: 0, updatedAt: 100 }],
+        prompts: [{ id: 'cloud-prompt', name: 'A', content: 'A', categoryId: 'cloud-cat', order: 0, updatedAt: 100 }]
+      })
+      const localData = makeBackupData({
+        categories: [{ id: 'local-cat', name: 'Ideas', order: 1, updatedAt: 200 }],
+        prompts: [{ id: 'local-prompt', name: 'B', content: 'B', categoryId: 'local-cat', order: 0, updatedAt: 200 }]
+      })
+
+      vi.spyOn(cloudStrategy, 'restore').mockResolvedValue(cloudData)
+      storageData.prompt_script_data = {
+        userData: { prompts: localData.prompts, categories: localData.categories },
+        temporaryPrompts: localData.temporaryPrompts
+      }
+
+      const result = await orchestrator.downloadAndMerge({ reason: 'manual' })
+
+      expect(result.data.categories.map(c => c.id).sort()).toEqual(['cloud-cat', 'local-cat'])
+      expect(result.data.prompts.find(p => p.id === 'local-prompt')?.categoryId).toBe('local-cat')
+    })
+
+    it('should remap category aliases and dedupe only when alias map is explicit', async () => {
+      storageData.syncStatus = {
+        idAliasMap: {
+          categories: { 'old-cat': 'kept-cat' },
+          prompts: { 'old-prompt': 'kept-prompt' }
+        }
+      }
+
+      const cloudData = makeBackupData({
+        categories: [{ id: 'kept-cat', name: 'Ideas', order: 0, updatedAt: 200 }],
+        prompts: [{ id: 'kept-prompt', name: 'A', content: 'new', categoryId: 'kept-cat', order: 0, updatedAt: 200 }]
+      })
+      const localData = makeBackupData({
+        categories: [{ id: 'old-cat', name: 'Ideas', order: 1, updatedAt: 100 }],
+        prompts: [{ id: 'old-prompt', name: 'A', content: 'old', categoryId: 'old-cat', order: 0, updatedAt: 100 }]
+      })
+
+      vi.spyOn(cloudStrategy, 'restore').mockResolvedValue(cloudData)
+      storageData.prompt_script_data = {
+        userData: { prompts: localData.prompts, categories: localData.categories },
+        temporaryPrompts: localData.temporaryPrompts
+      }
+
+      const result = await orchestrator.downloadAndMerge({ reason: 'manual' })
+
+      expect(result.data.categories).toHaveLength(1)
+      expect(result.data.categories[0].id).toBe('kept-cat')
+      expect(result.data.prompts).toHaveLength(1)
+      expect(result.data.prompts[0].id).toBe('kept-prompt')
+      expect(result.data.prompts[0].categoryId).toBe('kept-cat')
     })
   })
 

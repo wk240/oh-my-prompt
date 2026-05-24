@@ -371,6 +371,22 @@ export async function enableSync(): Promise<EnableSyncResult> {
       syncEnabled: true
     })
 
+    // Update syncStatus cache for instant display on next settings page open
+    try {
+      const result = await chrome.storage.local.get('syncStatus')
+      const existing = result.syncStatus || {}
+      await chrome.storage.local.set({
+        syncStatus: {
+          ...existing,
+          localEnabled: true,
+          folderName: handle.name,
+          permissionStatus: 'granted'
+        }
+      })
+    } catch (cacheError) {
+      console.warn('[Oh My Prompt] Failed to update syncStatus cache:', cacheError)
+    }
+
     // Restore API config from folder if not in storage
     await restoreApiConfigFromFolder()
 
@@ -445,6 +461,23 @@ export async function changeSyncFolder(): Promise<{ success: boolean; error?: st
       syncEnabled: true,
       lastSyncTime: Date.now()
     })
+
+    // Update syncStatus cache for instant display on next settings page open
+    try {
+      const result = await chrome.storage.local.get('syncStatus')
+      const existing = result.syncStatus || {}
+      await chrome.storage.local.set({
+        syncStatus: {
+          ...existing,
+          localEnabled: true,
+          folderName: handle.name,
+          permissionStatus: 'granted',
+          lastLocalSyncTime: Date.now()
+        }
+      })
+    } catch (cacheError) {
+      console.warn('[Oh My Prompt] Failed to update syncStatus cache:', cacheError)
+    }
 
     // Restore API config from folder if not in storage
     await restoreApiConfigFromFolder()
@@ -604,6 +637,21 @@ export async function restorePermission(): Promise<{ success: boolean; error?: s
           lastSyncTime: Date.now(),
           hasUnsyncedChanges: false
         })
+        // Update syncStatus cache for instant display on next settings page open
+        try {
+          const result = await chrome.storage.local.get('syncStatus')
+          const existing = result.syncStatus || {}
+          await chrome.storage.local.set({
+            syncStatus: {
+              ...existing,
+              localEnabled: true,
+              permissionStatus: 'granted',
+              lastLocalSyncTime: Date.now()
+            }
+          })
+        } catch (cacheError) {
+          console.warn('[Oh My Prompt] Failed to update syncStatus cache:', cacheError)
+        }
         return { success: true }
       }
       return { success: false, error: '同步失败，请检查文件夹权限' }

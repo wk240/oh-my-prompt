@@ -84,14 +84,54 @@ export function BackupSection() {
 
   /**
    * Load cached syncStatus from storage.local (instant, no network request).
+   * Also checks auth token directly for instant "logged in" display.
    * Used for initial display to avoid waiting for slow network calls.
    */
   const loadCachedStatus = useCallback(async () => {
     try {
-      const result = await chrome.storage.local.get('syncStatus')
-      if (result.syncStatus) {
-        setStatus(transformUnifiedToBackup(result.syncStatus))
+      // Check auth token directly for instant cloud login status
+      const authResult = await chrome.storage.local.get(SUPABASE_AUTH_KEY)
+      let cloudLoggedIn = false
+      if (authResult[SUPABASE_AUTH_KEY]) {
+        try {
+          const session = JSON.parse(authResult[SUPABASE_AUTH_KEY])
+          const now = Math.floor(Date.now() / 1000)
+          if (session.access_token && session.expires_at && session.expires_at > now) {
+            cloudLoggedIn = true
+          }
+        } catch {
+          // Invalid session format, ignore
+        }
       }
+
+      const result = await chrome.storage.local.get('syncStatus')
+      const cached = result.syncStatus || {}
+
+      // Merge cached status with direct auth check
+      // Use cached values if available, otherwise use direct auth check result
+      const mergedStatus: UnifiedSyncStatus = {
+        cloudEnabled: cached.cloudEnabled ?? cloudLoggedIn,
+        cloudLoggedIn: cached.cloudLoggedIn ?? cloudLoggedIn,
+        lastCloudSyncTime: cached.lastCloudSyncTime,
+        cloudError: cached.cloudError,
+        cloudSyncing: cached.cloudSyncing,
+        cloudRetryCount: cached.cloudRetryCount,
+        cloudRetryScheduledAt: cached.cloudRetryScheduledAt,
+        localEnabled: cached.localEnabled ?? false,
+        lastLocalSyncTime: cached.lastLocalSyncTime,
+        localError: cached.localError,
+        localSyncing: cached.localSyncing,
+        localRetryCount: cached.localRetryCount,
+        localRetryScheduledAt: cached.localRetryScheduledAt,
+        folderName: cached.folderName,
+        permissionStatus: cached.permissionStatus,
+        hasUnsyncedChanges: cached.hasUnsyncedChanges ?? false,
+        pendingCloudSync: cached.pendingCloudSync ?? false,
+        pendingUpload: cached.pendingUpload ?? false,
+        localOnlyItems: cached.localOnlyItems ?? { promptIds: [], categoryIds: [], temporaryPromptIds: [] }
+      }
+
+      setStatus(transformUnifiedToBackup(mergedStatus))
     } catch (err) {
       console.warn('[Oh My Prompt] Failed to load cached syncStatus:', err)
     }

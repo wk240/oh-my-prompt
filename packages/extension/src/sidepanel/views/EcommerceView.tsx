@@ -694,6 +694,7 @@ export default function EcommerceView({
               {result.prompts.map((p, i) => {
                 const isExpanded = expandedPromptIndexes.has(i)
                 const detailRows = DETAIL_ROWS.filter(row => p.details?.[row.key])
+                const detailId = `ecommerce-panel-prompt-details-${i}`
                 return (
                   <div key={`${p.type}-${i}`} className="ecommerce-panel-result-card">
                     <div className="ecommerce-panel-result-card-header">
@@ -702,13 +703,18 @@ export default function EcommerceView({
                     </div>
                     <div className="ecommerce-panel-result-text">{p.prompt}</div>
                     {detailRows.length > 0 && (
-                      <button className="ecommerce-panel-details-toggle" onClick={() => togglePromptDetails(i)}>
+                      <button
+                        className="ecommerce-panel-details-toggle"
+                        onClick={() => togglePromptDetails(i)}
+                        aria-expanded={isExpanded}
+                        aria-controls={detailId}
+                      >
                         {isExpanded ? <ChevronUp style={{ width: 14, height: 14 }} /> : <ChevronDown style={{ width: 14, height: 14 }} />}
                         <span>{isExpanded ? '收起详情' : '展开详情'}</span>
                       </button>
                     )}
                     {isExpanded && (
-                      <div className="ecommerce-panel-details">
+                      <div id={detailId} className="ecommerce-panel-details">
                         {detailRows.map(row => (
                           <div key={row.key} className="ecommerce-panel-detail-row">
                             <span className="ecommerce-panel-detail-label">{row.label}</span>
@@ -722,13 +728,28 @@ export default function EcommerceView({
                       </div>
                     )}
                     <div className="ecommerce-panel-result-actions">
-                      <button className="ecommerce-panel-action-btn ecommerce-panel-insert-btn" onClick={() => handleInsert(p.prompt)} title="插入">
+                      <button
+                        className="ecommerce-panel-action-btn ecommerce-panel-insert-btn"
+                        onClick={() => handleInsert(p.prompt)}
+                        title="复制用于粘贴"
+                        aria-label="复制用于粘贴"
+                      >
                         <ArrowUpRight style={{ width: 14, height: 14 }} />
                       </button>
-                      <button className="ecommerce-panel-action-btn" onClick={() => handleCopy(p.prompt)} title="复制">
+                      <button
+                        className="ecommerce-panel-action-btn"
+                        onClick={() => handleCopy(p.prompt)}
+                        title="复制"
+                        aria-label="复制"
+                      >
                         <Copy style={{ width: 14, height: 14 }} />
                       </button>
-                      <button className="ecommerce-panel-action-btn" onClick={() => handleSavePrompt(i)} title="保存到库">
+                      <button
+                        className="ecommerce-panel-action-btn"
+                        onClick={() => handleSavePrompt(i)}
+                        title="保存到库"
+                        aria-label="保存到库"
+                      >
                         <Bookmark style={{ width: 14, height: 14 }} />
                       </button>
                     </div>
@@ -745,7 +766,7 @@ export default function EcommerceView({
                 复制全部
               </button>
               <button className="ecommerce-panel-result-footer-btn-primary" onClick={handleInsertAll}>
-                插入全部
+                复制任务包
               </button>
             </div>
           </div>

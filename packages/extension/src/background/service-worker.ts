@@ -496,7 +496,7 @@ chrome.runtime.onMessage.addListener(
 
       case MessageType.DOWNLOAD_AND_MERGE:
         // Download cloud data and merge with local (called from sidepanel)
-        syncOrchestrator.downloadAndMerge()
+        syncOrchestrator.downloadAndMerge({ reason: 'manual' })
           .then(result => {
             // Broadcast REFRESH_DATA to all content scripts
             chrome.tabs.query({}, (tabs) => {

@@ -32,6 +32,13 @@ interface SyncTriggerResult {
   skipped?: boolean
 }
 
+type DownloadReason = 'manual' | 'initial' | 'auto'
+
+type DownloadAndMergeResult = MergeResult & {
+  skipped?: boolean
+  conflicts?: Array<{ type: 'prompt' | 'category'; cloud: unknown; local: unknown }>
+}
+
 const STORAGE_KEY = 'prompt_script_data'
 const SYNC_IN_FLIGHT_STALE_MS = 5 * 60 * 1000
 
@@ -61,6 +68,8 @@ export class SyncOrchestrator {
   private activeSyncPromise: Promise<SyncTriggerResult> | null = null
   private pendingSnapshot: FullBackupData | null = null
   private pendingSnapshotVersion = 0
+  private readonly MIN_SYNC_INTERVAL_MS = 2000
+  private readonly DOWNLOAD_COOLDOWN_MS = 15000
 
   constructor(cloudStrategy: CloudSyncStrategy, localStrategy: LocalSyncStrategy) {
     this.cloudStrategy = cloudStrategy
@@ -151,7 +160,10 @@ export class SyncOrchestrator {
     return activePromise
   }
 
-  private async triggerSyncWithGuards(data: FullBackupData): Promise<SyncTriggerResult> {
+  private async triggerSyncWithGuards(
+    data: FullBackupData,
+    options: { enforceMinInterval?: boolean } = { enforceMinInterval: true }
+  ): Promise<SyncTriggerResult> {
     const snapshotHash = await computeBackupDataHash(data)
     const status = await this.getSyncStatus()
     let guard = status.guard || await this.getGuardStatus()
@@ -161,7 +173,12 @@ export class SyncOrchestrator {
         await this.updateGuardStatus({ pendingSnapshotHash: snapshotHash })
         return { cloudSynced: false, localSynced: false, skipped: true }
       }
-      guard = { ...guard, syncInFlight: false }
+      guard = { ...guard, syncInFlight: false, lastUploadStartedAt: undefined }
+    }
+
+    if (options.enforceMinInterval !== false && this.isInsideMinSyncInterval(guard)) {
+      await this.updateGuardStatus({ pendingSnapshotHash: snapshotHash })
+      return { cloudSynced: false, localSynced: false, skipped: true }
     }
 
     if (await this.shouldSkipSnapshot(snapshotHash, status, guard)) {
@@ -611,9 +628,19 @@ export class SyncOrchestrator {
    * For categories: also merges by name to prevent duplicates.
    * For prompts: updates categoryId if their category was merged by name.
    */
-  async downloadAndMerge(): Promise<MergeResult & { conflicts?: Array<{ type: 'prompt' | 'category'; cloud: unknown; local: unknown }> }> {
-    const cloudData = await this.cloudStrategy.restore()
+  async downloadAndMerge(options: { reason: DownloadReason } = { reason: 'manual' }): Promise<DownloadAndMergeResult> {
     const localData = await this.getLocalData()
+    const guard = await this.getGuardStatus()
+
+    if (options.reason === 'auto' && guard.lastCloudUploadAt && Date.now() - guard.lastCloudUploadAt < this.DOWNLOAD_COOLDOWN_MS) {
+      return {
+        skipped: true,
+        data: localData,
+        localOnlyItems: { prompts: [], categories: [], temporaryPrompts: [] }
+      }
+    }
+
+    const cloudData = await this.cloudStrategy.restore()
 
     if (!cloudData) {
       // No cloud data, use local
@@ -812,7 +839,7 @@ export class SyncOrchestrator {
 
     if (cloudData && localData && storageData.prompts.length > 0) {
       // All three have data -> merge
-      await this.downloadAndMerge()
+      await this.downloadAndMerge({ reason: 'initial' })
     }
 
     await this.updateSyncStatus({ initialized: true })
@@ -935,6 +962,11 @@ export class SyncOrchestrator {
     if (guard.lockOwnerId === this.guardOwnerId) return true
     if (!guard.lastUploadStartedAt) return true
     return Date.now() - guard.lastUploadStartedAt > SYNC_IN_FLIGHT_STALE_MS
+  }
+
+  private isInsideMinSyncInterval(guard: SyncGuardStatus): boolean {
+    if (!guard.lastUploadStartedAt) return false
+    return Date.now() - guard.lastUploadStartedAt < this.MIN_SYNC_INTERVAL_MS
   }
 
   private async acquireGuardLock(snapshotHash: string): Promise<boolean> {
@@ -1093,7 +1125,7 @@ export class SyncOrchestrator {
       return
     }
 
-    await this.triggerSyncWithGuards(pendingSnapshot)
+    await this.triggerSyncWithGuards(pendingSnapshot, { enforceMinInterval: false })
   }
 
   /**

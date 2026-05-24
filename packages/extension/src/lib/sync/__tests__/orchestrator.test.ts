@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { SyncOrchestrator } from '../orchestrator'
 import { CloudSyncStrategy } from '../strategies/cloud'
 import { LocalSyncStrategy } from '../strategies/local'
@@ -39,6 +39,7 @@ describe('SyncOrchestrator', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.useRealTimers()
     storageData = {}
 
     // Create fresh strategy instances
@@ -74,6 +75,10 @@ describe('SyncOrchestrator', () => {
     vi.mocked(executeLocalSync).mockResolvedValue({ success: true, syncedAt: 1 })
   })
 
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   describe('triggerSync', () => {
     it('should skip upload when persisted lastUploadedHash matches the current snapshot', async () => {
       const data = makeBackupData({ promptId: 'p1', updatedAt: 100 })
@@ -89,6 +94,28 @@ describe('SyncOrchestrator', () => {
 
       expect(result.skipped).toBe(true)
       expect(cloudStrategy.sync).not.toHaveBeenCalled()
+    })
+
+    it('should queue the latest snapshot when triggerSync is called inside the minimum interval', async () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(10_000)
+
+      const second = makeBackupData({ promptId: 'p1', updatedAt: 200 })
+      const secondHash = await computeBackupDataHash(second)
+
+      storageData.syncStatus = { guard: { lastUploadStartedAt: 9_500 } }
+      vi.spyOn(cloudStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(localStrategy, 'isAvailable').mockResolvedValue(true)
+
+      const result = await orchestrator.triggerSync(second)
+
+      expect(result.skipped).toBe(true)
+      expect(cloudStrategy.sync).not.toHaveBeenCalled()
+      expect(chrome.storage.local.set).toHaveBeenCalledWith(expect.objectContaining({
+        syncStatus: expect.objectContaining({
+          guard: expect.objectContaining({ pendingSnapshotHash: secondHash })
+        })
+      }))
     })
 
     it('should recover an orphaned persisted in-flight guard and run sync', async () => {
@@ -327,6 +354,7 @@ describe('SyncOrchestrator', () => {
       }))
 
       const cloudCallsAfterFirstRun = cloudStrategy.sync.mock.calls.length
+      ;(storageData.syncStatus as any).guard.lastUploadStartedAt = Date.now() - 2000
 
       await orchestrator.triggerSync(second)
 
@@ -820,6 +848,7 @@ describe('SyncOrchestrator', () => {
         .mockResolvedValueOnce(true)
 
       const firstResult = await orchestrator.triggerSync(data)
+      ;(storageData.syncStatus as any).guard.lastUploadStartedAt = Date.now() - 2000
       const secondResult = await orchestrator.triggerSync(data)
 
       expect(firstResult.cloudSynced).toBe(true)
@@ -954,6 +983,33 @@ describe('SyncOrchestrator', () => {
   })
 
   describe('downloadAndMerge', () => {
+    it('should not auto-download inside cloud upload cooldown', async () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(20_000)
+
+      const localData: FullBackupData = {
+        prompts: [{ id: '1', name: 'Local', content: 'local', categoryId: 'c1', order: 0 }],
+        categories: [{ id: 'c1', name: 'Category', order: 0 }],
+        temporaryPrompts: [],
+        timestamp: 20_000
+      }
+
+      vi.mocked(chrome.storage.local.get).mockResolvedValue({
+        syncStatus: { guard: { lastCloudUploadAt: 10_000 } },
+        prompt_script_data: {
+          userData: { prompts: localData.prompts, categories: localData.categories },
+          temporaryPrompts: localData.temporaryPrompts
+        }
+      })
+
+      const result = await orchestrator.downloadAndMerge({ reason: 'auto' })
+
+      expect(result.skipped).toBe(true)
+      expect(result.data.prompts).toEqual(localData.prompts)
+      expect(result.localOnlyItems).toEqual({ prompts: [], categories: [], temporaryPrompts: [] })
+      expect(cloudStrategy.restore).not.toHaveBeenCalled()
+    })
+
     it('should merge data with cloud priority', async () => {
       const cloudData: FullBackupData = {
         prompts: [

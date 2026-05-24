@@ -1084,6 +1084,76 @@ describe('SyncOrchestrator', () => {
       expect(executeLocalSync).not.toHaveBeenCalled()
     })
 
+    it('LOCAL_ONLY should sync local and set pendingCloudSync without clearing cloud error', async () => {
+      const data = makeBackupData({ promptId: 'p1', updatedAt: 100 })
+
+      storageData.syncStatus = { cloudError: 'AUTH_REQUIRED' }
+      vi.spyOn(cloudStrategy, 'isAvailable').mockResolvedValue(false)
+      vi.spyOn(localStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.mocked(executeLocalSync).mockResolvedValue({ success: true, syncedAt: 123 })
+
+      const result = await orchestrator.triggerSync(data)
+
+      expect(result.localSynced).toBe(true)
+      expect(result.cloudSynced).toBe(false)
+      expect(executeLocalSync).toHaveBeenCalledWith(data)
+      expect(chrome.storage.local.set).toHaveBeenCalledWith(expect.objectContaining({
+        syncStatus: expect.objectContaining({
+          hasUnsyncedChanges: true,
+          pendingCloudSync: true,
+          cloudError: 'AUTH_REQUIRED',
+          localError: undefined
+        })
+      }))
+    })
+
+    it('CLOUD_ONLY should sync cloud and keep local error visible', async () => {
+      const data = makeBackupData({ promptId: 'p1', updatedAt: 100 })
+
+      storageData.syncStatus = { localError: 'PERMISSION_DENIED' }
+      vi.spyOn(cloudStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(localStrategy, 'isAvailable').mockResolvedValue(false)
+      vi.spyOn(cloudStrategy, 'sync').mockResolvedValue({ success: true, syncedAt: 123 })
+
+      const result = await orchestrator.triggerSync(data)
+
+      expect(result.cloudSynced).toBe(true)
+      expect(result.localSynced).toBe(false)
+      expect(executeLocalSync).not.toHaveBeenCalled()
+      expect(chrome.storage.local.set).toHaveBeenCalledWith(expect.objectContaining({
+        syncStatus: expect.objectContaining({
+          pendingCloudSync: false,
+          pendingUpload: false,
+          cloudError: undefined,
+          localError: 'PERMISSION_DENIED',
+          localSyncing: false
+        })
+      }))
+      expect((storageData.syncStatus as any).lastLocalSyncTime).toBeUndefined()
+    })
+
+    it('BOTH_UNAVAILABLE should mark unsynced changes without scheduling retry storm', async () => {
+      const data = makeBackupData({ promptId: 'p1', updatedAt: 100 })
+
+      vi.spyOn(cloudStrategy, 'isAvailable').mockResolvedValue(false)
+      vi.spyOn(localStrategy, 'isAvailable').mockResolvedValue(false)
+
+      const result = await orchestrator.triggerSync(data)
+
+      expect(result.cloudSynced).toBe(false)
+      expect(result.localSynced).toBe(false)
+      expect(cloudStrategy.sync).not.toHaveBeenCalled()
+      expect(executeLocalSync).not.toHaveBeenCalled()
+      expect(chrome.storage.local.set).toHaveBeenCalledWith(expect.objectContaining({
+        syncStatus: expect.objectContaining({
+          hasUnsyncedChanges: true,
+          pendingCloudSync: true,
+          cloudSyncing: false,
+          localSyncing: false
+        })
+      }))
+    })
+
     it('should handle cloud sync failure with local success', async () => {
       const data: FullBackupData = {
         prompts: [],

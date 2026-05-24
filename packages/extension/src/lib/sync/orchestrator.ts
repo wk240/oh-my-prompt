@@ -319,6 +319,8 @@ export class SyncOrchestrator {
         return { cloudSynced: false, localSynced: false, cloudError: cloudResult?.error }
       }
       await this.updateSyncStatus({
+        hasUnsyncedChanges: true,
+        pendingCloudSync: true,
         cloudSyncing: false,
         localSyncing: false
       })

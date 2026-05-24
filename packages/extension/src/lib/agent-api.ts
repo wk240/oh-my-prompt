@@ -512,9 +512,16 @@ async function executeOfficialAgentApiCall(
       throw new Error(result?.error || 'Agent API 返回无效响应')
     }
 
+    const isEcommerce = payload.templateCategory === 'ecommerce' && payload.ecommerceConfig
+    const parsedEcommerceResult = isEcommerce
+      ? parseEcommerceGenerateResult({ prompt: result.data.prompt }, payload.ecommerceConfig?.aspectRatio || '1:1')
+      : null
+    const ecommercePrompts = parsedEcommerceResult?.ok ? parsedEcommerceResult.result : undefined
+
     return {
       prompt: result.data.prompt,
-      templateCategory: payload.templateCategory
+      templateCategory: payload.templateCategory,
+      ecommercePrompts
     }
   } catch (error) {
     clearTimeout(timeoutId)

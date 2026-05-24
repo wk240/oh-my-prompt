@@ -7,9 +7,10 @@
  * to avoid needing a separate deployed route.
  */
 
-import type { ProviderConfig, AgentGeneratePayload, AgentGenerateResult, EcommerceGenerateResult } from '@oh-my-prompt/shared/types'
+import type { ProviderConfig, AgentGeneratePayload, AgentGenerateResult } from '@oh-my-prompt/shared/types'
 import { MessageType } from '@oh-my-prompt/shared/messages'
 import { buildAgentSystemPrompt, buildEcommerceSystemPrompt } from './agent-templates'
+import { parseEcommerceGenerateResult } from './ecommerce-result-parser'
 import { extractBase64Data, extractMediaType } from './image-utils'
 import { WEB_APP_URL } from '@/lib/config'
 import { getSupabaseClient } from '@/lib/cloud-sync/supabase-client'
@@ -356,25 +357,10 @@ export async function executeAgentApiCallWithProviderConfig(
       throw new Error('API 返回空内容')
     }
 
-    // Parse ecommerce structured result
-    let ecommercePrompts: EcommerceGenerateResult | undefined
-    if (isEcommerce) {
-      try {
-        // Try to extract JSON from the response text
-        const jsonMatch = promptText.match(/\{[\s\S]*"prompts"[\s\S]*\}/)
-        if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0])
-          if (parsed.prompts && Array.isArray(parsed.prompts)) {
-            ecommercePrompts = {
-              prompts: parsed.prompts,
-              templateCategory: 'ecommerce'
-            }
-          }
-        }
-      } catch {
-        // JSON parsing failed, return as plain text result
-      }
-    }
+    const parsedEcommerceResult = isEcommerce
+      ? parseEcommerceGenerateResult({ prompt: promptText }, payload.ecommerceConfig?.aspectRatio || '1:1')
+      : null
+    const ecommercePrompts = parsedEcommerceResult?.ok ? parsedEcommerceResult.result : undefined
 
     perfLog('END total flow', totalStart)
 

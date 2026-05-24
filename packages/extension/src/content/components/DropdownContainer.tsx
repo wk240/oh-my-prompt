@@ -294,48 +294,56 @@ function SortableDropdownItem({
       <ArrowUpRight className="dropdown-item-arrow" />
       {/* Edit/Delete buttons */}
       <div className="prompt-action-buttons">
-        {onShare && (
+        <Tooltip content="复制">
           <button
-            className="prompt-action-btn share"
+            className="prompt-action-btn"
             onClick={(e) => {
               e.stopPropagation()
-              onShare(prompt)
+              onCopy(prompt)
             }}
-            aria-label="分享到团队"
+            aria-label="复制提示词"
           >
-            <Share2 style={{ width: 14, height: 14 }} />
+            <Copy style={{ width: 14, height: 14 }} />
           </button>
+        </Tooltip>
+        {onShare && (
+          <Tooltip content="分享到团队">
+            <button
+              className="prompt-action-btn share"
+              onClick={(e) => {
+                e.stopPropagation()
+                onShare(prompt)
+              }}
+              aria-label="分享到团队"
+            >
+              <Share2 style={{ width: 14, height: 14 }} />
+            </button>
+          </Tooltip>
         )}
-        <button
-          className="prompt-action-btn"
-          onClick={(e) => {
-            e.stopPropagation()
-            onCopy(prompt)
-          }}
-          aria-label="复制提示词"
-        >
-          <Copy style={{ width: 14, height: 14 }} />
-        </button>
-        <button
-          className="prompt-action-btn"
-          onClick={(e) => {
-            e.stopPropagation()
-            onEdit(prompt)
-          }}
-          aria-label="编辑提示词"
-        >
-          <Pencil style={{ width: 14, height: 14 }} />
-        </button>
-        <button
-          className="prompt-action-btn delete"
-          onClick={(e) => {
-            e.stopPropagation()
-            onDelete(prompt)
-          }}
-          aria-label="删除提示词"
-        >
-          <Trash2 style={{ width: 14, height: 14 }} />
-        </button>
+        <Tooltip content="编辑">
+          <button
+            className="prompt-action-btn"
+            onClick={(e) => {
+              e.stopPropagation()
+              onEdit(prompt)
+            }}
+            aria-label="编辑提示词"
+          >
+            <Pencil style={{ width: 14, height: 14 }} />
+          </button>
+        </Tooltip>
+        <Tooltip content="删除">
+          <button
+            className="prompt-action-btn delete"
+            onClick={(e) => {
+              e.stopPropagation()
+              onDelete(prompt)
+            }}
+            aria-label="删除提示词"
+          >
+            <Trash2 style={{ width: 14, height: 14 }} />
+          </button>
+        </Tooltip>
       </div>
     </div>
   )

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { CloudSyncStrategy } from '../strategies/cloud'
 import { FullBackupData } from '../types'
+import { invalidateSyncStatusCache } from '../../cloud-sync/auth-service'
 
 describe('CloudSyncStrategy', () => {
   let strategy: CloudSyncStrategy
@@ -8,10 +9,12 @@ describe('CloudSyncStrategy', () => {
   beforeEach(() => {
     strategy = new CloudSyncStrategy()
     vi.clearAllMocks()
+    invalidateSyncStatusCache()
   })
 
   afterEach(() => {
     vi.restoreAllMocks()
+    invalidateSyncStatusCache()
   })
 
   it('should have correct id and name', () => {
@@ -97,7 +100,7 @@ describe('CloudSyncStrategy', () => {
     expect(available).toBe(false)
   })
 
-  it('should return false when fetch fails', async () => {
+  it('should remain available with valid local auth when status fetch fails', async () => {
     // Mock chrome.storage.local.get to return auth token
     const mockGet = vi.fn().mockResolvedValue({
       'sb-futfxudabvjfldlismun-auth-token': JSON.stringify({
@@ -119,7 +122,7 @@ describe('CloudSyncStrategy', () => {
     global.fetch = vi.fn().mockRejectedValue(new Error('Network error'))
 
     const available = await strategy.isAvailable()
-    expect(available).toBe(false)
+    expect(available).toBe(true)
   })
 
   it('should upload data via API', async () => {

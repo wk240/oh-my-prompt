@@ -75,7 +75,7 @@ describe('LocalSyncStrategy', () => {
       expect(available).toBe(false)
     })
 
-    it('should return false when folder handle has no permission', async () => {
+    it('should return true when folder handle exists even without permission', async () => {
       const mockDirHandle = createMockDirHandle()
       mockDirHandle.queryPermission.mockResolvedValue('denied')
 
@@ -83,7 +83,7 @@ describe('LocalSyncStrategy', () => {
       vi.mocked(checkFolderPermission).mockResolvedValue('denied')
 
       const available = await strategy.isAvailable()
-      expect(available).toBe(false)
+      expect(available).toBe(true)
     })
 
     it('should return true when folder handle has permission', async () => {

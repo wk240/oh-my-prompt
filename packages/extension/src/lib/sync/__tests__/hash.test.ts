@@ -54,4 +54,46 @@ describe('computeBackupDataHash image metadata', () => {
 
     expect(second).toBe(first)
   })
+
+  it('ignores pending image delete lastError to avoid retry noise hash churn', async () => {
+    const first = await computeBackupDataHash({
+      ...base,
+      pendingImageDeletes: [{
+        imageId: 'image-2',
+        cloudPath: 'users/u/images/image-2.webp',
+        attempts: 1,
+        updatedAt: 2
+      }]
+    })
+    const second = await computeBackupDataHash({
+      ...base,
+      pendingImageDeletes: [{
+        imageId: 'image-2',
+        cloudPath: 'users/u/images/image-2.webp',
+        attempts: 1,
+        lastError: 'delete failed',
+        updatedAt: 2
+      }]
+    })
+
+    expect(second).toBe(first)
+  })
+
+  it('normalizes null optional image metadata like omitted fields', async () => {
+    const first = await computeBackupDataHash(base)
+    const second = await computeBackupDataHash({
+      ...base,
+      imageAssets: {
+        'image-1': {
+          ...base.imageAssets['image-1'],
+          cloudUrl: null,
+          cloudPath: null,
+          sourceUrl: null,
+          lastUploadAttemptAt: null
+        }
+      } as any
+    })
+
+    expect(second).toBe(first)
+  })
 })

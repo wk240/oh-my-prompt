@@ -7,6 +7,10 @@ export interface BackupData extends UserData {
   pendingImageDeletes?: PendingImageDelete[]
 }
 
+function optional<T>(value: T | null | undefined): T | undefined {
+  return value == null ? undefined : value
+}
+
 function normalizeImageAssets(imageAssets: Record<string, ImageAsset> = {}): object[] {
   return Object.values(imageAssets)
     .sort((a, b) => a.id.localeCompare(b.id))
@@ -14,9 +18,9 @@ function normalizeImageAssets(imageAssets: Record<string, ImageAsset> = {}): obj
       id: asset.id,
       promptId: asset.promptId,
       localPath: asset.localPath,
-      cloudUrl: asset.cloudUrl,
-      cloudPath: asset.cloudPath,
-      sourceUrl: asset.sourceUrl,
+      cloudUrl: optional(asset.cloudUrl),
+      cloudPath: optional(asset.cloudPath),
+      sourceUrl: optional(asset.sourceUrl),
       mimeType: asset.mimeType,
       width: asset.width,
       height: asset.height,
@@ -24,7 +28,7 @@ function normalizeImageAssets(imageAssets: Record<string, ImageAsset> = {}): obj
       hash: asset.hash,
       status: asset.status,
       updatedAt: asset.updatedAt,
-      lastUploadAttemptAt: asset.lastUploadAttemptAt
+      lastUploadAttemptAt: optional(asset.lastUploadAttemptAt)
     }))
 }
 

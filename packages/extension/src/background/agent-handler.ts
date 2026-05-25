@@ -100,11 +100,17 @@ export async function handleAgentGenerate(
  * @returns true for async response (required by Chrome message API)
  */
 export async function handleEcommerceAiWrite(
-  payload: { imageData: string; platform: EcommercePlatform; language: EcommerceLanguage },
+  payload: { imageDataList?: string[]; imageData?: string; platform: EcommercePlatform; language: EcommerceLanguage },
   sendResponse: (response: MessageResponse<string>) => void
 ): Promise<boolean> {
   try {
-    const { imageData, platform, language } = payload
+    const { imageDataList, imageData, platform, language } = payload
+    const images = imageDataList?.length ? imageDataList.filter(Boolean) : imageData ? [imageData] : []
+
+    if (images.length === 0) {
+      sendResponse({ success: false, error: '请先上传参考图片' })
+      return true
+    }
 
     const result = await chrome.storage.local.get(PROVIDER_CONFIGS_STORAGE_KEY)
     const storage = result[PROVIDER_CONFIGS_STORAGE_KEY] as ProviderConfigsStorage | undefined
@@ -149,7 +155,8 @@ export async function handleEcommerceAiWrite(
         body: JSON.stringify({
           mode: 'agent',
           inputText: '请根据商品图片生成卖点描述',
-          imageData,
+          imageData: images[0],
+          productImages: images,
           templateCategory: 'ecommerce',
           systemPrompt,
         })
@@ -167,14 +174,22 @@ export async function handleEcommerceAiWrite(
 
     // For third-party APIs, construct the call directly
     // systemPrompt already built above
-    const base64Data = imageData.includes(',') ? imageData.split(',')[1] : imageData
 
     let requestBody: Record<string, unknown>
     let headers: Record<string, string>
 
     if (activeConfig.apiFormat === 'anthropic_messages') {
+      const imageContent = images.map(image => {
+        const base64Data = image.includes(',') ? image.split(',')[1] : image
+        const mediaType = image.match(/^data:(image\/[^;]+);base64,/)?.[1] || 'image/jpeg'
+        return {
+          type: 'image',
+          source: { type: 'base64', media_type: mediaType, data: base64Data }
+        }
+      })
+
       const content: Array<Record<string, unknown>> = [
-        { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: base64Data } },
+        ...imageContent,
         { type: 'text', text: '请根据商品图片生成卖点描述' }
       ]
       requestBody = {
@@ -190,7 +205,7 @@ export async function handleEcommerceAiWrite(
       }
     } else if (activeConfig.apiFormat === 'openai_responses') {
       const content: Array<Record<string, unknown>> = [
-        { type: 'input_image', image_url: imageData },
+        ...images.map(image => ({ type: 'input_image', image_url: image })),
         { type: 'input_text', text: '请根据商品图片生成卖点描述' }
       ]
       requestBody = {
@@ -206,7 +221,7 @@ export async function handleEcommerceAiWrite(
     } else {
       // chat_completions format
       const content: Array<Record<string, unknown>> = [
-        { type: 'image_url', image_url: { url: imageData } },
+        ...images.map(image => ({ type: 'image_url', image_url: { url: image } })),
         { type: 'text', text: systemPrompt + '\n\n请根据商品图片生成卖点描述' }
       ]
       requestBody = {

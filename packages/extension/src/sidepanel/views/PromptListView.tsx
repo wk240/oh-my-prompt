@@ -7,7 +7,7 @@ import { useState, useEffect, useCallback, useMemo, Suspense, lazy, useRef } fro
 import type { Prompt, Category, ResourcePrompt, UpdateStatus, TeamPrompt } from '@oh-my-prompt/shared/types'
 import type { AgentTemplateCategory, AgentViewMode } from '@oh-my-prompt/shared/types/agent'
 import { truncateText, sortCategoriesByOrder, sortPromptsByOrder, sortProviderCategoriesByOrder, sortResourcePromptsByCategoryOrder } from '@oh-my-prompt/shared/utils'
-import { Sparkles, Palette, Shapes, FolderOpen, Layers, Sparkle, Brush, GripVertical, Database, ArrowLeft, Sun, Frame, Paintbrush, Image, ArrowUpCircle, Plus, Pencil, Trash2, ExternalLink, ArrowUpRight, Bookmark, AlertTriangle, Settings, Loader2, Clock, CheckCircle, Copy, Users, Share2, Bot } from 'lucide-react'
+import { Sparkles, Palette, Shapes, FolderOpen, Layers, Sparkle, Brush, GripVertical, Database, ArrowLeft, Sun, Frame, Paintbrush, Image, ArrowUpCircle, Plus, Pencil, Trash2, House, ArrowUpRight, Bookmark, AlertTriangle, Settings, Loader2, Clock, CheckCircle, Copy, Users, Share2, Bot } from 'lucide-react'
 import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -2010,8 +2010,9 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
               href="https://oh-my-prompt.com/"
               target="_blank"
               rel="noopener noreferrer"
+              aria-label="访问官网"
             >
-              <ExternalLink style={{ width: 14, height: 14 }} />
+              <House style={{ width: 14, height: 14 }} />
             </a>
           </Tooltip>
         </div>

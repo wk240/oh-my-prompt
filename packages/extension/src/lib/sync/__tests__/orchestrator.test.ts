@@ -1294,6 +1294,50 @@ describe('SyncOrchestrator', () => {
       expect(result.localOnlyItems.prompts[0].id).toBe('2')
     })
 
+    it('should preserve local image metadata when cloud copy is missing it at the same timestamp', async () => {
+      const cloudData = makeBackupData({
+        prompts: [
+          {
+            id: '1',
+            name: 'Prompt',
+            content: 'content',
+            categoryId: 'c1',
+            order: 0,
+            updatedAt: 1000
+          }
+        ],
+        categories: [{ id: 'c1', name: 'Category', order: 0, updatedAt: 1000 }]
+      })
+      const localData = makeBackupData({
+        prompts: [
+          {
+            id: '1',
+            name: 'Prompt',
+            content: 'content',
+            categoryId: 'c1',
+            order: 0,
+            updatedAt: 1000,
+            localImage: 'images/1.webp',
+            remoteImageUrl: 'https://example.com/1.webp'
+          }
+        ],
+        categories: [{ id: 'c1', name: 'Category', order: 0, updatedAt: 1000 }]
+      })
+
+      vi.spyOn(cloudStrategy, 'restore').mockResolvedValue(cloudData)
+      storageData.prompt_script_data = {
+        userData: { prompts: localData.prompts, categories: localData.categories },
+        temporaryPrompts: localData.temporaryPrompts
+      }
+
+      const result = await orchestrator.downloadAndMerge({ reason: 'manual' })
+
+      expect(result.data.prompts[0]).toEqual(expect.objectContaining({
+        localImage: 'images/1.webp',
+        remoteImageUrl: 'https://example.com/1.webp'
+      }))
+    })
+
     it('should return local data when cloud unavailable', async () => {
       const localData: FullBackupData = {
         prompts: [{ id: '1', name: 'Local', content: 'local', categoryId: 'c1', order: 0 }],

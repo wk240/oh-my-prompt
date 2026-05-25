@@ -978,6 +978,19 @@ export class SyncOrchestrator {
     return this.stableStringify(candidate) < this.stableStringify(existing)
   }
 
+  private preserveMissingImageMetadata<T extends { localImage?: string; remoteImageUrl?: string }>(
+    preferred: T,
+    fallback?: T
+  ): T {
+    if (!fallback) return preferred
+
+    return {
+      ...preferred,
+      localImage: preferred.localImage || fallback.localImage,
+      remoteImageUrl: preferred.remoteImageUrl || fallback.remoteImageUrl
+    }
+  }
+
   private stableStringify(value: unknown): string {
     if (!value || typeof value !== 'object') {
       return JSON.stringify(value)
@@ -1227,7 +1240,7 @@ export class SyncOrchestrator {
    * - cloudNewer: items where cloud version is newer than local (need to update local)
    * - conflicts: items with same timestamp
    */
-  private mergeBidirectional<T extends { id: string; updatedAt?: number; name?: string }>(
+  private mergeBidirectional<T extends { id: string; updatedAt?: number; name?: string; localImage?: string; remoteImageUrl?: string }>(
     cloud: T[],
     local: T[],
     onConflict?: (cloudItem: T, localItem: T) => T
@@ -1262,18 +1275,18 @@ export class SyncOrchestrator {
 
         if (cloudUpdated > localUpdated) {
           // Cloud version is newer
-          merged.set(id, cloudItem)
+          merged.set(id, this.preserveMissingImageMetadata(cloudItem, localItem))
           cloudNewer.push(localItem) // Track that cloud version will overwrite local
         } else if (localUpdated > cloudUpdated) {
           // Local version is newer
-          merged.set(id, localItem)
+          merged.set(id, this.preserveMissingImageMetadata(localItem, cloudItem))
           localNewer.push(localItem) // Track for upload to cloud
         } else {
           // Same timestamp - conflict
           conflicts.push({ cloud: cloudItem, local: localItem })
           // Default: use conflict resolver or keep cloud
           const resolved = onConflict?.(cloudItem, localItem) ?? cloudItem
-          merged.set(id, resolved)
+          merged.set(id, this.preserveMissingImageMetadata(resolved, resolved === localItem ? cloudItem : localItem))
         }
       }
     }

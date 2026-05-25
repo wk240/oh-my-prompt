@@ -1,4 +1,4 @@
-import { Cloud, HardDrive, RefreshCw, Clock, Check, AlertTriangle, LogIn, FolderOpen } from 'lucide-react'
+import { Cloud, HardDrive, RefreshCw, Clock, Check, AlertTriangle, FolderOpen } from 'lucide-react'
 import type { BackupTargetStatus } from '@/lib/sync/types'
 
 interface BackupStatusRowProps {
@@ -7,6 +7,8 @@ interface BackupStatusRowProps {
   onLogin?: () => void        // For cloud login
   onRestorePermission?: () => void  // For local permission restore
   onClickError?: () => void   // For showing error details
+  onNavigateToMine?: () => void  // Navigate to mine tab when not logged in
+  onUpgrade?: () => void // Open subscription page
 }
 
 /**
@@ -51,9 +53,11 @@ function formatRetryWait(scheduledAt: number): string {
 export function BackupStatusRow({
   target,
   status,
-  onLogin,
+  onLogin: _onLogin, // Kept for potential future use, prefix _ to suppress TS warning
   onRestorePermission,
-  onClickError
+  onClickError,
+  onNavigateToMine,
+  onUpgrade
 }: BackupStatusRowProps) {
   // Target icon and label
   const TargetIcon = target === 'cloud' ? Cloud : HardDrive
@@ -94,15 +98,28 @@ export function BackupStatusRow({
       )
     }
 
-    // 3. Not logged in (cloud only)
+    // 3. Not logged in (cloud only) - weakened to gray text
     if (target === 'cloud' && !status.loggedIn) {
       return (
-        <button
-          onClick={onLogin}
-          className="flex items-center gap-1.5 text-sm text-yellow-600 hover:text-yellow-700 cursor-pointer transition-colors"
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={onNavigateToMine}
+          onKeyDown={(e) => e.key === 'Enter' && onNavigateToMine?.()}
+          className="text-sm text-gray-400 hover:text-gray-600 cursor-pointer transition-colors"
         >
-          <LogIn className="w-3.5 h-3.5" />
-          <span>未登录 · 点击登录</span>
+          未登录
+        </span>
+      )
+    }
+
+    if (target === 'cloud' && status.error === 'SUBSCRIPTION_REQUIRED') {
+      return (
+        <button
+          onClick={onUpgrade}
+          className="text-sm text-amber-600 hover:text-amber-700 cursor-pointer transition-colors"
+        >
+          升级会员开启云端备份
         </button>
       )
     }

@@ -6,18 +6,26 @@
 
 import { useRef, useState, useMemo, useEffect, useCallback, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
-import type { Prompt, Category } from '@oh-my-prompt/shared/types'
+import type { Prompt, Category, GeneralAgentGenerateResult } from '@oh-my-prompt/shared/types'
+import type { TeamPrompt } from '@oh-my-prompt/shared/types'
+import type { AgentTemplateCategory } from '@oh-my-prompt/shared/types/agent'
 import type { ResourcePrompt, ResourceCategory, UpdateStatus } from '@oh-my-prompt/shared/types'
 import { truncateText, sortCategoriesByOrder, sortPromptsByOrder, sortProviderCategoriesByOrder, sortResourcePromptsByCategoryOrder } from '@oh-my-prompt/shared/utils'
-import { Sparkles, Palette, Shapes, ArrowUpRight, FolderOpen, Layers, Sparkle, Brush, GripVertical, Database, ArrowLeft, Sun, Frame, Paintbrush, Image, ArrowUpCircle, Plus, Pencil, Trash2, ExternalLink, AlertTriangle, Settings, Clock, Copy } from 'lucide-react'
+import { Sparkles, Palette, Shapes, ArrowUpRight, FolderOpen, Layers, Sparkle, Brush, GripVertical, Database, ArrowLeft, Sun, Frame, Paintbrush, Image, ArrowUpCircle, Plus, Pencil, Trash2, House, AlertTriangle, Settings, Clock, Copy, Users, Loader2, Share2, Bot } from 'lucide-react'
 import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { NetworkPromptCard } from './NetworkPromptCard'
+import { TeamPromptCard } from './TeamPromptCard'
 import { ProviderCategoryItem } from './ProviderCategoryItem'
 import { CategorySelectDialog } from './CategorySelectDialog'
+import { TeamShareDialog } from './TeamShareDialog'
 import { showToast } from './ToastNotification'
 import { Tooltip } from './Tooltip'
+import { AgentPanel } from './AgentPanel'
+import { EcommercePanel } from './EcommercePanel'
+import type { EcommercePersistedState } from './EcommercePanel'
+import { getAgentTemplates, getAgentTemplate } from '../../lib/agent-templates'
 // Lazy load Modal components - only loaded when user opens them
 const PromptPreviewModal = lazy(() => import('./PromptPreviewModal').then(m => ({ default: m.PromptPreviewModal })))
 const UpdateGuideModal = lazy(() => import('./UpdateGuideModal').then(m => ({ default: m.UpdateGuideModal })))
@@ -29,6 +37,7 @@ import { getResourcePrompts, getResourceCategories } from '../../lib/resource-li
 import { MessageType } from '@oh-my-prompt/shared/messages'
 import { clearImageUrlCache, isFolderConfigured, downloadImageFromUrl, saveImage } from '../../lib/sync/image-sync'
 import { clearLoadQueue } from '../../lib/sync/image-loader-queue'
+import { clearSupabaseClient } from '../../lib/cloud-sync/supabase-client'
 import { PromptThumbnail } from './PromptThumbnail'
 import { PORTAL_ID, STYLE_ID, DROPDOWN_STYLES } from '../styles/dropdown-styles'
 
@@ -37,6 +46,7 @@ interface DropdownContainerProps {
   categories: Category[]
   onSelect: (prompt: Prompt) => void
   onInjectResource?: (prompt: ResourcePrompt) => void  // Inject resource prompt directly
+  onInsertText?: (text: string) => void  // Insert plain text into input field
   isOpen: boolean
   selectedPromptId: string | null
   onClose?: () => void
@@ -208,6 +218,7 @@ function SortableDropdownItem({
   onEdit,
   onDelete,
   onCopy,
+  onShare,
   onThumbnailClick,
 }: {
   prompt: Prompt
@@ -218,6 +229,7 @@ function SortableDropdownItem({
   onEdit: (prompt: Prompt) => void
   onDelete: (prompt: Prompt) => void
   onCopy: (prompt: Prompt) => void
+  onShare?: (prompt: Prompt) => void  // Share to team
   onThumbnailClick?: (prompt: Prompt) => void  // Click on thumbnail to open preview
 }) {
   const {
@@ -282,36 +294,56 @@ function SortableDropdownItem({
       <ArrowUpRight className="dropdown-item-arrow" />
       {/* Edit/Delete buttons */}
       <div className="prompt-action-buttons">
-        <button
-          className="prompt-action-btn"
-          onClick={(e) => {
-            e.stopPropagation()
-            onCopy(prompt)
-          }}
-          aria-label="复制提示词"
-        >
-          <Copy style={{ width: 14, height: 14 }} />
-        </button>
-        <button
-          className="prompt-action-btn"
-          onClick={(e) => {
-            e.stopPropagation()
-            onEdit(prompt)
-          }}
-          aria-label="编辑提示词"
-        >
-          <Pencil style={{ width: 14, height: 14 }} />
-        </button>
-        <button
-          className="prompt-action-btn delete"
-          onClick={(e) => {
-            e.stopPropagation()
-            onDelete(prompt)
-          }}
-          aria-label="删除提示词"
-        >
-          <Trash2 style={{ width: 14, height: 14 }} />
-        </button>
+        <Tooltip content="复制">
+          <button
+            className="prompt-action-btn"
+            onClick={(e) => {
+              e.stopPropagation()
+              onCopy(prompt)
+            }}
+            aria-label="复制提示词"
+          >
+            <Copy style={{ width: 14, height: 14 }} />
+          </button>
+        </Tooltip>
+        {onShare && (
+          <Tooltip content="分享到团队">
+            <button
+              className="prompt-action-btn share"
+              onClick={(e) => {
+                e.stopPropagation()
+                onShare(prompt)
+              }}
+              aria-label="分享到团队"
+            >
+              <Share2 style={{ width: 14, height: 14 }} />
+            </button>
+          </Tooltip>
+        )}
+        <Tooltip content="编辑">
+          <button
+            className="prompt-action-btn"
+            onClick={(e) => {
+              e.stopPropagation()
+              onEdit(prompt)
+            }}
+            aria-label="编辑提示词"
+          >
+            <Pencil style={{ width: 14, height: 14 }} />
+          </button>
+        </Tooltip>
+        <Tooltip content="删除">
+          <button
+            className="prompt-action-btn delete"
+            onClick={(e) => {
+              e.stopPropagation()
+              onDelete(prompt)
+            }}
+            aria-label="删除提示词"
+          >
+            <Trash2 style={{ width: 14, height: 14 }} />
+          </button>
+        </Tooltip>
       </div>
     </div>
   )
@@ -322,6 +354,7 @@ export function DropdownContainer({
   categories: propCategories,
   onSelect,
   onInjectResource,
+  onInsertText,
   isOpen,
   selectedPromptId,
   onClose: _onClose,
@@ -350,6 +383,41 @@ export function DropdownContainer({
   const [resourceCategories] = useState<ResourceCategory[]>(getResourceCategories())
   const [selectedResourceCategoryId, setSelectedResourceCategoryId] = useState<string>('all')
   const [loadedCount, setLoadedCount] = useState(50)
+
+  // Agent mode state
+  const [agentViewMode, setAgentViewMode] = useState<'default' | 'agent'>('default')
+  const [agentSelectedTemplate, setAgentSelectedTemplate] = useState<AgentTemplateCategory>('general')
+  const [agentExtractedText, setAgentExtractedText] = useState<string>('')
+
+  // Persisted state for Agent/Ecommerce panels (survives close/reopen)
+  const [agentPanelState, setAgentPanelState] = useState<{ inputText: string; result: string | null; structuredResult: GeneralAgentGenerateResult | null; imageData: string | null }>({
+    inputText: '', result: null, structuredResult: null, imageData: null
+  })
+  const [ecommercePanelState, setEcommercePanelState] = useState<EcommercePersistedState>({
+    productImages: [], platform: 'amazon', market: 'china',
+    language: 'zh', aspectRatio: '1:1', sellingPoints: '', setStructure: 'smart',
+    customCounts: { whiteBg: 1, scene: 2, sellingPoint: 2, other: 2 },
+    result: null, generationConfigSnapshot: null, expandedPromptIndexes: [], viewMode: 'form'
+  })
+
+  const handleAgentStateChange = useCallback((state: { inputText: string; result: string | null; structuredResult: GeneralAgentGenerateResult | null; imageData: string | null }) => {
+    setAgentPanelState(state)
+  }, [])
+  const handleEcommerceStateChange = useCallback((state: EcommercePersistedState) => {
+    setEcommercePanelState(state)
+  }, [])
+
+  // Listen for extracted text from Content Script (Agent mode)
+  useEffect(() => {
+    const handler = (message: { type: string; payload?: { inputText: string } }) => {
+      if (message.type === MessageType.AGENT_EXTRACT_FROM_CS && message.payload?.inputText) {
+        setAgentExtractedText(message.payload.inputText)
+        setAgentViewMode('agent')
+      }
+    }
+    chrome.runtime.onMessage.addListener(handler)
+    return () => chrome.runtime.onMessage.removeListener(handler)
+  }, [])
 
   // Language preference state (for resource library and local prompts)
   const [resourceLanguage, setResourceLanguage] = useState<'zh' | 'en'>('zh')
@@ -398,6 +466,40 @@ export function DropdownContainer({
   // Temporary prompts from store (independent storage field)
   const temporaryPrompts = usePromptStore((state) => state.temporaryPrompts)
 
+  // Team library state
+  const teamPrompts = usePromptStore((state) => state.teamPrompts)
+  const teamSyncStatus = usePromptStore((state) => state.teamSyncStatus)
+  const authState = usePromptStore((state) => state.authState)
+  const syncTeamPrompts = usePromptStore((state) => state.syncTeamPrompts)
+  const loadTeamPrompts = usePromptStore((state) => state.loadTeamPrompts)
+  const loadAuthState = usePromptStore((state) => state.loadAuthState)
+
+  // Team syncing state
+  const [teamSyncing, setTeamSyncing] = useState(false)
+
+  // Load team prompts and auth state on mount
+  useEffect(() => {
+    if (isOpen) {
+      loadTeamPrompts()
+      loadAuthState()
+    }
+  }, [isOpen, loadTeamPrompts, loadAuthState])
+
+  // Listen for auth status updates (login/logout) to refresh auth state
+  // Critical: Content script's Supabase client singleton must be cleared to pick up new session
+  useEffect(() => {
+    const handleMessage = (message: { type: string; payload?: { logout?: boolean } }) => {
+      if (message.type === MessageType.AUTH_STATUS_UPDATE) {
+        // Clear Supabase client singleton to force re-read from chrome.storage.local
+        clearSupabaseClient()
+        // Re-load auth state from storage
+        loadAuthState()
+      }
+    }
+    chrome.runtime.onMessage.addListener(handleMessage)
+    return () => chrome.runtime.onMessage.removeListener(handleMessage)
+  }, [loadAuthState])
+
   // Display temporary prompts with language transformation
   const displayTemporaryPrompts = useMemo(() => {
     return temporaryPrompts.map(p => ({
@@ -413,6 +515,8 @@ export function DropdownContainer({
     isPreview: boolean           // Resource prompt preview modal
     isUserPreview: boolean       // User prompt preview modal (thumbnail click)
     isCategoryDialog: boolean    // Category select dialog
+    isTeamCategoryDialog: boolean  // Team prompt category select dialog
+    isTeamShare: boolean         // Team share dialog
     isCategoryAdd: boolean       // Category add modal
     isCategoryEdit: boolean      // Category edit modal
     isCategoryDelete: boolean    // Category delete modal
@@ -429,6 +533,8 @@ export function DropdownContainer({
     isPreview: false,
     isUserPreview: false,
     isCategoryDialog: false,
+    isTeamCategoryDialog: false,
+    isTeamShare: false,
     isCategoryAdd: false,
     isCategoryEdit: false,
     isCategoryDelete: false,
@@ -450,20 +556,24 @@ export function DropdownContainer({
   // Grouped editing states
   interface EditingStates {
     resourcePrompt: ResourcePrompt | null  // Resource prompt for preview/collect
+    teamPrompt: TeamPrompt | null          // Team prompt for save to personal library
     userPrompt: Prompt | null              // User prompt for preview
     category: Category | null              // Category being edited
     prompt: Prompt | null                  // Prompt being edited
     deletingCategory: Category | null      // Category being deleted
     deletingPrompt: Prompt | null          // Prompt being deleted
+    sharingPrompt: Prompt | null           // Prompt being shared to team
   }
 
   const [editingStates, setEditingStates] = useState<EditingStates>({
     resourcePrompt: null,
+    teamPrompt: null,
     userPrompt: null,
     category: null,
     prompt: null,
     deletingCategory: null,
     deletingPrompt: null,
+    sharingPrompt: null,
   })
 
   // Helper methods for editing state (memoized for stable references)
@@ -615,8 +725,83 @@ export function DropdownContainer({
     }
   }, [onInjectResource, resourceLanguage])
 
-  // Handle collect confirmation - auto-download preview image when available
+  // Handle team prompt injection
+  const handleInjectTeamPrompt = useCallback((teamPrompt: TeamPrompt) => {
+    if (onInjectResource) {
+      const promptToInject = resourceLanguage === 'en' && teamPrompt.contentEn
+        ? { ...teamPrompt, content: teamPrompt.contentEn, name: teamPrompt.nameEn || teamPrompt.name }
+        : teamPrompt
+      onInjectResource(promptToInject as ResourcePrompt)
+      showToast('已注入提示词')
+    }
+  }, [onInjectResource, resourceLanguage])
+
+  // Handle team prompt copy
+  const handleCopyTeamPrompt = useCallback(async (teamPrompt: TeamPrompt) => {
+    const contentToCopy = resourceLanguage === 'en' && teamPrompt.contentEn ? teamPrompt.contentEn : teamPrompt.content
+    try {
+      await navigator.clipboard.writeText(contentToCopy)
+      showToast('已复制到剪贴板')
+    } catch {
+      showToast('复制失败')
+    }
+  }, [resourceLanguage])
+
+  // Handle save team prompt to personal library
+  const handleSaveTeamPrompt = useCallback((teamPrompt: TeamPrompt) => {
+    setEditingItem('teamPrompt', teamPrompt)
+    openModal('isTeamCategoryDialog')
+  }, [setEditingItem, openModal])
+
+  // Handle team sync
+  const handleTeamSync = useCallback(async () => {
+    setTeamSyncing(true)
+    const result = await syncTeamPrompts()
+    setTeamSyncing(false)
+    if (result.success) {
+      showToast(`已同步 ${result.promptsCount || 0} 条团队提示词`)
+    } else {
+      showToast(result.error === 'NOT_LOGGED_IN' ? '请先登录' : '同步失败')
+    }
+  }, [syncTeamPrompts])
+
+  // Handle collect confirmation - support both resource and team prompts
   const handleConfirmCollect = useCallback(async (categoryId: string, newCategoryName?: string) => {
+    // Handle team prompt
+    if (editingStates.teamPrompt) {
+      const teamPrompt = editingStates.teamPrompt
+
+      let targetCategoryId = categoryId
+
+      if (newCategoryName && newCategoryName.trim()) {
+        usePromptStore.getState().addCategory(newCategoryName.trim())
+        const storeCategories = usePromptStore.getState().categories
+        const newCategory = storeCategories.find(c => c.name === newCategoryName.trim())
+        if (newCategory) {
+          targetCategoryId = newCategory.id
+        }
+      }
+
+      usePromptStore.getState().addPrompt({
+        name: teamPrompt.name,
+        nameEn: teamPrompt.nameEn,
+        content: teamPrompt.content,
+        contentEn: teamPrompt.contentEn,
+        categoryId: targetCategoryId,
+        description: teamPrompt.description,
+        descriptionEn: teamPrompt.descriptionEn,
+        order: 0,
+      })
+
+      const categoryName = usePromptStore.getState().categories.find(c => c.id === targetCategoryId)?.name || '未知分类'
+      showToast(`已保存到 ${categoryName}`)
+
+      closeModal('isTeamCategoryDialog')
+      clearEditingItem('teamPrompt')
+      return
+    }
+
+    // Handle resource prompt
     if (!editingStates.resourcePrompt) return
     const resourcePrompt = editingStates.resourcePrompt // Capture reference for async operations
 
@@ -687,7 +872,7 @@ export function DropdownContainer({
     closeModal('isCategoryDialog')
     closeModal('isPreview')
     clearEditingItem('resourcePrompt')
-  }, [editingStates.resourcePrompt])
+  }, [editingStates.teamPrompt, editingStates.resourcePrompt])
 
   const dropdownGap = 8
   const dropdownMaxHeight = 600
@@ -1063,6 +1248,22 @@ export function DropdownContainer({
     }
   }, [resourceLanguage])
 
+  // Handle share to team
+  const handleShareToTeam = useCallback((prompt: Prompt) => {
+    if (!authState || authState.status !== 'logged_in') {
+      showToast('请先登录后共享')
+      return
+    }
+    setEditingItem('sharingPrompt', prompt)
+    openModal('isTeamShare')
+  }, [authState, setEditingItem, openModal])
+
+  // Handle team share dialog close (memoized for TeamShareDialog)
+  const handleTeamShareClose = useCallback(() => {
+    closeModal('isTeamShare')
+    clearEditingItem('sharingPrompt')
+  }, [closeModal, clearEditingItem])
+
   // Handle copy resource prompt to clipboard
   const handleCopyResourcePrompt = useCallback(async (resourcePrompt: ResourcePrompt) => {
     const contentToCopy = resourceLanguage === 'en' && resourcePrompt.contentEn ? resourcePrompt.contentEn : resourcePrompt.content
@@ -1236,7 +1437,36 @@ export function DropdownContainer({
       >
       <div className="dropdown-sidebar">
         <div className="sidebar-categories">
-          {isResourceLibrary ? (
+          {agentViewMode === 'agent' ? (
+            <>
+              {/* Back to default mode */}
+              <button
+                className="sidebar-category-item"
+                onClick={() => setAgentViewMode('default')}
+                aria-label="返回"
+              >
+                <div className="sidebar-category-icon-wrapper">
+                  <ArrowLeft className="sidebar-category-icon" />
+                </div>
+                <span>返回</span>
+              </button>
+              {/* Agent template categories */}
+              {getAgentTemplates().map(template => (
+                <button
+                  key={template.id}
+                  className={`sidebar-category-item ${agentSelectedTemplate === template.id ? 'selected' : ''}`}
+                  onClick={() => setAgentSelectedTemplate(template.id)}
+                >
+                  <div className="sidebar-category-icon-wrapper">
+                    <Bot className="sidebar-category-icon" style={{ color: agentSelectedTemplate === template.id ? '#A16207' : '#64748B' }} />
+                  </div>
+                  <Tooltip content={template.description} maxWidth={600}>
+                    <span>{template.name}</span>
+                  </Tooltip>
+                </button>
+              ))}
+            </>
+          ) : isResourceLibrary ? (
             <>
               {/* Back to local categories */}
               <button
@@ -1278,6 +1508,17 @@ export function DropdownContainer({
             </>
           ) : (
             <>
+              <button
+                className="sidebar-category-item"
+                onClick={() => setAgentViewMode('agent')}
+                aria-label="Agent"
+              >
+                <div className="sidebar-category-icon-wrapper">
+                  <Bot className="sidebar-category-icon" style={{ color: '#A16207' }} />
+                </div>
+                <span style={{ color: '#A16207' }}>Agent</span>
+              </button>
+
               {/* "资源库" entry */}
               <button
                 className={`sidebar-category-item ${isResourceLibrary ? 'selected' : ''}`}
@@ -1288,6 +1529,23 @@ export function DropdownContainer({
                   <Database className="sidebar-category-icon" />
                 </div>
                 <span>资源库</span>
+              </button>
+
+              {/* "团队库" entry - between 资源库 and 临时库 */}
+              <button
+                className={`sidebar-category-item ${selectedCategoryId === 'team' ? 'selected' : ''}`}
+                onClick={() => setSelectedCategoryId('team')}
+                aria-label="团队库"
+              >
+                <div className="sidebar-category-icon-wrapper">
+                  <Users className="sidebar-category-icon" style={{ color: selectedCategoryId === 'team' ? '#8b5cf6' : '#64748B' }} />
+                </div>
+                <span style={{ color: selectedCategoryId === 'team' ? '#8b5cf6' : undefined }}>团队库</span>
+                {teamSyncStatus && (
+                  <span style={{ fontSize: '10px', color: '#94a3b8', marginLeft: 'auto' }}>
+                    {teamPrompts.length}
+                  </span>
+                )}
               </button>
 
               {/* "临时库" entry - as sidebar category item */}
@@ -1420,7 +1678,7 @@ export function DropdownContainer({
                 rel="noopener noreferrer"
                 aria-label="访问官网"
               >
-                <ExternalLink style={{ width: 14, height: 14 }} />
+                <House style={{ width: 14, height: 14 }} />
               </a>
             </Tooltip>
           </div>
@@ -1500,7 +1758,50 @@ export function DropdownContainer({
             )}
 
             <div className="dropdown-content" ref={scrollContainerRef} onScroll={handleScroll}>
-          {isLoading ? (
+          {agentViewMode === 'agent' ? (
+            agentSelectedTemplate === 'ecommerce' ? (
+              <EcommercePanel
+                selectedTemplate={agentSelectedTemplate}
+                extractedText={agentExtractedText}
+                categories={sortableCategories}
+                onSave={(prompt: string, categoryId: string, templateCategory: AgentTemplateCategory) => {
+                  const template = getAgentTemplate(templateCategory)
+                  usePromptStore.getState().addPrompt({
+                    name: `Agent: ${template?.name || '生成'}`,
+                    content: prompt,
+                    categoryId,
+                    order: localPrompts.filter(p => p.categoryId === categoryId).length,
+                  })
+                  showToast('已保存到库')
+                }}
+                onInsert={onInsertText}
+                persistedState={ecommercePanelState}
+                onPersistStateChange={handleEcommerceStateChange}
+              />
+            ) : (
+              <AgentPanel
+                selectedTemplate={agentSelectedTemplate}
+                extractedText={agentExtractedText}
+                categories={sortableCategories}
+                onSave={(prompt: string, categoryId: string, templateCategory: AgentTemplateCategory) => {
+                  const template = getAgentTemplate(templateCategory)
+                  usePromptStore.getState().addPrompt({
+                    name: `Agent: ${template?.name || '生成'}`,
+                    content: prompt,
+                    categoryId,
+                    order: localPrompts.filter(p => p.categoryId === categoryId).length,
+                  })
+                  showToast('已保存到库')
+                }}
+                onInsert={onInsertText}
+                persistedInputText={agentPanelState.inputText}
+                persistedResult={agentPanelState.result}
+                persistedStructuredResult={agentPanelState.structuredResult}
+                persistedImageData={agentPanelState.imageData}
+                onPersistStateChange={handleAgentStateChange}
+              />
+            )
+          ) : isLoading ? (
             <div className="empty-state">
               <div className="empty-message">加载中...</div>
             </div>
@@ -1534,10 +1835,88 @@ export function DropdownContainer({
                 ))}
               </div>
             )
+          ) : selectedCategoryId === 'team' ? (
+            // Team library content view
+            authState?.status !== 'logged_in' ? (
+              // Not logged in state
+              <div className="team-library-empty">
+                <div className="team-library-empty-message">
+                  <p>团队库需要登录后使用</p>
+                  <button
+                    className="team-library-empty-btn"
+                    onClick={() => chrome.runtime.sendMessage({ type: MessageType.OPEN_SIDEPANEL })}
+                  >
+                    前往设置登录
+                  </button>
+                </div>
+              </div>
+            ) : teamPrompts.length === 0 ? (
+              // Empty team library state
+              <div className="team-library-empty">
+                <div className="team-library-empty-message">
+                  <p>暂无团队提示词</p>
+                  <button
+                    className="team-library-empty-btn"
+                    onClick={handleTeamSync}
+                    disabled={teamSyncing}
+                  >
+                    {teamSyncing ? (
+                      <>
+                        <Loader2 className="team-sync-spinner" style={{ width: 12, height: 12 }} />
+                        同步中...
+                      </>
+                    ) : '同步团队库'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              // Team prompts grid
+              <>
+                {/* Team sync header */}
+                <div className="team-library-header">
+                  <span className="team-library-count">共 {teamPrompts.length} 条团队提示词</span>
+                  <button
+                    className="team-sync-btn"
+                    onClick={handleTeamSync}
+                    disabled={teamSyncing}
+                  >
+                    {teamSyncing ? (
+                      <>
+                        <Loader2 className="team-sync-spinner" style={{ width: 12, height: 12 }} />
+                        同步中...
+                      </>
+                    ) : '同步'}
+                  </button>
+                </div>
+                {/* Team prompts grid */}
+                <div className="team-cards-grid">
+                  {teamPrompts.map((prompt) => (
+                    <TeamPromptCard
+                      key={prompt.id}
+                      prompt={prompt}
+                      language={resourceLanguage}
+                      onClick={() => {
+                        setEditingItem('teamPrompt', prompt)
+                        openModal('isPreview')
+                      }}
+                      onInject={() => handleInjectTeamPrompt(prompt)}
+                      onSave={() => handleSaveTeamPrompt(prompt)}
+                      onCopy={() => handleCopyTeamPrompt(prompt)}
+                    />
+                  ))}
+                </div>
+              </>
+            )
           ) : filteredPrompts.length === 0 ? (
             <div className="empty-state">
               <div className="empty-message">
-                {selectedCategoryId === 'all' ? '暂无提示词，点击下方按钮添加' : selectedCategoryId === 'temporary' ? '暂无临时提示词' : '该分类暂无提示词'}
+                {selectedCategoryId === 'all'
+                  ? '暂无提示词，点击下方按钮添加'
+                  : selectedCategoryId === 'temporary'
+                    ? '暂无临时提示词'
+                    : selectedCategoryId === 'team'
+                      ? '暂无团队提示词'
+                      : '该分类暂无提示词'}
               </div>
             </div>
           ) : (
@@ -1569,6 +1948,7 @@ export function DropdownContainer({
                         openModal('isPromptDelete')
                       }}
                       onCopy={handleCopyPrompt}
+                      onShare={handleShareToTeam}
                     />
                   ))}
                 </SortableContext>
@@ -1577,7 +1957,7 @@ export function DropdownContainer({
           )}
         </div>
         {/* FAB add prompt button */}
-            {!isResourceLibrary && selectedCategoryId !== 'temporary' && (
+            {!isResourceLibrary && selectedCategoryId !== 'temporary' && selectedCategoryId !== 'team' && agentViewMode !== 'agent' && (
               <button
                 className="fab-add-prompt"
                 onClick={() => openModal('isPromptAdd')}
@@ -1589,29 +1969,44 @@ export function DropdownContainer({
           </>
         </div>
       </div>
-    {/* Prompt preview modal with collect */}
-    {editingStates.resourcePrompt && (
+    {/* Prompt preview modal with collect - handles both resource and team prompts */}
+    {(editingStates.resourcePrompt || editingStates.teamPrompt) && (
       <Suspense fallback={null}>
         <PromptPreviewModal
-          prompt={editingStates.resourcePrompt}
+          prompt={(editingStates.resourcePrompt || editingStates.teamPrompt)!}
           isOpen={modalStates.isPreview}
           onClose={() => {
             closeModal('isPreview')
             clearEditingItem('resourcePrompt')
+            clearEditingItem('teamPrompt')
           }}
-          onCollect={() => openModal('isCategoryDialog')}
+          onCollect={() => {
+            if (editingStates.teamPrompt) {
+              openModal('isTeamCategoryDialog')
+            } else {
+              openModal('isCategoryDialog')
+            }
+          }}
           onInject={(language) => {
-            if (onInjectResource && editingStates.resourcePrompt) {
-              // Use the language version from modal
+            if (editingStates.teamPrompt) {
+              handleInjectTeamPrompt(
+                language === 'en' && editingStates.teamPrompt.contentEn
+                  ? { ...editingStates.teamPrompt, content: editingStates.teamPrompt.contentEn }
+                  : editingStates.teamPrompt
+              )
+            } else if (editingStates.resourcePrompt && onInjectResource) {
+              // Keep existing resource inject code
               const promptToInject = language === 'en' && editingStates.resourcePrompt.contentEn
-                ? { ...editingStates.resourcePrompt, content: editingStates.resourcePrompt.contentEn, name: editingStates.resourcePrompt.nameEn || editingStates.resourcePrompt.name }
+                ? { ...editingStates.resourcePrompt, content: editingStates.resourcePrompt.contentEn }
                 : editingStates.resourcePrompt
               onInjectResource(promptToInject)
               showToast('已注入提示词')
             }
           }}
           onCopy={() => {
-            if (editingStates.resourcePrompt) {
+            if (editingStates.teamPrompt) {
+              handleCopyTeamPrompt(editingStates.teamPrompt)
+            } else if (editingStates.resourcePrompt) {
               handleCopyResourcePrompt(editingStates.resourcePrompt)
             }
           }}
@@ -1665,6 +2060,21 @@ export function DropdownContainer({
       onClose={() => closeModal('isCategoryDialog')}
       onConfirm={handleConfirmCollect}
     />
+    {/* Team prompt category select dialog */}
+    <CategorySelectDialog
+      categories={sortableCategories}
+      isOpen={modalStates.isTeamCategoryDialog}
+      onClose={() => closeModal('isTeamCategoryDialog')}
+      onConfirm={handleConfirmCollect}
+    />
+    {/* Team share dialog */}
+    {editingStates.sharingPrompt && (
+      <TeamShareDialog
+        prompt={editingStates.sharingPrompt}
+        isOpen={modalStates.isTeamShare}
+        onClose={handleTeamShareClose}
+      />
+    )}
     {/* "Already latest" tip - Portal rendered outside dropdown to escape overflow:hidden */}
     {modalStates.showLatestTip && updateButtonRef.current && (
       <div

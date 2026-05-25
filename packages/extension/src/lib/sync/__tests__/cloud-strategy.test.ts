@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { CloudSyncStrategy } from '../strategies/cloud'
 import { FullBackupData } from '../types'
+import { invalidateSyncStatusCache } from '../../cloud-sync/auth-service'
 
 describe('CloudSyncStrategy', () => {
   let strategy: CloudSyncStrategy
@@ -8,10 +9,12 @@ describe('CloudSyncStrategy', () => {
   beforeEach(() => {
     strategy = new CloudSyncStrategy()
     vi.clearAllMocks()
+    invalidateSyncStatusCache()
   })
 
   afterEach(() => {
     vi.restoreAllMocks()
+    invalidateSyncStatusCache()
   })
 
   it('should have correct id and name', () => {
@@ -39,7 +42,7 @@ describe('CloudSyncStrategy', () => {
     expect(global.fetch).not.toHaveBeenCalled()
   })
 
-  it('should check availability with valid auth token', async () => {
+  it('should check availability for active Pro users', async () => {
     // Mock chrome.storage.local.get to return auth token
     const mockGet = vi.fn().mockResolvedValue({
       'sb-futfxudabvjfldlismun-auth-token': JSON.stringify({
@@ -57,22 +60,79 @@ describe('CloudSyncStrategy', () => {
       }
     } as any
 
-    // Mock fetch to return ok status
+    // Mock fetch to return active pro subscription
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: vi.fn().mockResolvedValue({ success: true })
+      status: 200,
+      json: vi.fn().mockResolvedValue({
+        user: { id: 'user-123' },
+        subscription: { planType: 'pro', status: 'active' }
+      })
     })
 
     const available = await strategy.isAvailable()
     expect(available).toBe(true)
-    expect(global.fetch).toHaveBeenCalledWith(
-      'http://localhost:3000/api/sync/status',
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          Authorization: 'Bearer test-token'
-        })
+  })
+
+  it('should return false for free users', async () => {
+    const mockGet = vi.fn().mockResolvedValue({
+      'sb-futfxudabvjfldlismun-auth-token': JSON.stringify({
+        access_token: 'test-token',
+        user: { id: 'user-123' },
+        expires_at: Math.floor(Date.now() / 1000) + 3600
       })
-    )
+    })
+    global.chrome = {
+      storage: {
+        local: {
+          get: mockGet,
+          set: vi.fn().mockResolvedValue(undefined)
+        }
+      }
+    } as any
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue({
+        user: { id: 'user-123' },
+        subscription: { planType: 'free', status: 'active' }
+      })
+    })
+
+    const available = await strategy.isAvailable()
+    expect(available).toBe(false)
+  })
+
+  it('should be available for free users with team cloud sync entitlement', async () => {
+    const mockGet = vi.fn().mockResolvedValue({
+      'sb-futfxudabvjfldlismun-auth-token': JSON.stringify({
+        access_token: 'test-token',
+        user: { id: 'user-123' },
+        expires_at: Math.floor(Date.now() / 1000) + 3600
+      })
+    })
+    global.chrome = {
+      storage: {
+        local: {
+          get: mockGet,
+          set: vi.fn().mockResolvedValue(undefined)
+        }
+      }
+    } as any
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue({
+        user: { id: 'user-123' },
+        subscription: { planType: 'free', status: 'active' },
+        cloudSyncEnabled: true
+      })
+    })
+
+    const available = await strategy.isAvailable()
+    expect(available).toBe(true)
   })
 
   it('should return false when auth token is expired', async () => {
@@ -97,7 +157,7 @@ describe('CloudSyncStrategy', () => {
     expect(available).toBe(false)
   })
 
-  it('should return false when fetch fails', async () => {
+  it('should be unavailable when status fetch fails and plan is unknown', async () => {
     // Mock chrome.storage.local.get to return auth token
     const mockGet = vi.fn().mockResolvedValue({
       'sb-futfxudabvjfldlismun-auth-token': JSON.stringify({
@@ -222,7 +282,7 @@ describe('CloudSyncStrategy', () => {
     expect(result.error).toBe('NETWORK_ERROR')
   })
 
-  it('should return PERMISSION_DENIED for 403 response', async () => {
+  it('should return SUBSCRIPTION_REQUIRED for 403 response', async () => {
     // Mock chrome.storage.local.get to return auth token
     const mockGet = vi.fn().mockResolvedValue({
       'sb-futfxudabvjfldlismun-auth-token': JSON.stringify({
@@ -256,7 +316,7 @@ describe('CloudSyncStrategy', () => {
 
     const result = await strategy.sync(data)
     expect(result.success).toBe(false)
-    expect(result.error).toBe('PERMISSION_DENIED')
+    expect(result.error).toBe('SUBSCRIPTION_REQUIRED')
   })
 
   it('should restore data from cloud', async () => {
@@ -316,7 +376,7 @@ describe('CloudSyncStrategy', () => {
     expect(result).toBeNull()
   })
 
-  it('should return status when authenticated', async () => {
+  it('should return enabled status for active paid users', async () => {
     // Mock chrome.storage.local.get to return auth token
     const mockGet = vi.fn().mockResolvedValue({
       'sb-futfxudabvjfldlismun-auth-token': JSON.stringify({
@@ -334,11 +394,76 @@ describe('CloudSyncStrategy', () => {
       }
     } as any
 
-    // Mock fetch for sync/status
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
+      status: 200,
       json: vi.fn().mockResolvedValue({
-        success: true,
+        user: { id: 'user-123' },
+        subscription: { planType: 'team', status: 'active' },
+        lastSyncedAt: 1234567890
+      })
+    })
+
+    const status = await strategy.getStatus()
+    expect(status.enabled).toBe(true)
+    expect(status.lastSyncTime).toBe(1234567890)
+  })
+
+  it('should return subscription-required status for free users', async () => {
+    const mockGet = vi.fn().mockResolvedValue({
+      'sb-futfxudabvjfldlismun-auth-token': JSON.stringify({
+        access_token: 'test-token',
+        user: { id: 'user-123' },
+        expires_at: Math.floor(Date.now() / 1000) + 3600
+      })
+    })
+    global.chrome = {
+      storage: {
+        local: {
+          get: mockGet,
+          set: vi.fn().mockResolvedValue(undefined)
+        }
+      }
+    } as any
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue({
+        user: { id: 'user-123' },
+        subscription: { planType: 'free', status: 'active' }
+      })
+    })
+
+    const status = await strategy.getStatus()
+    expect(status.enabled).toBe(false)
+    expect(status.error).toBe('SUBSCRIPTION_REQUIRED')
+  })
+
+  it('should return enabled status for free users with team cloud sync entitlement', async () => {
+    const mockGet = vi.fn().mockResolvedValue({
+      'sb-futfxudabvjfldlismun-auth-token': JSON.stringify({
+        access_token: 'test-token',
+        user: { id: 'user-123' },
+        expires_at: Math.floor(Date.now() / 1000) + 3600
+      })
+    })
+    global.chrome = {
+      storage: {
+        local: {
+          get: mockGet,
+          set: vi.fn().mockResolvedValue(undefined)
+        }
+      }
+    } as any
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue({
+        user: { id: 'user-123' },
+        subscription: { planType: 'free', status: 'active' },
+        cloudSyncEnabled: true,
         lastSyncedAt: 1234567890
       })
     })

@@ -133,6 +133,12 @@ export function DropdownApp({
     setIsOpen(false)
   }, [inputElement, inserter])
 
+  // Handle plain text insertion (e.g. from Agent/Ecommerce panels)
+  const handleInsertText = useCallback((text: string) => {
+    inserter.insert(inputElement, text)
+    setIsOpen(false)
+  }, [inputElement, inserter])
+
   // Always use DropdownContainer (Portal) to escape overflow clipping
   return (
     <div className="dropdown-app">
@@ -154,6 +160,7 @@ export function DropdownApp({
         categories={categories}
         onSelect={handleSelect}
         onInjectResource={handleInjectResource}
+        onInsertText={handleInsertText}
         isOpen={isOpen}
         selectedPromptId={selectedPromptId}
         onClose={handleClose}

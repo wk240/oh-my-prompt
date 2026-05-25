@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agent 原型设计 - 最终版</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+      font-size: 14px;
+    }
+    h1 { color: #333; margin-bottom: 20px; font-size: 24px; }
+    h2 { color: #555; margin: 30px 0 15px; font-size: 18px; }
+    .section { margin-bottom: 40px; }
+    .prototype-container {
+      display: flex;
+      gap: 30px;
+      flex-wrap: wrap;
+    }
+    .prototype-box {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    /* Sidepanel 样式 */
+    .sidepanel {
+      width: 380px;
+      height: 550px;
+      background: #fff;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid #e0e0e0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Header */
+    .top-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      border-bottom: 1px solid #E5E5E5;
+      flex-shrink: 0;
+    }
+
+    .top-header-version {
+      font-size: 10px;
+      color: #64748B;
+      font-weight: 500;
+    }
+
+    .top-header-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .header-action-btn {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      color: #171717;
+    }
+
+    .header-language-btn {
+      width: 36px;
+      padding: 4px 8px;
+      background: #ffffff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 500;
+      color: #171717;
+    }
+
+    /* Content Row */
+    .side-panel-content-row {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* Sidebar */
+    .side-panel-sidebar {
+      width: 120px;
+      background: #f8f8f8;
+      border-right: 1px solid #E5E5E5;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+
+    .sidebar-categories {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px 0;
+    }
+
+    .sidebar-category-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      background: transparent;
+      border: none;
+      text-align: left;
+      font-size: 12px;
+      font-weight: 500;
+      color: #171717;
+      cursor: pointer;
+      width: 100%;
+      position: relative;
+    }
+
+    .sidebar-category-item:hover {
+      background: #f0f0f0;
+    }
+
+    .sidebar-category-item.selected {
+      background: #ffffff;
+      color: #A16207;
+      border-left: 2px solid #A16207;
+    }
+
+    .sidebar-category-item.return-btn {
+      border-bottom: 1px solid #E5E5E5;
+      margin-bottom: 6px;
+      padding-bottom: 10px;
+      color: #64748B;
+    }
+
+    .sidebar-category-item.return-btn:hover {
+      color: #171717;
+    }
+
+    .sidebar-category-icon-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 14px;
+      height: 14px;
+    }
+
+    .sidebar-category-icon {
+      width: 14px;
+      height: 14px;
+      color: #64748B;
+    }
+
+    .sidebar-category-item.selected .sidebar-category-icon {
+      color: #A16207;
+    }
+
+    .sidebar-category-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .sidebar-category-name-new {
+      font-size: 10px;
+      padding: 1px 4px;
+      background: #fef3c7;
+      color: #92400e;
+      border-radius: 2px;
+      margin-left: 4px;
+    }
+
+    /* Main Panel */
+    .side-panel-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Main Content */
+    .main-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 16px;
+    }
+
+    /* Agent View */
+    .agent-view {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Agent Header */
+    .agent-view-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #E5E5E5;
+    }
+
+    .agent-view-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #171717;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .agent-view-subtitle {
+      font-size: 12px;
+      color: #64748B;
+      margin-left: 22px;
+    }
+
+    /* Intro Card */
+    .intro-card {
+      padding: 12px 16px;
+      background: #f0fdf4;
+      border: 1px solid #86efac;
+      border-radius: 8px;
+    }
+
+    .intro-text {
+      font-size: 13px;
+      color: #15803d;
+      line-height: 1.4;
+    }
+
+    /* Form Group */
+    .form-group {
+      margin-bottom: 12px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: #171717;
+      margin-bottom: 6px;
+    }
+
+    .form-textarea {
+      width: 100%;
+      height: 80px;
+      padding: 10px 12px;
+      font-size: 13px;
+      color: #171717;
+      background: #ffffff;
+      border: 1px solid #E5E5E5;
+      border-radius: 4px;
+      outline: none;
+      resize: none;
+    }
+
+    .form-textarea:focus {
+      border-color: #A16207;
+    }
+
+    /* Image Upload */
+    .image-upload-section {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .image-preview-box {
+      width: 72px;
+      height: 72px;
+      border: 1px dashed #d9d9d9;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #64748B;
+      font-size: 12px;
+      background: #fafafa;
+      flex-shrink: 0;
+    }
+
+    .image-preview-box.has-image {
+      border-style: solid;
+      background: #f0f0f0;
+    }
+
+    .image-upload-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    /* Action Buttons */
+    .action-btn {
+      padding: 8px 16px;
+      background: #171717;
+      border: none;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #ffffff;
+      cursor: pointer;
+    }
+
+    .action-btn:hover {
+      background: #404040;
+    }
+
+    .action-btn.primary {
+      width: 100%;
+      padding: 12px 16px;
+      background: #A16207;
+    }
+
+    .action-btn.primary:hover {
+      background: #92400e;
+    }
+
+    .action-btn.secondary {
+      background: #f8f8f8;
+      color: #171717;
+      border: 1px solid #E5E5E5;
+    }
+
+    .action-btn.secondary:hover {
+      background: #f0f0f0;
+    }
+
+    .action-btn.small {
+      padding: 6px 12px;
+      font-size: 11px;
+    }
+
+    /* Result Card */
+    .result-card {
+      padding: 12px 16px;
+      background: #f8f8f8;
+      border: 1px solid #E5E5E5;
+      border-radius: 8px;
+    }
+
+    .result-header {
+      font-size: 12px;
+      font-weight: 600;
+      color: #171717;
+      margin-bottom: 10px;
+    }
+
+    .result-content {
+      font-size: 13px;
+      color: #333;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      background: #fff;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #E5E5E5;
+      max-height: 120px;
+      overflow-y: auto;
+    }
+
+    .result-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .result-actions .action-btn {
+      flex: 1;
+    }
+
+    /* Category Select */
+    .category-select {
+      width: 100%;
+      padding: 8px 12px;
+      font-size: 12px;
+      color: #171717;
+      background: #ffffff;
+      border: 1px solid #E5E5E5;
+      border-radius: 4px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    /* Loading Spinner */
+    .loading-spinner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      color: #64748B;
+    }
+
+    .spinner-icon {
+      width: 24px;
+      height: 24px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    /* Hint Text */
+    .hint-text {
+      font-size: 11px;
+      color: #64748B;
+      margin-top: 6px;
+      line-height: 1.3;
+    }
+
+    /* Status Banner */
+    .status-banner {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: #f0fdf4;
+      border-bottom: 1px solid #86efac;
+      flex-shrink: 0;
+    }
+
+    .status-text {
+      font-size: 11px;
+      color: #16a34a;
+    }
+
+    /* Annotation */
+    .annotation {
+      background: #fffbe6;
+      border: 1px solid #ffe58f;
+      border-radius: 4px;
+      padding: 10px 14px;
+      font-size: 12px;
+      color: #d48806;
+      margin-top: 10px;
+      line-height: 1.4;
+    }
+
+    /* Flow Diagram */
+    .flow-diagram {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 12px;
+      padding: 12px;
+      background: #fafafa;
+      border-radius: 8px;
+      flex-wrap: wrap;
+    }
+
+    .flow-step {
+      text-align: center;
+      padding: 8px 12px;
+      background: #fff;
+      border-radius: 6px;
+      border: 1px solid #d9d9d9;
+      min-width: 80px;
+      font-size: 12px;
+    }
+
+    .flow-step.highlight {
+      background: #fef3c7;
+      border-color: #A16207;
+      color: #92400e;
+    }
+
+    .flow-arrow {
+      color: #999;
+      font-size: 16px;
+    }
+
+    /* Arch Diagram */
+    .arch-diagram {
+      background: #fff;
+      border-radius: 8px;
+      padding: 16px;
+      border: 1px solid #e0e0e0;
+    }
+
+    .arch-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+
+    .arch-box {
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .arch-box.entry {
+      background: #fef3c7;
+      border: 1px solid #A16207;
+      color: #92400e;
+    }
+
+    .arch-box.view {
+      background: #f0f9ff;
+      border: 1px solid #bae6fd;
+      color: #0369a1;
+    }
+
+    .arch-label {
+      font-size: 11px;
+      color: #64748B;
+      margin-bottom: 6px;
+    }
+
+    /* Comparison */
+    .comparison-box {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .comparison-item {
+      flex: 1;
+      min-width: 180px;
+      padding: 12px;
+      border-radius: 6px;
+      border: 1px solid #e0e0e0;
+    }
+
+    .comparison-title {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .comparison-row {
+      font-size: 12px;
+      color: #333;
+      margin-bottom: 6px;
+      display: flex;
+      gap: 8px;
+    }
+
+    .comparison-label {
+      color: #64748B;
+      min-width: 50px;
+    }
+
+    /* Template Hint */
+    .template-hint {
+      background: #f0f9ff;
+      border: 1px solid #bae6fd;
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-size: 12px;
+      color: #0369a1;
+      margin-bottom: 12px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Agent 原型设计 - 最终版</h1>
+
+  <!-- 架构说明 -->
+  <div class="section">
+    <h2>架构设计</h2>
+    <div class="arch-diagram">
+      <div class="arch-label">PromptListView Sidebar（默认状态）</div>
+      <div class="arch-row">
+        <div class="arch-box entry">✨ Agent</div>
+        <div class="flow-arrow">↓</div>
+        <div class="arch-box view">资源库</div>
+        <div class="arch-box view">临时库</div>
+        <div class="arch-box view">全部分类</div>
+        <div class="arch-box view">分类...</div>
+      </div>
+
+      <div class="arch-label" style="margin-top: 16px;">点击 Agent → Sidebar 变为模板分类</div>
+      <div class="arch-row">
+        <div class="arch-box entry">← 返回</div>
+        <div class="flow-arrow">↓</div>
+      </div>
+      <div class="arch-row">
+        <div class="arch-box view">电商套图</div>
+        <div class="arch-box view">海报图</div>
+        <div class="arch-box view">插画</div>
+        <div class="arch-box view">Logo</div>
+        <div class="arch-box view">更多...</div>
+      </div>
+
+      <div class="arch-label" style="margin-top: 16px;">选择模板 → 右侧 Agent 输入界面</div>
+      <div class="arch-row">
+        <div class="arch-box view">显示模板名称 + 提示</div>
+        <div class="flow-arrow">→</div>
+        <div class="arch-box view">输入描述 + 可选图片</div>
+        <div class="flow-arrow">→</div>
+        <div class="arch-box entry">生成提示词</div>
+        <div class="flow-arrow">→</div>
+        <div class="arch-box view">保存到库</div>
+      </div>
+    </div>
+    <div class="annotation">
+      ✅ Agent 入口放在 Sidebar 资源库上方
+      <br>✅ 点击后左侧 sidebar 变为：返回 + 预设模板分类（电商套图、海报图、插画、Logo 等）
+      <br>✅ 选择模板分类后，右侧显示对应风格的 Agent 输入界面
+      <br>✅ 不同模板有不同的 System Prompt，影响生成风格
+    </div>
+  </div>
+
+  <!-- Sidepanel 原型 -->
+  <div class="section">
+    <h2>PromptListView - Agent 入口与模板分类</h2>
+    <div class="prototype-container">
+      <!-- 状态 1: 默认 Sidebar - Agent 入口 -->
+      <div class="prototype-box">
+        <div class="sidepanel">
+          <div class="top-header">
+            <span class="top-header-version">v1.0.0</span>
+            <div class="top-header-actions">
+              <button class="header-language-btn">中</button>
+              <button class="header-action-btn">⚙</button>
+            </div>
+          </div>
+
+          <div class="side-panel-content-row">
+            <!-- Sidebar - 默认状态 -->
+            <div class="side-panel-sidebar">
+              <div class="sidebar-categories">
+                <!-- Agent 入口 -->
+                <button class="sidebar-category-item selected">
+                  <div class="sidebar-category-icon-wrapper">
+                    <svg class="sidebar-category-icon" viewBox="0 0 24 24" fill="none" stroke="#A16207" stroke-width="2">
+                      <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+                    </svg>
+                  </div>
+                  <span class="sidebar-category-name">Agent</span>
+                  <span class="sidebar-category-name-new">NEW</span>
+                </button>
+
+                <!-- 资源库 -->
+                <button class="sidebar-category-item">
+                  <div class="sidebar-category-icon-wrapper">
+                    <svg class="sidebar-category-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                    </svg>
+                  </div>
+                  <span class="sidebar-category-name">资源库</span>
+                </button>
+
+                <!-- 临时库 -->
+                <button class="sidebar-category-item">
+                  <div class="sidebar-category-icon-wrapper">
+                    <svg class="sidebar-category-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"/>
+                    </svg>
+                  </div>
+                  <span class="sidebar-category-name">临时库</span>
+                </button>
+
+                <!-- 全部分类 -->
+                <button class="sidebar-category-item">
+                  <div class="sidebar-category-icon-wrapper">
+                    <svg class="sidebar-category-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M22 19a2 2 0 0 1-2 2H4"/>
+                    </svg>
+                  </div>
+                  <span class="sidebar-category-name">全部分类</span>
+                </button>
+
+                <!-- 分类 -->
+                <button class="sidebar-category-item"><span>设计</span></button>
+                <button class="sidebar-category-item"><span>风格</span></button>
+              </div>
+            </div>
+
+            <!-- Main - 提示词列表（默认状态） -->
+            <div class="side-panel-main">
+              <div class="status-banner">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                </svg>
+                <span class="status-text">已连接 lovart.com</span>
+              </div>
+              <div class="main-content">
+                <div style="color: #171717; font-size: 14px; font-weight: 500; margin-bottom: 12px;">
+                  全部分类 <span style="color: #64748B; font-size: 12px;">(3 个提示词)</span>
+                </div>
+                <div style="padding: 12px; border-bottom: 1px solid #E5E5E5; font-size: 12px;">
+                  <div style="font-weight: 500;">简约设计风格</div>
+                  <div style="color: #64748B; font-size: 11px;">Clean modern design...</div>
+                </div>
+                <div style="padding: 12px; border-bottom: 1px solid #E5E5E5; font-size: 12px;">
+                  <div style="font-weight: 500;">赛博朋克</div>
+                  <div style="color: #64748B; font-size: 11px;">Cyberpunk neon lights...</div>
+                </div>
+                <div style="padding: 12px; border-bottom: 1px solid #E5E5E5; font-size: 12px;">
+                  <div style="font-weight: 500;">水彩插画</div>
+                  <div style="color: #64748B; font-size: 11px;">Watercolor illustration...</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="hint-text" style="margin-top: 8px; text-align: center;">状态 1：默认 Sidebar - Agent 入口</div>
+      </div>
+
+      <!-- 状态 2: 点击 Agent - Sidebar 变为模板分类 -->
+      <div class="prototype-box">
+        <div class="sidepanel">
+          <div class="top-header">
+            <span class="top-header-version">v1.0.0</span>
+            <div class="top-header-actions">
+              <button class="header-language-btn">中</button>
+              <button class="header-action-btn">⚙</button>
+            </div>
+          </div>
+
+          <div class="side-panel-content-row">
+            <!-- Sidebar - Agent 模板分类 -->
+            <div class="side-panel-sidebar">
+              <div class="sidebar-categories">
+                <!-- 返回按钮 -->
+                <button class="sidebar-category-item return-btn">
+                  <div class="sidebar-category-icon-wrapper">
+                    <svg class="sidebar-category-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M19 12H5M12 19l-7-7 7-7"/>
+                    </svg>
+                  </div>
+                  <span class="sidebar-category-name">返回</span>
+                </button>
+
+                <!-- 模板分类 -->
+                <button class="sidebar-category-item selected">
+                  <div class="sidebar-category-icon-wrapper">
+                    <svg class="sidebar-category-icon" viewBox="0 0 24 24" fill="none" stroke="#A16207" stroke-width="2">
+                      <rect x="3" y="3" width="18" height="18" rx="2"/>
+                      <circle cx="8.5" cy="8.5" r="1.5"/>
+                      <path d="M21 15l-5-5L5 21"/>
+                    </svg>
+                  </div>
+                  <span class="sidebar-category-name">电商套图</span>
+                </button>
+
+                <button class="sidebar-category-item">
+                  <div class="sidebar-category-icon-wrapper">
+                    <svg class="sidebar-category-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="3" y="3" width="18" height="18"/>
+                    </svg>
+                  </div>
+                  <span class="sidebar-category-name">海报图</span>
+                </button>
+
+                <button class="sidebar-category-item">
+                  <div class="sidebar-category-icon-wrapper">
+                    <svg class="sidebar-category-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 19l7-7 3 3-7 7-3-3z"/>
+                      <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>
+                    </svg>
+                  </div>
+                  <span class="sidebar-category-name">插画</span>
+                </button>
+
+                <button class="sidebar-category-item">
+                  <div class="sidebar-category-icon-wrapper">
+                    <svg class="sidebar-category-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"/>
+                      <path d="M12 16v-4"/>
+                      <path d="M12 8h.01"/>
+                    </svg>
+                  </div>
+                  <span class="sidebar-category-name">Logo</span>
+                </button>
+
+                <button class="sidebar-category-item">
+                  <div class="sidebar-category-icon-wrapper">
+                    <svg class="sidebar-category-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="2" y="3" width="20" height="14" rx="2"/>
+                      <line x1="8" y1="21" x2="16" y2="21"/>
+                      <line x1="12" y1="17" x2="12" y2="21"/>
+                    </svg>
+                  </div>
+                  <span class="sidebar-category-name">UI界面</span>
+                </button>
+
+                <button class="sidebar-category-item">
+                  <div class="sidebar-category-icon-wrapper">
+                    <svg class="sidebar-category-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+                    </svg>
+                  </div>
+                  <span class="sidebar-category-name">3D渲染</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Main - Agent 输入界面 -->
+            <div class="side-panel-main">
+              <div class="main-content">
+                <div class="agent-view">
+                  <!-- Header -->
+                  <div class="agent-view-header">
+                    <div class="agent-view-title">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A16207" stroke-width="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                      </svg>
+                      Agent - 电商套图
+                    </div>
+                  </div>
+                  <div class="agent-view-subtitle">生成电商产品展示多图提示词</div>
+
+                  <!-- Template Hint -->
+                  <div class="template-hint">
+                    💡 模板风格：产品主体突出、白底/渐变背景、光影质感、商业摄影风格、多角度展示
+                  </div>
+
+                  <!-- Intro -->
+                  <div class="intro-card">
+                    <div class="intro-text">输入产品描述，Agent 扩展为电商套图提示词，包含产品细节、光影、背景、构图等。</div>
+                  </div>
+
+                  <!-- Text Input -->
+                  <div class="form-group">
+                    <label class="form-label">输入产品描述 *</label>
+                    <textarea class="form-textarea" placeholder="例如：一款简约的智能手表"></textarea>
+                  </div>
+
+                  <!-- Image Upload -->
+                  <div class="form-group">
+                    <label class="form-label">参考图片（可选）</label>
+                    <div class="image-upload-section">
+                      <div class="image-preview-box">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="1.5">
+                          <rect x="3" y="3" width="18" height="18" rx="2"/>
+                          <path d="M21 15l-5-5L5 21"/>
+                        </svg>
+                      </div>
+                      <div class="image-upload-actions">
+                        <button class="action-btn secondary small">上传图片</button>
+                        <div class="hint-text">上传产品图引导风格</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Generate Button -->
+                  <button class="action-btn primary">生成提示词</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="hint-text" style="margin-top: 8px; text-align: center;">状态 2：点击 Agent → Sidebar 变为模板分类</div>
+      </div>
+
+      <!-- 状态 3: 生成中 -->
+      <div class="prototype-box">
+        <div class="sidepanel">
+          <div class="top-header">
+            <span class="top-header-version">v1.0.0</span>
+            <div class="top-header-actions">
+              <button class="header-language-btn">中</button>
+            </div>
+          </div>
+
+          <div class="side-panel-content-row">
+            <div class="side-panel-sidebar">
+              <div class="sidebar-categories">
+                <button class="sidebar-category-item return-btn"><span>← 返回</span></button>
+                <button class="sidebar-category-item selected"><span>电商套图</span></button>
+                <button class="sidebar-category-item"><span>海报图</span></button>
+                <button class="sidebar-category-item"><span>插画</span></button>
+                <button class="sidebar-category-item"><span>Logo</span></button>
+              </div>
+            </div>
+
+            <div class="side-panel-main">
+              <div class="main-content">
+                <div class="agent-view">
+                  <div class="agent-view-header">
+                    <div class="agent-view-title">Agent - 电商套图</div>
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label">输入产品描述</label>
+                    <textarea class="form-textarea" readonly style="background: #f8f8f8;">一款简约的智能手表</textarea>
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label">参考图片</label>
+                    <div class="image-upload-section">
+                      <div class="image-preview-box has-image">✓</div>
+                      <button class="action-btn secondary small" style="color: #dc2626;">清除</button>
+                    </div>
+                  </div>
+
+                  <button class="action-btn primary" disabled style="opacity: 0.6;">生成中...</button>
+
+                  <div class="loading-spinner">
+                    <svg class="spinner-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10" stroke-opacity="0.25"/>
+                      <path d="M12 2a10 10 0 0 1 10 10"/>
+                    </svg>
+                    <span style="margin-left: 10px; font-size: 12px;">正在生成电商套图提示词...</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="hint-text" style="margin-top: 8px; text-align: center;">状态 3：生成中</div>
+      </div>
+
+      <!-- 状态 4: 生成结果 -->
+      <div class="prototype-box">
+        <div class="sidepanel">
+          <div class="top-header">
+            <span class="top-header-version">v1.0.0</span>
+            <div class="top-header-actions">
+              <button class="header-language-btn">中</button>
+            </div>
+          </div>
+
+          <div class="side-panel-content-row">
+            <div class="side-panel-sidebar">
+              <div class="sidebar-categories">
+                <button class="sidebar-category-item return-btn"><span>← 返回</span></button>
+                <button class="sidebar-category-item selected"><span>电商套图</span></button>
+                <button class="sidebar-category-item"><span>海报图</span></button>
+                <button class="sidebar-category-item"><span>插画</span></button>
+                <button class="sidebar-category-item"><span>Logo</span></button>
+              </div>
+            </div>
+
+            <div class="side-panel-main">
+              <div class="main-content">
+                <div class="agent-view">
+                  <!-- Result -->
+                  <div class="result-card">
+                    <div class="result-header">生成的电商套图提示词：</div>
+                    <div class="result-content">A sleek minimalist smartwatch on clean white background, soft studio lighting with subtle reflections, brushed metal case with leather strap, hero shot composition, macro detail showing watch face interface, multiple angles: front view, side profile, worn on wrist, lifestyle context, professional product photography style, high-end commercial quality.</div>
+
+                    <div class="result-actions">
+                      <button class="action-btn secondary">复制</button>
+                      <button class="action-btn primary">保存到库</button>
+                      <button class="action-btn secondary">重新生成</button>
+                    </div>
+                  </div>
+
+                  <div class="form-group" style="margin-top: 12px;">
+                    <label class="form-label">保存到分类</label>
+                    <select class="category-select">
+                      <option value="">选择分类...</option>
+                      <option value="products">产品</option>
+                      <option value="ecommerce">电商</option>
+                      <option value="design">设计</option>
+                    </select>
+                  </div>
+
+                  <div class="hint-text">
+                    📝 保存后可在左侧分类中找到（点击返回后）
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="hint-text" style="margin-top: 8px; text-align: center;">状态 4：生成结果</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模板分类与 System Prompt -->
+  <div class="section">
+    <h2>模板分类与 System Prompt</h2>
+    <div style="background: #fff; padding: 16px; border-radius: 8px; border: 1px solid #e0e0e0;">
+      <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+        <tr style="background: #f8f8f8;">
+          <th style="padding: 10px; border: 1px solid #e0e0e0; text-align: left;">模板分类</th>
+          <th style="padding: 10px; border: 1px solid #e0e0e0; text-align: left;">System Prompt 关键词</th>
+        </tr>
+        <tr>
+          <td style="padding: 10px; border: 1px solid #e0e0e0; color: #A16207;">电商套图</td>
+          <td style="padding: 10px; border: 1px solid #e0e0e0;">产品主体突出、白底/渐变背景、光影质感、商业摄影、多角度展示</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; border: 1px solid #e0e0e0; color: #A16207;">海报图</td>
+          <td style="padding: 10px; border: 1px solid #e0e0e0;">视觉冲击力、主题鲜明、构图创意、色彩对比、排版设计</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; border: 1px solid #e0e0e0; color: #A16207;">插画</td>
+          <td style="padding: 10px; border: 1px solid #e0e0e0;">艺术风格、手绘质感、创意表达、色彩搭配、叙事元素</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; border: 1px solid #e0e0e0; color: #A16207;">Logo</td>
+          <td style="padding: 10px; border: 1px solid #e0e0e0;">简洁识别、品牌元素、符号化、负空间、几何造型</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; border: 1px solid #e0e0e0; color: #A16207;">UI界面</td>
+          <td style="padding: 10px; border: 1px solid #e0e0e0;">现代界面、交互设计、用户体验、响应式、Material/Fluent风格</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; border: 1px solid #e0e0e0; color: #A16207;">3D渲染</td>
+          <td style="padding: 10px; border: 1px solid #e0e0e0;">三维建模、材质纹理、光影渲染、场景搭建、Blender/Cinema4D风格</td>
+        </tr>
+      </table>
+    </div>
+    <div class="annotation">
+      💡 每个模板分类有专属 System Prompt，引导 Agent 生成对应风格的提示词
+      <br>💡 用户上传参考图片时，System Prompt 会额外包含"参考图片风格"指令
+    </div>
+  </div>
+
+  <!-- Content Script 入口 -->
+  <div class="section">
+    <h2>平台输入框提取入口</h2>
+    <div style="background: #fff; padding: 16px; border-radius: 8px; border: 1px solid #e0e0e0;">
+      <div style="font-size: 14px; color: #333; margin-bottom: 12px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A16207" stroke-width="2" style="margin-right: 8px;">
+          <circle cx="12" cy="12" r="10"/>
+        </svg>
+        Lovart 设计平台
+      </div>
+      <div style="position: relative;">
+        <textarea style="width: 100%; height: 50px; padding: 12px 80px 12px 12px; border: 1px solid #d9d9d9; border-radius: 6px; font-size: 14px; resize: none; background: #fafafa;" placeholder="描述你想要的设计...">一款简约的智能手表</textarea>
+        <div style="position: absolute; right: 10px; bottom: 10px; display: flex; gap: 6px;">
+          <div style="text-align: center;">
+            <div style="width: 32px; height: 32px; border-radius: 4px; background: #fef3c7; border: 1px solid #A16207; display: flex; align-items: center; justify-content: center;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A16207" stroke-width="2">
+                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+              </svg>
+            </div>
+            <div style="font-size: 10px; color: #A16207;">Agent</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="width: 32px; height: 32px; border-radius: 4px; background: #f0f0f0; border: 1px solid #d9d9d9; display: flex; align-items: center; justify-content: center;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+              </svg>
+            </div>
+            <div style="font-size: 10px; color: #666;">Vision</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="flow-diagram">
+      <div class="flow-step">输入内容</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step highlight">点击 Agent</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">提取内容</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step highlight">打开 Sidepanel</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step highlight">Agent 视图</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">填充并生成</div>
+    </div>
+  </div>
+
+  <!-- Vision vs Agent 对比 -->
+  <div class="section">
+    <h2>Vision vs Agent 对比</h2>
+    <div class="comparison-box">
+      <div class="comparison-item" style="background: #f0f9ff;">
+        <div class="comparison-title" style="color: #0369a1;">📷 Vision</div>
+        <div class="comparison-row"><span class="comparison-label">输入：</span>图片（必需）</div>
+        <div class="comparison-row"><span class="comparison-label">输出：</span>双语 JSON</div>
+        <div class="comparison-row"><span class="comparison-label">位置：</span>Vision Modal</div>
+        <div class="comparison-row"><span class="comparison-label">存储：</span>临时库</div>
+      </div>
+      <div class="comparison-item" style="background: #fef3c7;">
+        <div class="comparison-title" style="color: #A16207;">✨ Agent</div>
+        <div class="comparison-row"><span class="comparison-label">输入：</span>文字 + 图片（可选）</div>
+        <div class="comparison-row"><span class="comparison-label">模板：</span>电商套图、海报图、插画...</div>
+        <div class="comparison-row"><span class="comparison-label">输出：</span>单语纯文本</div>
+        <div class="comparison-row"><span class="comparison-label">位置：</span>Sidepanel Agent 视图</div>
+        <div class="comparison-row"><span class="comparison-label">存储：</span>直接保存到分类</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

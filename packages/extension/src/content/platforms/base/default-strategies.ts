@@ -3,6 +3,7 @@
  */
 
 import type { InsertStrategy } from './strategy-interface'
+import { dispatchMultilinePasteEvent, hasLineBreak } from './rich-text-insertion'
 
 const LOG_PREFIX = '[Oh My Prompt]'
 
@@ -66,7 +67,8 @@ export class DefaultInserter implements InsertStrategy {
       selection?.addRange(range)
     }
 
-    const success = document.execCommand('insertText', false, text)
+    const handledByPaste = hasLineBreak(text) && dispatchMultilinePasteEvent(element, text)
+    const success = handledByPaste || document.execCommand('insertText', false, text)
 
     if (!success) {
       console.warn(LOG_PREFIX, 'execCommand failed, using fallback')

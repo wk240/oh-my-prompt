@@ -29,3 +29,4 @@ test-results
 # GSD workflow planning files
 .planning/
 .vercel
+.superpowers/

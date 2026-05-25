@@ -113,6 +113,20 @@ export function extractBase64Data(dataUrl: string): string {
   return dataUrl
 }
 
+/**
+ * Extract media type from data URL for Anthropic API format
+ * Anthropic requires correct media_type (image/jpeg, image/png, image/webp, image/gif)
+ * @param dataUrl - Full data URL like "data:image/png;base64,xxxxx"
+ * @returns Media type string (e.g. 'image/png'), defaults to 'image/jpeg'
+ */
+export function extractMediaType(dataUrl: string): string {
+  const match = dataUrl.match(/^data:(image\/[^;]+);base64,/)
+  if (match) {
+    return match[1]
+  }
+  return 'image/jpeg'
+}
+
 // Thumbnail dimensions for task queue display
 const THUMBNAIL_WIDTH = 80
 const THUMBNAIL_HEIGHT = 80

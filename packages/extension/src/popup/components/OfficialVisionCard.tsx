@@ -19,6 +19,25 @@ export function OfficialVisionCard({
 }: OfficialVisionCardProps) {
   const { status, subscription } = authState || {}
 
+  // State: loading (authState is null before async call completes)
+  if (!authState) {
+    return (
+      <div className="p-4 bg-white rounded-lg border border-gray-200">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-medium text-gray-900">Oh My Prompt 官方</h3>
+          <span className="text-sm text-gray-400">加载中...</span>
+        </div>
+        <p className="text-sm text-gray-600 mb-3">专业视觉模型，无需配置 API Key</p>
+        <button
+          disabled
+          className="w-full py-2.5 rounded-md font-medium text-sm bg-gray-100 text-gray-400 cursor-not-allowed"
+        >
+          请稍候...
+        </button>
+      </div>
+    )
+  }
+
   // State: not logged in
   if (status === 'not_logged_in') {
     return (

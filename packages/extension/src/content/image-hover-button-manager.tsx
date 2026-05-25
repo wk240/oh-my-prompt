@@ -70,7 +70,6 @@ export class ImageHoverButtonManager {
    * Start listening for image hovers
    */
   start(): void {
-
     // Load vision setting from storage
     chrome.runtime.sendMessage({ type: MessageType.GET_STORAGE }, (response) => {
       if (response?.success && response.data?.settings) {
@@ -327,21 +326,19 @@ export class ImageHoverButtonManager {
 
     // Find image - use mouse position for accurate detection
     const img = this.findImageAtPoint(e.clientX, e.clientY)
-    if (!img || img === this.currentImg) return
+    if (!img || img === this.currentImg) {
+      return
+    }
 
     // Size check
     const rect = img.getBoundingClientRect()
     if (rect.width < MIN_WIDTH || rect.height < MIN_HEIGHT) {
-      if (DEBUG_HOVER_BUTTON) {
-      }
       return
     }
 
     // URL check
     const imageUrl = this.getImageUrl(img)
     if (!imageUrl) {
-      if (DEBUG_HOVER_BUTTON) {
-      }
       return
     }
 
@@ -349,18 +346,10 @@ export class ImageHoverButtonManager {
     if (this.hideTimeout) {
       clearTimeout(this.hideTimeout)
       this.hideTimeout = null
-      if (DEBUG_HOVER_BUTTON) {
-      }
-    }
-
-    if (DEBUG_HOVER_BUTTON) {
     }
 
     // Show immediately (singleton button is cheap, no delay needed)
     this.showButton(img, imageUrl)
-
-    if (DEBUG_HOVER_BUTTON) {
-    }
   }
 
   /**
@@ -424,9 +413,6 @@ export class ImageHoverButtonManager {
         onClick={() => this.handleButtonClick(imageUrl)}
       />
     )
-
-    if (DEBUG_HOVER_BUTTON) {
-    }
   }
 
   /**

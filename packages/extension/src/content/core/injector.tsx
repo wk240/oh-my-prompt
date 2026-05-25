@@ -32,6 +32,31 @@ export class Injector {
     return this.hostElement !== null && document.contains(this.hostElement)
   }
 
+  /**
+   * Check if the injected button is visible (not hidden by parent display:none)
+   */
+  isButtonVisible(): boolean {
+    if (!this.hostElement) return false
+
+    // Check if the host element or any parent is hidden
+    const style = window.getComputedStyle(this.hostElement)
+    if (style.display === 'none' || style.visibility === 'hidden') {
+      return false
+    }
+
+    // Check if any parent element has display:none
+    let parent = this.hostElement.parentElement
+    while (parent) {
+      const parentStyle = window.getComputedStyle(parent)
+      if (parentStyle.display === 'none' || parentStyle.visibility === 'hidden') {
+        return false
+      }
+      parent = parent.parentElement
+    }
+
+    return this.hostElement.offsetWidth > 0
+  }
+
   getCurrentAnchorSelector(): string | null {
     return this.currentAnchorSelector
   }
@@ -329,7 +354,11 @@ export class Injector {
         display: block;
         width: 20px;
         height: 20px;
-        color: inherit;
+        color: #6b7280;
+      }
+
+      .trigger-button:hover .trigger-icon {
+        color: #374151;
       }
     `
   }

@@ -38,7 +38,7 @@ export function ConfigCard({ config, isActive, onActivate, onDelete, onEdit }: C
             )}
           </div>
           <p className="text-xs text-gray-500 mt-1 truncate">
-            {isOfficial ? '自动模型 · 无需 API Key' : config.selectedModel}
+            {isOfficial ? '专业视觉模型' : config.selectedModel}
           </p>
           <p className="text-xs text-gray-400 mt-0.5">
             {isOfficial ? '官方服务' : new Date(config.configuredAt).toLocaleDateString()}

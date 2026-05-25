@@ -1,6 +1,5 @@
-// packages/extension/src/popup/components/CollapsibleSection.tsx
 import { useState } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, ChevronRight } from 'lucide-react'
 
 interface CollapsibleSectionProps {
   title: string
@@ -9,37 +8,30 @@ interface CollapsibleSectionProps {
   children: React.ReactNode
 }
 
-export function CollapsibleSection({
-  title,
-  defaultExpanded = false,
-  hint,
-  children
-}: CollapsibleSectionProps) {
+export function CollapsibleSection({ title, defaultExpanded = false, hint, children }: CollapsibleSectionProps) {
   const [expanded, setExpanded] = useState(defaultExpanded)
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200">
-      {/* Header - clickable to toggle */}
-      <div
-        className="p-4 flex items-center justify-between cursor-pointer"
+    <div>
+      <button
+        className="flex items-center gap-1.5 w-full py-2 text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors"
         onClick={() => setExpanded(!expanded)}
       >
-        <div className="flex items-center gap-2">
-          <ChevronDown
-            className={`w-4 h-4 text-gray-400 transition-transform ${expanded ? 'rotate-180' : ''}`}
-          />
-          <h3 className={`font-medium ${expanded ? 'text-gray-900' : 'text-gray-700'}`}>
-            {title}
-          </h3>
-        </div>
-        {hint && !expanded && (
-          <span className="text-xs text-gray-500">{hint}</span>
+        {expanded ? (
+          <ChevronDown style={{ width: 14, height: 14 }} />
+        ) : (
+          <ChevronRight style={{ width: 14, height: 14 }} />
         )}
-      </div>
-
-      {/* Content - only show when expanded */}
+        <span>{title}</span>
+        {hint && !expanded && (
+          <span className="text-[10px] text-gray-400 ml-1">{hint}</span>
+        )}
+      </button>
       {expanded && (
-        <div className="px-4 pb-4 pt-0">
+        <div className="space-y-2">
+          {hint && (
+            <p className="text-[11px] text-gray-400 leading-relaxed px-1">{hint}</p>
+          )}
           {children}
         </div>
       )}

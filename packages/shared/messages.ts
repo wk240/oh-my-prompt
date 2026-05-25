@@ -26,6 +26,7 @@ export enum MessageType {
   OPEN_SIDEPANEL = 'OPEN_SIDEPANEL',  // Open sidepanel (general use - backup settings, etc.)
   OPEN_SIDEPANEL_FOR_PERMISSION = 'OPEN_SIDEPANEL_FOR_PERMISSION',  // Open sidepanel to restore folder permission (user gesture propagates)
   OPEN_SIDEPANEL_FOR_SETTINGS = 'OPEN_SIDEPANEL_FOR_SETTINGS',  // Open sidepanel and navigate to settings view
+  OPEN_SIDEPANEL_FOR_MINE = 'OPEN_SIDEPANEL_FOR_MINE',  // Open sidepanel and navigate to My page
 
   // Phase 10: API configuration operations
   GET_API_CONFIG = 'GET_API_CONFIG',
@@ -50,6 +51,7 @@ export enum MessageType {
   INSERT_PROMPT_TO_CS = 'INSERT_PROMPT_TO_CS',  // Forward INSERT_PROMPT to content script
   SAVE_TEMPORARY_PROMPT = 'SAVE_TEMPORARY_PROMPT',  // Save prompt to temporary library
   UPDATE_TEMPORARY_PROMPT_FORMAT = 'UPDATE_TEMPORARY_PROMPT_FORMAT',  // Update format of saved temporary prompt
+  DELETE_TEMPORARY_PROMPT = 'DELETE_TEMPORARY_PROMPT',  // Delete one temporary prompt
   CLEAR_TEMPORARY_PROMPTS = 'CLEAR_TEMPORARY_PROMPTS',  // Clear all temporary prompts
   TRANSFER_TEMPORARY_PROMPT = 'TRANSFER_TEMPORARY_PROMPT',  // Transfer temporary prompt to category
 
@@ -106,6 +108,18 @@ export enum MessageType {
   // Official Vision API
   GET_VISION_QUOTA = 'GET_VISION_QUOTA',           // 获取 Vision 额度状态
   ACTIVATE_OFFICIAL_CONFIG = 'ACTIVATE_OFFICIAL_CONFIG', // 激活官方配置
+
+// Team Library: Team prompt sync operations
+  SYNC_TEAM_PROMPTS = 'SYNC_TEAM_PROMPTS',  // SP → SW: Trigger team prompts sync
+  TEAM_PROMPTS_SYNCED = 'TEAM_PROMPTS_SYNCED',  // SW → SP: Team prompts sync completed
+  SAVE_TEAM_PROMPT_TO_PERSONAL = 'SAVE_TEAM_PROMPT_TO_PERSONAL',  // SP → SW: Save team prompt to personal library
+  SHARE_PROMPT_TO_TEAM = 'SHARE_PROMPT_TO_TEAM',  // SP → SW: Share personal prompt to team
+
+  // Agent: Prompt enhancement feature
+  AGENT_GENERATE = 'AGENT_GENERATE',           // Request Agent generation
+  AGENT_GENERATE_RESULT = 'AGENT_GENERATE_RESULT', // Response with generated prompt
+  AGENT_EXTRACT_FROM_CS = 'AGENT_EXTRACT_FROM_CS', // Content Script extract input to Sidepanel
+  AGENT_ECOMMERCE_AI_WRITE = 'AGENT_ECOMMERCE_AI_WRITE', // Ecommerce AI write via Agent
 }
 
 export interface Message<T = unknown> {

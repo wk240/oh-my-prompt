@@ -156,18 +156,18 @@ export function PromptEditModal({
           setImagePreviewUrl(undefined)
         }
         // categoryId: use defaultCategoryId for temporary prompts (prompt.categoryId='temporary' is virtual)
-        // For regular prompts, use prompt.categoryId or defaultCategoryId fallback
+        // For regular prompts, keep an existing empty category empty instead of auto-assigning one.
         const isTemporaryPrompt = prompt.categoryId === 'temporary'
         if (isTemporaryPrompt) {
           setCategoryId(defaultCategoryId || categories[0]?.id || '')
         } else {
-          setCategoryId(prompt.categoryId || defaultCategoryId || categories[0]?.id || '')
+          setCategoryId(prompt.categoryId ?? defaultCategoryId ?? '')
         }
       } else {
         setName('')
         setDescription('')
         setContent('')
-        setCategoryId(defaultCategoryId || categories[0]?.id || '')
+        setCategoryId(defaultCategoryId || '')
         // Reset English fields for add mode
         setNameEn('')
         setDescriptionEn('')
@@ -334,10 +334,11 @@ export function PromptEditModal({
   const handleConfirm = () => {
     const trimmedName = name.trim()
     const trimmedContent = content.trim()
-    if (!trimmedName || !trimmedContent || !categoryId) return
+    if (!trimmedName || !trimmedContent) return
 
     // If editing temporary prompt, use transfer callback
     if (isTemporary && onTransfer) {
+      if (!categoryId) return
       onTransfer(categoryId)
       onClose()
       return
@@ -361,7 +362,7 @@ export function PromptEditModal({
     onClose()
   }
 
-  const isValid = name.trim() && content.trim() && categoryId
+  const isValid = name.trim() && content.trim() && (!isTemporary || categoryId)
 
   // Preview element - rendered via portal to document.body
   // Auto-stick to top/left if preview would exceed viewport boundaries
@@ -906,6 +907,9 @@ export function PromptEditModal({
               cursor: 'pointer',
             }}
           >
+            {!isTemporary && (
+              <option value="">无分类</option>
+            )}
             {categories.map((cat) => (
               <option key={cat.id} value={cat.id}>
                 {cat.name}

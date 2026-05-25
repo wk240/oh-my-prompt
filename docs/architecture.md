@@ -206,6 +206,13 @@ interface PlatformConfig {
 - **Storage:** Supabase PostgreSQL (prompts, categories, temporary_prompts)
 - **Flow:** Extension storage → Web App API → Supabase
 
+#### Sync Entry and Identity Policy
+
+- Auto-sync entry is `SET_STORAGE -> debouncedTriggerSync -> SyncOrchestrator.triggerSync`.
+- Sync dedupe state is persisted in `syncStatus.guard` so MV3 service-worker restarts do not erase upload guards.
+- Identity is ID-first; `name` is display-only and must not merge entities.
+- Legacy personal duplicates are handled only by explicit typed `idAliasMap` entries.
+
 ### 5. Temporary Library
 
 - **Purpose:** Vision 生成的提示词独立存储
@@ -250,4 +257,4 @@ Message types defined in `packages/shared/messages.ts` (MessageType enum, 50+ ty
 
 ---
 
-*Last updated: 2026-05-20*
+*Last updated: 2026-05-24*

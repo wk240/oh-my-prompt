@@ -10,7 +10,7 @@ export async function checkSubscriptionFeature(feature: 'cloud_sync' | 'ai_optim
   const planType = authState.subscription?.planType || 'free'
 
   if (feature === 'cloud_sync') {
-    return planType === 'pro' || planType === 'team'
+    return authState.cloudSyncEnabled ?? (planType === 'pro' || planType === 'team')
   }
 
   if (feature === 'ai_optimization') {

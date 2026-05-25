@@ -1,0 +1,29 @@
+name: Check Shared Sync
+
+on:
+  push:
+    paths:
+      - 'packages/shared/**'
+      - 'packages/web-app/src/shared/**'
+  pull_request:
+    paths:
+      - 'packages/shared/**'
+      - 'packages/web-app/src/shared/**'
+
+jobs:
+  check-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check shared package sync
+        run: ./scripts/check-shared-sync.sh
+
+      - name: Upload diff on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shared-drift-diff
+          path: |
+            packages/shared/
+            packages/web-app/src/shared/

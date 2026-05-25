@@ -8,14 +8,13 @@ import { MergePreviewModal, MergePreviewData } from './MergePreviewModal'
 import { HistoryModal } from './HistoryModal'
 import { RestoreDecisionModal } from './RestoreDecisionModal'
 import { MergeConflictModal, MergeResult } from './MergeConflictModal'
-import { signOut } from '@/lib/cloud-sync/auth-service'
-import { changeSyncFolder, enableSync, getBackupVersions, restoreFromBackup } from '@/lib/sync/sync-manager'
+import { changeSyncFolder, confirmUseCurrentDataForBackup, enableSync, getBackupVersions, restoreFromBackup } from '@/lib/sync/sync-manager'
 import type { ExistingBackupInfo } from '@/lib/sync/sync-manager'
 import type { BackupStatusStorage, UnifiedSyncStatus } from '@/lib/sync/types'
 import type { BackupVersion } from '@/lib/sync/file-sync'
 import { MessageType } from '@oh-my-prompt/shared/messages'
 import { BACKUP_FILE_NAME } from '@oh-my-prompt/shared/constants'
-import { WEB_APP_URL } from '@/lib/config'
+import { WEB_APP_URL, SUPABASE_PROJECT_REF } from '@/lib/config'
 
 /**
  * Transform UnifiedSyncStatus to BackupStatusStorage
@@ -41,6 +40,9 @@ const transformUnifiedToBackup = (unified: UnifiedSyncStatus): BackupStatusStora
     folderName: unified.folderName
   }
 })
+
+// Supabase auth token storage key
+const SUPABASE_AUTH_KEY = `sb-${SUPABASE_PROJECT_REF}-auth-token`
 
 /**
  * BackupSection - Main backup UI with transparent auto-backup display
@@ -82,14 +84,54 @@ export function BackupSection() {
 
   /**
    * Load cached syncStatus from storage.local (instant, no network request).
+   * Also checks auth token directly for instant "logged in" display.
    * Used for initial display to avoid waiting for slow network calls.
    */
   const loadCachedStatus = useCallback(async () => {
     try {
-      const result = await chrome.storage.local.get('syncStatus')
-      if (result.syncStatus) {
-        setStatus(transformUnifiedToBackup(result.syncStatus))
+      // Check auth token directly for instant cloud login status
+      const authResult = await chrome.storage.local.get(SUPABASE_AUTH_KEY)
+      let cloudLoggedIn = false
+      if (authResult[SUPABASE_AUTH_KEY]) {
+        try {
+          const session = JSON.parse(authResult[SUPABASE_AUTH_KEY])
+          const now = Math.floor(Date.now() / 1000)
+          if (session.access_token && session.expires_at && session.expires_at > now) {
+            cloudLoggedIn = true
+          }
+        } catch {
+          // Invalid session format, ignore
+        }
       }
+
+      const result = await chrome.storage.local.get('syncStatus')
+      const cached = result.syncStatus || {}
+
+      // Merge cached status with direct auth check
+      // Use cached values if available, otherwise use direct auth check result
+      const mergedStatus: UnifiedSyncStatus = {
+        cloudEnabled: cached.cloudEnabled ?? cloudLoggedIn,
+        cloudLoggedIn: cached.cloudLoggedIn ?? cloudLoggedIn,
+        lastCloudSyncTime: cached.lastCloudSyncTime,
+        cloudError: cached.cloudError,
+        cloudSyncing: cached.cloudSyncing,
+        cloudRetryCount: cached.cloudRetryCount,
+        cloudRetryScheduledAt: cached.cloudRetryScheduledAt,
+        localEnabled: cached.localEnabled ?? false,
+        lastLocalSyncTime: cached.lastLocalSyncTime,
+        localError: cached.localError,
+        localSyncing: cached.localSyncing,
+        localRetryCount: cached.localRetryCount,
+        localRetryScheduledAt: cached.localRetryScheduledAt,
+        folderName: cached.folderName,
+        permissionStatus: cached.permissionStatus,
+        hasUnsyncedChanges: cached.hasUnsyncedChanges ?? false,
+        pendingCloudSync: cached.pendingCloudSync ?? false,
+        pendingUpload: cached.pendingUpload ?? false,
+        localOnlyItems: cached.localOnlyItems ?? { promptIds: [], categoryIds: [], temporaryPromptIds: [] }
+      }
+
+      setStatus(transformUnifiedToBackup(mergedStatus))
     } catch (err) {
       console.warn('[Oh My Prompt] Failed to load cached syncStatus:', err)
     }
@@ -150,35 +192,48 @@ export function BackupSection() {
     return () => chrome.runtime.onMessage.removeListener(handleMessage)
   }, [loadBackupStatus])
 
+  // Backup mechanism: Listen for auth token storage changes directly.
+  // This ensures sidepanel updates even if AUTH_STATUS_UPDATE message is lost
+  // (e.g., user closes callback tab before message delivery completes).
+  useEffect(() => {
+    const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }) => {
+      // Check if auth token was added (login) or removed (logout)
+      if (changes[SUPABASE_AUTH_KEY]) {
+        const newValue = changes[SUPABASE_AUTH_KEY].newValue
+        const oldValue = changes[SUPABASE_AUTH_KEY].oldValue
+
+        // Token added = login success
+        if (newValue && !oldValue) {
+          console.log('[Oh My Prompt] Auth token added via storage, refreshing status')
+          loadBackupStatus()
+        }
+        // Token removed = logout
+        else if (!newValue && oldValue) {
+          console.log('[Oh My Prompt] Auth token removed via storage, refreshing status')
+          loadBackupStatus()
+        }
+      }
+    }
+    chrome.storage.onChanged.addListener(handleStorageChange)
+    return () => chrome.storage.onChanged.removeListener(handleStorageChange)
+  }, [loadBackupStatus])
+
   /**
-   * Handle cloud login - open Web App sync URL
+   * Handle cloud login - open Web App callback URL
    */
   const handleLogin = () => {
-    chrome.tabs.create({ url: `${WEB_APP_URL}/auth/extension/sync` })
+    chrome.tabs.create({ url: `${WEB_APP_URL}/auth/callback?source=extension` })
   }
 
   /**
-   * Handle cloud logout
+   * Navigate to mine tab when user clicks "未登录"
    */
-  const handleLogout = async () => {
-    setLoading(true)
-    setError(null)
-    setSuccess(null)
+  const handleNavigateToMine = () => {
+    chrome.storage.session.set({ sidepanelIntent: 'mine' })
+  }
 
-    try {
-      const result = await signOut()
-      if (result.success) {
-        setSuccess('已退出登录')
-        await loadBackupStatus()
-      } else {
-        setError('退出失败')
-      }
-    } catch (err) {
-      console.error('[Oh My Prompt] Logout failed:', err)
-      setError('退出失败')
-    } finally {
-      setLoading(false)
-    }
+  const handleUpgrade = () => {
+    chrome.tabs.create({ url: `${WEB_APP_URL}/subscription` })
   }
 
   /**
@@ -466,10 +521,27 @@ export function BackupSection() {
   /**
    * Handle decision modal continue action
    */
-  const handleDecisionContinue = () => {
-    setDecisionModalOpen(false)
-    setExistingBackup(null)
-    setSuccess('备份已启用，当前数据优先')
+  const handleDecisionContinue = async () => {
+    setLoading(true)
+    setError(null)
+    setSuccess(null)
+
+    try {
+      const result = await confirmUseCurrentDataForBackup()
+      if (result.success) {
+        setDecisionModalOpen(false)
+        setExistingBackup(null)
+        setSuccess('备份已启用，当前数据优先')
+        await loadBackupStatus()
+      } else {
+        setError(result.error || '同步失败')
+      }
+    } catch (err) {
+      console.error('[Oh My Prompt] Confirm current data failed:', err)
+      setError('同步失败')
+    } finally {
+      setLoading(false)
+    }
   }
 
   /**
@@ -551,6 +623,8 @@ export function BackupSection() {
           status={status?.cloud ?? null}
           onLogin={handleLogin}
           onClickError={() => setShowMoreOptions(true)}
+          onNavigateToMine={handleNavigateToMine}
+          onUpgrade={handleUpgrade}
         />
         <BackupStatusRow
           target="local"
@@ -594,13 +668,13 @@ export function BackupSection() {
         {showMoreOptions && (
           <BackupMoreOptions
             status={status}
-            onLogout={handleLogout}
             onChangeFolder={handleChangeFolder}
             onViewHistory={handleViewHistory}
             onMergeFromCloud={handleMergeFromCloud}
             onViewDiff={handleViewDiff}
             onEmergencyExport={handleEmergencyExport}
             loading={loading}
+            diffLoading={diffLoading}
           />
         )}
       </div>

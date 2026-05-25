@@ -24,11 +24,7 @@
     {
       "matches": [
         "http://localhost:3000/auth/callback*",
-        "http://localhost:3000/auth/extension/callback*",
-        "http://localhost:3000/auth/extension/sync*",
-        "https://oh-my-prompt.com/auth/callback*",
-        "https://oh-my-prompt.com/auth/extension/callback*",
-        "https://oh-my-prompt.com/auth/extension/sync*"
+        "https://oh-my-prompt.com/auth/callback*"
       ],
       "js": [
         "src/content/auth-callback.ts"

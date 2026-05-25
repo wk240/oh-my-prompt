@@ -1,6 +1,40 @@
 {
   "providers": [
     {
+      "name": "Alibaba Bailian",
+      "nameCn": "阿里云百炼",
+      "type": "cn_official",
+      "websiteUrl": "https://bailian.console.aliyun.com",
+      "apiKeyUrl": "https://bailian.console.aliyun.com/#/api-key",
+      "apiEndpoint": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "apiFormat": "chat_completions",
+      "models": [
+        { "id": "qwen3.5-flash", "visionCapable": true },
+        { "id": "qwen3.5-plus", "visionCapable": true },
+        { "id": "qwen3.6-plus", "visionCapable": true },
+        { "id": "qwen3.6-flash", "visionCapable": true },
+        { "id": "qwen3.5-omni-flash", "visionCapable": true },
+        { "id": "qwen3.5-omni-plus", "visionCapable": true }
+      ],
+      "icon": "bailian",
+      "iconColor": "#624AFF"
+    },
+    {
+      "name": "Xiaomi MiMo",
+      "nameCn": "小米 MiMo",
+      "type": "cn_official",
+      "websiteUrl": "https://platform.xiaomimimo.com",
+      "apiKeyUrl": "https://platform.xiaomimimo.com/#/console/api-keys",
+      "apiEndpoint": "https://api.xiaomimimo.com/v1",
+      "apiFormat": "chat_completions",
+      "models": [
+        { "id": "mimo-v2.5", "visionCapable": true },
+        { "id": "mimo-v2-omni", "visionCapable": true }
+      ],
+      "icon": "xiaomimimo",
+      "iconColor": "#000000"
+    },
+    {
       "name": "Oh My Prompt 官方",
       "nameCn": "Oh My Prompt 官方",
       "type": "omp_official",
@@ -74,41 +108,6 @@
       "iconColor": "#0F62FE"
     },
     {
-      "name": "Alibaba Bailian",
-      "nameCn": "阿里云百炼",
-      "type": "cn_official",
-      "websiteUrl": "https://bailian.console.aliyun.com",
-      "apiKeyUrl": "https://bailian.console.aliyun.com/#/api-key",
-      "apiEndpoint": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-      "apiFormat": "chat_completions",
-      "models": [
-        { "id": "qwen3.5-flash", "visionCapable": true },
-        { "id": "qwen3.5-plus", "visionCapable": true },
-        { "id": "qwen3.6-plus", "visionCapable": true },
-        { "id": "qwen3.6-flash", "visionCapable": true },
-        { "id": "qwen3.5-omni-flash", "visionCapable": true },
-        { "id": "qwen3.5-omni-plus", "visionCapable": true }
-      ],
-      "icon": "bailian",
-      "iconColor": "#624AFF"
-    },
-    {
-      "name": "Alibaba Bailian For Coding",
-      "nameCn": "阿里云百炼编程版",
-      "type": "cn_official",
-      "websiteUrl": "https://bailian.console.aliyun.com",
-      "apiKeyUrl": "https://bailian.console.aliyun.com/#/api-key",
-      "apiEndpoint": "https://coding.dashscope.aliyuncs.com/apps/anthropic",
-      "apiFormat": "anthropic_messages",
-      "models": [
-        { "id": "qwen3.6-plus", "visionCapable": true },
-        { "id": "qwen3.5-plus", "visionCapable": true },
-        { "id": "kimi-k2.5", "visionCapable": true }
-      ],
-      "icon": "bailian",
-      "iconColor": "#624AFF"
-    },
-    {
       "name": "Kimi (Moonshot)",
       "nameCn": "月之暗面 Kimi",
       "type": "cn_official",
@@ -122,21 +121,6 @@
       ],
       "icon": "kimi",
       "iconColor": "#6366F1"
-    },
-    {
-      "name": "Xiaomi MiMo",
-      "nameCn": "小米 MiMo",
-      "type": "cn_official",
-      "websiteUrl": "https://platform.xiaomimimo.com",
-      "apiKeyUrl": "https://platform.xiaomimimo.com/#/console/api-keys",
-      "apiEndpoint": "https://api.xiaomimimo.com/v1",
-      "apiFormat": "chat_completions",
-      "models": [
-        { "id": "mimo-v2.5", "visionCapable": true },
-        { "id": "mimo-v2-omni", "visionCapable": true }
-      ],
-      "icon": "xiaomimimo",
-      "iconColor": "#000000"
     },
     {
       "name": "Volcengine Ark Coding Plan",
@@ -161,7 +145,7 @@
     "source": "cc-switch",
     "version": "2.0.0",
     "generatedAt": "2026-05-07",
-    "totalProviders": 9,
+    "totalProviders": 8,
     "categories": {
       "omp_official": "Oh My Prompt official Vision API service (requires membership)",
       "official": "Official API providers (Anthropic, OpenAI)",

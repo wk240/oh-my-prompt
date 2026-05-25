@@ -1,0 +1,221 @@
+/* 团队库入口样式 - 保持与其他分类一致的黑白风格 */
+.sidebar-category-item.team-library {
+  /* 继承默认样式，不添加特殊颜色 */
+}
+
+.sidebar-category-item.team-library:hover {
+  /* 继承默认hover样式 */
+}
+
+.sidebar-category-item.team-library.selected {
+  /* 继承默认selected样式 */
+}
+
+/* 团队提示词卡片样式 - 黑白配色 */
+.team-card {
+  background: #ffffff;
+  border: 1px solid #E5E5E5;
+  border-radius: 8px;
+  padding: 12px;
+  cursor: pointer;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+  position: relative;
+}
+
+.team-card:hover {
+  background: #f8f8f8;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  border-color: #171717;
+}
+
+.team-card .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.team-card .card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+  flex: 1;
+}
+
+.team-card .card-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.team-card .card-action-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.team-card .card-action-btn:hover {
+  background: #f1f5f9;
+}
+
+.team-card .card-action-btn.collect:hover {
+  background: #171717;
+  color: white;
+}
+
+.team-card .card-source {
+  margin-bottom: 6px;
+}
+
+.team-card .card-preview {
+  font-size: 12px;
+  color: #64748b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 团队库按钮样式 - 黑白配色 */
+.team-action-btn {
+  margin-top: 12px;
+  padding: 8px 16px;
+  background: #171717;
+  color: #fff;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: none;
+}
+
+.team-action-btn:hover {
+  background: #262626;
+}
+
+.team-action-btn:disabled {
+  background: #a3a3a3;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* 团队同步按钮样式 - 黑白配色 */
+.team-sync-btn {
+  padding: 6px 12px;
+  background: #171717;
+  color: #fff;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.team-sync-btn:hover {
+  background: #262626;
+}
+
+.team-sync-btn:disabled {
+  background: #e5e5e5;
+  color: #737373;
+  cursor: wait;
+}
+
+/* 团队卡片操作按钮样式 - 黑白配色 */
+.team-card .network-card-actions {
+  margin-top: 8px;
+}
+
+.team-card .network-card-btn.collect {
+  background: #ffffff;
+  border-color: #E5E5E5;
+}
+
+.team-card .network-card-btn.collect:hover {
+  background: #171717;
+  color: white;
+  border-color: #171717;
+}
+
+.team-card .network-card-btn.copy:hover {
+  background: #f5f5f5;
+}
+
+.team-card .network-card-btn.inject:hover {
+  background: #f5f5f5;
+}
+
+/* 同步按钮样式 */
+.sync-button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.sync-button:hover {
+  background: #e2e8f0;
+}
+
+.sync-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 团队库内容区域 */
+.team-library-content {
+  padding: 16px;
+}
+
+.team-library-content .content-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.team-library-content .content-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.team-library-content .empty-state {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.team-library-content .empty-message {
+  font-size: 14px;
+  color: #64748b;
+}
+
+.team-prompts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.spin-animation {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

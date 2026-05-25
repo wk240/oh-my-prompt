@@ -5,6 +5,8 @@
 
 // Maximum concurrent image loads
 const MAX_CONCURRENT = 3
+const MAX_LOAD_ATTEMPTS = 3
+const RETRY_DELAY_MS = 500
 
 // Queue of pending load requests
 interface LoadRequest {
@@ -14,6 +16,26 @@ interface LoadRequest {
 
 const loadQueue: LoadRequest[] = []
 let activeLoads = 0
+
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+async function loadImageWithRetry(relativePath: string): Promise<string | null> {
+  // Import getCachedImageUrl dynamically to avoid circular dependency
+  const { getCachedImageUrl } = await import('./image-sync')
+
+  for (let attempt = 1; attempt <= MAX_LOAD_ATTEMPTS; attempt++) {
+    const url = await getCachedImageUrl(relativePath)
+    if (url || attempt === MAX_LOAD_ATTEMPTS) {
+      return url
+    }
+
+    await delay(RETRY_DELAY_MS)
+  }
+
+  return null
+}
 
 /**
  * Process queue - start next load if under concurrency limit
@@ -25,9 +47,7 @@ async function processQueue(): Promise<void> {
 
     activeLoads++
     try {
-      // Import getCachedImageUrl dynamically to avoid circular dependency
-      const { getCachedImageUrl } = await import('./image-sync')
-      const url = await getCachedImageUrl(request.relativePath)
+      const url = await loadImageWithRetry(request.relativePath)
       request.resolve(url)
     } catch (error) {
       console.warn('[Oh My Prompt] Image load failed:', request.relativePath, error)

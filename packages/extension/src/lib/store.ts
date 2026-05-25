@@ -5,19 +5,25 @@
  */
 
 import { create } from 'zustand'
-import type { Prompt, Category, StorageSchema } from '@oh-my-prompt/shared/types'
+import type { Prompt, Category, StorageSchema, TeamPrompt, TeamSyncStatus, CloudAuthState, TeamInfo } from '@oh-my-prompt/shared/types'
 import { MessageType } from '@oh-my-prompt/shared/messages'
 import { sortPromptsByOrder } from '@oh-my-prompt/shared/utils'
+import { syncTeamPrompts, getAuthToken } from '@/lib/team-sync'
+import { getAuthState, getCachedAuthState } from '@/lib/cloud-sync/auth-service'
+import { WEB_APP_URL } from '@/lib/config'
 
 interface PromptStore {
   prompts: Prompt[]
   categories: Category[]
   temporaryPrompts: Prompt[]  // Temporary library prompts (independent storage)
+  teamPrompts: TeamPrompt[]   // Team library prompts (shared from teams)
+  teamSyncStatus: TeamSyncStatus | null  // Team sync status
+  authState: CloudAuthState | null  // Cloud auth state (logged_in / not_logged_in)
   selectedCategoryId: string | null
   isLoading: boolean
 
   // Actions
-  loadFromStorage: () => Promise<{ success: boolean; error?: string }>
+  loadFromStorage: (options?: { showLoading?: boolean }) => Promise<{ success: boolean; error?: string }>
   saveToStorage: () => Promise<{ success: boolean; syncSuccess?: boolean; error?: string }>
   setSelectedCategory: (categoryId: string | null) => void
 
@@ -37,8 +43,16 @@ interface PromptStore {
   reorderAllPrompts: (newOrder: string[]) => void
 
   // Temporary library
+  deleteTemporaryPrompt: (promptId: string) => void
   clearTemporaryPrompts: () => void
   transferTemporaryPrompt: (promptId: string, categoryId: string) => void
+
+  // Team library
+  syncTeamPrompts: () => Promise<{ success: boolean; promptsCount?: number; error?: string }>
+  loadTeamPrompts: () => Promise<void>
+  loadAuthState: () => Promise<void>
+  saveTeamPromptToPersonal: (teamPrompt: TeamPrompt, categoryId: string) => void
+  getUserTeams: () => Promise<{ success: boolean; teams?: TeamInfo[]; error?: string }>
 
   // Computed getters
   getPromptsByCategory: (categoryId: string) => Prompt[]
@@ -306,12 +320,17 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
   prompts: [],
   categories: [],
   temporaryPrompts: [],
+  teamPrompts: [],
+  teamSyncStatus: null,
+  authState: null,
   selectedCategoryId: 'all',
   isLoading: true,
 
   // Actions
-  loadFromStorage: async () => {
-    set({ isLoading: true })
+  loadFromStorage: async (options) => {
+    if (options?.showLoading !== false) {
+      set({ isLoading: true })
+    }
     try {
       const data = await sendStorageMessage(MessageType.GET_STORAGE)
       if (data && data.userData) {
@@ -547,6 +566,16 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
   },
 
   // Temporary library methods
+  deleteTemporaryPrompt: (promptId: string) => {
+    set((state) => ({
+      temporaryPrompts: state.temporaryPrompts.filter(p => p.id !== promptId)
+    }))
+    chrome.runtime.sendMessage({
+      type: MessageType.DELETE_TEMPORARY_PROMPT,
+      payload: { promptId }
+    })
+  },
+
   clearTemporaryPrompts: () => {
     set({ temporaryPrompts: [] })
     // Send message to service worker to clear
@@ -584,6 +613,72 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
       type: MessageType.TRANSFER_TEMPORARY_PROMPT,
       payload: { promptId, targetCategoryId: categoryId }
     })
+  },
+
+  // Team library methods
+  syncTeamPrompts: async () => {
+    const result = await syncTeamPrompts()
+    if (result.success) {
+      const stored = await chrome.storage.local.get(['teamPrompts', 'teamSyncStatus'])
+      set({ teamPrompts: stored.teamPrompts || [], teamSyncStatus: stored.teamSyncStatus || null })
+    }
+    return result
+  },
+
+  loadTeamPrompts: async () => {
+    const stored = await chrome.storage.local.get(['teamPrompts', 'teamSyncStatus'])
+    set({ teamPrompts: stored.teamPrompts || [], teamSyncStatus: stored.teamSyncStatus || null })
+  },
+
+  loadAuthState: async () => {
+    const cachedAuthState = await getCachedAuthState()
+    set({ authState: cachedAuthState })
+    const authState = await getAuthState()
+    set({ authState })
+  },
+
+  saveTeamPromptToPersonal: (teamPrompt: TeamPrompt, categoryId: string) => {
+    const personalPrompt: Prompt = {
+      id: crypto.randomUUID(),
+      name: teamPrompt.name,
+      nameEn: teamPrompt.nameEn,
+      content: teamPrompt.content,
+      contentEn: teamPrompt.contentEn,
+      categoryId,
+      description: teamPrompt.description,
+      descriptionEn: teamPrompt.descriptionEn,
+      order: get().prompts.filter(p => p.categoryId === categoryId).length,
+      localImage: teamPrompt.localImage,
+      remoteImageUrl: teamPrompt.remoteImageUrl,
+      updatedAt: Date.now(),
+    }
+    get().addPrompt(personalPrompt)
+  },
+
+  getUserTeams: async () => {
+    try {
+      const token = await getAuthToken()
+      if (!token) return { success: false, error: 'NOT_LOGGED_IN' }
+
+      const response = await fetch(`${WEB_APP_URL}/api/teams`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      if (!response.ok) {
+        return { success: false, error: 'FETCH_FAILED' }
+      }
+
+      const data = await response.json()
+      const teams: TeamInfo[] = (data.teams || []).map((t: { id: string; name: string }) => ({
+        id: t.id,
+        name: t.name
+      }))
+
+      return { success: true, teams }
+    } catch (error) {
+      console.error('[Oh My Prompt] Get user teams error:', error)
+      return { success: false, error: 'NETWORK_ERROR' }
+    }
   },
 
   // Flush pending debounced save (for beforeunload)

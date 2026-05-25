@@ -1,6 +1,7 @@
 // packages/extension/src/lib/cloud-sync/auth-service.ts
 import { getSupabaseClient, clearSupabaseClient } from './supabase-client'
 import { WEB_APP_URL, SUPABASE_PROJECT_REF } from '@/lib/config'
+import { MessageType } from '@oh-my-prompt/shared/messages'
 import type { CloudAuthState } from '@oh-my-prompt/shared/types'
 
 /**
@@ -36,22 +37,22 @@ export async function checkWebAppSession(): Promise<{
 }
 
 /**
- * Open Web App sync page to transfer session to Extension.
+ * Open Web App callback page to transfer session to Extension.
  *
  * Flow:
  * 1. Extension opens this URL in new tab (foreground or background)
  * 2. Web App detects existing session, returns tokens in hash
  * 3. Extension content script extracts tokens and saves to chrome.storage
- * 4. For sync route: tab auto-closes after success
+ * 4. Tab auto-closes after success (via hashchange listener)
  *
  * @param options.background - If true, open tab in background (active: false)
  * @returns Success status
  */
 export async function syncFromWebApp(options?: { background?: boolean }): Promise<{ success: boolean }> {
   try {
-    // Open sync page in new tab (background if specified)
+    // Open callback page with source=extension in new tab
     chrome.tabs.create({
-      url: `${WEB_APP_URL}/auth/extension/sync`,
+      url: `${WEB_APP_URL}/auth/callback?source=extension`,
       active: !options?.background
     })
     return { success: true }
@@ -73,10 +74,97 @@ let cachedSyncStatus: {
     currentPeriodEnd?: number
     optimizationQuota?: { used: number; remaining: number; limit: number }
   }
+  cloudSyncEnabled?: boolean
   lastSyncAt?: number
   timestamp: number
 } | null = null
 const STATUS_CACHE_DURATION_MS = 60 * 1000 // 60 seconds
+
+const SUPABASE_AUTH_KEY = `sb-${SUPABASE_PROJECT_REF}-auth-token`
+
+function getAuthStateFromCache(): CloudAuthState | null {
+  const nowMs = Date.now()
+  if (!cachedSyncStatus || nowMs - cachedSyncStatus.timestamp >= STATUS_CACHE_DURATION_MS) {
+    return null
+  }
+
+  return {
+    status: 'logged_in',
+    user: cachedSyncStatus.user,
+    subscription: cachedSyncStatus.subscription,
+    cloudSyncEnabled: cachedSyncStatus.cloudSyncEnabled,
+    lastSyncAt: cachedSyncStatus.lastSyncAt
+  }
+}
+
+/**
+ * Get session directly from chrome.storage.local (bypassing Supabase client).
+ *
+ * This is more reliable in content script context where Supabase client's
+ * getSession() may not properly read from storage adapter due to async initialization.
+ *
+ * @returns Session object or null if not found/invalid
+ */
+export async function getSessionFromStorage(): Promise<{
+  access_token: string
+  user: { id: string; email?: string }
+  expires_at?: number
+} | null> {
+  try {
+    const result = await chrome.storage.local.get(SUPABASE_AUTH_KEY)
+    const sessionData = result[SUPABASE_AUTH_KEY]
+
+    if (!sessionData) return null
+
+    const session = JSON.parse(sessionData)
+
+    // Validate session has required fields
+    if (!session.access_token || !session.user?.id) return null
+
+    // Check if token is expired
+    const now = Math.floor(Date.now() / 1000)
+    const expiresAt = session.expires_at || 0
+    if (expiresAt < now) return null
+
+    return {
+      access_token: session.access_token,
+      user: {
+        id: session.user.id,
+        email: session.user.email
+      },
+      expires_at: session.expires_at
+    }
+  } catch (error) {
+    console.error('[Oh My Prompt] Failed to read session from storage:', error)
+    return null
+  }
+}
+
+/**
+ * Get auth state quickly from local storage/cache only (no network request).
+ * Useful for instant UI hydration before fetching subscription details.
+ */
+export async function getCachedAuthState(): Promise<CloudAuthState> {
+  try {
+    const directSession = await getSessionFromStorage()
+    if (!directSession) {
+      return { status: 'not_logged_in' }
+    }
+
+    const cachedState = getAuthStateFromCache()
+    if (cachedState) {
+      return cachedState
+    }
+
+    return {
+      status: 'logged_in',
+      user: directSession.user
+    }
+  } catch (error) {
+    console.error('[Oh My Prompt] Cached auth state check failed:', error)
+    return { status: 'not_logged_in' }
+  }
+}
 
 /**
  * Get the current authentication state with subscription info.
@@ -89,88 +177,85 @@ const STATUS_CACHE_DURATION_MS = 60 * 1000 // 60 seconds
  * @returns CloudAuthState with status and optional user/subscription info
  */
 export async function getAuthState(): Promise<CloudAuthState> {
-  const supabase = getSupabaseClient()
-
   try {
-    const { data: { session: initialSession }, error } = await supabase.auth.getSession()
+    // First, try to read session directly from chrome.storage.local
+    // This is more reliable in content script context where Supabase client's
+    // getSession() may not properly read from storage adapter due to async initialization
+    const directSession = await getSessionFromStorage()
 
-    if (error || !initialSession) {
+    if (!directSession) {
       cachedSyncStatus = null // Clear cache on auth change
       return { status: 'not_logged_in' }
     }
 
-    // Check if token is expired
-    let session = initialSession
-    const now = Math.floor(Date.now() / 1000)
-    const expiresAt = session.expires_at || 0
-    const isExpired = expiresAt < now
-
-    if (isExpired) {
-      const { data: { session: newSession }, error: refreshError } = await supabase.auth.refreshSession()
-      if (refreshError || !newSession) {
-        const storageKey = `sb-${SUPABASE_PROJECT_REF}-auth-token`
-        await chrome.storage.local.remove(storageKey)
-        clearSupabaseClient()
-        cachedSyncStatus = null // Clear cache on auth change
-        return { status: 'not_logged_in' }
-      }
-      session = newSession
-      cachedSyncStatus = null // Clear cache after token refresh
+    // Check if cached status is valid (for subscription info)
+    const cachedState = getAuthStateFromCache()
+    if (cachedState) {
+      return cachedState
     }
 
-    // Check if cached status is valid
-    const nowMs = Date.now()
-    if (cachedSyncStatus && nowMs - cachedSyncStatus.timestamp < STATUS_CACHE_DURATION_MS) {
+    // Get subscription status from sync/status API
+    try {
+      const statusRes = await fetch(`${WEB_APP_URL}/api/sync/status`, {
+        headers: {
+          Authorization: `Bearer ${directSession.access_token}`
+        }
+      })
+
+      // Handle 401 Unauthorized - session invalid (user logged out from Web App)
+      if (statusRes.status === 401) {
+        await chrome.storage.local.remove(SUPABASE_AUTH_KEY)
+        clearSupabaseClient()
+        cachedSyncStatus = null
+        return { status: 'not_logged_in' }
+      }
+
+      if (!statusRes.ok) {
+        // Other API errors - return basic logged_in state
+        return {
+          status: 'logged_in',
+          user: directSession.user
+        }
+      }
+
+      const statusData = await statusRes.json() as {
+        user: { id: string; email?: string }
+        subscription?: {
+          planType: 'free' | 'pro' | 'team'
+          status: 'active' | 'inactive' | 'expired' | 'canceled'
+          currentPeriodEnd?: number
+        }
+        optimizationQuota?: { used: number; remaining: number; limit: number }
+        cloudSyncEnabled?: boolean
+        lastSyncedAt?: number
+      }
+
+      // Cache the result
+      cachedSyncStatus = {
+        user: statusData.user,
+        subscription: statusData.subscription ? {
+          ...statusData.subscription,
+          optimizationQuota: statusData.optimizationQuota
+        } : undefined,
+        cloudSyncEnabled: statusData.cloudSyncEnabled,
+        lastSyncAt: statusData.lastSyncedAt,
+        timestamp: Date.now()
+      }
+
       return {
         status: 'logged_in',
         user: cachedSyncStatus.user,
         subscription: cachedSyncStatus.subscription,
+        cloudSyncEnabled: cachedSyncStatus.cloudSyncEnabled,
         lastSyncAt: cachedSyncStatus.lastSyncAt
       }
-    }
-
-    // Get subscription status from sync/status API
-    const statusRes = await fetch(`${WEB_APP_URL}/api/sync/status`, {
-      headers: {
-        Authorization: `Bearer ${session.access_token}`
-      }
-    })
-
-    if (!statusRes.ok) {
-      // API unavailable, return basic logged_in state
+    } catch (apiError) {
+      // API unavailable - return basic logged_in state with session from storage
+      console.warn('[Oh My Prompt] Sync status API unavailable:', apiError)
       return {
         status: 'logged_in',
-        user: { id: session.user.id, email: session.user.email }
+        user: directSession.user
       }
-    }
-
-    const statusData = await statusRes.json() as {
-      user: { id: string; email?: string }
-      subscription?: {
-        planType: 'free' | 'pro' | 'team'
-        status: 'active' | 'inactive' | 'expired' | 'canceled'
-        currentPeriodEnd?: number
-      }
-      optimizationQuota?: { used: number; remaining: number; limit: number }
-      lastSyncedAt?: number
-    }
-
-    // Cache the result
-    cachedSyncStatus = {
-      user: statusData.user,
-      subscription: statusData.subscription ? {
-        ...statusData.subscription,
-        optimizationQuota: statusData.optimizationQuota
-      } : undefined,
-      lastSyncAt: statusData.lastSyncedAt,
-      timestamp: nowMs
-    }
-
-    return {
-      status: 'logged_in',
-      user: cachedSyncStatus.user,
-      subscription: cachedSyncStatus.subscription,
-      lastSyncAt: cachedSyncStatus.lastSyncAt
     }
   } catch (error) {
     console.error('[Oh My Prompt] Auth state check failed:', error)
@@ -196,7 +281,7 @@ export function invalidateSyncStatusCache(): void {
  * 2. Extension opens URL in new tab (chrome.tabs.create)
  * 3. User completes OAuth on provider site
  * 4. Provider redirects to web-app callback
- * 5. Web-app exchanges code for session
+ * 5. Web-app exchanges code for session and returns HTML with tokens (for extension)
  * 6. Extension polls waitForAuthCallback() until session detected
  *
  * @param provider - 'google' or 'github'
@@ -206,12 +291,11 @@ export async function signInWithOAuth(provider: 'google' | 'github'): Promise<{ 
   const supabase = getSupabaseClient()
 
   try {
-    // Use dedicated extension callback path to avoid query param matching issues
-    // Supabase's redirect URL matching is exact - query params must match exactly
+    // Use unified callback path with source=extension query param
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${WEB_APP_URL}/auth/extension/callback`,
+        redirectTo: `${WEB_APP_URL}/auth/callback?source=extension`,
         skipBrowserRedirect: true // We open in new tab manually
       }
     })
@@ -230,8 +314,6 @@ export async function signInWithOAuth(provider: 'google' | 'github'): Promise<{ 
     return { success: false, error: 'OAuth initiation failed' }
   }
 }
-
-const SUPABASE_AUTH_KEY = `sb-${SUPABASE_PROJECT_REF}-auth-token`
 
 /**
  * Sign out and clear all session data.
@@ -254,9 +336,19 @@ export async function signOut(): Promise<{ success: boolean }> {
   }
 
   clearSupabaseClient()
+  invalidateSyncStatusCache() // Clear auth state cache
 
   // Clear stored session from chrome.storage.local with correct key format
   await chrome.storage.local.remove([SUPABASE_AUTH_KEY])
+
+  // Broadcast logout to service worker, which will rebroadcast to all extension contexts (sidepanel, popup)
+  // This ensures VisionSection and other UI components update their auth state
+  chrome.runtime.sendMessage({
+    type: MessageType.AUTH_STATUS_UPDATE,
+    payload: { success: true, logout: true }
+  }).catch(() => {
+    // Service worker may not be running or other contexts not open, ignore error
+  })
 
   return { success: true }
 }

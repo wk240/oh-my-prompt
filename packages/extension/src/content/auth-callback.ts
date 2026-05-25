@@ -8,6 +8,9 @@
  *
  * Timing: Web-app returns HTML with JavaScript that injects tokens into hash.
  * We need to wait for the hash to be set before extracting tokens.
+ *
+ * Fix: Now awaits sendMessage() before showing success UI to ensure sync completes
+ * even if user closes the tab immediately.
  */
 
 console.log('[Oh My Prompt] Auth callback script loaded')
@@ -42,6 +45,7 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
 
 /**
  * Helper function to create styled page using DOM APIs (avoiding CSP violations)
+ * Matches web-app's cyber-minimalist design system from globals.css
  */
 function createStyledPage(config: {
   iconStroke: string
@@ -54,16 +58,61 @@ function createStyledPage(config: {
     document.body.removeChild(document.body.firstChild)
   }
 
-  // Set body background
-  document.body.style.cssText = 'min-height: 100vh; background: #0e0e10; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; color: #f9f5f8; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;'
+  // Set body with grid background and atmospheric effects
+  document.body.style.cssText = `
+    min-height: 100vh;
+    background: #0e0e10;
+    background-image: radial-gradient(circle, rgba(249, 245, 248, 0.1) 1.2px, transparent 1.2px);
+    background-size: 24px 24px;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    color: #f9f5f8;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 24px;
+    box-sizing: border-box;
+  `
 
-  // Icon
+  // Create card container (glass panel effect)
+  const card = document.createElement('div')
+  card.style.cssText = `
+    background-color: rgba(38, 37, 40, 0.6);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(72, 71, 74, 0.2);
+    border-radius: 12px;
+    padding: 48px 40px;
+    max-width: 400px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 0 0 40px -10px rgba(249, 245, 248, 0.08);
+  `
+
+  // Icon container with subtle background
+  const iconContainer = document.createElement('div')
+  iconContainer.style.cssText = `
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+    background: ${config.iconType === 'success' ? 'rgba(129, 236, 255, 0.1)' : 'rgba(255, 113, 108, 0.1)'};
+  `
+
+  // Icon SVG
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
   svg.setAttribute('viewBox', '0 0 24 24')
   svg.setAttribute('fill', 'none')
   svg.setAttribute('stroke', config.iconStroke)
   svg.setAttribute('stroke-width', '2')
-  svg.style.cssText = 'width: 64px; height: 64px; margin-bottom: 24px;'
+  svg.setAttribute('stroke-linecap', 'round')
+  svg.setAttribute('stroke-linejoin', 'round')
+  svg.style.cssText = 'width: 48px; height: 48px;'
 
   const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
   circle.setAttribute('cx', '12')
@@ -95,31 +144,43 @@ function createStyledPage(config: {
     svg.appendChild(polyline)
   }
 
-  document.body.appendChild(svg)
+  iconContainer.appendChild(svg)
+  card.appendChild(iconContainer)
 
-  // Title
+  // Title with Space Grotesk font
   const title = document.createElement('h2')
-  title.style.cssText = 'font-size: 22px; font-weight: 600; margin: 0 0 8px 0;'
+  title.style.cssText = `
+    font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    font-size: 24px;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+    color: #f9f5f8;
+    letter-spacing: -0.02em;
+  `
   title.textContent = config.title
-  document.body.appendChild(title)
+  card.appendChild(title)
 
   // Description
   const desc = document.createElement('p')
-  desc.style.cssText = 'color: rgba(173, 170, 173, 0.9); font-size: 14px; margin: 0 0 24px 0;'
+  desc.style.cssText = `
+    color: #adaaad;
+    font-size: 15px;
+    margin: 0 0 24px 0;
+    line-height: 1.5;
+  `
   desc.innerHTML = config.description
-  document.body.appendChild(desc)
+  card.appendChild(desc)
 
-  // Close button
-  const button = document.createElement('button')
-  button.style.cssText = 'padding: 14px 28px; background: linear-gradient(135deg, #81ecff 0%, #00e3fd 100%); color: #003840; border: none; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 600;'
-  button.textContent = '关闭页面'
-  button.addEventListener('click', () => {
-    window.close()
-  })
-  document.body.appendChild(button)
+  document.body.appendChild(card)
 }
 
-function extractAndSaveTokens(): boolean {
+/**
+ * Extract tokens from URL hash and save to chrome.storage.
+ * Now returns a Promise that resolves when sync is complete.
+ *
+ * @returns Promise<boolean> - true if tokens extracted and sync message sent successfully
+ */
+async function extractAndSaveTokens(): Promise<boolean> {
   // Extract tokens from URL hash
   const hash = window.location.hash.substring(1) // Remove '#'
   if (!hash) {
@@ -178,144 +239,131 @@ function extractAndSaveTokens(): boolean {
   // Key format: sb-{projectRef}-auth-token
   const storageKey = `sb-${SUPABASE_PROJECT_REF}-auth-token`
 
-  chrome.storage.local.set({
+  // Save to storage first
+  await chrome.storage.local.set({
     [storageKey]: sessionData
-  }, () => {
-    console.log('[Oh My Prompt] Session saved to storage with key:', storageKey)
+  })
+  console.log('[Oh My Prompt] Session saved to storage with key:', storageKey)
 
-    // Notify background script that auth completed
-    chrome.runtime.sendMessage({
+  // Notify background script that auth completed - MUST wait for this to complete
+  // before showing UI, otherwise message may be lost if user closes tab quickly
+  try {
+    const response = await chrome.runtime.sendMessage({
       type: 'AUTH_CALLBACK_COMPLETE',
       payload: { success: true }
-    }).catch(err => {
-      console.warn('[Oh My Prompt] Failed to notify background:', err)
     })
+    console.log('[Oh My Prompt] Background script acknowledged:', response)
+  } catch (err) {
+    console.warn('[Oh My Prompt] Failed to notify background:', err)
+    // Still show success UI - storage is saved, sidepanel can detect via storage listener
+  }
 
-    // Check route type - auto-close for sync route, show UI for callback route
-    const isSyncRoute = window.location.pathname.includes('/auth/extension/sync')
-
-    if (isSyncRoute) {
-      // Auto-close after 500ms delay (allow message to send)
-      setTimeout(() => {
-        console.log('[Oh My Prompt] Auto-closing sync tab')
-        window.close()
-      }, 500)
-    } else {
-      // OAuth callback - show success page with manual close button
-      createStyledPage({
-        iconStroke: '#81ecff',
-        title: '登录成功',
-        description: '云端同步已激活',
-        iconType: 'success'
-      })
-    }
+  // Show success page - page will auto-close via hashchange listener
+  createStyledPage({
+    iconStroke: '#81ecff',
+    title: '登录成功',
+    description: '云端同步已激活<br/>页面即将自动关闭',
+    iconType: 'success'
   })
+
+  // Auto-close the tab after showing success message
+  // window.close() only works for tabs opened by script (OAuth flow opens tabs via chrome.tabs.create)
+  setTimeout(() => {
+    window.close()
+    // If window.close() fails (browser restriction), send message to service worker to close tab
+    // This provides a fallback mechanism
+    chrome.runtime.sendMessage({ type: 'CLOSE_AUTH_TAB' }).catch(err => {
+      console.warn('[Oh My Prompt] Failed to send close message:', err)
+    })
+  }, 1500)
 
   return true
 }
 
 // Try immediate extraction (if hash already set)
-if (extractAndSaveTokens()) {
-  // Success, tokens extracted immediately
-} else {
-  // Hash not ready yet, wait for it
-  console.log('[Oh My Prompt] Waiting for tokens in hash...')
+extractAndSaveTokens().then(success => {
+  if (success) {
+    // Success, tokens extracted immediately
+  } else {
+    // Hash not ready yet, wait for it
+    console.log('[Oh My Prompt] Waiting for tokens in hash...')
 
-  // Check if this is the sync page - it may redirect to login if no session
-  const isSyncRoute = window.location.pathname.includes('/auth/extension/sync')
-  const initialUrl = window.location.href
+    // Listen for hashchange event (when web-app's JavaScript sets the hash)
+    const handleHashChange = async () => {
+      // Check if user wants to close the tab
+      const hash = window.location.hash.substring(1)
+      if (hash === 'close') {
+        console.log('[Oh My Prompt] Close signal received, asking service worker to close tab')
+        chrome.runtime.sendMessage({ type: 'CLOSE_AUTH_TAB' }).catch(err => {
+          console.warn('[Oh My Prompt] Failed to send close message:', err)
+        })
+        window.removeEventListener('hashchange', handleHashChange)
+        return
+      }
 
-  // Listen for hashchange event (when web-app's JavaScript sets the hash)
-  const handleHashChange = () => {
-    // Check if user wants to close the tab
-    const hash = window.location.hash.substring(1)
-    if (hash === 'close') {
-      console.log('[Oh My Prompt] Close signal received, asking service worker to close tab')
-      chrome.runtime.sendMessage({ type: 'CLOSE_AUTH_TAB' }).catch(err => {
-        console.warn('[Oh My Prompt] Failed to send close message:', err)
-      })
-      window.removeEventListener('hashchange', handleHashChange)
-      return
+      const success = await extractAndSaveTokens()
+      if (success) {
+        // Keep listening for 'close' signal even after token extraction success
+        // This handles the case where window.close() fails due to browser restrictions
+        // and user clicks the "关闭此页面" button on web app's success page
+      }
     }
 
-    if (extractAndSaveTokens()) {
-      // Success, remove listener
-      window.removeEventListener('hashchange', handleHashChange)
-    }
-  }
+    window.addEventListener('hashchange', handleHashChange)
 
-  window.addEventListener('hashchange', handleHashChange)
-
-  // For sync page: monitor URL changes - if redirected to login, stop polling silently
-  // This is expected behavior when user is not logged in
-  let redirected = false
-  if (isSyncRoute) {
-    const checkRedirect = () => {
-      if (window.location.href !== initialUrl && window.location.pathname.includes('/auth/login')) {
-        console.log('[Oh My Prompt] Sync page redirected to login - stopping token polling')
-        redirected = true
+    // Also poll periodically as fallback (in case hashchange doesn't fire)
+    let pollCount = 0
+    const maxPolls = 50 // Poll for up to 5 seconds (100ms interval)
+    const pollInterval = setInterval(async () => {
+      pollCount++
+      const success = await extractAndSaveTokens()
+      if (success) {
+        clearInterval(pollInterval)
+        // Keep hashchange listener for 'close' signal handling
+      } else if (pollCount >= maxPolls) {
         clearInterval(pollInterval)
         window.removeEventListener('hashchange', handleHashChange)
+
+        // Timeout - check for error in hash
+        const hash = window.location.hash.substring(1)
+        const params = new URLSearchParams(hash)
+        const errorCode = params.get('error_code')
+        const errorMsg = params.get('error_description') || params.get('error') || params.get('msg')
+
+        if (errorCode || errorMsg) {
+          console.error('[Oh My Prompt] Auth error:', errorCode, errorMsg)
+
+          chrome.runtime.sendMessage({
+            type: 'AUTH_CALLBACK_COMPLETE',
+            payload: { success: false, error: errorMsg || errorCode }
+          }).catch(err => {
+            console.warn('[Oh My Prompt] Failed to notify background:', err)
+          })
+
+          createStyledPage({
+            iconStroke: '#ff716c',
+            title: '登录失败',
+            description: errorMsg || errorCode || '未知错误',
+            iconType: 'error'
+          })
+        } else {
+          console.error('[Oh My Prompt] Auth timeout - no tokens received')
+
+          chrome.runtime.sendMessage({
+            type: 'AUTH_CALLBACK_COMPLETE',
+            payload: { success: false, error: '登录超时，未收到认证信息' }
+          }).catch(err => {
+            console.warn('[Oh My Prompt] Failed to notify background:', err)
+          })
+
+          createStyledPage({
+            iconStroke: '#ff716c',
+            title: '登录超时',
+            description: '未收到认证信息，请重试',
+            iconType: 'timeout'
+          })
+        }
       }
-    }
-    // Check URL every 100ms along with polling
-    setInterval(checkRedirect, 100)
+    }, 100)
   }
-
-  // Also poll periodically as fallback (in case hashchange doesn't fire)
-  let pollCount = 0
-  const maxPolls = 50 // Poll for up to 5 seconds (100ms interval)
-  const pollInterval = setInterval(() => {
-    // If already redirected (for sync page), don't show timeout
-    if (redirected) return
-
-    pollCount++
-    if (extractAndSaveTokens()) {
-      clearInterval(pollInterval)
-      window.removeEventListener('hashchange', handleHashChange)
-    } else if (pollCount >= maxPolls) {
-      clearInterval(pollInterval)
-      window.removeEventListener('hashchange', handleHashChange)
-
-      // Timeout - check for error in hash
-      const hash = window.location.hash.substring(1)
-      const params = new URLSearchParams(hash)
-      const errorCode = params.get('error_code')
-      const errorMsg = params.get('error_description') || params.get('error') || params.get('msg')
-
-      if (errorCode || errorMsg) {
-        console.error('[Oh My Prompt] Auth error:', errorCode, errorMsg)
-
-        chrome.runtime.sendMessage({
-          type: 'AUTH_CALLBACK_COMPLETE',
-          payload: { success: false, error: errorMsg || errorCode }
-        }).catch(err => {
-          console.warn('[Oh My Prompt] Failed to notify background:', err)
-        })
-
-        createStyledPage({
-          iconStroke: '#ff716c',
-          title: '登录失败',
-          description: errorMsg || errorCode || '未知错误',
-          iconType: 'error'
-        })
-      } else {
-        console.error('[Oh My Prompt] Auth timeout - no tokens received')
-
-        chrome.runtime.sendMessage({
-          type: 'AUTH_CALLBACK_COMPLETE',
-          payload: { success: false, error: '登录超时，未收到认证信息' }
-        }).catch(err => {
-          console.warn('[Oh My Prompt] Failed to notify background:', err)
-        })
-
-        createStyledPage({
-          iconStroke: '#ff716c',
-          title: '登录超时',
-          description: '未收到认证信息，请重试',
-          iconType: 'timeout'
-        })
-      }
-    }
-  }, 100)
-}
+})

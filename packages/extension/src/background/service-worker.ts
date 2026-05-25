@@ -1,21 +1,97 @@
 import { MessageType, MessageResponse } from '@oh-my-prompt/shared/messages'
-import type { StorageSchema, SyncSettings, VisionApiConfig, InsertPromptPayload, InsertResultPayload, SaveTemporaryPromptPayload, UpdateTemporaryPromptFormatPayload, Prompt, ProviderConfig, ProviderConfigsStorage } from '@oh-my-prompt/shared/types'
+import type { StorageSchema, SyncSettings, VisionApiConfig, InsertPromptPayload, InsertResultPayload, SaveTemporaryPromptPayload, UpdateTemporaryPromptFormatPayload, Prompt, ProviderConfig, ProviderConfigsStorage, AgentGeneratePayload, EcommercePlatform, EcommerceLanguage } from '@oh-my-prompt/shared/types'
 import { StorageManager } from '../lib/storage'
 import { saveFolderHandle, getFolderHandle, checkFolderPermission } from '../lib/sync/indexeddb'
-import { getSyncStatus, triggerSync, restorePermission, initialSync, triggerProviderConfigsSync } from '../lib/sync/sync-manager'
+import { getSyncStatus, restorePermission, initialSync, triggerProviderConfigsSync } from '../lib/sync/sync-manager'
 import { createSyncOrchestrator, type FullBackupData } from '../lib/sync'
 import { syncApiConfigToFolder } from '../lib/sync/api-config-sync'
 import { checkForUpdate, getUpdateStatus, clearUpdateStatus, type UpdateStatus } from '../lib/version-checker'
 import { executeVisionApiCallWithProviderConfig, classifyApiError, getLanguagePreference } from '../lib/vision-api'
 import { asyncCompressImageFromUrl } from '../lib/image-utils'
-import { CAPTURED_IMAGE_STORAGE_KEY, VISION_API_CONFIG_STORAGE_KEY, PROVIDER_CONFIGS_STORAGE_KEY, LEGACY_VISION_API_CONFIG_KEY } from '@oh-my-prompt/shared/constants'
+import { CAPTURED_IMAGE_STORAGE_KEY, VISION_API_CONFIG_STORAGE_KEY, PROVIDER_CONFIGS_STORAGE_KEY, LEGACY_VISION_API_CONFIG_KEY, STORAGE_KEY } from '@oh-my-prompt/shared/constants'
 import { validateProviderConfig, maskApiKey } from '../lib/config-validator'
 import { sendToOffscreen } from '../lib/offscreen-manager'
 import '../lib/migrations/register' // Register all migrations
 import { clearSupabaseClient } from '../lib/cloud-sync/supabase-client'
+import { handleAgentGenerate, handleEcommerceAiWrite } from './agent-handler'
 
 // Create sync orchestrator for cloud-first decision matrix
 const syncOrchestrator = createSyncOrchestrator()
+
+/**
+ * Ensure the official (omp_official) provider config exists.
+ * Called after successful OAuth login so official service can be used,
+ * but must not override user-selected active third-party config.
+ */
+async function ensureOfficialConfig(): Promise<void> {
+  const officialConfigId = 'omp-official-default'
+  try {
+    const result = await chrome.storage.local.get(PROVIDER_CONFIGS_STORAGE_KEY)
+    const storage = result[PROVIDER_CONFIGS_STORAGE_KEY] as ProviderConfigsStorage | undefined
+    const configs = storage?.configs || []
+
+    const existingOfficial = configs.find(c => c.id === officialConfigId || c.apiFormat === 'omp_official')
+
+    if (existingOfficial) {
+      // Official config already exists; keep current active selection unchanged.
+      return
+    }
+
+    // Create official config
+    const officialConfig: ProviderConfig = {
+      id: officialConfigId,
+      providerId: 'omp_official',
+      providerName: 'Oh My Prompt 官方服务',
+      apiKey: '',
+      apiEndpoint: '',
+      apiFormat: 'omp_official',
+      selectedModel: 'auto',
+      configuredAt: Date.now(),
+      isCustom: false
+    }
+
+    const updatedStorage: ProviderConfigsStorage = {
+      configs: [...configs, officialConfig],
+      // Preserve existing active config. If no active config exists, fallback to official.
+      activeConfigId: storage?.activeConfigId || officialConfig.id
+    }
+    await chrome.storage.local.set({ [PROVIDER_CONFIGS_STORAGE_KEY]: updatedStorage })
+    console.log('[Oh My Prompt] Official config created')
+  } catch (error) {
+    console.error('[Oh My Prompt] Failed to ensure official config:', error)
+  }
+}
+
+/**
+ * Ensure official config is not active when user is logged out.
+ * If official is active, fallback to first non-official config; otherwise set null.
+ */
+async function deactivateOfficialConfigWhenLoggedOut(): Promise<void> {
+  const officialConfigId = 'omp-official-default'
+  try {
+    const result = await chrome.storage.local.get(PROVIDER_CONFIGS_STORAGE_KEY)
+    const storage = result[PROVIDER_CONFIGS_STORAGE_KEY] as ProviderConfigsStorage | undefined
+    if (!storage || !storage.activeConfigId) {
+      return
+    }
+
+    const activeConfig = storage.configs.find(c => c.id === storage.activeConfigId)
+    const isOfficialActive = activeConfig?.id === officialConfigId || activeConfig?.apiFormat === 'omp_official'
+    if (!isOfficialActive) {
+      return
+    }
+
+    const fallbackConfig = storage.configs.find(c => c.id !== officialConfigId && c.apiFormat !== 'omp_official')
+    const updatedStorage: ProviderConfigsStorage = {
+      ...storage,
+      activeConfigId: fallbackConfig?.id || null
+    }
+    await chrome.storage.local.set({ [PROVIDER_CONFIGS_STORAGE_KEY]: updatedStorage })
+    console.log('[Oh My Prompt] Official config deactivated (logged out)')
+  } catch (error) {
+    console.error('[Oh My Prompt] Failed to deactivate official config on logout:', error)
+  }
+}
 
 /**
  * Debounced sync state - batches rapid sync requests from frontend
@@ -26,7 +102,7 @@ let pendingSyncResolve: ((value: { success: boolean; error?: { type: string; mes
 const SYNC_DEBOUNCE_MS = 500 // 500ms debounce for sync operations
 
 /**
- * Debounced triggerSync - batches rapid sync requests
+ * Debounced orchestrator auto-sync - batches rapid SET_STORAGE sync requests
  * @param backupData - Full backup data to sync
  * @returns Promise that resolves when sync completes
  */
@@ -61,11 +137,13 @@ function debouncedTriggerSync(backupData: FullBackupData): Promise<{ success: bo
           return
         }
 
-        const syncResult = await triggerSync(dataToSync)
+        const syncResult = await syncOrchestrator.triggerSync(dataToSync)
+        const success = syncResult.cloudSynced || syncResult.localSynced || syncResult.skipped === true
+        const message = syncResult.cloudError || syncResult.localError
 
         const result = {
-          success: syncResult.success,
-          error: syncResult.error
+          success,
+          ...(success || !message ? {} : { error: { type: 'unknown', message } })
         }
 
         if (pendingSyncResolve) {
@@ -81,6 +159,37 @@ function debouncedTriggerSync(backupData: FullBackupData): Promise<{ success: bo
         }
       }
     }, SYNC_DEBOUNCE_MS)
+  })
+}
+
+async function getStorageDataForDirectWrite(): Promise<StorageSchema> {
+  const result = await chrome.storage.local.get(STORAGE_KEY)
+  return (result[STORAGE_KEY] as StorageSchema | undefined) || storageManager.getDefaultData()
+}
+
+async function saveDataAndDebouncedSync(data: StorageSchema): Promise<{ success: boolean; error?: { type: string; message: string } }> {
+  await chrome.storage.local.set({ [STORAGE_KEY]: data })
+  return debouncedTriggerSync({
+    prompts: data.userData?.prompts || [],
+    categories: data.userData?.categories || [],
+    temporaryPrompts: data.temporaryPrompts || [],
+    timestamp: Date.now()
+  })
+}
+
+function notifyLovartSyncFailed(error?: { type: string; message: string }): void {
+  chrome.tabs.query({ url: ['*://lovart.ai/*', '*://*.lovart.ai/*'] }, (tabs) => {
+    tabs.forEach(tab => {
+      if (tab.id !== undefined && tab.id >= 0) {
+        chrome.tabs.sendMessage(tab.id, {
+          type: MessageType.SYNC_FAILED,
+          payload: {
+            errorType: error?.type,
+            errorMessage: error?.message
+          }
+        })
+      }
+    })
   })
 }
 
@@ -140,7 +249,7 @@ chrome.runtime.onInstalled.addListener(async (_details) => {
   // Permission restore is handled by useAutoPermissionRestore hook in sidepanel
   // (triggered on first user interaction inside sidepanel)
   chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(err => {
-    console.warn('[Oh My Prompt] Failed to set sidePanel behavior:', err)
+    console.warn('[Oh My Prompt] Failed to set sidePanel behavior on startup:', err)
   })
 
   // Run initial sync on install (restores data from backup folder including encrypted API config)
@@ -273,64 +382,45 @@ chrome.runtime.onMessage.addListener(
           return true
         }
 
-        // Merge with existing settings to preserve syncEnabled, etc.
-        storageManager.getData()
-          .then(existingData => {
-            const payload = message.payload as StorageSchema
-            // Preserve existing settings if payload doesn't have full settings
-            const mergedSettings: SyncSettings = {
-              ...existingData.settings,
-              ...payload.settings
-            }
+        (async () => {
+          const existingData = await getStorageDataForDirectWrite()
+          const payload = message.payload as StorageSchema
+          const payloadSettings = payload.settings as Partial<SyncSettings> | undefined
+          // Preserve existing settings if payload doesn't have full settings
+          const defaultSettings: SyncSettings = {
+            showBuiltin: true,
+            syncEnabled: false,
+            visionEnabled: true,
+            visionDefaultFormat: 'natural'
+          }
+          const mergedSettings: SyncSettings = {
+            ...defaultSettings,
+            ...existingData?.settings,
+            ...payloadSettings
+          }
 
-            const mergedData: StorageSchema = {
-              version: payload.version,
-              userData: payload.userData,
-              settings: mergedSettings,
-              temporaryPrompts: payload.temporaryPrompts ?? existingData.temporaryPrompts,
-              _migrationComplete: payload._migrationComplete ?? existingData._migrationComplete
-            }
+          const mergedData: StorageSchema = {
+            version: payload.version,
+            userData: payload.userData,
+            settings: mergedSettings,
+            temporaryPrompts: payload.temporaryPrompts ?? existingData?.temporaryPrompts ?? [],
+            _migrationComplete: payload._migrationComplete ?? existingData?._migrationComplete ?? true
+          }
 
-            return storageManager.saveData(mergedData).then(() => mergedData)
-          })
-          .then((savedData: StorageSchema) => {
-            // Trigger debounced sync with full backup data (including temporary prompts)
-            // Use debounced version to batch rapid updates (e.g., drag reorder)
-            const backupData: FullBackupData = {
-              prompts: savedData.userData.prompts,
-              categories: savedData.userData.categories,
-              temporaryPrompts: savedData.temporaryPrompts || [],
-              timestamp: Date.now()
+          return saveDataAndDebouncedSync(mergedData)
+        })()
+          .then((syncResult) => {
+            if (!syncResult.success) {
+              console.warn('[Oh My Prompt] Sync failed:', syncResult.error?.type, syncResult.error?.message)
+              notifyLovartSyncFailed(syncResult.error)
             }
-            return debouncedTriggerSync(backupData).then(syncResult => {
-              if (!syncResult.success) {
-                console.warn('[Oh My Prompt] Sync failed:', syncResult.error?.type, syncResult.error?.message)
-
-                // Notify UI about sync failure with error details
-                chrome.tabs.query({ url: ['*://lovart.ai/*', '*://*.lovart.ai/*'] }, (tabs) => {
-                  tabs.forEach(tab => {
-                    // Check tab.id is valid (>= 0, not TAB_ID_NONE which is -1)
-                    if (tab.id !== undefined && tab.id >= 0) {
-                      chrome.tabs.sendMessage(tab.id, {
-                        type: MessageType.SYNC_FAILED,
-                        payload: {
-                          errorType: syncResult.error?.type,
-                          errorMessage: syncResult.error?.message
-                        }
-                      })
-                    }
-                  })
-                })
+            sendResponse({
+              success: true,
+              data: {
+                syncSuccess: syncResult.success,
+                syncError: syncResult.error
               }
-              // Return sync status and error info in response
-              sendResponse({
-                success: true,
-                data: {
-                  syncSuccess: syncResult.success,
-                  syncError: syncResult.error
-                }
-              } as MessageResponse)
-            })
+            } as MessageResponse)
           })
           .catch(error => {
             console.error('[Oh My Prompt] SET_STORAGE error:', error)
@@ -436,7 +526,7 @@ chrome.runtime.onMessage.addListener(
 
       case MessageType.DOWNLOAD_AND_MERGE:
         // Download cloud data and merge with local (called from sidepanel)
-        syncOrchestrator.downloadAndMerge()
+        syncOrchestrator.downloadAndMerge({ reason: 'manual' })
           .then(result => {
             // Broadcast REFRESH_DATA to all content scripts
             chrome.tabs.query({}, (tabs) => {
@@ -587,27 +677,98 @@ chrome.runtime.onMessage.addListener(
         // Auth callback content script reports success/failure
         const authPayload = message.payload as { success: boolean; error?: string }
 
-        // Clear Supabase client singleton to ensure fresh session state for subsequent auth checks
-        // This is critical because the client may have cached "no session" state before auth
         if (authPayload.success) {
+          // Clear Supabase client singleton to ensure fresh session state for subsequent auth checks
+          // This is critical because the client may have cached "no session" state before auth
           clearSupabaseClient()
+
+          // Auto-ensure official provider config exists and is active after successful login
+          // This allows Agent/Vision features to work immediately without manual config
+          // Must await before broadcasting so components find the config when they re-check
+          ensureOfficialConfig()
+            .then(() => {
+              // Broadcast AUTH_STATUS_UPDATE to extension pages (sidepanel, popup)
+              chrome.runtime.sendMessage({
+                type: MessageType.AUTH_STATUS_UPDATE,
+                payload: authPayload
+              }).catch(() => {
+                // Extension pages may not be open, ignore error
+              })
+
+              // Broadcast to all content scripts (AgentPanel, EcommercePanel)
+              chrome.tabs.query({}, (tabs) => {
+                tabs.forEach(tab => {
+                  if (tab.id !== undefined && tab.id >= 0) {
+                    chrome.tabs.sendMessage(tab.id, {
+                      type: MessageType.AUTH_STATUS_UPDATE,
+                      payload: authPayload
+                    }).catch(() => { /* Ignore errors */ })
+                  }
+                })
+              })
+            })
+        } else {
+          // Login failed — still broadcast to all contexts
+          chrome.runtime.sendMessage({
+            type: MessageType.AUTH_STATUS_UPDATE,
+            payload: authPayload
+          }).catch(() => {})
+
+          chrome.tabs.query({}, (tabs) => {
+            tabs.forEach(tab => {
+              if (tab.id !== undefined && tab.id >= 0) {
+                chrome.tabs.sendMessage(tab.id, {
+                  type: MessageType.AUTH_STATUS_UPDATE,
+                  payload: authPayload
+                }).catch(() => {})
+              }
+            })
+          })
         }
 
-        // Broadcast to sidepanel if open
+        sendResponse({ success: true } as MessageResponse)
+        break
+
+      case MessageType.AUTH_STATUS_UPDATE:
+        // Handle AUTH_STATUS_UPDATE from signOut() in auth-service.ts
+        // Rebroadcast to all extension contexts (sidepanel, popup) so they can refresh auth state
+        // This fixes the bug where VisionSection didn't update after logout
+        const logoutPayload = message.payload as { success: boolean; logout?: boolean }
+
+        // Clear Supabase client singleton to ensure fresh session state
+        if (logoutPayload?.logout) {
+          clearSupabaseClient()
+          deactivateOfficialConfigWhenLoggedOut().catch(error => {
+            console.error('[Oh My Prompt] Logout official config fallback failed:', error)
+          })
+        }
+
+        // Rebroadcast to all extension pages (sidepanel, popup)
         chrome.runtime.sendMessage({
-          type: 'AUTH_STATUS_UPDATE',
-          payload: authPayload
+          type: MessageType.AUTH_STATUS_UPDATE,
+          payload: logoutPayload
         }).catch(() => {
-          // Sidepanel may not be open, ignore error
+          // Other contexts may not be open, ignore error
+        })
+
+        // Broadcast to all content scripts
+        chrome.tabs.query({}, (tabs) => {
+          tabs.forEach(tab => {
+            if (tab.id !== undefined && tab.id >= 0) {
+              chrome.tabs.sendMessage(tab.id, {
+                type: MessageType.AUTH_STATUS_UPDATE,
+                payload: logoutPayload
+              }).catch(() => { /* Ignore errors */ })
+            }
+          })
         })
 
         sendResponse({ success: true } as MessageResponse)
         break
 
       case 'CLOSE_AUTH_TAB':
-        // Content script requests closing the auth sync tab
-        // Find the tab with auth/extension/sync URL and close it
-        chrome.tabs.query({ url: ['http://localhost:3000/auth/extension/sync*', 'https://oh-my-prompt.com/auth/extension/sync*'] })
+        // Content script requests closing the auth tab
+        chrome.tabs.query({ url: ['http://localhost:3000/auth/callback*', 'https://oh-my-prompt.com/auth/callback*'] })
           .then(tabs => {
             if (tabs.length > 0) {
               chrome.tabs.remove(tabs[0].id!)
@@ -763,6 +924,26 @@ chrome.runtime.onMessage.addListener(
         }
         return true // Required for async response
 
+      case MessageType.OPEN_SIDEPANEL_FOR_MINE:
+        // Open sidepanel and navigate to settings > mine tab
+        // CRITICAL: sidePanel.open() must be called in sync path to preserve user gesture
+        const mineTabId = _sender.tab?.id
+        if (mineTabId && mineTabId >= 0) {
+          chrome.sidePanel.open({ tabId: mineTabId })
+            .then(() => {
+              chrome.storage.session.set({ sidepanelIntent: 'mine' })
+              sendResponse({ success: true })
+            })
+            .catch(error => {
+              chrome.storage.session.set({ sidepanelIntent: 'mine' })
+              console.error('[Oh My Prompt] sidePanel.open error:', error)
+              sendResponse({ success: false, error: String(error) })
+            })
+        } else {
+          sendResponse({ success: false, error: 'No sender tab' })
+        }
+        return true // Required for async response
+
       case MessageType.OPEN_SIDEPANEL_FOR_PERMISSION:
         // Open sidepanel to restore folder permission (user gesture propagates from content script click)
         // CRITICAL: User gesture must be used in synchronous execution path, NOT after await
@@ -804,7 +985,7 @@ chrome.runtime.onMessage.addListener(
           sendResponse({ success: false, error: 'No settings provided' })
           return true
         }
-        storageManager.updateSettings(settingsPayload.settings)
+        storageManager.updateSettings(settingsPayload.settings, { triggerSync: false })
           .then(() => sendResponse({ success: true } as MessageResponse))
           .catch(error => {
             console.error('[Oh My Prompt] SET_SETTINGS_ONLY error:', error)
@@ -978,7 +1159,7 @@ chrome.runtime.onMessage.addListener(
 
             const updatedStorage: ProviderConfigsStorage = {
               configs: [...configs, newConfig],
-              activeConfigId: isFirstConfig ? newConfig.id : (existingStorage?.activeConfigId || null)
+              activeConfigId: isFirstConfig ? newConfig.id : (existingStorage?.activeConfigId || newConfig.id)
             }
 
             return chrome.storage.local.set({ [PROVIDER_CONFIGS_STORAGE_KEY]: updatedStorage })
@@ -1217,7 +1398,8 @@ chrome.runtime.onMessage.addListener(
               }
 
               // Use new function that correctly handles omp_official format
-              const resultData = await executeVisionApiCallWithProviderConfig(base64Image, 'base64')
+              // Pass activeConfig directly to avoid nested messaging (GET_ACTIVE_CONFIG inside VISION_API_CALL)
+              const resultData = await executeVisionApiCallWithProviderConfig(base64Image, 'base64', undefined, activeConfig)
               const languagePreference = await getLanguagePreference()
               const primaryPrompt = languagePreference === 'en' ? resultData.en.prompt : resultData.zh.prompt
               sendResponse({ success: true, data: { prompt: primaryPrompt, fullData: resultData } })
@@ -1258,7 +1440,7 @@ chrome.runtime.onMessage.addListener(
           return true
         }
 
-        storageManager.getData()
+        getStorageDataForDirectWrite()
           .then(async (data) => {
             // Get or initialize temporary prompts array
             const temporaryPrompts = data.temporaryPrompts || []
@@ -1359,9 +1541,9 @@ chrome.runtime.onMessage.addListener(
             // Add to temporary prompts array
             temporaryPrompts.push(newPrompt)
 
-            // Save to storage with temporaryPrompts field
+            // Save to storage with temporaryPrompts field through the debounced sync entry
             const version = chrome.runtime.getManifest().version
-            await storageManager.saveData({
+            await saveDataAndDebouncedSync({
               version,
               userData: data.userData,
               settings: data.settings,
@@ -1395,7 +1577,7 @@ chrome.runtime.onMessage.addListener(
           return true
         }
 
-        storageManager.getData()
+        getStorageDataForDirectWrite()
           .then(async (data) => {
             // Get current temporary prompts
             const temporaryPrompts = data.temporaryPrompts || []
@@ -1447,9 +1629,9 @@ chrome.runtime.onMessage.addListener(
               temporaryPrompts.push(newPrompt)
             }
 
-            // Save to storage
+            // Save to storage through the debounced sync entry
             const version = chrome.runtime.getManifest().version
-            await storageManager.saveData({
+            await saveDataAndDebouncedSync({
               version,
               userData: data.userData,
               settings: data.settings,
@@ -1474,12 +1656,52 @@ chrome.runtime.onMessage.addListener(
         return true // Required for async response
 
       // Clear all temporary prompts
+      case MessageType.DELETE_TEMPORARY_PROMPT:
+        const deleteTemporaryPayload = message.payload as { promptId: string }
+        if (!deleteTemporaryPayload?.promptId) {
+          sendResponse({ success: false, error: 'Invalid payload: promptId required' })
+          return true
+        }
+
+        getStorageDataForDirectWrite()
+          .then(async (data) => {
+            const temporaryPrompts = data.temporaryPrompts || []
+            const updatedTemporaryPrompts = temporaryPrompts.filter(p => p.id !== deleteTemporaryPayload.promptId)
+
+            if (updatedTemporaryPrompts.length === temporaryPrompts.length) {
+              sendResponse({ success: false, error: 'Prompt not found in temporary library' })
+              return
+            }
+
+            const version = chrome.runtime.getManifest().version
+            await saveDataAndDebouncedSync({
+              ...data,
+              version,
+              temporaryPrompts: updatedTemporaryPrompts
+            })
+
+            chrome.tabs.query({ url: ['*://lovart.ai/*', '*://*.lovart.ai/*'] }, (tabs) => {
+              tabs.forEach(tab => {
+                if (tab.id !== undefined && tab.id >= 0) {
+                  chrome.tabs.sendMessage(tab.id, { type: MessageType.REFRESH_DATA })
+                }
+              })
+            })
+
+            sendResponse({ success: true })
+          })
+          .catch((error) => {
+            console.error('[Oh My Prompt] DELETE_TEMPORARY_PROMPT error:', error)
+            sendResponse({ success: false, error: 'Delete failed' })
+          })
+        return true // Required for async response
+
       case MessageType.CLEAR_TEMPORARY_PROMPTS:
-        storageManager.getData()
+        getStorageDataForDirectWrite()
           .then(async (data) => {
             // Clear temporary prompts array
             const version = chrome.runtime.getManifest().version
-            await storageManager.saveData({
+            await saveDataAndDebouncedSync({
               version,
               userData: data.userData,
               settings: data.settings,
@@ -1512,7 +1734,7 @@ chrome.runtime.onMessage.addListener(
           return true
         }
 
-        storageManager.getData()
+        getStorageDataForDirectWrite()
           .then(async (data) => {
             const temporaryPrompts = data.temporaryPrompts || []
             const prompts = data.userData.prompts
@@ -1538,24 +1760,15 @@ chrome.runtime.onMessage.addListener(
             temporaryPrompts.splice(promptIndex, 1)
             prompts.push(promptToTransfer)
 
-            // Save to storage
+            // Save to storage through the debounced sync entry
             const version = chrome.runtime.getManifest().version
             const userData = { prompts, categories: data.userData.categories }
-            await storageManager.saveData({
+            await saveDataAndDebouncedSync({
               version,
               userData,
               settings: data.settings,
               temporaryPrompts
             })
-
-
-            // Trigger auto-sync with full backup data
-            const backupData = {
-              prompts,
-              categories: data.userData.categories,
-              temporaryPrompts
-            }
-            triggerSync(backupData).catch(err => console.warn('[Oh My Prompt] Sync after transfer failed:', err))
 
             // Broadcast REFRESH_DATA to all Lovart tabs
             chrome.tabs.query({ url: ['*://lovart.ai/*', '*://*.lovart.ai/*'] }, (tabs) => {
@@ -1573,6 +1786,16 @@ chrome.runtime.onMessage.addListener(
             sendResponse({ success: false, error: 'Transfer failed' })
           })
         return true // Required for async response
+
+      // Agent: Prompt enhancement using Vision Provider Config infrastructure
+      case MessageType.AGENT_GENERATE:
+        handleAgentGenerate(message.payload as AgentGeneratePayload, sendResponse)
+        return true
+
+      // Agent: Ecommerce AI write (selling points generation from product image)
+      case MessageType.AGENT_ECOMMERCE_AI_WRITE:
+        handleEcommerceAiWrite(message.payload as { imageData: string; platform: EcommercePlatform; language: EcommerceLanguage }, sendResponse)
+        return true
 
       default:
         // Skip OFFSCREEN_* messages - they are handled by offscreen document (or this Service Worker handler)

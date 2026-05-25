@@ -1,5 +1,6 @@
 // src/popup/components/ModelSelect.tsx
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { ChevronDown, Check, Eye } from 'lucide-react'
 import type { ModelInfo } from '@oh-my-prompt/shared/types'
 
@@ -12,33 +13,71 @@ interface ModelSelectProps {
 
 export function ModelSelect({ models, value, onChange, disabled }: ModelSelectProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 })
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
-  // Close dropdown on outside click
+  // Update dropdown position when opened
   useEffect(() => {
+    if (isOpen && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect()
+      setDropdownPosition({
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: rect.width
+      })
+    }
+  }, [isOpen])
+
+  // Close dropdown on outside click (use click event, not mousedown)
+  useEffect(() => {
+    if (!isOpen) return
+
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      const target = event.target as Node
+      // Check if click is outside both trigger and dropdown
+      if (
+        triggerRef.current &&
+        !triggerRef.current.contains(target) &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(target)
+      ) {
         setIsOpen(false)
       }
     }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+
+    // Use setTimeout to ensure dropdown is rendered before adding listener
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('click', handleClickOutside)
+    }, 0)
+
+    return () => {
+      clearTimeout(timeoutId)
+      document.removeEventListener('click', handleClickOutside)
+    }
+  }, [isOpen])
 
   const handleSelect = (modelId: string) => {
     onChange(modelId)
     setIsOpen(false)
   }
 
+  const handleTriggerClick = () => {
+    if (!disabled) {
+      setIsOpen(!isOpen)
+    }
+  }
+
   return (
-    <div ref={containerRef} className="relative">
+    <div className="relative">
       <label className="text-sm font-medium text-gray-700 block mb-1">
         模型
       </label>
 
       <button
+        ref={triggerRef}
         type="button"
-        onClick={() => !disabled && setIsOpen(!isOpen)}
+        onClick={handleTriggerClick}
         disabled={disabled}
         className="w-full px-3 py-2 border border-gray-200 rounded flex items-center justify-between bg-white hover:border-gray-300 focus:border-gray-400 focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
       >
@@ -48,8 +87,16 @@ export function ModelSelect({ models, value, onChange, disabled }: ModelSelectPr
         <ChevronDown style={{ width: 16, height: 16 }} className="text-gray-400" />
       </button>
 
-      {isOpen && (
-        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded shadow-lg max-h-60 overflow-y-auto">
+      {isOpen && createPortal(
+        <div
+          ref={dropdownRef}
+          className="fixed z-[200] bg-white border border-gray-200 rounded shadow-lg max-h-60 overflow-y-auto pointer-events-auto"
+          style={{
+            top: dropdownPosition.top,
+            left: dropdownPosition.left,
+            width: dropdownPosition.width
+          }}
+        >
           {models.length === 0 ? (
             <div className="p-3 text-sm text-gray-500 text-center">
               没有可用模型
@@ -59,7 +106,10 @@ export function ModelSelect({ models, value, onChange, disabled }: ModelSelectPr
               <button
                 key={model.id}
                 type="button"
-                onClick={() => handleSelect(model.id)}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleSelect(model.id)
+                }}
                 className="w-full px-3 py-2 text-left hover:bg-gray-50 flex items-center justify-between"
               >
                 <span className="text-sm text-gray-900 flex items-center gap-1.5">
@@ -76,7 +126,8 @@ export function ModelSelect({ models, value, onChange, disabled }: ModelSelectPr
               </button>
             ))
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

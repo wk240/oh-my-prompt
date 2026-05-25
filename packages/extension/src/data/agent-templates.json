@@ -1,0 +1,18 @@
+[
+  {
+    "id": "general",
+    "name": "通用",
+    "nameEn": "General",
+    "keywords": ["视觉冲击力", "主题鲜明", "构图创意", "艺术风格", "品牌调性", "现代界面", "三维质感", "光影渲染", "材质纹理"],
+    "description": "适用于海报图、插画、Logo、UI界面、3D渲染等通用图像创作",
+    "descriptionEn": "For general image creation, including posters, illustrations, logos, UI interfaces, and 3D renders"
+  },
+  {
+    "id": "ecommerce",
+    "name": "电商套图",
+    "nameEn": "E-commerce",
+    "keywords": ["产品主体突出", "白底/渐变背景", "光影质感", "商业摄影", "多角度展示", "细节呈现", "高级质感"],
+    "description": "适用于电商产品展示，强调产品主体与商业质感",
+    "descriptionEn": "For e-commerce product display, emphasizing product focus and commercial quality"
+  }
+]

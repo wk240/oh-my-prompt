@@ -1,29 +1,53 @@
-import { useState, lazy, Suspense } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { BackupSection } from '../settings/BackupSection'
 import { LoadingSpinner } from '../components/LoadingSpinner'
 
-const VisionSection = lazy(() =>
-  import('../settings/VisionSection').then(m => ({ default: m.VisionSection }))
-)
 const ImportExportSection = lazy(() =>
   import('../settings/ImportExportSection').then(m => ({ default: m.ImportExportSection }))
+)
+const MineView = lazy(() =>
+  import('./MineView').then(m => ({ default: m.default }))
 )
 
 interface SettingsViewProps {
   onBack: () => void
 }
 
-type SettingsTab = 'sync' | 'vision' | 'import-export'
+type SettingsTab = 'sync' | 'import-export' | 'mine'
 
 const tabLabels: Record<SettingsTab, string> = {
   sync: '同步与备份',
-  vision: '图片转提示词',
-  'import-export': '导入导出'
+  'import-export': '导入导出',
+  mine: '我的'
 }
 
 export default function SettingsView({ onBack }: SettingsViewProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>('sync')
+
+  // Handle sidepanelIntent for navigating to mine tab
+  useEffect(() => {
+    // Check for mine intent on mount
+    chrome.storage.session.get('sidepanelIntent', (result) => {
+      if (result.sidepanelIntent === 'mine') {
+        setActiveTab('mine')
+        chrome.storage.session.remove('sidepanelIntent')
+      }
+    })
+
+    // Listen for storage changes
+    const handleStorageChange = (
+      changes: { [key: string]: chrome.storage.StorageChange },
+      areaName: string
+    ) => {
+      if (areaName === 'session' && changes.sidepanelIntent?.newValue === 'mine') {
+        setActiveTab('mine')
+        chrome.storage.session.remove('sidepanelIntent')
+      }
+    }
+    chrome.storage.onChanged.addListener(handleStorageChange)
+    return () => chrome.storage.onChanged.removeListener(handleStorageChange)
+  }, [])
 
   return (
     <div className="h-full flex flex-col bg-white">
@@ -62,14 +86,14 @@ export default function SettingsView({ onBack }: SettingsViewProps) {
         <div className={activeTab === 'sync' ? 'block' : 'hidden'}>
           <BackupSection />
         </div>
-        <div className={activeTab === 'vision' ? 'block' : 'hidden'}>
-          <Suspense fallback={<LoadingSpinner className="py-8" />}>
-            <VisionSection />
-          </Suspense>
-        </div>
         <div className={activeTab === 'import-export' ? 'block' : 'hidden'}>
           <Suspense fallback={<LoadingSpinner className="py-8" />}>
             <ImportExportSection />
+          </Suspense>
+        </div>
+        <div className={activeTab === 'mine' ? 'block' : 'hidden'}>
+          <Suspense fallback={<LoadingSpinner className="py-8" />}>
+            <MineView />
           </Suspense>
         </div>
       </div>

@@ -16,6 +16,7 @@ interface RetryState {
 
 const RETRY_SCHEDULE = [1000, 5000, 30000, 300000] // 1s, 5s, 30s, 5min
 const MAX_RETRIES = 3
+const NON_RETRYABLE_ERRORS = new Set(['SUBSCRIPTION_REQUIRED'])
 
 export class RetryManager {
   private state: RetryState = {
@@ -54,6 +55,13 @@ export class RetryManager {
       this.state.retryScheduledAt = undefined
       this.onComplete?.(true)
       return { success: true, retryCount: 0 }
+    }
+
+    if (result.error && NON_RETRYABLE_ERRORS.has(result.error)) {
+      this.state.lastError = result.error
+      this.state.retryScheduledAt = undefined
+      this.onComplete?.(false)
+      return { success: false, retryCount: 0 }
     }
 
     // Start retry schedule
@@ -127,6 +135,12 @@ export class RetryManager {
       this.state.retryCount = 0
       this.state.lastError = undefined
       this.onComplete?.(true)
+      return
+    }
+
+    if (result.error && NON_RETRYABLE_ERRORS.has(result.error)) {
+      this.state.lastError = result.error
+      this.onComplete?.(false)
       return
     }
 

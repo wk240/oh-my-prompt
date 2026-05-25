@@ -296,11 +296,13 @@ export class TaskQueueManager {
         return
       }
 
-      if (!response) {
-        throw new Error('服务响应异常')
+      // Robust response validation - handle all edge cases
+      if (!response || typeof response !== 'object') {
+        throw new Error('服务响应异常（无效响应格式）')
       }
 
-      if (response.success) {
+      // Check success property safely
+      if ('success' in response && response.success) {
         // Success - extract fullData from response
         const resultData = response.data?.fullData as VisionApiResultData | undefined
         if (!resultData) {
@@ -317,10 +319,11 @@ export class TaskQueueManager {
         // Auto-save to temporary library
         await this.autoSaveToTemporary(task.id, resultData, task.imageUrl)
       } else {
-        // API returned error - use pre-classified error payload from service worker
-        const errorPayload = response.error as VisionApiErrorPayload | undefined
-        const errorMessage = errorPayload?.message || 'API 调用失败'
-        const errorAction = errorPayload?.action || 'retry'
+        // API returned error or response missing success flag
+        // Handle both explicit error and malformed response
+        const errorPayload = ('error' in response ? response.error : undefined) as VisionApiErrorPayload | undefined
+        const errorMessage = errorPayload?.message || 'API 调用失败（响应格式异常）'
+        const errorAction = errorPayload?.action || 'close'
 
         store.updateTask(task.id, {
           status: 'failed',

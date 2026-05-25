@@ -27,7 +27,7 @@ export default function SidePanelApp() {
     return () => chrome.runtime.onMessage.removeListener(handleMessage)
   }, [currentView])
 
-  // Check for navigation intent from content script (OPEN_SIDEPANEL_FOR_SETTINGS)
+  // Check for navigation intent from content script (OPEN_SIDEPANEL_FOR_SETTINGS / OPEN_SIDEPANEL_FOR_MINE)
   useEffect(() => {
     // Initial check on mount
     chrome.storage.session.get('sidepanelIntent', (result) => {
@@ -35,6 +35,8 @@ export default function SidePanelApp() {
         setCurrentView('settings')
         // Clear intent after reading
         chrome.storage.session.remove('sidepanelIntent')
+      } else if (result.sidepanelIntent === 'mine') {
+        setCurrentView('settings')
       }
     })
 
@@ -48,6 +50,8 @@ export default function SidePanelApp() {
         setCurrentView('settings')
         // Clear intent after reading
         chrome.storage.session.remove('sidepanelIntent')
+      } else if (areaName === 'session' && changes.sidepanelIntent?.newValue === 'mine') {
+        setCurrentView('settings')
       }
     }
     chrome.storage.onChanged.addListener(handleStorageChange)

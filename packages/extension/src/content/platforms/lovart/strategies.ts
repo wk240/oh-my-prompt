@@ -4,6 +4,7 @@
  */
 
 import type { InsertStrategy } from '../base/strategy-interface'
+import { dispatchMultilinePasteEvent, hasLineBreak } from '../base/rich-text-insertion'
 
 const LOG_PREFIX = '[Oh My Prompt]'
 
@@ -63,7 +64,8 @@ export class LovartInserter implements InsertStrategy {
       selection?.addRange(range)
     }
 
-    const success = document.execCommand('insertText', false, text)
+    const handledByPaste = hasLineBreak(text) && dispatchMultilinePasteEvent(element, text)
+    const success = handledByPaste || document.execCommand('insertText', false, text)
 
     if (!success) {
       console.warn(LOG_PREFIX, 'execCommand failed, using fallback')

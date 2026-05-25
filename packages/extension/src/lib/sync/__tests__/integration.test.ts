@@ -3,21 +3,47 @@ import { createSyncOrchestrator } from '../index'
 import { FullBackupData } from '../types'
 import { CloudSyncStrategy } from '../strategies/cloud'
 import { LocalSyncStrategy } from '../strategies/local'
+import { executeLocalSync } from '../local-sync-executor'
 
 // Mock the strategies
 vi.mock('../strategies/cloud')
 vi.mock('../strategies/local')
+vi.mock('../local-sync-executor', () => ({
+  executeLocalSync: vi.fn()
+}))
+vi.mock('../indexeddb', () => ({
+  getFolderHandle: vi.fn().mockResolvedValue(null),
+  checkFolderPermission: vi.fn().mockResolvedValue('prompt')
+}))
 
 describe('Sync Integration', () => {
+  let storageData: Record<string, unknown>
+
   beforeEach(() => {
     vi.clearAllMocks()
+    storageData = {}
 
     // Mock chrome.storage.local
     global.chrome = {
+      runtime: {
+        sendMessage: vi.fn().mockResolvedValue(undefined),
+        getManifest: vi.fn().mockReturnValue({ version: '2.0.0' })
+      },
       storage: {
         local: {
-          get: vi.fn().mockResolvedValue({}),
-          set: vi.fn().mockResolvedValue(undefined)
+          get: vi.fn(async (keys?: string | string[]) => {
+            if (!keys) return storageData
+            if (typeof keys === 'string') {
+              return { [keys]: storageData[keys] }
+            }
+            return keys.reduce<Record<string, unknown>>((result, key) => {
+              result[key] = storageData[key]
+              return result
+            }, {})
+          }),
+          set: vi.fn(async (updates: Record<string, unknown>) => {
+            Object.assign(storageData, updates)
+          })
         }
       }
     } as any
@@ -51,6 +77,8 @@ describe('Sync Integration', () => {
         }
       })
     } as any
+
+    vi.mocked(executeLocalSync).mockResolvedValue({ success: true, syncedAt: Date.now() })
   })
 
   afterEach(() => {
@@ -78,18 +106,16 @@ describe('Sync Integration', () => {
 
       // Mock local strategy as available and successful
       vi.mocked(LocalSyncStrategy.prototype.isAvailable).mockResolvedValue(true)
-      vi.mocked(LocalSyncStrategy.prototype.sync).mockResolvedValue({
+      vi.mocked(executeLocalSync).mockResolvedValue({
         success: true,
         syncedAt: Date.now(),
-        promptsCount: 1,
-        categoriesCount: 1
       })
 
       await orchestrator.triggerSync(data)
 
       // Both strategies should be called (parallel sync)
       expect(CloudSyncStrategy.prototype.sync).toHaveBeenCalledWith(data)
-      expect(LocalSyncStrategy.prototype.sync).toHaveBeenCalledWith(data)
+      expect(executeLocalSync).toHaveBeenCalledWith(data)
 
       // Storage should be updated with sync status
       expect(chrome.storage.local.set).toHaveBeenCalledWith(expect.objectContaining({
@@ -117,17 +143,15 @@ describe('Sync Integration', () => {
         categoriesCount: 0
       })
       vi.mocked(LocalSyncStrategy.prototype.isAvailable).mockResolvedValue(true)
-      vi.mocked(LocalSyncStrategy.prototype.sync).mockResolvedValue({
+      vi.mocked(executeLocalSync).mockResolvedValue({
         success: true,
         syncedAt: Date.now(),
-        promptsCount: 0,
-        categoriesCount: 0
       })
 
       await orchestrator.triggerSync(data)
 
       expect(CloudSyncStrategy.prototype.sync).toHaveBeenCalledWith(data)
-      expect(LocalSyncStrategy.prototype.sync).toHaveBeenCalledWith(data)
+      expect(executeLocalSync).toHaveBeenCalledWith(data)
     })
 
     it('should sync temporary prompts correctly', async () => {
@@ -148,10 +172,9 @@ describe('Sync Integration', () => {
         temporaryPromptsCount: 1
       })
       vi.mocked(LocalSyncStrategy.prototype.isAvailable).mockResolvedValue(true)
-      vi.mocked(LocalSyncStrategy.prototype.sync).mockResolvedValue({
+      vi.mocked(executeLocalSync).mockResolvedValue({
         success: true,
         syncedAt: Date.now(),
-        temporaryPromptsCount: 1
       })
 
       await orchestrator.triggerSync(data)
@@ -177,7 +200,7 @@ describe('Sync Integration', () => {
       // Cloud unavailable
       vi.mocked(CloudSyncStrategy.prototype.isAvailable).mockResolvedValue(false)
       vi.mocked(LocalSyncStrategy.prototype.isAvailable).mockResolvedValue(true)
-      vi.mocked(LocalSyncStrategy.prototype.sync).mockResolvedValue({
+      vi.mocked(executeLocalSync).mockResolvedValue({
         success: true,
         syncedAt: Date.now()
       })
@@ -188,13 +211,13 @@ describe('Sync Integration', () => {
       expect(CloudSyncStrategy.prototype.sync).not.toHaveBeenCalled()
 
       // Local sync should be called
-      expect(LocalSyncStrategy.prototype.sync).toHaveBeenCalled()
+      expect(executeLocalSync).toHaveBeenCalled()
 
       // Pending cloud sync should be marked
       expect(chrome.storage.local.set).toHaveBeenCalledWith(expect.objectContaining({
         syncStatus: expect.objectContaining({
           pendingCloudSync: true,
-          hasUnsyncedChanges: true
+          hasUnsyncedChanges: false
         })
       }))
     })
@@ -213,9 +236,9 @@ describe('Sync Integration', () => {
 
       await orchestrator.triggerSync(data)
 
-      // Neither strategy should be called
-      expect(CloudSyncStrategy.prototype.sync).not.toHaveBeenCalled()
-      expect(LocalSyncStrategy.prototype.sync).not.toHaveBeenCalled()
+      // Cloud-only sync should still run when local backup is unavailable.
+      expect(CloudSyncStrategy.prototype.sync).toHaveBeenCalledWith(data)
+      expect(executeLocalSync).not.toHaveBeenCalled()
     })
 
     it('should handle cloud sync failure with local success', async () => {
@@ -233,7 +256,7 @@ describe('Sync Integration', () => {
         error: 'NETWORK_ERROR'
       })
       vi.mocked(LocalSyncStrategy.prototype.isAvailable).mockResolvedValue(true)
-      vi.mocked(LocalSyncStrategy.prototype.sync).mockResolvedValue({
+      vi.mocked(executeLocalSync).mockResolvedValue({
         success: true,
         syncedAt: Date.now()
       })
@@ -242,14 +265,14 @@ describe('Sync Integration', () => {
 
       // Both strategies called (parallel)
       expect(CloudSyncStrategy.prototype.sync).toHaveBeenCalled()
-      expect(LocalSyncStrategy.prototype.sync).toHaveBeenCalled()
+      expect(executeLocalSync).toHaveBeenCalled()
 
       // Pending state with error recorded
       expect(chrome.storage.local.set).toHaveBeenCalledWith(expect.objectContaining({
         syncStatus: expect.objectContaining({
           pendingCloudSync: true,
           cloudError: 'NETWORK_ERROR',
-          hasUnsyncedChanges: true
+          hasUnsyncedChanges: false
         })
       }))
     })
@@ -493,7 +516,7 @@ describe('Sync Integration', () => {
       // First call: network error
       vi.mocked(CloudSyncStrategy.prototype.isAvailable).mockResolvedValueOnce(false)
       vi.mocked(LocalSyncStrategy.prototype.isAvailable).mockResolvedValue(true)
-      vi.mocked(LocalSyncStrategy.prototype.sync).mockResolvedValue({
+      vi.mocked(executeLocalSync).mockResolvedValue({
         success: true,
         syncedAt: Date.now()
       })
@@ -520,8 +543,8 @@ describe('Sync Integration', () => {
 
       await orchestrator.triggerSync(data)
 
-      expect(CloudSyncStrategy.prototype.sync).not.toHaveBeenCalled()
-      expect(LocalSyncStrategy.prototype.sync).not.toHaveBeenCalled()
+      expect(CloudSyncStrategy.prototype.sync).toHaveBeenCalledWith(data)
+      expect(executeLocalSync).not.toHaveBeenCalled()
     })
   })
 
@@ -538,13 +561,27 @@ describe('Sync Integration', () => {
         enabled: true,
         lastSyncTime: 2000
       })
-      vi.mocked(chrome.storage.local.get).mockResolvedValue({
-        syncStatus: {
-          hasUnsyncedChanges: false,
-          pendingCloudSync: false,
-          pendingUpload: false,
-          localOnlyItems: { promptIds: [], categoryIds: [], temporaryPromptIds: [] }
+      vi.mocked(chrome.storage.local.get).mockImplementation(async (keys?: string | string[]) => {
+        if (keys === 'syncStatus') {
+          return {
+            syncStatus: {
+              hasUnsyncedChanges: false,
+              pendingCloudSync: false,
+              pendingUpload: false,
+              localOnlyItems: { promptIds: [], categoryIds: [], temporaryPromptIds: [] }
+            }
+          }
         }
+        if (typeof keys === 'string' && keys.startsWith('sb-')) {
+          return {
+            [keys]: JSON.stringify({
+              access_token: 'token',
+              user: { id: 'user-1' },
+              expires_at: Math.floor(Date.now() / 1000) + 3600
+            })
+          }
+        }
+        return {}
       })
 
       const status = await orchestrator.getStatus()

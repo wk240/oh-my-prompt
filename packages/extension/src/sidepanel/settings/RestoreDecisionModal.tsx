@@ -9,7 +9,7 @@ interface RestoreDecisionModalProps {
   open: boolean
   onClose: () => void
   onRestore: () => void
-  onContinue: () => void
+  onContinue: () => void | Promise<void>
   onReselect: () => void
   existingBackup: ExistingBackupInfo
 }
@@ -37,7 +37,7 @@ export function RestoreDecisionModal({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md space-y-4">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <AlertTriangle className="w-5 h-5 text-yellow-600" />
@@ -49,11 +49,11 @@ export function RestoreDecisionModal({
         </DialogHeader>
 
         {/* Backup info section */}
-        <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-          <div className="text-sm font-medium text-blue-900 mb-2">
+        <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+          <div className="text-sm font-medium text-blue-900 mb-3">
             现有备份信息
           </div>
-          <div className="text-xs text-blue-700 space-y-1">
+          <div className="text-xs text-blue-700 space-y-1.5">
             <div>提示词数量: {existingBackup.promptCount ?? 0} 条</div>
             <div>分类数量: {existingBackup.categoryCount ?? 0} 个</div>
             <div>临时库数量: {existingBackup.temporaryPromptCount ?? 0} 条</div>
@@ -62,21 +62,21 @@ export function RestoreDecisionModal({
         </div>
 
         {/* Warning section */}
-        <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200 flex items-start gap-2">
+        <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200 flex items-start gap-3">
           <AlertTriangle className="w-4 h-4 text-yellow-600 flex-shrink-0 mt-0.5" />
           <div className="text-sm text-yellow-800">
             <p className="font-medium">注意</p>
-            <p className="mt-1">选择"继续使用此文件夹"将用当前数据覆盖现有备份，备份数据将丢失。</p>
+            <p className="mt-1.5">选择"跳过"将用当前数据覆盖现有备份，备份数据将丢失。</p>
           </div>
         </div>
 
-        <DialogFooter className="flex-col gap-2 sm:flex-row">
+        <DialogFooter className="flex-col gap-2.5 sm:flex-row pt-2">
           <Button onClick={onRestore} className="w-full sm:w-auto">
             <RotateCcw className="w-4 h-4" />
             恢复备份数据
           </Button>
           <Button variant="outline" onClick={onContinue} className="w-full sm:w-auto">
-            继续使用此文件夹
+            跳过
           </Button>
           <Button variant="ghost" className="w-full sm:w-auto text-gray-600" onClick={onReselect}>
             <FolderOpen className="w-4 h-4" />

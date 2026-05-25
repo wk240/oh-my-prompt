@@ -43,7 +43,7 @@ export interface ImageReadResult {
   success: boolean
   blob?: Blob
   url?: string
-  error?: 'FOLDER_NOT_CONFIGURED' | 'READ_FAILED' | 'FILE_NOT_FOUND'
+  error?: 'FOLDER_NOT_CONFIGURED' | 'READ_FAILED' | 'FILE_NOT_FOUND' | 'PERMISSION_DENIED' | 'PERMISSION_PROMPT'
 }
 
 export interface ImageDownloadResult {
@@ -284,6 +284,11 @@ export async function readImage(relativePath: string): Promise<ImageReadResult> 
   const handle = await getFolderHandle()
   if (!handle) {
     return { success: false, error: 'FOLDER_NOT_CONFIGURED' }
+  }
+
+  const permission = await checkFolderPermission(handle, 'readwrite')
+  if (permission !== 'granted') {
+    return { success: false, error: permission === 'denied' ? 'PERMISSION_DENIED' : 'PERMISSION_PROMPT' }
   }
 
   try {

@@ -6,11 +6,18 @@ import type { StorageSchema } from '@oh-my-prompt/shared/types'
 import { readImportFile, mergeImportData } from '@/lib/import-export'
 
 // Agent instruction prompt for generating importable JSON
-const AGENT_INSTRUCTION_PROMPT = `# 任务
+const AGENT_INSTRUCTION_PROMPT = `# Oh My Prompt 导入 JSON 生成指令
 
-请根据用户提供的素材（文件、链接、文本片段等），提取其中的提示词信息，并生成符合以下JSON格式的数据，以便导入到"Oh My Prompt"浏览器插件。
+你是提示词资料整理 Agent。请把用户提供的素材（文件、网页、表格、Markdown、聊天记录、纯文本等）整理成可直接导入 Oh My Prompt 浏览器插件的 JSON 数据。
 
-# JSON格式规范
+## 工作目标
+
+1. 提取真正可复用的提示词内容，不要把普通说明、标题、广告语、目录、版权声明当作提示词。
+2. 为提示词建立清晰分类，生成简短易识别的名称。
+3. 输出符合下方 schema 的 JSON，确保 Oh My Prompt 可以直接导入。
+4. 不要覆盖或合并用户本地现有数据；导入时插件会自动追加新内容。
+
+## JSON Schema
 
 \`\`\`json
 {
@@ -33,62 +40,66 @@ const AGENT_INSTRUCTION_PROMPT = `# 任务
 }
 \`\`\`
 
-# 字段说明
+## 字段规则
 
-- **categories**: 分类数组，每个分类包含：
-  - id: UUID格式唯一标识，使用 crypto.randomUUID() 或类似格式（如 "a1b2c3d4-e5f6-7890-abcd-ef1234567890"）
-  - name: 分类名称，简洁明了
-  - order: 排序序号，数字，同分类内递增
+- categories: 分类数组。至少 1 个分类。
+  - id: 字符串，必须唯一。优先使用 UUID v4 格式，例如 "a1b2c3d4-e5f6-4890-abcd-ef1234567890"。
+  - name: 分类名称，2-8 个字为佳，例如 "设计风格"、"角色设定"、"电商文案"。
+  - order: 分类排序，从 0 开始递增。
 
-- **prompts**: 提示词数组，每个提示词包含：
-  - id: UUID格式唯一标识
-  - name: 提示词名称，用于下拉菜单显示
-  - content: 提示词完整内容，这是插入到输入框的实际文本
-  - categoryId: 关联的分类id（必须与categories中的id匹配）
-  - description: 可选，用于UI中显示额外说明
-  - order: 分类内排序序号
+- prompts: 提示词数组。
+  - id: 字符串，必须唯一。优先使用 UUID v4 格式。
+  - name: 提示词名称，用于下拉菜单显示，建议 2-12 个字，避免过长。
+  - content: 完整提示词正文。这是实际插入到输入框的文本，必须保留原文中的关键变量、占位符、参数和换行。
+  - categoryId: 必须匹配 categories 中某个分类的 id。
+  - description: 可选。写一句用途说明，不要重复 name。
+  - order: 在所属分类内从 0 开始递增。
 
-# 提取指导
+## 提取与整理规则
 
-1. 根据素材内容合理划分分类，如"设计风格"、"角色设定"、"场景描述"等
-2. 提示词名称应简短易识别，content保留完整的原始提示词文本
-3. 如果素材已有分类结构，保持原有分类；若无，根据内容语义自动归类
-4. 所有id必须唯一，不同提示词和分类不能使用相同id
-5. order字段按提取顺序或素材原有顺序填写
+1. 如果素材已有分类结构，优先沿用原结构；如果没有，请按用途语义自动归类。
+2. 如果同一提示词有中英文版本、正负面提示词、参数说明，请尽量放在同一个 content 中，不要拆散。
+3. 如果提示词包含变量，占位符原样保留，例如 "{主题}"、"[style]"、"<product>"。
+4. 如果多条提示词内容高度重复，只保留更完整、更通用的一条。
+5. 不要编造素材中不存在的专业内容；可以为分类名、提示词 name、description 做简洁归纳。
+6. content 中的换行请使用 JSON 字符串可解析的 "\\n"。
+7. 不要输出注释、尾随逗号、Markdown 代码块外的解释文字。
 
-# 输出流程
+## 输出流程
 
-1. 先展示生成的JSON内容预览，询问用户是否满意
-2. 用户确认后，将JSON写入文件（文件名建议格式：prompts-日期.json，如 prompts-2024-01-15.json）
-3. 如用户不满意，根据反馈调整后重新确认
+1. 先给出一份 JSON 预览，并说明提取了多少个分类、多少条提示词。
+2. 等用户确认后，再输出最终 JSON 文件内容。
+3. 最终 JSON 必须只包含一个 JSON 对象，不要包含 Markdown 代码块、额外说明或多个候选版本。
 
-# 示例
+## 示例
 
 用户素材：
 - "赛博朋克风格：霓虹灯光、未来城市、高科技与低生活对比"
 - "水彩画风格：柔和边缘、透明色彩、自然纹理"
 
-Agent先展示预览：
+预览 JSON：
 \`\`\`json
 {
   "version": "1.0.0",
   "userData": {
     "categories": [
-      { "id": "cat-001", "name": "设计风格", "order": 0 }
+      { "id": "2c86c514-9371-4d4f-9e98-f4a8c590c3e5", "name": "设计风格", "order": 0 }
     ],
     "prompts": [
       {
-        "id": "prompt-001",
+        "id": "d7ac1c1e-1f88-4e9a-b058-746b203f8f84",
         "name": "赛博朋克",
         "content": "赛博朋克风格：霓虹灯光、未来城市、高科技与低生活对比",
-        "categoryId": "cat-001",
+        "categoryId": "2c86c514-9371-4d4f-9e98-f4a8c590c3e5",
+        "description": "用于未来城市和霓虹视觉风格",
         "order": 0
       },
       {
-        "id": "prompt-002",
+        "id": "73b39277-0f4f-4d63-a62f-5b49ff89662c",
         "name": "水彩画",
         "content": "水彩画风格：柔和边缘、透明色彩、自然纹理",
-        "categoryId": "cat-001",
+        "categoryId": "2c86c514-9371-4d4f-9e98-f4a8c590c3e5",
+        "description": "用于柔和透明的手绘质感",
         "order": 1
       }
     ]
@@ -96,8 +107,7 @@ Agent先展示预览：
 }
 \`\`\`
 
-然后询问："以上JSON包含2条提示词，是否确认输出文件？"
-用户确认后，保存为 prompts-2024-01-15.json 文件。`
+然后询问："已整理 1 个分类、2 条提示词。是否确认生成最终 JSON？"`
 
 /**
  * ImportExportSection - Handles import/export of prompts in SidePanel settings

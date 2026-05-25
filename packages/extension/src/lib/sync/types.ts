@@ -8,6 +8,7 @@ export type SyncStrategyId = 'cloud' | 'local'
 
 export type SyncResultError =
   | 'NOT_LOGGED_IN'
+  | 'SUBSCRIPTION_REQUIRED'
   | 'NETWORK_ERROR'
   | 'PERMISSION_DENIED'
   | 'SYNC_FAILED'
@@ -70,6 +71,22 @@ export interface BackupStatusStorage {
   local: BackupTargetStatus
 }
 
+export interface SyncGuardStatus {
+  lastUploadedHash?: string
+  lastLocalSyncedHash?: string
+  lastUploadStartedAt?: number
+  lastCloudUploadAt?: number
+  syncInFlight?: boolean
+  lockOwnerId?: string
+  pendingSnapshotHash?: string
+}
+
+export interface IdAliasMap {
+  prompts?: Record<string, string>
+  categories?: Record<string, string>
+  temporaryPrompts?: Record<string, string>
+}
+
 export interface UnifiedSyncStatus {
   cloudEnabled: boolean
   cloudLoggedIn: boolean
@@ -94,6 +111,8 @@ export interface UnifiedSyncStatus {
     categoryIds: string[]
     temporaryPromptIds: string[]
   }
+  guard?: SyncGuardStatus
+  idAliasMap?: IdAliasMap
 }
 
 export interface SyncStrategy {

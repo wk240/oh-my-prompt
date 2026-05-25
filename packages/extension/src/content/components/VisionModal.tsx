@@ -200,6 +200,11 @@ function VisionModal({ onClose }: VisionModalProps) {
     const result = selectedTask?.result
     if (!result) return ''
 
+    // If raw JSON fallback exists, always return raw text
+    if (result._rawJsonText) {
+      return result._rawJsonText
+    }
+
     if (format === 'natural') {
       return language === 'zh' ? result.zh.prompt : result.en.prompt
     }
@@ -317,6 +322,19 @@ function VisionModal({ onClose }: VisionModalProps) {
    * Render JSON prompt as key-value list
    */
   const renderJsonPrompt = (result: VisionApiResultData) => {
+    // If raw JSON fallback exists, render raw text directly
+    if (result._rawJsonText) {
+      return (
+        <div className="json-details">
+          <div className="json-row">
+            <span className="json-value" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+              {result._rawJsonText}
+            </span>
+          </div>
+        </div>
+      )
+    }
+
     const jsonPrompt = language === 'zh' && result.zh_json
       ? result.zh_json
       : language === 'en' && result.en_json
@@ -450,19 +468,57 @@ function VisionModal({ onClose }: VisionModalProps) {
 
     // Success status - show prompt preview
     if (status === 'success' && result) {
+      // Check if this is raw JSON fallback mode
+      const isRawJsonMode = !!result._rawJsonText
+
       return (
         <div className="success-view">
+          {/* Raw JSON warning banner */}
+          {isRawJsonMode && (
+            <div style={{
+              background: '#fef3c7',
+              border: '1px solid #f59e0b',
+              borderRadius: '6px',
+              padding: '8px 12px',
+              fontSize: '13px',
+              color: '#92400e',
+              marginBottom: '12px'
+            }}>
+              {language === 'zh' ? '⚠️ JSON 格式异常，已显示原始响应' : '⚠️ Invalid JSON format, showing raw response'}
+            </div>
+          )}
+
           {/* Title */}
-          {language === 'zh' && result.zh.title && (
+          {!isRawJsonMode && language === 'zh' && result.zh.title && (
             <div className="prompt-title">{result.zh.title}</div>
           )}
-          {language === 'en' && result.en.title && (
+          {!isRawJsonMode && language === 'en' && result.en.title && (
             <div className="prompt-title">{result.en.title}</div>
           )}
 
           {/* Content based on format */}
           <div className="tab-content">
-            {format === 'natural' && (
+            {/* Raw JSON mode: always show raw text regardless of format toggle */}
+            {isRawJsonMode && (
+              <div className="prompt-tab">
+                <div className="prompt-preview-wrapper">
+                  <div className="prompt-preview" style={{ maxHeight: '400px' }}>
+                    <p className="prompt-label">{language === 'zh' ? '原始响应:' : 'Raw Response:'}</p>
+                    {result._rawJsonText}
+                  </div>
+                  <button
+                    className={`prompt-copy-btn ${isPromptCopied ? 'copied' : ''}`}
+                    onClick={handleCopyPrompt}
+                    aria-label={language === 'zh' ? '复制原始内容' : 'Copy raw content'}
+                  >
+                    {isPromptCopied ? <Check /> : <Copy />}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Normal mode: show structured content */}
+            {!isRawJsonMode && format === 'natural' && (
               <div className="prompt-tab">
                 {language === 'zh' && (
                   <>
@@ -515,7 +571,7 @@ function VisionModal({ onClose }: VisionModalProps) {
               </div>
             )}
 
-            {format === 'json' && (
+            {!isRawJsonMode && format === 'json' && (
               <div className="json-tab">
                 <div className="prompt-preview-wrapper">
                   {renderJsonPrompt(result)}

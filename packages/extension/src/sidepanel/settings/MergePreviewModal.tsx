@@ -85,14 +85,14 @@ export function MergePreviewModal({ open, onClose, preview, onConfirm, loading }
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto p-6">
+        <DialogHeader className="pb-4">
           <DialogTitle>合并预览</DialogTitle>
           <DialogDescription>以下是将执行的合并操作，请确认后继续</DialogDescription>
         </DialogHeader>
 
         {/* Counts comparison */}
-        <div className="p-3 bg-gray-50 rounded-lg space-y-2">
+        <div className="p-4 bg-gray-50 rounded-lg space-y-3">
           <div className="flex justify-between text-sm">
             <span className="text-gray-600">云端数据</span>
             <span>{preview.cloudCount.prompts} 条 prompts / {preview.cloudCount.categories} 个分类</span>
@@ -101,16 +101,16 @@ export function MergePreviewModal({ open, onClose, preview, onConfirm, loading }
             <span className="text-gray-600">本地数据</span>
             <span>{preview.localCount.prompts} 条 prompts / {preview.localCount.categories} 个分类</span>
           </div>
-          <div className="flex justify-between text-sm border-t pt-2">
+          <div className="flex justify-between text-sm border-t pt-3">
             <span className="font-medium">合并后</span>
             <span className="font-medium">{preview.mergedCount.prompts} 条 / {preview.mergedCount.categories} 个</span>
           </div>
         </div>
 
         {/* Changes summary */}
-        <div className="space-y-2">
+        <div className="space-y-3 py-4">
           <h4 className="text-sm font-medium text-gray-700">变更汇总</h4>
-          <ul className="text-sm text-gray-600 space-y-1">
+          <ul className="text-sm text-gray-600 space-y-2">
             {preview.changes.addToLocal > 0 && (
               <li className="flex items-center gap-2">
                 <span className="text-blue-500">+</span>
@@ -149,9 +149,9 @@ export function MergePreviewModal({ open, onClose, preview, onConfirm, loading }
 
         {/* Cloud-only items detail */}
         {hasCloudOnly && (
-          <div className="space-y-2">
+          <div className="space-y-3 pb-4">
             <h4 className="text-sm font-medium text-gray-700">云端独有（将添加到本地）</h4>
-            <div className="text-sm text-gray-600 space-y-1 max-h-32 overflow-y-auto bg-blue-50 p-2 rounded">
+            <div className="text-sm text-gray-600 space-y-2 max-h-32 overflow-y-auto bg-blue-50 p-3 rounded">
               {preview.cloudOnlyItems!.prompts.map(p => (
                 <div key={p.id} className="flex justify-between">
                   <span className="truncate max-w-[200px]" title={p.name}>{p.name}</span>
@@ -176,9 +176,9 @@ export function MergePreviewModal({ open, onClose, preview, onConfirm, loading }
 
         {/* Local-only items detail */}
         {hasLocalOnly && (
-          <div className="space-y-2">
+          <div className="space-y-3 pb-4">
             <h4 className="text-sm font-medium text-gray-700">本地独有（将上传到云端）</h4>
-            <div className="text-sm text-gray-600 space-y-1 max-h-32 overflow-y-auto bg-green-50 p-2 rounded">
+            <div className="text-sm text-gray-600 space-y-2 max-h-32 overflow-y-auto bg-green-50 p-3 rounded">
               {preview.localOnlyItems!.prompts.map(p => (
                 <div key={p.id} className="flex justify-between">
                   <span className="truncate max-w-[200px]" title={p.name}>{p.name}</span>
@@ -203,9 +203,9 @@ export function MergePreviewModal({ open, onClose, preview, onConfirm, loading }
 
         {/* Conflicts detail */}
         {hasConflicts && (
-          <div className="space-y-2">
+          <div className="space-y-3 pb-4">
             <h4 className="text-sm font-medium text-red-700">冲突项目（时间戳相同）</h4>
-            <div className="text-sm text-gray-600 space-y-1 max-h-32 overflow-y-auto bg-red-50 p-2 rounded">
+            <div className="text-sm text-gray-600 space-y-2 max-h-32 overflow-y-auto bg-red-50 p-3 rounded">
               {preview.conflicts!.map((c, i) => (
                 <div key={i} className="flex justify-between items-center">
                   <span className="truncate max-w-[180px]" title={c.cloud.name}>
@@ -218,7 +218,7 @@ export function MergePreviewModal({ open, onClose, preview, onConfirm, loading }
           </div>
         )}
 
-        <DialogFooter>
+        <DialogFooter className="pt-4">
           <Button variant="outline" onClick={onClose}>取消</Button>
           <Button onClick={onConfirm} disabled={loading || !hasAnyChanges}>
             {loading ? '合并中...' : hasAnyChanges ? '确认合并' : '无需合并'}

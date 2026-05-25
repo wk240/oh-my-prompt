@@ -86,6 +86,7 @@ export function BaseModal({
           zIndex: 2147483647,
           display: 'flex',
           flexDirection: 'column',
+          maxHeight: '90vh',
           fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
         }}
       >
@@ -96,6 +97,7 @@ export function BaseModal({
           display: 'flex',
           flexDirection: 'column',
           gap: '4px',
+          flexShrink: 0,
         }}>
           <div style={{
             display: 'flex',
@@ -144,6 +146,7 @@ export function BaseModal({
           padding: '16px',
           overflow: 'auto',
           flex: 1,
+          minHeight: 0,
         }}>
           {children}
         </div>
@@ -156,6 +159,7 @@ export function BaseModal({
             display: 'flex',
             gap: '12px',
             justifyContent: 'flex-end',
+            flexShrink: 0,
           }}>
             {footer}
           </div>

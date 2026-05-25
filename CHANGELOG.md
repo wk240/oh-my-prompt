@@ -2,6 +2,42 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.0] - 2026-05-25
+
+### Added / 新增
+- **[EN]** Commercial MVP foundation with cloud sync, auth integration, and membership-gated capabilities
+- **[CN]** 商业化 MVP 基础能力：云同步、登录集成和会员权限控制
+- **[EN]** Team collaboration flows, including team libraries and prompt sharing from sidepanel/content UI
+- **[CN]** 团队协作流程，包括团队资源库以及从侧边栏/内容脚本分享提示词
+- **[EN]** Agent and ecommerce writing workflows with multi-image reference support and structured results
+- **[CN]** Agent 与电商文案工作流，支持多参考图和结构化结果
+- **[EN]** RunningHub platform support and broader rich-editor insertion coverage
+- **[CN]** 新增 RunningHub 平台支持，并扩大富文本编辑器插入覆盖范围
+- **[EN]** Official Vision/API provider integration with quota and subscription-aware UI states
+- **[CN]** 官方 Vision/API 服务集成，支持额度和订阅状态感知 UI
+
+### Fixed / 修复
+- **[EN]** OAuth callback, auth state hydration, and extension/web session sync reliability
+- **[CN]** OAuth 回调、登录状态水合以及扩展/Web 会话同步可靠性
+- **[EN]** Durable cloud sync race conditions, duplicate merge behavior, and backup status consistency
+- **[CN]** 云同步持久化竞态、重复合并行为以及备份状态一致性
+- **[EN]** Rich editor multiline insertion, fallback paste paths, and one-click Agent insertion
+- **[CN]** 富文本多行插入、降级粘贴路径以及 Agent 一键插入
+- **[EN]** Team library/share styling, login detection, and post-share sync behavior
+- **[CN]** 团队资源库/分享样式、登录检测以及分享后的同步行为
+- **[EN]** Release scripts for the monorepo extension package layout
+- **[CN]** 发布脚本适配 monorepo 下的扩展包目录结构
+
+### Changed / 变更
+- **[EN]** Reworked sync architecture around orchestrated cloud/local strategies with durable guards
+- **[CN]** 围绕统一编排的云端/本地策略和持久化保护重构同步架构
+- **[EN]** Replaced the Vision tab with the Mine account/API management view
+- **[CN]** 使用「我的」账户/API 管理页替代原 Vision 标签页
+- **[EN]** Simplified cloud sync login and backup UX with clearer status and recovery flows
+- **[CN]** 简化云同步登录与备份体验，提供更清晰的状态和恢复流程
+- **[EN]** Updated web app submodule across auth, subscription, team, and sync API support
+- **[CN]** 持续更新 Web App 子模块，覆盖登录、订阅、团队和同步 API 支持
+
 ## [1.4.0] - 2026-05-08
 
 ### Added / 新增

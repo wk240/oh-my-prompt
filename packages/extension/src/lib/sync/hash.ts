@@ -1,8 +1,42 @@
-import type { UserData, Prompt } from '@oh-my-prompt/shared/types'
+import type { UserData, Prompt, ImageAsset, PendingImageDelete } from '@oh-my-prompt/shared/types'
 
 // Extended data structure for hash computation (includes temporary library)
 export interface BackupData extends UserData {
   temporaryPrompts?: Prompt[]
+  imageAssets?: Record<string, ImageAsset>
+  pendingImageDeletes?: PendingImageDelete[]
+}
+
+function normalizeImageAssets(imageAssets: Record<string, ImageAsset> = {}): object[] {
+  return Object.values(imageAssets)
+    .sort((a, b) => a.id.localeCompare(b.id))
+    .map(asset => ({
+      id: asset.id,
+      promptId: asset.promptId,
+      localPath: asset.localPath,
+      cloudUrl: asset.cloudUrl,
+      cloudPath: asset.cloudPath,
+      sourceUrl: asset.sourceUrl,
+      mimeType: asset.mimeType,
+      width: asset.width,
+      height: asset.height,
+      size: asset.size,
+      hash: asset.hash,
+      status: asset.status,
+      updatedAt: asset.updatedAt,
+      lastUploadAttemptAt: asset.lastUploadAttemptAt
+    }))
+}
+
+function normalizePendingImageDeletes(items: PendingImageDelete[] = []): object[] {
+  return [...items]
+    .sort((a, b) => `${a.imageId}\n${a.cloudPath}`.localeCompare(`${b.imageId}\n${b.cloudPath}`))
+    .map(item => ({
+      imageId: item.imageId,
+      cloudPath: item.cloudPath,
+      attempts: item.attempts,
+      updatedAt: item.updatedAt
+    }))
 }
 
 /**
@@ -32,6 +66,7 @@ export async function computeBackupDataHash(backupData: BackupData): Promise<str
         description: p.description,
         descriptionEn: p.descriptionEn,
         order: p.order,
+        imageId: p.imageId,
         localImage: p.localImage,
         remoteImageUrl: p.remoteImageUrl
       })),
@@ -47,9 +82,12 @@ export async function computeBackupDataHash(backupData: BackupData): Promise<str
         description: p.description,
         descriptionEn: p.descriptionEn,
         order: p.order,
+        imageId: p.imageId,
         localImage: p.localImage,
         remoteImageUrl: p.remoteImageUrl
-      }))
+      })),
+    imageAssets: normalizeImageAssets(backupData.imageAssets),
+    pendingImageDeletes: normalizePendingImageDeletes(backupData.pendingImageDeletes)
   }
 
   const content = JSON.stringify(sorted)

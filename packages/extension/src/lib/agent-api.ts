@@ -24,6 +24,13 @@ const ECOMMERCE_AGENT_MAX_TOKENS = 8192
 // Anthropic API version header
 const ANTHROPIC_VERSION = '2023-06-01'
 
+export function getPayloadProductImages(payload: AgentGeneratePayload): string[] {
+  if (payload.productImages?.length) {
+    return payload.productImages.filter(Boolean)
+  }
+  return payload.productImage ? [payload.productImage] : []
+}
+
 /**
  * Get active provider config from storage
  * NOTE: Only works from content script / popup / sidepanel contexts.
@@ -107,13 +114,13 @@ function buildAnthropicRequest(
  * @param imageData - Optional image data URL
  * @returns Request body object
  */
-function buildOpenAIRequest(
+export function buildOpenAIRequest(
   systemPrompt: string,
   userText: string,
   modelName: string,
   maxTokens: number,
   imageData?: string,
-  productImage?: string
+  productImages: string[] = []
 ): object {
   // Build user content with system prompt prefix
   const userContent: Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }> = []
@@ -124,8 +131,8 @@ function buildOpenAIRequest(
     text: `${systemPrompt}\n\n用户描述：${userText}`
   })
 
-  // Add single product image for ecommerce
-  if (productImage) {
+  // Add product images for ecommerce
+  for (const productImage of productImages) {
     userContent.push({
       type: 'image_url',
       image_url: {
@@ -154,19 +161,19 @@ function buildOpenAIRequest(
   }
 }
 
-function buildOpenAIResponsesRequest(
+export function buildOpenAIResponsesRequest(
   systemPrompt: string,
   userText: string,
   modelName: string,
   maxTokens: number,
   imageData?: string,
-  productImage?: string
+  productImages: string[] = []
 ): object {
   const content: Array<{ type: 'input_text'; text: string } | { type: 'input_image'; image_url: string }> = [
     { type: 'input_text', text: userText }
   ]
 
-  if (productImage) {
+  for (const productImage of productImages) {
     content.push({ type: 'input_image', image_url: productImage })
   }
 
@@ -285,12 +292,13 @@ export async function executeAgentApiCallWithProviderConfig(
   if (config.apiFormat === 'omp_official') {
     const promptStart = perfLog('START build system prompt (official)')
     const isEcommerce = payload.templateCategory === 'ecommerce' && payload.ecommerceConfig
+    const productImages = getPayloadProductImages(payload)
     const systemPrompt = isEcommerce
-      ? buildEcommerceSystemPrompt(payload.ecommerceConfig!, !!(payload.productImage || payload.imageData))
+      ? buildEcommerceSystemPrompt(payload.ecommerceConfig!, !!(productImages.length || payload.imageData))
       : buildAgentSystemPrompt(payload.templateCategory, !!payload.imageData)
     perfLog('END build system prompt (official)', promptStart)
 
-    const result = await executeOfficialAgentApiCall(payload, systemPrompt, signal, perfLog)
+    const result = await executeOfficialAgentApiCall(payload, systemPrompt, productImages, signal, perfLog)
     perfLog('END total flow', totalStart)
     return result
   }
@@ -308,8 +316,9 @@ export async function executeAgentApiCallWithProviderConfig(
   // Build system prompt
   const promptStart = perfLog('START build system prompt (third-party)')
   const isEcommerce = payload.templateCategory === 'ecommerce' && payload.ecommerceConfig
+  const productImages = getPayloadProductImages(payload)
   const systemPrompt = isEcommerce
-    ? buildEcommerceSystemPrompt(payload.ecommerceConfig!, !!(payload.productImage || payload.imageData))
+    ? buildEcommerceSystemPrompt(payload.ecommerceConfig!, !!(productImages.length || payload.imageData))
     : buildAgentSystemPrompt(payload.templateCategory, !!payload.imageData)
   perfLog('END build system prompt (third-party)', promptStart)
 
@@ -330,13 +339,13 @@ export async function executeAgentApiCallWithProviderConfig(
       text: payload.inputText
     })
 
-    // Add single product image for ecommerce before single imageData
-    if (payload.productImage) {
-      const base64Data = extractBase64Data(payload.productImage)
+    // Add product images for ecommerce before single imageData
+    for (const productImage of productImages) {
+      const base64Data = extractBase64Data(productImage)
       if (base64Data) {
         userContent.push({
           type: 'image',
-          source: { type: 'base64', media_type: extractMediaType(payload.productImage), data: base64Data }
+          source: { type: 'base64', media_type: extractMediaType(productImage), data: base64Data }
         })
       }
     }
@@ -356,10 +365,10 @@ export async function executeAgentApiCallWithProviderConfig(
 
     requestBody = buildAnthropicRequest(systemPrompt, userContent, config.selectedModel, maxTokens)
   } else if (config.apiFormat === 'openai_responses') {
-    requestBody = buildOpenAIResponsesRequest(systemPrompt, payload.inputText, config.selectedModel, maxTokens, payload.imageData, payload.productImage)
+    requestBody = buildOpenAIResponsesRequest(systemPrompt, payload.inputText, config.selectedModel, maxTokens, payload.imageData, productImages)
   } else {
     // OpenAI: system prompt in user message prefix
-    requestBody = buildOpenAIRequest(systemPrompt, payload.inputText, config.selectedModel, maxTokens, payload.imageData, payload.productImage)
+    requestBody = buildOpenAIRequest(systemPrompt, payload.inputText, config.selectedModel, maxTokens, payload.imageData, productImages)
   }
   perfLog('END build request body', buildStart)
 
@@ -487,6 +496,7 @@ export async function executeAgentApiCall(
 async function executeOfficialAgentApiCall(
   payload: AgentGeneratePayload,
   systemPrompt: string,
+  productImages: string[],
   signal?: AbortSignal,
   perfLog?: (step: string, startTime?: number) => number
 ): Promise<AgentGenerateResult> {
@@ -549,7 +559,8 @@ async function executeOfficialAgentApiCall(
         templateCategory: payload.templateCategory,
         systemPrompt,
         ...(payload.ecommerceConfig && { ecommerceConfig: payload.ecommerceConfig }),
-        ...(payload.productImage && { productImage: payload.productImage }),
+        ...(productImages.length > 0 && { productImages }),
+        ...(payload.productImage && productImages.length === 0 && !payload.productImages?.length && { productImage: payload.productImage }),
       }),
       signal: abortController.signal
     })

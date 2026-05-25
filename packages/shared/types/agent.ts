@@ -25,6 +25,7 @@ export interface AgentGeneratePayload {
   imageData?: string // Optional reference image (base64 data URL)
   templateCategory: AgentTemplateCategory
   productImage?: string             // 单张商品原图 (base64 data URL)
+  productImages?: string[]          // 多张商品原图 (base64 data URLs)
   ecommerceConfig?: EcommerceConfig  // 电商专属配置
 }
 

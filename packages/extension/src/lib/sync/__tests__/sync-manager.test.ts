@@ -210,4 +210,72 @@ describe('sync-manager folder selection', () => {
       { triggerSync: false }
     )
   })
+
+  it('preserves existing image metadata when replacing from a legacy backup without image metadata fields', async () => {
+    const legacyData = {
+      prompts: [{ id: 'p-legacy', name: 'Legacy', content: 'legacy', categoryId: 'c-legacy', order: 0 }],
+      categories: [{ id: 'c-legacy', name: 'Legacy Category', order: 0 }],
+      temporaryPrompts: [],
+      imageAssets: {},
+      pendingImageDeletes: [],
+      imageMetadataFields: {
+        imageAssets: false,
+        pendingImageDeletes: false
+      }
+    } satisfies FullBackupData
+    vi.mocked(sendToOffscreen).mockImplementation(async (type: string) => {
+      if (type === 'OFFSCREEN_READ_BACKUP') {
+        return { success: true, data: legacyData }
+      }
+      return { success: true }
+    })
+
+    const result = await restoreFromBackup('omps-legacy.json', false, 'replace')
+
+    expect(result.success).toBe(true)
+    expect(saveData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userData: {
+          prompts: legacyData.prompts,
+          categories: legacyData.categories
+        },
+        temporaryPrompts: legacyData.temporaryPrompts,
+        imageAssets: currentData.imageAssets,
+        pendingImageDeletes: currentData.pendingImageDeletes
+      }),
+      { triggerSync: false }
+    )
+    expect(sendToOffscreen).toHaveBeenCalledWith('OFFSCREEN_SYNC', {
+      backupData: expect.objectContaining({
+        imageAssets: currentData.imageAssets,
+        pendingImageDeletes: currentData.pendingImageDeletes
+      }),
+      version: '2.0.0'
+    })
+  })
+
+  it('preserves existing image metadata in merged backup data', async () => {
+    const backupData: FullBackupData = {
+      prompts: [{ id: 'p-merged', name: 'Merged', content: 'merged', categoryId: 'c-current', order: 1 }],
+      categories: currentData.userData.categories,
+      temporaryPrompts: []
+    }
+    vi.mocked(sendToOffscreen).mockImplementation(async (type: string) => {
+      if (type === 'OFFSCREEN_READ_BACKUP') {
+        return { success: true, data: backupData }
+      }
+      return { success: true }
+    })
+
+    const result = await restoreFromBackup('omps-latest.json', false, 'merge')
+
+    expect(result.success).toBe(true)
+    expect(sendToOffscreen).toHaveBeenCalledWith('OFFSCREEN_SYNC', {
+      backupData: expect.objectContaining({
+        imageAssets: currentData.imageAssets,
+        pendingImageDeletes: currentData.pendingImageDeletes
+      }),
+      version: '2.0.0'
+    })
+  })
 })

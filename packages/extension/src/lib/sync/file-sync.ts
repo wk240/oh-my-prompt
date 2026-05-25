@@ -7,6 +7,10 @@ export interface FullBackupData extends BackupData {
   temporaryPrompts: Prompt[]
   imageAssets?: Record<string, ImageAsset>
   pendingImageDeletes?: PendingImageDelete[]
+  imageMetadataFields?: {
+    imageAssets: boolean
+    pendingImageDeletes: boolean
+  }
 }
 
 export interface BackupVersion {
@@ -61,6 +65,10 @@ export async function backupToFolder(
 
 export interface SyncResult {
   createdNewBackup: boolean // True if new history backup was created, false if content unchanged
+}
+
+function hasOwnBackupField(parsed: object, field: 'imageAssets' | 'pendingImageDeletes'): boolean {
+  return Object.prototype.hasOwnProperty.call(parsed, field)
 }
 
 /**
@@ -141,7 +149,11 @@ export async function readFromLocalFolder(
         categories: userData.categories as Category[],
         temporaryPrompts: parsed.temporaryPrompts || [], // Include temporary library
         imageAssets: parsed.imageAssets || {},
-        pendingImageDeletes: parsed.pendingImageDeletes || []
+        pendingImageDeletes: parsed.pendingImageDeletes || [],
+        imageMetadataFields: {
+          imageAssets: hasOwnBackupField(parsed, 'imageAssets'),
+          pendingImageDeletes: hasOwnBackupField(parsed, 'pendingImageDeletes')
+        }
       }
     }
 
@@ -156,7 +168,11 @@ export async function readFromLocalFolder(
       categories: parsed.categories as Category[],
       temporaryPrompts: [], // No temporary prompts in legacy format
       imageAssets: parsed.imageAssets || {},
-      pendingImageDeletes: parsed.pendingImageDeletes || []
+      pendingImageDeletes: parsed.pendingImageDeletes || [],
+      imageMetadataFields: {
+        imageAssets: hasOwnBackupField(parsed, 'imageAssets'),
+        pendingImageDeletes: hasOwnBackupField(parsed, 'pendingImageDeletes')
+      }
     }
   } catch (error) {
     console.warn('[Oh My Prompt] Failed to read local file:', error)
@@ -373,7 +389,11 @@ export async function readBackupFile(
         categories: userData.categories as Category[],
         temporaryPrompts: parsed.temporaryPrompts || [], // Include temporary library
         imageAssets: parsed.imageAssets || {},
-        pendingImageDeletes: parsed.pendingImageDeletes || []
+        pendingImageDeletes: parsed.pendingImageDeletes || [],
+        imageMetadataFields: {
+          imageAssets: hasOwnBackupField(parsed, 'imageAssets'),
+          pendingImageDeletes: hasOwnBackupField(parsed, 'pendingImageDeletes')
+        }
       }
     }
 
@@ -387,7 +407,11 @@ export async function readBackupFile(
       categories: parsed.categories as Category[],
       temporaryPrompts: [], // No temporary prompts in legacy format
       imageAssets: parsed.imageAssets || {},
-      pendingImageDeletes: parsed.pendingImageDeletes || []
+      pendingImageDeletes: parsed.pendingImageDeletes || [],
+      imageMetadataFields: {
+        imageAssets: hasOwnBackupField(parsed, 'imageAssets'),
+        pendingImageDeletes: hasOwnBackupField(parsed, 'pendingImageDeletes')
+      }
     }
   } catch (error) {
     console.warn('[Oh My Prompt] Failed to read backup file:', error)

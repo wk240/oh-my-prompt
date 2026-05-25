@@ -218,8 +218,8 @@ export async function initialSync(): Promise<void> {
             categories: localData.categories
           },
           temporaryPrompts: localData.temporaryPrompts || [],
-          imageAssets: localData.imageAssets || {},
-          pendingImageDeletes: localData.pendingImageDeletes || []
+          imageAssets: restoreImageAssets(localData, storageData),
+          pendingImageDeletes: restorePendingImageDeletes(localData, storageData)
         },
         { triggerSync: false }
       )
@@ -308,6 +308,21 @@ function buildBackupDataFromStorage(data: StorageSchema): FullBackupData {
     imageAssets: data.imageAssets || {},
     pendingImageDeletes: data.pendingImageDeletes || []
   }
+}
+
+function restoreImageAssets(backupData: FullBackupData, currentData: StorageSchema): StorageSchema['imageAssets'] {
+  return backupData.imageMetadataFields?.imageAssets === false
+    ? currentData.imageAssets || {}
+    : backupData.imageAssets || {}
+}
+
+function restorePendingImageDeletes(
+  backupData: FullBackupData,
+  currentData: StorageSchema
+): StorageSchema['pendingImageDeletes'] {
+  return backupData.imageMetadataFields?.pendingImageDeletes === false
+    ? currentData.pendingImageDeletes || []
+    : backupData.pendingImageDeletes || []
 }
 
 async function getExistingBackupInfo(handle: FileSystemDirectoryHandle): Promise<ExistingBackupInfo> {
@@ -784,7 +799,9 @@ export async function restoreFromBackup(
       const mergedBackupData: FullBackupData = {
         prompts: merged.prompts,
         categories: merged.categories,
-        temporaryPrompts: mergedTemporaryPrompts
+        temporaryPrompts: mergedTemporaryPrompts,
+        imageAssets: currentData.imageAssets || {},
+        pendingImageDeletes: currentData.pendingImageDeletes || []
       }
       await sendToOffscreen(MessageType.OFFSCREEN_SYNC, { backupData: mergedBackupData, version })
 
@@ -799,20 +816,27 @@ export async function restoreFromBackup(
     // Replace mode: Restore backup data (including temporary prompts)
     const storageManager = StorageManager.getInstance()
     const currentData = await storageManager.getData()
+    const restoredBackupData: FullBackupData = {
+      prompts: backupData.prompts,
+      categories: backupData.categories,
+      temporaryPrompts: backupData.temporaryPrompts || [],
+      imageAssets: restoreImageAssets(backupData, currentData),
+      pendingImageDeletes: restorePendingImageDeletes(backupData, currentData)
+    }
     await storageManager.saveData(
       {
         ...currentData,
         userData: {
-          prompts: backupData.prompts,
-          categories: backupData.categories
+          prompts: restoredBackupData.prompts,
+          categories: restoredBackupData.categories
         },
         settings: {
           ...currentData.settings,
           lastSyncTime: Date.now()
         },
-        temporaryPrompts: backupData.temporaryPrompts || [],
-        imageAssets: backupData.imageAssets || {},
-        pendingImageDeletes: backupData.pendingImageDeletes || []
+        temporaryPrompts: restoredBackupData.temporaryPrompts,
+        imageAssets: restoredBackupData.imageAssets,
+        pendingImageDeletes: restoredBackupData.pendingImageDeletes
       },
       { triggerSync: false }
     )
@@ -820,7 +844,7 @@ export async function restoreFromBackup(
     // Sync restored data to latest backup file (omps-latest.json)
     // This ensures the restored state becomes the "current" backup state
     const version = chrome.runtime.getManifest().version
-    await sendToOffscreen(MessageType.OFFSCREEN_SYNC, { backupData, version })
+    await sendToOffscreen(MessageType.OFFSCREEN_SYNC, { backupData: restoredBackupData, version })
 
     // Restore API config from backup folder (overwrite existing)
     try {

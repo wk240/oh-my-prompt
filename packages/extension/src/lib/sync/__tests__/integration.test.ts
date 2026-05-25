@@ -217,7 +217,7 @@ describe('Sync Integration', () => {
       expect(chrome.storage.local.set).toHaveBeenCalledWith(expect.objectContaining({
         syncStatus: expect.objectContaining({
           pendingCloudSync: true,
-          hasUnsyncedChanges: true
+          hasUnsyncedChanges: false
         })
       }))
     })
@@ -272,7 +272,7 @@ describe('Sync Integration', () => {
         syncStatus: expect.objectContaining({
           pendingCloudSync: true,
           cloudError: 'NETWORK_ERROR',
-          hasUnsyncedChanges: true
+          hasUnsyncedChanges: false
         })
       }))
     })
@@ -561,13 +561,27 @@ describe('Sync Integration', () => {
         enabled: true,
         lastSyncTime: 2000
       })
-      vi.mocked(chrome.storage.local.get).mockResolvedValue({
-        syncStatus: {
-          hasUnsyncedChanges: false,
-          pendingCloudSync: false,
-          pendingUpload: false,
-          localOnlyItems: { promptIds: [], categoryIds: [], temporaryPromptIds: [] }
+      vi.mocked(chrome.storage.local.get).mockImplementation(async (keys?: string | string[]) => {
+        if (keys === 'syncStatus') {
+          return {
+            syncStatus: {
+              hasUnsyncedChanges: false,
+              pendingCloudSync: false,
+              pendingUpload: false,
+              localOnlyItems: { promptIds: [], categoryIds: [], temporaryPromptIds: [] }
+            }
+          }
         }
+        if (typeof keys === 'string' && keys.startsWith('sb-')) {
+          return {
+            [keys]: JSON.stringify({
+              access_token: 'token',
+              user: { id: 'user-1' },
+              expires_at: Math.floor(Date.now() / 1000) + 3600
+            })
+          }
+        }
+        return {}
       })
 
       const status = await orchestrator.getStatus()

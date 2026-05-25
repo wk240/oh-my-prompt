@@ -21,4 +21,14 @@ describe('rich text insertion formatting', () => {
       expect(source).not.toContain("document.execCommand('insertHTML'")
     }
   })
+
+  it('treats a cancelled paste event as handled to avoid duplicate insertion', () => {
+    const source = readFileSync(
+      resolve(repoRoot, 'src/content/platforms/base/rich-text-insertion.ts'),
+      'utf8',
+    )
+
+    expect(source).toContain('const wasCancelled = !element.dispatchEvent(pasteEvent)')
+    expect(source).toContain('return wasCancelled || pasteEvent.defaultPrevented || element.textContent !== beforeText')
+  })
 })

@@ -17,6 +17,6 @@ export function dispatchMultilinePasteEvent(element: HTMLElement, text: string):
     clipboardData,
   })
 
-  element.dispatchEvent(pasteEvent)
-  return element.textContent !== beforeText
+  const wasCancelled = !element.dispatchEvent(pasteEvent)
+  return wasCancelled || pasteEvent.defaultPrevented || element.textContent !== beforeText
 }

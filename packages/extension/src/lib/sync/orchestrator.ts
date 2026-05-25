@@ -4,7 +4,7 @@ import { executeLocalSync } from './local-sync-executor'
 import { getFolderHandle, checkFolderPermission } from './indexeddb'
 import { RetryManager } from './retry-manager'
 import { MessageType } from '@oh-my-prompt/shared/messages'
-import { invalidateSyncStatusCache } from '../cloud-sync/auth-service'
+import { getCachedAuthState, invalidateSyncStatusCache } from '../cloud-sync/auth-service'
 import { computeBackupDataHash } from './hash'
 import {
   FullBackupData,
@@ -785,6 +785,7 @@ export class SyncOrchestrator {
     // Single API call: getStatus() already checks availability
     const cloudStatus = await this.cloudStrategy.getStatus()
     const localStatus = await this.localStrategy.getStatus()
+    const authState = await getCachedAuthState()
 
     const settings = await this.getSyncStatus()
 
@@ -806,7 +807,7 @@ export class SyncOrchestrator {
 
     const fullStatus: UnifiedSyncStatus = {
       cloudEnabled: cloudStatus.enabled,
-      cloudLoggedIn: cloudStatus.enabled, // Reuse getStatus result (no extra API call)
+      cloudLoggedIn: authState.status === 'logged_in',
       // Use local storage value for lastCloudSyncTime (written immediately after sync)
       // API value (cloudStatus.lastSyncTime) may be stale or cached
       lastCloudSyncTime: settings.lastCloudSyncTime || cloudStatus.lastSyncTime,

@@ -5,12 +5,13 @@ describe('Sync types', () => {
   it('should have all error types defined', () => {
     const errors: SyncResultError[] = [
       'NOT_LOGGED_IN',
+      'SUBSCRIPTION_REQUIRED',
       'NETWORK_ERROR',
       'PERMISSION_DENIED',
       'SYNC_FAILED',
       'INVALID_DATA'
     ]
-    expect(errors).toHaveLength(5)
+    expect(errors).toHaveLength(6)
   })
 
   it('should create valid StrategyStatus', () => {

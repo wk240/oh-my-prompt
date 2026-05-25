@@ -61,7 +61,7 @@ export class CloudSyncStrategy extends BaseSyncStrategy {
       case 401:
         return 'NOT_LOGGED_IN'
       case 403:
-        return 'PERMISSION_DENIED'
+        return 'SUBSCRIPTION_REQUIRED'
       case 400:
         return 'INVALID_DATA'
       default:
@@ -84,9 +84,9 @@ export class CloudSyncStrategy extends BaseSyncStrategy {
       return false
     }
 
-    // If we have auth state, API is available
-    // (getAuthState already checks session validity and API reachability)
-    return true
+    const planType = authState.subscription?.planType || 'free'
+    const subscriptionStatus = authState.subscription?.status
+    return (planType === 'pro' || planType === 'team') && subscriptionStatus === 'active'
   }
 
   /**
@@ -199,10 +199,19 @@ export class CloudSyncStrategy extends BaseSyncStrategy {
       return { enabled: false }
     }
 
-    return {
-      enabled: true,
-      lastSyncTime: authState.lastSyncAt
-    }
+    const planType = authState.subscription?.planType || 'free'
+    const subscriptionStatus = authState.subscription?.status
+    const enabled = (planType === 'pro' || planType === 'team') && subscriptionStatus === 'active'
+
+    return enabled
+      ? {
+          enabled: true,
+          lastSyncTime: authState.lastSyncAt
+        }
+      : {
+          enabled: false,
+          error: 'SUBSCRIPTION_REQUIRED'
+        }
   }
 
   /**

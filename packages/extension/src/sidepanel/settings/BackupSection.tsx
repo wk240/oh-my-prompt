@@ -232,6 +232,10 @@ export function BackupSection() {
     chrome.storage.session.set({ sidepanelIntent: 'mine' })
   }
 
+  const handleUpgrade = () => {
+    chrome.tabs.create({ url: `${WEB_APP_URL}/subscription` })
+  }
+
   /**
    * Handle local permission restore
    */
@@ -603,6 +607,7 @@ export function BackupSection() {
           onLogin={handleLogin}
           onClickError={() => setShowMoreOptions(true)}
           onNavigateToMine={handleNavigateToMine}
+          onUpgrade={handleUpgrade}
         />
         <BackupStatusRow
           target="local"

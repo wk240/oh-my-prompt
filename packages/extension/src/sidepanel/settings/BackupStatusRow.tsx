@@ -8,6 +8,7 @@ interface BackupStatusRowProps {
   onRestorePermission?: () => void  // For local permission restore
   onClickError?: () => void   // For showing error details
   onNavigateToMine?: () => void  // Navigate to mine tab when not logged in
+  onUpgrade?: () => void // Open subscription page
 }
 
 /**
@@ -55,7 +56,8 @@ export function BackupStatusRow({
   onLogin: _onLogin, // Kept for potential future use, prefix _ to suppress TS warning
   onRestorePermission,
   onClickError,
-  onNavigateToMine
+  onNavigateToMine,
+  onUpgrade
 }: BackupStatusRowProps) {
   // Target icon and label
   const TargetIcon = target === 'cloud' ? Cloud : HardDrive
@@ -108,6 +110,17 @@ export function BackupStatusRow({
         >
           未登录
         </span>
+      )
+    }
+
+    if (target === 'cloud' && status.error === 'SUBSCRIPTION_REQUIRED') {
+      return (
+        <button
+          onClick={onUpgrade}
+          className="text-sm text-amber-600 hover:text-amber-700 cursor-pointer transition-colors"
+        >
+          升级会员开启云端备份
+        </button>
       )
     }
 

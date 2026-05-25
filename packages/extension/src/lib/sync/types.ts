@@ -8,6 +8,7 @@ export type SyncStrategyId = 'cloud' | 'local'
 
 export type SyncResultError =
   | 'NOT_LOGGED_IN'
+  | 'SUBSCRIPTION_REQUIRED'
   | 'NETWORK_ERROR'
   | 'PERMISSION_DENIED'
   | 'SYNC_FAILED'

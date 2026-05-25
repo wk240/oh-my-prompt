@@ -32,6 +32,15 @@ describe('image metadata merge', () => {
     })
   })
 
+  it('does not resurrect stale asset lastError from older fallback metadata', () => {
+    const merged = mergeImageAssets(
+      { 'image-1': asset({ lastError: 'old upload failed', status: 'error', updatedAt: 1 }) },
+      { 'image-1': asset({ status: 'pending_upload', updatedAt: 2 }) }
+    )
+
+    expect(merged['image-1'].lastError).toBeUndefined()
+  })
+
   it('dedupes pending deletes and keeps highest attempts with latest error', () => {
     const cloud: PendingImageDelete[] = [{
       imageId: 'image-1',
@@ -53,6 +62,30 @@ describe('image metadata merge', () => {
       cloudPath: 'users/u/images/image-1.webp',
       attempts: 3,
       lastError: 'latest',
+      updatedAt: 20
+    }])
+  })
+
+  it('does not resurrect stale pending delete lastError from older records', () => {
+    const cloud: PendingImageDelete[] = [{
+      imageId: 'image-1',
+      cloudPath: 'users/u/images/image-1.webp',
+      attempts: 4,
+      lastError: 'old delete failed',
+      updatedAt: 10
+    }]
+    const local: PendingImageDelete[] = [{
+      imageId: 'image-1',
+      cloudPath: 'users/u/images/image-1.webp',
+      attempts: 1,
+      updatedAt: 20
+    }]
+
+    expect(mergePendingImageDeletes(cloud, local)).toEqual([{
+      imageId: 'image-1',
+      cloudPath: 'users/u/images/image-1.webp',
+      attempts: 4,
+      lastError: undefined,
       updatedAt: 20
     }])
   })

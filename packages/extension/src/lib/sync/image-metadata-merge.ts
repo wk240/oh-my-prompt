@@ -10,7 +10,7 @@ function preferLatestAsset(a: ImageAsset, b: ImageAsset): ImageAsset {
     cloudPath: preferred.cloudPath || fallback.cloudPath,
     sourceUrl: preferred.sourceUrl || fallback.sourceUrl,
     lastUploadAttemptAt: preferred.lastUploadAttemptAt || fallback.lastUploadAttemptAt,
-    lastError: preferred.lastError || fallback.lastError
+    lastError: preferred.lastError
   }
 }
 
@@ -52,11 +52,13 @@ export function mergePendingImageDeletes(
       continue
     }
 
+    const latest = item.updatedAt >= existing.updatedAt ? item : existing
+
     byKey.set(key, {
       imageId: item.imageId,
       cloudPath: item.cloudPath,
       attempts: Math.max(existing.attempts, item.attempts),
-      lastError: item.updatedAt >= existing.updatedAt ? item.lastError || existing.lastError : existing.lastError || item.lastError,
+      lastError: latest.lastError,
       updatedAt: Math.max(existing.updatedAt, item.updatedAt)
     })
   }

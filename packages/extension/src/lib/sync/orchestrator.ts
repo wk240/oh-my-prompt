@@ -343,7 +343,7 @@ export class SyncOrchestrator {
       if (retryResult.success && localResult?.success) {
         await this.updateSyncStatus({
           lastLocalSyncTime: localResult?.syncedAt || Date.now(),
-          hasUnsyncedChanges: true,
+          hasUnsyncedChanges: false,
           pendingCloudSync: true,
           cloudSyncing: false,
           localSyncing: false,
@@ -429,7 +429,7 @@ export class SyncOrchestrator {
       // Local success, cloud failed
       await this.updateSyncStatus({
         lastLocalSyncTime: Date.now(),
-        hasUnsyncedChanges: true,
+        hasUnsyncedChanges: false,
         pendingCloudSync: true,
         localSyncing: false,
         localRetryCount: localRetryResult.retryCount,
@@ -893,6 +893,26 @@ export class SyncOrchestrator {
 
       return nextStatus
     }, { preserveLatestGuard: !hasGuardUpdate })
+
+    if (Object.prototype.hasOwnProperty.call(updates, 'hasUnsyncedChanges')) {
+      await this.updateLegacyUnsyncedSetting(Boolean(updates.hasUnsyncedChanges))
+    }
+  }
+
+  private async updateLegacyUnsyncedSetting(hasUnsyncedChanges: boolean): Promise<void> {
+    const result = await chrome.storage.local.get(STORAGE_KEY)
+    const existing = result[STORAGE_KEY]
+    if (!existing?.settings) return
+
+    await chrome.storage.local.set({
+      [STORAGE_KEY]: {
+        ...existing,
+        settings: {
+          ...existing.settings,
+          hasUnsyncedChanges
+        }
+      }
+    })
   }
 
   private async getSyncStatus(): Promise<Partial<UnifiedSyncStatus & { initialized?: boolean }>> {

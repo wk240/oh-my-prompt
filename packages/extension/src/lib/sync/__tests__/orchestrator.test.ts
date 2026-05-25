@@ -1087,10 +1087,13 @@ describe('SyncOrchestrator', () => {
       expect(executeLocalSync).not.toHaveBeenCalled()
     })
 
-    it('LOCAL_ONLY should sync local and set pendingCloudSync without clearing cloud error', async () => {
+    it('LOCAL_ONLY should clear backup warning while keeping pendingCloudSync and cloud error', async () => {
       const data = makeBackupData({ promptId: 'p1', updatedAt: 100 })
 
-      storageData.syncStatus = { cloudError: 'AUTH_REQUIRED' }
+      storageData.prompt_script_data = {
+        settings: { hasUnsyncedChanges: true }
+      }
+      storageData.syncStatus = { cloudError: 'AUTH_REQUIRED', hasUnsyncedChanges: true }
       vi.spyOn(cloudStrategy, 'isAvailable').mockResolvedValue(false)
       vi.spyOn(localStrategy, 'isAvailable').mockResolvedValue(true)
       vi.mocked(executeLocalSync).mockResolvedValue({ success: true, syncedAt: 123 })
@@ -1102,12 +1105,15 @@ describe('SyncOrchestrator', () => {
       expect(executeLocalSync).toHaveBeenCalledWith(data)
       expect(chrome.storage.local.set).toHaveBeenCalledWith(expect.objectContaining({
         syncStatus: expect.objectContaining({
-          hasUnsyncedChanges: true,
+          hasUnsyncedChanges: false,
           pendingCloudSync: true,
           cloudError: 'AUTH_REQUIRED',
           localError: undefined
         })
       }))
+      expect(storageData.prompt_script_data).toMatchObject({
+        settings: { hasUnsyncedChanges: false }
+      })
     })
 
     it('CLOUD_ONLY should sync cloud and keep local error visible', async () => {
@@ -1649,13 +1655,27 @@ describe('SyncOrchestrator', () => {
         enabled: true,
         lastSyncTime: 2000
       })
-      vi.mocked(chrome.storage.local.get).mockResolvedValue({
-        syncStatus: {
-          hasUnsyncedChanges: false,
-          pendingCloudSync: false,
-          pendingUpload: false,
-          localOnlyItems: { promptIds: [], categoryIds: [], temporaryPromptIds: [] }
+      vi.mocked(chrome.storage.local.get).mockImplementation(async (keys?: string | string[]) => {
+        if (keys === 'syncStatus') {
+          return {
+            syncStatus: {
+              hasUnsyncedChanges: false,
+              pendingCloudSync: false,
+              pendingUpload: false,
+              localOnlyItems: { promptIds: [], categoryIds: [], temporaryPromptIds: [] }
+            }
+          }
         }
+        if (typeof keys === 'string' && keys.startsWith('sb-')) {
+          return {
+            [keys]: JSON.stringify({
+              access_token: 'token',
+              user: { id: 'user-1' },
+              expires_at: Math.floor(Date.now() / 1000) + 3600
+            })
+          }
+        }
+        return {}
       })
 
       const status = await orchestrator.getStatus()
@@ -1751,7 +1771,7 @@ describe('SyncOrchestrator', () => {
         temporaryPrompts: data.temporaryPrompts
       }))
       expect(storageData.syncStatus).toEqual(expect.objectContaining({
-        hasUnsyncedChanges: true,
+        hasUnsyncedChanges: false,
         pendingCloudSync: true
       }))
     })

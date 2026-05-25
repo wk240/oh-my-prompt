@@ -88,8 +88,20 @@ export function SavedConfigsList({
                   <Check style={{ width: 14, height: 14 }} />
                 </Button>
               )}
-              {isOfficialActive && (
+              {isLoggedIn && isOfficialActive && (
                 <span className="text-xs text-purple-600 font-medium">已激活</span>
+              )}
+              {!isLoggedIn && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onActivateOfficial}
+                  disabled={loading}
+                  className="h-7 px-2 text-xs"
+                  title="登录后使用官方服务"
+                >
+                  登录使用
+                </Button>
               )}
             </div>
           </div>
@@ -111,7 +123,7 @@ export function SavedConfigsList({
           ))}
         </div>
       ) : (
-        <p className="text-xs text-gray-400">暂无配置，点击"第三方API配置"添加</p>
+        <p className="text-xs text-gray-400">暂无第三方配置，点击"第三方API配置"添加。</p>
       )}
 
       <ThirdPartyApiDialog

@@ -133,6 +133,12 @@ export default function MineView() {
   const officialConfigId = 'omp-official-default'
 
   const handleActivateOfficial = async () => {
+    if (authState?.status !== 'logged_in') {
+      setError('请先登录后使用官方服务')
+      setSuccess(null)
+      return
+    }
+
     setLoading(true)
     setError(null)
     setSuccess(null)

@@ -14,8 +14,7 @@ export async function checkSubscriptionFeature(feature: 'cloud_sync' | 'ai_optim
   }
 
   if (feature === 'ai_optimization') {
-    if (planType === 'free') return false
-    const quota = authState.subscription?.optimizationQuota
+    const quota = authState.subscription?.officialApiQuota ?? authState.subscription?.optimizationQuota
     return quota ? quota.remaining > 0 : false
   }
 

@@ -27,15 +27,19 @@ const thirdPartyConfig: ProviderConfig = {
 }
 
 describe('isAgentConfigUsable', () => {
-  it('treats official API as unavailable when login has expired', () => {
+  it('treats official API as unavailable when logged out', () => {
     expect(isAgentConfigUsable([officialConfig], 'omp-official-default', false)).toBe(false)
   })
 
-  it('treats official API as usable when login is active', () => {
-    expect(isAgentConfigUsable([officialConfig], 'omp-official-default', true)).toBe(true)
+  it('treats official API as usable when logged in with quota remaining', () => {
+    expect(isAgentConfigUsable([officialConfig], 'omp-official-default', true, 12)).toBe(true)
   })
 
-  it('keeps active third-party API usable without login', () => {
-    expect(isAgentConfigUsable([thirdPartyConfig], 'third-party', false)).toBe(true)
+  it('treats official API as unavailable when quota is exhausted', () => {
+    expect(isAgentConfigUsable([officialConfig], 'omp-official-default', true, 0)).toBe(false)
+  })
+
+  it('keeps third-party API usable without official quota', () => {
+    expect(isAgentConfigUsable([thirdPartyConfig], 'third-party', false, 0)).toBe(true)
   })
 })

@@ -165,7 +165,7 @@ export function EcommercePanel({
         ])
         if (response?.success && response?.data) {
           const { configs, activeConfigId } = response.data as { configs: ProviderConfig[]; activeConfigId: string | null }
-          setHasConfig(isAgentConfigUsable(configs, activeConfigId, authState.status === 'logged_in'))
+          setHasConfig(isAgentConfigUsable(configs, activeConfigId, authState.status === 'logged_in', authState.subscription?.officialApiQuota?.remaining))
         } else {
           setHasConfig(false)
         }
@@ -187,7 +187,7 @@ export function EcommercePanel({
           .then(([response, authState]) => {
             if (response?.success && response?.data) {
               const { configs, activeConfigId } = response.data as { configs: ProviderConfig[]; activeConfigId: string | null }
-              setHasConfig(isAgentConfigUsable(configs, activeConfigId, authState.status === 'logged_in'))
+              setHasConfig(isAgentConfigUsable(configs, activeConfigId, authState.status === 'logged_in', authState.subscription?.officialApiQuota?.remaining))
             } else {
               setHasConfig(false)
             }

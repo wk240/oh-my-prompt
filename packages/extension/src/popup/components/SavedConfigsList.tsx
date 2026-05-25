@@ -44,6 +44,13 @@ export function SavedConfigsList({
   const officialConfigId = 'omp-official-default'
   const isOfficialActive = activeConfigId === officialConfigId
   const isLoggedIn = authState?.status === 'logged_in'
+  const officialQuota = authState?.subscription?.officialApiQuota ?? authState?.subscription?.optimizationQuota
+  const canUseOfficial = isLoggedIn && (officialQuota?.remaining ?? 0) > 0
+  const officialDescription = isLoggedIn
+    ? officialQuota
+      ? `专业视觉模型 · 剩余 ${officialQuota.remaining}/${officialQuota.limit} 次`
+      : '专业视觉模型 · 额度同步中'
+    : '需要登录使用'
 
   return (
     <div>
@@ -68,7 +75,7 @@ export function SavedConfigsList({
                 </h3>
               </div>
               <p className="text-xs text-gray-500 mt-1 truncate">
-                {isLoggedIn ? '专业视觉模型' : '需要登录使用'}
+                {officialDescription}
               </p>
               <p className="text-xs text-gray-400 mt-0.5">
                 官方服务
@@ -76,7 +83,7 @@ export function SavedConfigsList({
             </div>
 
             <div className="flex items-center gap-1">
-              {isLoggedIn && !isOfficialActive && (
+              {canUseOfficial && !isOfficialActive && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -88,8 +95,11 @@ export function SavedConfigsList({
                   <Check style={{ width: 14, height: 14 }} />
                 </Button>
               )}
-              {isLoggedIn && isOfficialActive && (
+              {canUseOfficial && isOfficialActive && (
                 <span className="text-xs text-purple-600 font-medium">已激活</span>
+              )}
+              {isLoggedIn && !canUseOfficial && (
+                <span className="text-xs text-red-500 font-medium">{officialQuota ? '额度已用尽' : '额度同步中'}</span>
               )}
               {!isLoggedIn && (
                 <Button

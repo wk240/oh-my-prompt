@@ -170,7 +170,7 @@ function createRelease(version: string, zipPath: string): boolean {
       return false;
     }
     // 推送 tag
-    if (!runCommand(`git push origin ${tagName}`, '推送 tag 到 GitHub')) {
+    if (!runCommand(`git push origin refs/tags/${tagName}`, '推送 tag 到 GitHub')) {
       return false;
     }
   }

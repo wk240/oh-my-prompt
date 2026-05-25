@@ -14,6 +14,8 @@ export interface SavePromptImageAssetInput {
   hash: string
 }
 
+type DeletePromptImageAssetResult = { success: boolean; error?: string }
+
 async function readStorage(): Promise<StorageSchema> {
   const result = await chrome.storage.local.get(STORAGE_KEY)
   return result[STORAGE_KEY] as StorageSchema
@@ -32,6 +34,37 @@ function mapPrompt(data: StorageSchema, promptId: string, mapper: (prompt: Promp
     },
     temporaryPrompts: data.temporaryPrompts?.map(prompt => prompt.id === promptId ? mapper(prompt) : prompt)
   }
+}
+
+function findPrompt(data: StorageSchema, promptId: string): Prompt | undefined {
+  return [...data.userData.prompts, ...(data.temporaryPrompts || [])].find(item => item.id === promptId)
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error || 'UNKNOWN_ERROR')
+}
+
+async function markImageAssetStatus(
+  imageId: string,
+  status: ImageAsset['status'],
+  error?: string
+): Promise<void> {
+  const latest = await readStorage()
+  const latestAsset = latest.imageAssets?.[imageId]
+  if (!latestAsset) return
+
+  await writeStorage({
+    ...latest,
+    imageAssets: {
+      ...(latest.imageAssets || {}),
+      [imageId]: {
+        ...latestAsset,
+        status,
+        lastError: error,
+        updatedAt: Date.now()
+      }
+    }
+  })
 }
 
 export async function queuePendingImageDelete(imageId: string, cloudPath: string, error?: string): Promise<void> {
@@ -84,21 +117,43 @@ export async function savePromptImageAsset(
   }
 
   const data = await readStorage()
+  const existingPrompt = findPrompt(data, input.promptId)
+  const replacedImageId = existingPrompt?.imageId
+  const replacedAsset = replacedImageId ? data.imageAssets?.[replacedImageId] : undefined
+
+  if (replacedAsset?.localPath) {
+    try {
+      await deleteImageByPath(replacedAsset.localPath)
+    } catch {
+      // Replacement should still move metadata forward; local cleanup can be retried manually from the old path if needed.
+    }
+  }
+
   const nextData = mapPrompt(data, input.promptId, prompt => ({
     ...prompt,
     imageId,
     localImage: saveResult.relativePath,
-    remoteImageUrl: input.sourceUrl || prompt.remoteImageUrl,
+    remoteImageUrl: input.sourceUrl,
     updatedAt: now
   }))
+  const nextAssets = { ...(nextData.imageAssets || {}) }
+  if (replacedImageId) {
+    delete nextAssets[replacedImageId]
+  }
+  nextAssets[imageId] = asset
 
   await writeStorage({
     ...nextData,
-    imageAssets: {
-      ...(nextData.imageAssets || {}),
-      [imageId]: asset
-    }
+    imageAssets: nextAssets
   })
+
+  if (replacedImageId && replacedAsset?.cloudPath) {
+    const result = await deleteCloudImage(replacedImageId, replacedAsset.cloudPath)
+      .catch(error => ({ success: false, error: getErrorMessage(error) }))
+    if (!result.success) {
+      await queuePendingImageDelete(replacedImageId, replacedAsset.cloudPath, result.error)
+    }
+  }
 
   if (input.canUseCloud) {
     void retryImageUpload(imageId)
@@ -124,35 +179,41 @@ export async function retryImageUpload(imageId: string): Promise<void> {
     }
   })
 
-  const url = await getCachedImageUrl(asset.localPath)
-  if (!url) {
-    const latest = await readStorage()
-    const latestAsset = latest.imageAssets?.[imageId]
-    if (!latestAsset) return
-    await writeStorage({
-      ...latest,
-      imageAssets: {
-        ...(latest.imageAssets || {}),
-        [imageId]: {
-          ...latestAsset,
-          status: 'missing_local',
-          updatedAt: Date.now()
-        }
-      }
-    })
+  let url: string | null
+  try {
+    url = await getCachedImageUrl(asset.localPath)
+  } catch (error) {
+    await markImageAssetStatus(imageId, 'upload_failed', getErrorMessage(error))
     return
   }
 
-  const blob = await fetch(url).then(response => response.blob())
-  const result = await uploadCloudImage({
-    imageId,
-    promptId: asset.promptId,
-    blob,
-    hash: asset.hash,
-    width: asset.width,
-    height: asset.height,
-    size: asset.size
-  })
+  if (!url) {
+    await markImageAssetStatus(imageId, 'missing_local', 'LOCAL_IMAGE_MISSING')
+    return
+  }
+
+  let result: Awaited<ReturnType<typeof uploadCloudImage>>
+  try {
+    const response = await fetch(url)
+    if (!response.ok) {
+      await markImageAssetStatus(imageId, 'upload_failed', `HTTP_${response.status}`)
+      return
+    }
+    const blob = await response.blob()
+    result = await uploadCloudImage({
+      imageId,
+      promptId: asset.promptId,
+      blob,
+      hash: asset.hash,
+      width: asset.width,
+      height: asset.height,
+      size: asset.size
+    })
+  } catch (error) {
+    await markImageAssetStatus(imageId, 'upload_failed', getErrorMessage(error))
+    return
+  }
+
   const latest = await readStorage()
   const latestAsset = latest.imageAssets?.[imageId]
   if (!latestAsset) return
@@ -181,17 +242,22 @@ export async function retryImageUpload(imageId: string): Promise<void> {
   })
 }
 
-export async function deletePromptImageAsset(promptId: string): Promise<void> {
+export async function deletePromptImageAsset(promptId: string): Promise<DeletePromptImageAssetResult> {
   const data = await readStorage()
-  const prompt = [...data.userData.prompts, ...(data.temporaryPrompts || [])].find(item => item.id === promptId)
+  const prompt = findPrompt(data, promptId)
   const imageId = prompt?.imageId
-  if (!imageId) return
+  if (!imageId) return { success: true }
 
   const asset = data.imageAssets?.[imageId]
   const copiedCloudPath = asset?.cloudPath
 
   if (asset?.localPath) {
-    await deleteImageByPath(asset.localPath)
+    const localDelete = await deleteImageByPath(asset.localPath)
+      .catch(error => ({ success: false, error: getErrorMessage(error) }))
+    if (!localDelete.success) {
+      await markImageAssetStatus(imageId, asset.status, localDelete.error || 'DELETE_FAILED')
+      return { success: false, error: localDelete.error || 'DELETE_FAILED' }
+    }
   }
 
   const nextAssets = { ...(data.imageAssets || {}) }
@@ -208,8 +274,11 @@ export async function deletePromptImageAsset(promptId: string): Promise<void> {
 
   if (copiedCloudPath) {
     const result = await deleteCloudImage(imageId, copiedCloudPath)
+      .catch(error => ({ success: false, error: getErrorMessage(error) }))
     if (!result.success) {
       await queuePendingImageDelete(imageId, copiedCloudPath, result.error)
     }
   }
+
+  return { success: true }
 }

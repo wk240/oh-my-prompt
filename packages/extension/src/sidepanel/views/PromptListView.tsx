@@ -24,6 +24,7 @@ import { getFolderHandle } from '@/lib/sync/indexeddb'
 import { useAutoPermissionRestore } from '@/sidepanel/hooks/useAutoPermissionRestore'
 import AgentView from '@/sidepanel/views/AgentView'
 import EcommerceView from '@/sidepanel/views/EcommerceView'
+import { stableContentScriptPath } from '@/lib/build/stable-content-scripts'
 
 // Lazy load modal components
 const PromptPreviewModal = lazy(() => import('@/content/components/PromptPreviewModal').then(m => ({ default: m.PromptPreviewModal })))
@@ -781,13 +782,27 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
       }
 
       const scriptFile = targetScript.js[0]
+      const stableScriptFile = stableContentScriptPath(scriptFile)
+      const scriptFiles = stableScriptFile ? [scriptFile, stableScriptFile] : [scriptFile]
+      let lastError: unknown
 
-      await chrome.scripting.executeScript({
-        target: { tabId },
-        files: [scriptFile]
-      })
-      await new Promise(resolve => setTimeout(resolve, 300))
-      return true
+      for (const file of scriptFiles) {
+        try {
+          await chrome.scripting.executeScript({
+            target: { tabId },
+            files: [file]
+          })
+          await new Promise(resolve => setTimeout(resolve, 300))
+          return true
+        } catch (error) {
+          lastError = error
+          if (!(error instanceof Error) || !error.message.includes('Could not load file')) {
+            throw error
+          }
+        }
+      }
+
+      throw lastError
     } catch (error) {
       if (!isExpectedInjectionFailure(error)) {
         console.error('[Oh My Prompt] SidePanel: Failed to inject content script:', error)

@@ -51,6 +51,7 @@ export enum MessageType {
   INSERT_PROMPT_TO_CS = 'INSERT_PROMPT_TO_CS',  // Forward INSERT_PROMPT to content script
   SAVE_TEMPORARY_PROMPT = 'SAVE_TEMPORARY_PROMPT',  // Save prompt to temporary library
   UPDATE_TEMPORARY_PROMPT_FORMAT = 'UPDATE_TEMPORARY_PROMPT_FORMAT',  // Update format of saved temporary prompt
+  DELETE_TEMPORARY_PROMPT = 'DELETE_TEMPORARY_PROMPT',  // Delete one temporary prompt
   CLEAR_TEMPORARY_PROMPTS = 'CLEAR_TEMPORARY_PROMPTS',  // Clear all temporary prompts
   TRANSFER_TEMPORARY_PROMPT = 'TRANSFER_TEMPORARY_PROMPT',  // Transfer temporary prompt to category
 

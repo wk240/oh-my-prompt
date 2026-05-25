@@ -1629,6 +1629,46 @@ chrome.runtime.onMessage.addListener(
         return true // Required for async response
 
       // Clear all temporary prompts
+      case MessageType.DELETE_TEMPORARY_PROMPT:
+        const deleteTemporaryPayload = message.payload as { promptId: string }
+        if (!deleteTemporaryPayload?.promptId) {
+          sendResponse({ success: false, error: 'Invalid payload: promptId required' })
+          return true
+        }
+
+        getStorageDataForDirectWrite()
+          .then(async (data) => {
+            const temporaryPrompts = data.temporaryPrompts || []
+            const updatedTemporaryPrompts = temporaryPrompts.filter(p => p.id !== deleteTemporaryPayload.promptId)
+
+            if (updatedTemporaryPrompts.length === temporaryPrompts.length) {
+              sendResponse({ success: false, error: 'Prompt not found in temporary library' })
+              return
+            }
+
+            const version = chrome.runtime.getManifest().version
+            await saveDataAndDebouncedSync({
+              ...data,
+              version,
+              temporaryPrompts: updatedTemporaryPrompts
+            })
+
+            chrome.tabs.query({ url: ['*://lovart.ai/*', '*://*.lovart.ai/*'] }, (tabs) => {
+              tabs.forEach(tab => {
+                if (tab.id !== undefined && tab.id >= 0) {
+                  chrome.tabs.sendMessage(tab.id, { type: MessageType.REFRESH_DATA })
+                }
+              })
+            })
+
+            sendResponse({ success: true })
+          })
+          .catch((error) => {
+            console.error('[Oh My Prompt] DELETE_TEMPORARY_PROMPT error:', error)
+            sendResponse({ success: false, error: 'Delete failed' })
+          })
+        return true // Required for async response
+
       case MessageType.CLEAR_TEMPORARY_PROMPTS:
         getStorageDataForDirectWrite()
           .then(async (data) => {

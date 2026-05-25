@@ -741,6 +741,7 @@ async function executeOfficialVisionApiCall(
             'QUOTA_EXCEEDED': '本月额度已用完',
             'INVALID_REQUEST': '请求格式无效',
             'INVALID_IMAGE': '图片格式无效',
+            'VISION_API_NOT_CONFIGURED': '官方识图服务暂未配置，请联系管理员检查 VISION_API_KEY 和 VISION_API_ENDPOINT',
             'VISION_API_ERROR': errorData.message || 'Vision API 错误'
           }
           errorMessage = errorMessages[errorData.error] || errorData.error

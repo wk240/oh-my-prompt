@@ -494,6 +494,7 @@ async function executeOfficialAgentApiCall(
             'SUBSCRIPTION_INACTIVE': '订阅已过期',
             'QUOTA_EXCEEDED': '本月额度已用完',
             'INVALID_REQUEST': '请求格式无效',
+            'AGENT_API_NOT_CONFIGURED': '官方 Agent 服务暂未配置，请联系管理员检查 VISION_API_KEY 和 VISION_API_ENDPOINT',
             'AGENT_API_ERROR': errorData.message || 'Agent API 错误'
           }
           errorMessage = errorMessages[errorData.error] || errorData.error

@@ -351,4 +351,44 @@ describe('service worker message handling', () => {
     }))
     expect(sendResponse).toHaveBeenCalledWith({ success: true })
   })
+
+  it('deletes one temporary prompt through debounced orchestrator sync only', async () => {
+    const data: StorageSchema = {
+      ...existingData,
+      temporaryPrompts: [
+        { id: 'temp-1', name: 'Temp 1', content: 'Draft 1', categoryId: 'temporary', order: 0 },
+        { id: 'temp-2', name: 'Temp 2', content: 'Draft 2', categoryId: 'temporary', order: 1 }
+      ]
+    }
+    vi.mocked(chrome.storage.local.get).mockResolvedValue({ [STORAGE_KEY]: data })
+    mocks.orchestratorTriggerSync.mockResolvedValue({ cloudSynced: true, localSynced: true })
+    const sendResponse = vi.fn()
+
+    dispatchRuntimeMessage({
+      type: MessageType.DELETE_TEMPORARY_PROMPT,
+      payload: { promptId: 'temp-1' }
+    }, sendResponse)
+    await vi.advanceTimersByTimeAsync(500)
+
+    expect(mocks.storageManager.getData).not.toHaveBeenCalled()
+    expect(mocks.storageManager.saveData).not.toHaveBeenCalled()
+    expect(mocks.oldTriggerSync).not.toHaveBeenCalled()
+    expect(chrome.storage.local.set).toHaveBeenCalledWith({
+      [STORAGE_KEY]: {
+        ...data,
+        temporaryPrompts: [
+          { id: 'temp-2', name: 'Temp 2', content: 'Draft 2', categoryId: 'temporary', order: 1 }
+        ]
+      }
+    })
+    expect(mocks.orchestratorTriggerSync).toHaveBeenCalledTimes(1)
+    expect(mocks.orchestratorTriggerSync).toHaveBeenCalledWith(expect.objectContaining({
+      prompts: [],
+      categories: [],
+      temporaryPrompts: [
+        { id: 'temp-2', name: 'Temp 2', content: 'Draft 2', categoryId: 'temporary', order: 1 }
+      ]
+    }))
+    expect(sendResponse).toHaveBeenCalledWith({ success: true })
+  })
 })

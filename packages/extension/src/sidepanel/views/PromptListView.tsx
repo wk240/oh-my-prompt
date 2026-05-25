@@ -674,6 +674,7 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
   const temporaryPrompts = usePromptStore((state) => state.temporaryPrompts)
   const isLoading = usePromptStore((state) => state.isLoading)
   const loadFromStorage = usePromptStore((state) => state.loadFromStorage)
+  const deleteTemporaryPrompt = usePromptStore((state) => state.deleteTemporaryPrompt)
   const transferTemporaryPrompt = usePromptStore((state) => state.transferTemporaryPrompt)
   const teamPrompts = usePromptStore((state) => state.teamPrompts)
   const teamSyncStatus = usePromptStore((state) => state.teamSyncStatus)
@@ -1876,21 +1877,13 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
   const handleDeletePrompt = useCallback(() => {
     if (!editingStates.deletingPrompt) return
 
-    // Check if deleting a temporary prompt
-    if (editingStates.deletingPrompt.categoryId === 'temporary') {
-      // Delete from temporary library
-      const updatedTemporaryPrompts = temporaryPrompts.filter(p => p.id !== editingStates.deletingPrompt!.id)
-      // Update store locally
-      usePromptStore.setState({ temporaryPrompts: updatedTemporaryPrompts })
-      // Persist via service worker (settings preserved by merge)
-      chrome.runtime.sendMessage({
-        type: MessageType.SET_STORAGE,
-        payload: {
-          version: chrome.runtime.getManifest().version,
-          userData: { prompts, categories },
-          temporaryPrompts: updatedTemporaryPrompts
-        }
-      })
+    // Temporary library is backed by temporaryPrompts, so identify it by view/membership
+    // instead of trusting categoryId on older saved entries.
+    const isDeletingTemporaryPrompt = selectedCategoryId === 'temporary' ||
+      temporaryPrompts.some(p => p.id === editingStates.deletingPrompt?.id)
+
+    if (isDeletingTemporaryPrompt) {
+      deleteTemporaryPrompt(editingStates.deletingPrompt.id)
     } else {
       usePromptStore.getState().deletePrompt(editingStates.deletingPrompt.id)
     }
@@ -1899,7 +1892,7 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
     closeModal('isPromptDelete')
     setToastMessage('提示词已删除')
     setTimeout(hideToast, 2000)
-  }, [editingStates.deletingPrompt, temporaryPrompts, prompts, categories, clearEditingItem, closeModal, setToastMessage, hideToast])
+  }, [editingStates.deletingPrompt, selectedCategoryId, temporaryPrompts, deleteTemporaryPrompt, clearEditingItem, closeModal, setToastMessage, hideToast])
 
   // Handle transfer temporary prompt to category
   const handleTransferPrompt = useCallback((categoryId: string) => {

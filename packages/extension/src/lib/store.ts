@@ -43,6 +43,7 @@ interface PromptStore {
   reorderAllPrompts: (newOrder: string[]) => void
 
   // Temporary library
+  deleteTemporaryPrompt: (promptId: string) => void
   clearTemporaryPrompts: () => void
   transferTemporaryPrompt: (promptId: string, categoryId: string) => void
 
@@ -563,6 +564,16 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
   },
 
   // Temporary library methods
+  deleteTemporaryPrompt: (promptId: string) => {
+    set((state) => ({
+      temporaryPrompts: state.temporaryPrompts.filter(p => p.id !== promptId)
+    }))
+    chrome.runtime.sendMessage({
+      type: MessageType.DELETE_TEMPORARY_PROMPT,
+      payload: { promptId }
+    })
+  },
+
   clearTemporaryPrompts: () => {
     set({ temporaryPrompts: [] })
     // Send message to service worker to clear

@@ -199,6 +199,18 @@ describe('service worker message handling', () => {
     return runtimeMessageListener(message, {} as chrome.runtime.MessageSender, sendResponse)
   }
 
+  function dispatchRuntimeMessageFromTab(
+    message: { type: string; payload?: unknown },
+    tabId: number,
+    sendResponse = vi.fn()
+  ): ReturnType<RuntimeMessageListener> {
+    return runtimeMessageListener(
+      message as { type: MessageType; payload?: unknown },
+      { tab: { id: tabId } } as chrome.runtime.MessageSender,
+      sendResponse
+    )
+  }
+
   async function dispatchSetStorageWithSyncResult(syncResult: {
     cloudSynced: boolean
     localSynced: boolean
@@ -409,6 +421,16 @@ describe('service worker message handling', () => {
         { id: 'temp-2', name: 'Temp 2', content: 'Draft 2', categoryId: 'temporary', order: 1 }
       ]
     }))
+    expect(sendResponse).toHaveBeenCalledWith({ success: true })
+  })
+
+  it('closes the auth callback tab that requested closure', () => {
+    const sendResponse = vi.fn()
+
+    dispatchRuntimeMessageFromTab({ type: 'CLOSE_AUTH_TAB' }, 42, sendResponse)
+
+    expect(chrome.tabs.remove).toHaveBeenCalledWith(42)
+    expect(chrome.tabs.query).not.toHaveBeenCalled()
     expect(sendResponse).toHaveBeenCalledWith({ success: true })
   })
 })

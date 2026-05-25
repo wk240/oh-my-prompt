@@ -266,12 +266,10 @@ async function extractAndSaveTokens(): Promise<boolean> {
     iconType: 'success'
   })
 
-  // Auto-close the tab after showing success message
-  // window.close() only works for tabs opened by script (OAuth flow opens tabs via chrome.tabs.create)
+  // Auto-close the tab after showing success message.
+  // Ask the service worker to close this tab so manually navigated callback pages do not
+  // trigger the browser's "Scripts may close only the windows that were opened by them" warning.
   setTimeout(() => {
-    window.close()
-    // If window.close() fails (browser restriction), send message to service worker to close tab
-    // This provides a fallback mechanism
     chrome.runtime.sendMessage({ type: 'CLOSE_AUTH_TAB' }).catch(err => {
       console.warn('[Oh My Prompt] Failed to send close message:', err)
     })

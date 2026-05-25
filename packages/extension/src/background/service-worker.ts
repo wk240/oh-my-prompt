@@ -767,14 +767,15 @@ chrome.runtime.onMessage.addListener(
         break
 
       case 'CLOSE_AUTH_TAB':
-        // Content script requests closing the auth tab
-        chrome.tabs.query({ url: ['http://localhost:3000/auth/callback*', 'https://oh-my-prompt.com/auth/callback*'] })
-          .then(tabs => {
-            if (tabs.length > 0) {
-              chrome.tabs.remove(tabs[0].id!)
-            }
+        // Content script requests closing its own auth callback tab.
+        // Use sender.tab.id so we never close an unrelated callback window.
+        if (_sender.tab?.id !== undefined && _sender.tab.id >= 0) {
+          Promise.resolve(chrome.tabs.remove(_sender.tab.id)).catch(err => {
+            console.warn('[Oh My Prompt] Failed to close auth tab:', err)
           })
-          .catch(err => console.warn('[Oh My Prompt] Failed to close auth tab:', err))
+        } else {
+          console.warn('[Oh My Prompt] Cannot close auth tab: missing sender tab id')
+        }
         sendResponse({ success: true } as MessageResponse)
         break
 

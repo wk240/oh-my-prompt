@@ -18,6 +18,7 @@ import { IMAGE_DIR_NAME, ALLOWED_IMAGE_EXTENSIONS } from '@oh-my-prompt/shared/c
 import {
   buildImagePath,
   computeBlobSha256,
+  getImageFilenameFromPath,
   HARD_IMAGE_SIZE_LIMIT,
   INITIAL_WEBP_QUALITY,
   MAX_IMAGE_SIDE,
@@ -415,41 +416,43 @@ async function handleSaveImage(payload: { imageId?: string; promptId?: string; d
 async function handleNormalizeImage(payload: { data: number[]; mimeType?: string }): Promise<MessageResponse<NormalizedImageResult>> {
   const sourceBlob = new Blob([new Uint8Array(payload.data)], { type: payload.mimeType || 'image/jpeg' })
   const bitmap = await createImageBitmap(sourceBlob)
-  const scale = Math.min(1, MAX_IMAGE_SIDE / Math.max(bitmap.width, bitmap.height))
-  const width = Math.max(1, Math.round(bitmap.width * scale))
-  const height = Math.max(1, Math.round(bitmap.height * scale))
+  try {
+    const scale = Math.min(1, MAX_IMAGE_SIDE / Math.max(bitmap.width, bitmap.height))
+    const width = Math.max(1, Math.round(bitmap.width * scale))
+    const height = Math.max(1, Math.round(bitmap.height * scale))
 
-  const canvas = new OffscreenCanvas(width, height)
-  const context = canvas.getContext('2d')
-  if (!context) {
-    bitmap.close()
-    return { success: false, error: 'CANVAS_UNAVAILABLE' }
-  }
-
-  context.drawImage(bitmap, 0, 0, width, height)
-  bitmap.close()
-
-  let output = await canvas.convertToBlob({ type: 'image/webp', quality: INITIAL_WEBP_QUALITY })
-  if (output.size > TARGET_IMAGE_SIZE) {
-    output = await canvas.convertToBlob({ type: 'image/webp', quality: MIN_WEBP_QUALITY })
-  }
-  if (output.size > HARD_IMAGE_SIZE_LIMIT) {
-    return { success: false, error: 'FILE_TOO_LARGE' }
-  }
-
-  const hash = await computeBlobSha256(output)
-  const data = Array.from(new Uint8Array(await output.arrayBuffer()))
-
-  return {
-    success: true,
-    data: {
-      data,
-      mimeType: 'image/webp',
-      width,
-      height,
-      size: output.size,
-      hash
+    const canvas = new OffscreenCanvas(width, height)
+    const context = canvas.getContext('2d')
+    if (!context) {
+      return { success: false, error: 'CANVAS_UNAVAILABLE' }
     }
+
+    context.drawImage(bitmap, 0, 0, width, height)
+
+    let output = await canvas.convertToBlob({ type: 'image/webp', quality: INITIAL_WEBP_QUALITY })
+    if (output.size > TARGET_IMAGE_SIZE) {
+      output = await canvas.convertToBlob({ type: 'image/webp', quality: MIN_WEBP_QUALITY })
+    }
+    if (output.size > HARD_IMAGE_SIZE_LIMIT) {
+      return { success: false, error: 'FILE_TOO_LARGE' }
+    }
+
+    const hash = await computeBlobSha256(output)
+    const data = Array.from(new Uint8Array(await output.arrayBuffer()))
+
+    return {
+      success: true,
+      data: {
+        data,
+        mimeType: 'image/webp',
+        width,
+        height,
+        size: output.size,
+        hash
+      }
+    }
+  } finally {
+    bitmap.close()
   }
 }
 
@@ -478,6 +481,11 @@ async function handleReadImage(payload: { relativePath: string }): Promise<Messa
 }
 
 async function handleDeleteImage(payload: { promptId?: string; relativePath?: string }): Promise<MessageResponse> {
+  const filename = payload.relativePath ? getImageFilenameFromPath(payload.relativePath) : null
+  if (payload.relativePath && !filename) {
+    return { success: false, error: 'INVALID_PATH' }
+  }
+
   const handle = await getFolderHandle()
   if (!handle) {
     return { success: false, error: 'FOLDER_NOT_CONFIGURED' }
@@ -485,9 +493,7 @@ async function handleDeleteImage(payload: { promptId?: string; relativePath?: st
 
   try {
     const imagesDir = await handle.getDirectoryHandle(IMAGE_DIR_NAME)
-    if (payload.relativePath) {
-      const filename = payload.relativePath.split('/').pop()
-      if (!filename) return { success: false, error: 'INVALID_PATH' }
+    if (filename) {
       await imagesDir.removeEntry(filename)
       return { success: true } as MessageResponse
     }

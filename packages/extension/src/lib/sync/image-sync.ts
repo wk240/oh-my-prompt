@@ -10,6 +10,7 @@
 import { IMAGE_DIR_NAME, MAX_IMAGE_SIZE, ALLOWED_IMAGE_EXTENSIONS } from '@oh-my-prompt/shared/constants'
 import { getFolderHandle, checkFolderPermission, requestFolderPermission } from './indexeddb'
 import { MessageType } from '@oh-my-prompt/shared/messages'
+import { getImageFilenameFromPath } from './image-processing'
 
 /**
  * Check if we're in content script context
@@ -210,6 +211,10 @@ async function deleteImageViaServiceWorker(promptId: string): Promise<{ success:
 }
 
 async function deleteImageByPathViaServiceWorker(relativePath: string): Promise<{ success: boolean; error?: string }> {
+  if (!getImageFilenameFromPath(relativePath)) {
+    return { success: false, error: 'INVALID_PATH' }
+  }
+
   const response = await chrome.runtime.sendMessage({
     type: MessageType.DELETE_IMAGE,
     payload: { relativePath }
@@ -243,6 +248,11 @@ async function deleteImageDirect(promptId: string): Promise<{ success: boolean; 
 }
 
 async function deleteImageByPathDirect(relativePath: string): Promise<{ success: boolean; error?: string }> {
+  const filename = getImageFilenameFromPath(relativePath)
+  if (!filename) {
+    return { success: false, error: 'INVALID_PATH' }
+  }
+
   const handle = await getFolderHandle()
   if (!handle) {
     return { success: false, error: 'FOLDER_NOT_CONFIGURED' }
@@ -250,10 +260,6 @@ async function deleteImageByPathDirect(relativePath: string): Promise<{ success:
 
   try {
     const imagesDir = await handle.getDirectoryHandle(IMAGE_DIR_NAME)
-    const filename = relativePath.split('/').pop()
-    if (!filename) {
-      return { success: false, error: 'INVALID_PATH' }
-    }
     await imagesDir.removeEntry(filename)
     revokeCachedImageUrl(relativePath)
     return { success: true }
@@ -273,6 +279,10 @@ export async function deleteImage(promptId: string): Promise<{ success: boolean;
 }
 
 export async function deleteImageByPath(relativePath: string): Promise<{ success: boolean; error?: string }> {
+  if (!getImageFilenameFromPath(relativePath)) {
+    return { success: false, error: 'INVALID_PATH' }
+  }
+
   if (isContentScriptContext()) {
     return deleteImageByPathViaServiceWorker(relativePath)
   }

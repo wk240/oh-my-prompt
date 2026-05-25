@@ -45,4 +45,11 @@ describe('image-sync', () => {
     expect(folderHandle.getDirectoryHandle).toHaveBeenCalledWith('images')
     expect(imagesDir.removeEntry).toHaveBeenCalledWith('11111111-1111-4111-8111-111111111111.webp')
   })
+
+  it('rejects malformed exact image asset paths before touching storage', async () => {
+    const result = await deleteImageByPath('foo/11111111-1111-4111-8111-111111111111.webp')
+
+    expect(result).toEqual({ success: false, error: 'INVALID_PATH' })
+    expect(getFolderHandle).not.toHaveBeenCalled()
+  })
 })

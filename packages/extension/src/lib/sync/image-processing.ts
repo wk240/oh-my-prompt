@@ -26,6 +26,20 @@ export function buildImagePath(imageId: string): string {
   return `${IMAGE_DIR_NAME}/${imageId}.webp`
 }
 
+export function getImageFilenameFromPath(relativePath: string): string | null {
+  const match = relativePath.match(new RegExp(`^${IMAGE_DIR_NAME}/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\\.webp$`, 'i'))
+  if (!match) {
+    return null
+  }
+
+  const imageId = match[1]
+  if (buildImagePath(imageId) !== relativePath) {
+    return null
+  }
+
+  return `${imageId}.webp`
+}
+
 export async function computeBlobSha256(blob: Blob): Promise<string> {
   const buffer = await blob.arrayBuffer()
   const hashBuffer = await crypto.subtle.digest('SHA-256', buffer)

@@ -629,7 +629,13 @@ export class SyncOrchestrator {
       return {
         skipped: true,
         data: localData,
-        localOnlyItems: { prompts: [], categories: [], temporaryPrompts: [] }
+        localOnlyItems: {
+          prompts: [],
+          categories: [],
+          temporaryPrompts: [],
+          imageAssetIds: [],
+          pendingImageDeleteKeys: []
+        }
       }
     }
 
@@ -640,7 +646,13 @@ export class SyncOrchestrator {
       // No cloud data, use local
       return {
         data: localData,
-        localOnlyItems: { prompts: [], categories: [], temporaryPrompts: [] }
+        localOnlyItems: {
+          prompts: [],
+          categories: [],
+          temporaryPrompts: [],
+          imageAssetIds: [],
+          pendingImageDeleteKeys: []
+        }
       }
     }
 
@@ -671,7 +683,9 @@ export class SyncOrchestrator {
       localOnlyItems: {
         prompts: [...promptMerge.localOnly, ...promptMerge.localNewer] as typeof cloudData.prompts,
         categories: [...categoryMerge.localOnly, ...categoryMerge.localNewer] as typeof cloudData.categories,
-        temporaryPrompts: [...tempMerge.localOnly, ...tempMerge.localNewer] as typeof cloudData.temporaryPrompts
+        temporaryPrompts: [...tempMerge.localOnly, ...tempMerge.localNewer] as typeof cloudData.temporaryPrompts,
+        imageAssetIds: [],
+        pendingImageDeleteKeys: []
       }
     }
 

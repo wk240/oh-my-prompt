@@ -1,10 +1,12 @@
-import type { Prompt, Category } from '@oh-my-prompt/shared/types'
+import type { Prompt, Category, ImageAsset, PendingImageDelete } from '@oh-my-prompt/shared/types'
 import { BACKUP_FILE_NAME, BACKUP_HISTORY_PREFIX, BACKUP_HISTORY_PATTERN, MAX_BACKUP_HISTORY } from '@oh-my-prompt/shared/constants'
 import { computeBackupDataHash, type BackupData } from './hash'
 
 // Full backup data structure including temporary prompts
 export interface FullBackupData extends BackupData {
   temporaryPrompts: Prompt[]
+  imageAssets?: Record<string, ImageAsset>
+  pendingImageDeletes?: PendingImageDelete[]
 }
 
 export interface BackupVersion {
@@ -42,6 +44,8 @@ export async function backupToFolder(
         categories: backupData.categories
       },
       temporaryPrompts: backupData.temporaryPrompts, // Include temporary library
+      imageAssets: backupData.imageAssets || {},
+      pendingImageDeletes: backupData.pendingImageDeletes || [],
       backupTime: new Date().toISOString(),
       contentHash
     }
@@ -85,6 +89,8 @@ export async function syncToLocalFolder(
         categories: backupData.categories
       },
       temporaryPrompts: backupData.temporaryPrompts, // Include temporary library
+      imageAssets: backupData.imageAssets || {},
+      pendingImageDeletes: backupData.pendingImageDeletes || [],
       backupTime: new Date().toISOString(),
       contentHash
     }
@@ -133,7 +139,9 @@ export async function readFromLocalFolder(
       return {
         prompts: userData.prompts as Prompt[],
         categories: userData.categories as Category[],
-        temporaryPrompts: parsed.temporaryPrompts || [] // Include temporary library
+        temporaryPrompts: parsed.temporaryPrompts || [], // Include temporary library
+        imageAssets: parsed.imageAssets || {},
+        pendingImageDeletes: parsed.pendingImageDeletes || []
       }
     }
 
@@ -146,7 +154,9 @@ export async function readFromLocalFolder(
     return {
       prompts: parsed.prompts as Prompt[],
       categories: parsed.categories as Category[],
-      temporaryPrompts: [] // No temporary prompts in legacy format
+      temporaryPrompts: [], // No temporary prompts in legacy format
+      imageAssets: parsed.imageAssets || {},
+      pendingImageDeletes: parsed.pendingImageDeletes || []
     }
   } catch (error) {
     console.warn('[Oh My Prompt] Failed to read local file:', error)
@@ -361,7 +371,9 @@ export async function readBackupFile(
       return {
         prompts: userData.prompts as Prompt[],
         categories: userData.categories as Category[],
-        temporaryPrompts: parsed.temporaryPrompts || [] // Include temporary library
+        temporaryPrompts: parsed.temporaryPrompts || [], // Include temporary library
+        imageAssets: parsed.imageAssets || {},
+        pendingImageDeletes: parsed.pendingImageDeletes || []
       }
     }
 
@@ -373,7 +385,9 @@ export async function readBackupFile(
     return {
       prompts: parsed.prompts as Prompt[],
       categories: parsed.categories as Category[],
-      temporaryPrompts: [] // No temporary prompts in legacy format
+      temporaryPrompts: [], // No temporary prompts in legacy format
+      imageAssets: parsed.imageAssets || {},
+      pendingImageDeletes: parsed.pendingImageDeletes || []
     }
   } catch (error) {
     console.warn('[Oh My Prompt] Failed to read backup file:', error)

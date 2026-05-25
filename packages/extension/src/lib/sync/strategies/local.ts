@@ -62,6 +62,8 @@ export class LocalSyncStrategy extends BaseSyncStrategy {
           categories: data.categories,
         },
         temporaryPrompts: data.temporaryPrompts,
+        imageAssets: data.imageAssets || {},
+        pendingImageDeletes: data.pendingImageDeletes || [],
         backupTime: new Date().toISOString(),
         contentHash,
       }
@@ -121,6 +123,8 @@ export class LocalSyncStrategy extends BaseSyncStrategy {
           prompts: userData.prompts as Prompt[],
           categories: userData.categories as Category[],
           temporaryPrompts: parsed.temporaryPrompts || [],
+          imageAssets: parsed.imageAssets || {},
+          pendingImageDeletes: parsed.pendingImageDeletes || [],
           timestamp: parsed.backupTime ? new Date(parsed.backupTime).getTime() : Date.now(),
         }
       }
@@ -135,6 +139,8 @@ export class LocalSyncStrategy extends BaseSyncStrategy {
         prompts: parsed.prompts as Prompt[],
         categories: parsed.categories as Category[],
         temporaryPrompts: [],
+        imageAssets: parsed.imageAssets || {},
+        pendingImageDeletes: parsed.pendingImageDeletes || [],
         timestamp: parsed.backupTime ? new Date(parsed.backupTime).getTime() : Date.now(),
       }
     } catch (error) {

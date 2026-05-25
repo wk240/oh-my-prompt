@@ -1,4 +1,4 @@
-import type { Prompt, Category } from '@oh-my-prompt/shared/types'
+import type { Prompt, Category, ImageAsset, PendingImageDelete } from '@oh-my-prompt/shared/types'
 
 /**
  * Strategy Pattern types for unified sync architecture
@@ -35,6 +35,8 @@ export interface FullBackupData {
   categories: Category[]
   temporaryPrompts: Prompt[]
   timestamp: number
+  imageAssets?: Record<string, ImageAsset>
+  pendingImageDeletes?: PendingImageDelete[]
 }
 
 export interface MergeResult {
@@ -43,6 +45,8 @@ export interface MergeResult {
     prompts: Prompt[]
     categories: Category[]
     temporaryPrompts: Prompt[]
+    imageAssetIds: string[]
+    pendingImageDeleteKeys: string[]
   }
 }
 

@@ -1216,7 +1216,13 @@ describe('SyncOrchestrator', () => {
 
       expect(result.skipped).toBe(true)
       expect(result.data.prompts).toEqual(localData.prompts)
-      expect(result.localOnlyItems).toEqual({ prompts: [], categories: [], temporaryPrompts: [] })
+      expect(result.localOnlyItems).toEqual({
+        prompts: [],
+        categories: [],
+        temporaryPrompts: [],
+        imageAssetIds: [],
+        pendingImageDeleteKeys: []
+      })
       expect(cloudStrategy.restore).not.toHaveBeenCalled()
     })
 

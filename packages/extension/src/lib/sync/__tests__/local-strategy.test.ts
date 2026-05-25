@@ -140,6 +140,62 @@ describe('LocalSyncStrategy', () => {
       expect(mockFileHandle.createWritable).toHaveBeenCalled()
     })
 
+    it('writes and reads image metadata in backup JSON', async () => {
+      const mockDirHandle = createMockDirHandle()
+      let backupContent = ''
+      const mockFileHandle = createMockFileHandle('{}')
+      const mockWritable = {
+        write: vi.fn(async (content: string) => {
+          backupContent = content
+        }),
+        close: vi.fn(),
+      }
+
+      mockFileHandle.createWritable.mockResolvedValue(mockWritable)
+      mockFileHandle.getFile.mockImplementation(async () => ({
+        text: vi.fn(async () => backupContent),
+      }))
+      mockDirHandle.getFileHandle.mockResolvedValue(mockFileHandle)
+      mockDirHandle.queryPermission.mockResolvedValue('granted')
+
+      vi.mocked(getFolderHandle).mockResolvedValue(mockDirHandle as any)
+
+      const data = {
+        prompts: [],
+        categories: [],
+        temporaryPrompts: [],
+        timestamp: 1700000000000,
+        imageAssets: {
+          'image-1': {
+            id: 'image-1',
+            promptId: 'prompt-1',
+            localPath: 'images/image-1.webp',
+            mimeType: 'image/webp' as const,
+            width: 100,
+            height: 80,
+            size: 1000,
+            hash: 'hash-1',
+            status: 'synced' as const,
+            updatedAt: 1,
+            cloudUrl: 'https://blob/img.webp',
+            cloudPath: 'users/u/images/image-1.webp'
+          }
+        },
+        pendingImageDeletes: [{
+          imageId: 'image-2',
+          cloudPath: 'users/u/images/image-2.webp',
+          attempts: 2,
+          updatedAt: 2
+        }]
+      }
+
+      await strategy.sync(data)
+      const restored = await strategy.restore()
+
+      expect(restored?.imageAssets).toEqual(data.imageAssets)
+      expect(restored?.pendingImageDeletes).toEqual(data.pendingImageDeletes)
+    })
+
     it('should handle sync errors gracefully', async () => {
       const mockDirHandle = createMockDirHandle()
       mockDirHandle.getFileHandle.mockRejectedValue(new Error('Write failed'))

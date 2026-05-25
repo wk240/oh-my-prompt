@@ -2,7 +2,7 @@ import { MessageType, MessageResponse } from '@oh-my-prompt/shared/messages'
 import type { StorageSchema, SyncSettings, VisionApiConfig, InsertPromptPayload, InsertResultPayload, SaveTemporaryPromptPayload, UpdateTemporaryPromptFormatPayload, Prompt, ProviderConfig, ProviderConfigsStorage, AgentGeneratePayload, EcommercePlatform, EcommerceLanguage } from '@oh-my-prompt/shared/types'
 import { StorageManager } from '../lib/storage'
 import { saveFolderHandle, getFolderHandle, checkFolderPermission } from '../lib/sync/indexeddb'
-import { getSyncStatus, triggerSync, restorePermission, initialSync, triggerProviderConfigsSync } from '../lib/sync/sync-manager'
+import { getSyncStatus, restorePermission, initialSync, triggerProviderConfigsSync } from '../lib/sync/sync-manager'
 import { createSyncOrchestrator, type FullBackupData } from '../lib/sync'
 import { syncApiConfigToFolder } from '../lib/sync/api-config-sync'
 import { checkForUpdate, getUpdateStatus, clearUpdateStatus, type UpdateStatus } from '../lib/version-checker'
@@ -135,6 +135,37 @@ function debouncedTriggerSync(backupData: FullBackupData): Promise<{ success: bo
         }
       }
     }, SYNC_DEBOUNCE_MS)
+  })
+}
+
+async function getStorageDataForDirectWrite(): Promise<StorageSchema> {
+  const result = await chrome.storage.local.get(STORAGE_KEY)
+  return (result[STORAGE_KEY] as StorageSchema | undefined) || storageManager.getDefaultData()
+}
+
+async function saveDataAndDebouncedSync(data: StorageSchema): Promise<{ success: boolean; error?: { type: string; message: string } }> {
+  await chrome.storage.local.set({ [STORAGE_KEY]: data })
+  return debouncedTriggerSync({
+    prompts: data.userData?.prompts || [],
+    categories: data.userData?.categories || [],
+    temporaryPrompts: data.temporaryPrompts || [],
+    timestamp: Date.now()
+  })
+}
+
+function notifyLovartSyncFailed(error?: { type: string; message: string }): void {
+  chrome.tabs.query({ url: ['*://lovart.ai/*', '*://*.lovart.ai/*'] }, (tabs) => {
+    tabs.forEach(tab => {
+      if (tab.id !== undefined && tab.id >= 0) {
+        chrome.tabs.sendMessage(tab.id, {
+          type: MessageType.SYNC_FAILED,
+          payload: {
+            errorType: error?.type,
+            errorMessage: error?.message
+          }
+        })
+      }
+    })
   })
 }
 
@@ -327,70 +358,45 @@ chrome.runtime.onMessage.addListener(
           return true
         }
 
-        // Merge with existing stored data directly to avoid StorageManager auto-sync side effects.
-        chrome.storage.local.get(STORAGE_KEY)
-          .then(result => {
-            const existingData = result[STORAGE_KEY] as Partial<StorageSchema> | undefined
-            const payload = message.payload as StorageSchema
-            const payloadSettings = payload.settings as Partial<SyncSettings> | undefined
-            // Preserve existing settings if payload doesn't have full settings
-            const mergedSettings: SyncSettings = {
-              showBuiltin: true,
-              syncEnabled: false,
-              visionEnabled: true,
-              visionDefaultFormat: 'natural',
-              ...existingData?.settings,
-              ...payloadSettings
-            }
+        (async () => {
+          const existingData = await getStorageDataForDirectWrite()
+          const payload = message.payload as StorageSchema
+          const payloadSettings = payload.settings as Partial<SyncSettings> | undefined
+          // Preserve existing settings if payload doesn't have full settings
+          const defaultSettings: SyncSettings = {
+            showBuiltin: true,
+            syncEnabled: false,
+            visionEnabled: true,
+            visionDefaultFormat: 'natural'
+          }
+          const mergedSettings: SyncSettings = {
+            ...defaultSettings,
+            ...existingData?.settings,
+            ...payloadSettings
+          }
 
-            const mergedData: StorageSchema = {
-              version: payload.version,
-              userData: payload.userData,
-              settings: mergedSettings,
-              temporaryPrompts: payload.temporaryPrompts ?? existingData?.temporaryPrompts ?? [],
-              _migrationComplete: payload._migrationComplete ?? existingData?._migrationComplete ?? true
-            }
+          const mergedData: StorageSchema = {
+            version: payload.version,
+            userData: payload.userData,
+            settings: mergedSettings,
+            temporaryPrompts: payload.temporaryPrompts ?? existingData?.temporaryPrompts ?? [],
+            _migrationComplete: payload._migrationComplete ?? existingData?._migrationComplete ?? true
+          }
 
-            return chrome.storage.local.set({ [STORAGE_KEY]: mergedData }).then(() => mergedData)
-          })
-          .then((savedData: StorageSchema) => {
-            // Trigger debounced sync with full backup data (including temporary prompts)
-            // Use debounced version to batch rapid updates (e.g., drag reorder)
-            const backupData: FullBackupData = {
-              prompts: savedData.userData.prompts,
-              categories: savedData.userData.categories,
-              temporaryPrompts: savedData.temporaryPrompts || [],
-              timestamp: Date.now()
+          return saveDataAndDebouncedSync(mergedData)
+        })()
+          .then((syncResult) => {
+            if (!syncResult.success) {
+              console.warn('[Oh My Prompt] Sync failed:', syncResult.error?.type, syncResult.error?.message)
+              notifyLovartSyncFailed(syncResult.error)
             }
-            return debouncedTriggerSync(backupData).then(syncResult => {
-              if (!syncResult.success) {
-                console.warn('[Oh My Prompt] Sync failed:', syncResult.error?.type, syncResult.error?.message)
-
-                // Notify UI about sync failure with error details
-                chrome.tabs.query({ url: ['*://lovart.ai/*', '*://*.lovart.ai/*'] }, (tabs) => {
-                  tabs.forEach(tab => {
-                    // Check tab.id is valid (>= 0, not TAB_ID_NONE which is -1)
-                    if (tab.id !== undefined && tab.id >= 0) {
-                      chrome.tabs.sendMessage(tab.id, {
-                        type: MessageType.SYNC_FAILED,
-                        payload: {
-                          errorType: syncResult.error?.type,
-                          errorMessage: syncResult.error?.message
-                        }
-                      })
-                    }
-                  })
-                })
+            sendResponse({
+              success: true,
+              data: {
+                syncSuccess: syncResult.success,
+                syncError: syncResult.error
               }
-              // Return sync status and error info in response
-              sendResponse({
-                success: true,
-                data: {
-                  syncSuccess: syncResult.success,
-                  syncError: syncResult.error
-                }
-              } as MessageResponse)
-            })
+            } as MessageResponse)
           })
           .catch(error => {
             console.error('[Oh My Prompt] SET_STORAGE error:', error)
@@ -1387,7 +1393,7 @@ chrome.runtime.onMessage.addListener(
           return true
         }
 
-        storageManager.getData()
+        getStorageDataForDirectWrite()
           .then(async (data) => {
             // Get or initialize temporary prompts array
             const temporaryPrompts = data.temporaryPrompts || []
@@ -1488,9 +1494,9 @@ chrome.runtime.onMessage.addListener(
             // Add to temporary prompts array
             temporaryPrompts.push(newPrompt)
 
-            // Save to storage with temporaryPrompts field
+            // Save to storage with temporaryPrompts field through the debounced sync entry
             const version = chrome.runtime.getManifest().version
-            await storageManager.saveData({
+            await saveDataAndDebouncedSync({
               version,
               userData: data.userData,
               settings: data.settings,
@@ -1524,7 +1530,7 @@ chrome.runtime.onMessage.addListener(
           return true
         }
 
-        storageManager.getData()
+        getStorageDataForDirectWrite()
           .then(async (data) => {
             // Get current temporary prompts
             const temporaryPrompts = data.temporaryPrompts || []
@@ -1576,9 +1582,9 @@ chrome.runtime.onMessage.addListener(
               temporaryPrompts.push(newPrompt)
             }
 
-            // Save to storage
+            // Save to storage through the debounced sync entry
             const version = chrome.runtime.getManifest().version
-            await storageManager.saveData({
+            await saveDataAndDebouncedSync({
               version,
               userData: data.userData,
               settings: data.settings,
@@ -1604,11 +1610,11 @@ chrome.runtime.onMessage.addListener(
 
       // Clear all temporary prompts
       case MessageType.CLEAR_TEMPORARY_PROMPTS:
-        storageManager.getData()
+        getStorageDataForDirectWrite()
           .then(async (data) => {
             // Clear temporary prompts array
             const version = chrome.runtime.getManifest().version
-            await storageManager.saveData({
+            await saveDataAndDebouncedSync({
               version,
               userData: data.userData,
               settings: data.settings,
@@ -1641,7 +1647,7 @@ chrome.runtime.onMessage.addListener(
           return true
         }
 
-        storageManager.getData()
+        getStorageDataForDirectWrite()
           .then(async (data) => {
             const temporaryPrompts = data.temporaryPrompts || []
             const prompts = data.userData.prompts
@@ -1667,24 +1673,15 @@ chrome.runtime.onMessage.addListener(
             temporaryPrompts.splice(promptIndex, 1)
             prompts.push(promptToTransfer)
 
-            // Save to storage
+            // Save to storage through the debounced sync entry
             const version = chrome.runtime.getManifest().version
             const userData = { prompts, categories: data.userData.categories }
-            await storageManager.saveData({
+            await saveDataAndDebouncedSync({
               version,
               userData,
               settings: data.settings,
               temporaryPrompts
             })
-
-
-            // Trigger auto-sync with full backup data
-            const backupData = {
-              prompts,
-              categories: data.userData.categories,
-              temporaryPrompts
-            }
-            triggerSync(backupData).catch(err => console.warn('[Oh My Prompt] Sync after transfer failed:', err))
 
             // Broadcast REFRESH_DATA to all Lovart tabs
             chrome.tabs.query({ url: ['*://lovart.ai/*', '*://*.lovart.ai/*'] }, (tabs) => {

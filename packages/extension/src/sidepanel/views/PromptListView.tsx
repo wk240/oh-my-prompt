@@ -731,7 +731,23 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
 
   // Helper function to check if a URL is a special page (no content script)
   const isSpecialPage = useCallback((url: string): boolean => {
-    return url.startsWith('chrome://') || url.startsWith('edge://') || url.startsWith('about://') || url.startsWith('chrome-extension://')
+    return url.startsWith('chrome://') ||
+      url.startsWith('chrome-error://') ||
+      url.startsWith('edge://') ||
+      url.startsWith('about:') ||
+      url.startsWith('about://') ||
+      url.startsWith('devtools://') ||
+      url.startsWith('view-source:') ||
+      url.startsWith('chrome-extension://')
+  }, [])
+
+  const isExpectedInjectionFailure = useCallback((error: unknown): boolean => {
+    if (!(error instanceof Error)) return false
+
+    return error.message.includes('Frame with ID 0 is showing error page') ||
+      error.message.includes('Cannot access a chrome:// URL') ||
+      error.message.includes('Cannot access contents of url') ||
+      error.message.includes('The extensions gallery cannot be scripted')
   }, [])
 
   // Helper function to extract site name from URL
@@ -747,6 +763,11 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
   // Helper function to inject content script dynamically
   const injectContentScript = useCallback(async (tabId: number): Promise<boolean> => {
     try {
+      const tab = await chrome.tabs.get(tabId)
+      if (!tab.url || isSpecialPage(tab.url)) {
+        return false
+      }
+
       const manifest = chrome.runtime.getManifest()
       const contentScripts = manifest.content_scripts || []
       const targetScript = contentScripts.find(script =>
@@ -767,10 +788,12 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
       await new Promise(resolve => setTimeout(resolve, 300))
       return true
     } catch (error) {
-      console.error('[Oh My Prompt] SidePanel: Failed to inject content script:', error)
+      if (!isExpectedInjectionFailure(error)) {
+        console.error('[Oh My Prompt] SidePanel: Failed to inject content script:', error)
+      }
       return false
     }
-  }, [])
+  }, [isExpectedInjectionFailure, isSpecialPage])
 
   // Connect to a tab using Port (real-time communication)
   const connectToTab = useCallback(async (tabId: number, retryCount = 0): Promise<boolean> => {
@@ -801,7 +824,6 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
           return connectToTab(tabId, retryCount + 1)
         }
       }
-      console.error('[Oh My Prompt] SidePanel: Failed to establish content script')
       // Connection failed - ensure currentTabId stays null
       return false
     }

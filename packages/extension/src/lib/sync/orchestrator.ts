@@ -757,6 +757,7 @@ export class SyncOrchestrator {
       // Cloud has data, local storage empty -> restore from cloud
       await this.applyData(cloudData)
       await this.updateSyncStatus({ initialized: true })
+      await this.reconcilePendingSnapshotFromStorage()
       return
     }
 
@@ -767,6 +768,7 @@ export class SyncOrchestrator {
         initialized: true,
         pendingCloudSync: cloudAvailable
       })
+      await this.reconcilePendingSnapshotFromStorage()
       return
     }
 
@@ -776,6 +778,7 @@ export class SyncOrchestrator {
     }
 
     await this.updateSyncStatus({ initialized: true })
+    await this.reconcilePendingSnapshotFromStorage()
   }
 
   async getStatus(): Promise<UnifiedSyncStatus> {
@@ -840,6 +843,17 @@ export class SyncOrchestrator {
       temporaryPrompts: data.temporaryPrompts || [],
       timestamp: Date.now()
     }
+  }
+
+  private async reconcilePendingSnapshotFromStorage(): Promise<void> {
+    const guard = await this.getGuardStatus()
+    if (!guard.pendingSnapshotHash) return
+
+    const localData = await this.getLocalData()
+    const localHash = await computeBackupDataHash(localData)
+    if (localHash !== guard.pendingSnapshotHash) return
+
+    await this.triggerSync(localData)
   }
 
   private async applyData(data: FullBackupData): Promise<void> {

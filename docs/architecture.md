@@ -257,4 +257,4 @@ Message types defined in `packages/shared/messages.ts` (MessageType enum, 50+ ty
 
 ---
 
-*Last updated: 2026-05-20*
+*Last updated: 2026-05-24*

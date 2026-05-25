@@ -154,7 +154,9 @@ describe('SyncOrchestrator', () => {
 
       await vi.advanceTimersByTimeAsync(1)
 
-      expect(cloudStrategy.sync).toHaveBeenCalledTimes(1)
+      await vi.waitFor(() => {
+        expect(cloudStrategy.sync).toHaveBeenCalledTimes(1)
+      })
       expect(cloudStrategy.sync).toHaveBeenCalledWith(data)
     })
 
@@ -183,6 +185,7 @@ describe('SyncOrchestrator', () => {
       }))
 
       await vi.advanceTimersByTimeAsync(1_500)
+      await vi.runOnlyPendingTimersAsync()
 
       expect(cloudStrategy.sync).not.toHaveBeenCalled()
       expect((storageData.syncStatus as any).guard).toEqual(expect.objectContaining({
@@ -1679,6 +1682,33 @@ describe('SyncOrchestrator', () => {
             prompts: expect.arrayContaining([expect.objectContaining({ id: '1' })])
           })
         })
+      }))
+    })
+
+    it('should reconcile persisted pending snapshot hash from current storage on startup', async () => {
+      const data = makeBackupData({ promptId: 'pending-1', updatedAt: 100 })
+      const hash = await computeBackupDataHash(data)
+      storageData.prompt_script_data = {
+        userData: { prompts: data.prompts, categories: data.categories },
+        temporaryPrompts: data.temporaryPrompts
+      }
+      storageData.syncStatus = { guard: { pendingSnapshotHash: hash } }
+
+      vi.spyOn(cloudStrategy, 'isAvailable').mockResolvedValue(false)
+      vi.spyOn(cloudStrategy, 'restore').mockResolvedValue(null)
+      vi.spyOn(localStrategy, 'isAvailable').mockResolvedValue(true)
+      vi.spyOn(localStrategy, 'restore').mockResolvedValue(null)
+
+      await orchestrator.initialSync()
+
+      expect(executeLocalSync).toHaveBeenCalledWith(expect.objectContaining({
+        prompts: data.prompts,
+        categories: data.categories,
+        temporaryPrompts: data.temporaryPrompts
+      }))
+      expect(storageData.syncStatus).toEqual(expect.objectContaining({
+        hasUnsyncedChanges: true,
+        pendingCloudSync: true
       }))
     })
   })

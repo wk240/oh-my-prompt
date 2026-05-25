@@ -6,6 +6,7 @@ import type { StorageSchema } from '@oh-my-prompt/shared/types'
 const mocks = vi.hoisted(() => {
   const storageManager = {
     getData: vi.fn(),
+    getDefaultData: vi.fn(),
     saveData: vi.fn(),
     updateSettings: vi.fn()
   }
@@ -131,6 +132,7 @@ describe('service worker message handling', () => {
     vi.useFakeTimers()
 
     runtimeMessageListener = undefined as unknown as RuntimeMessageListener
+    mocks.storageManager.getDefaultData.mockReturnValue(existingData)
 
     global.chrome = {
       contextMenus: {
@@ -315,5 +317,38 @@ describe('service worker message handling', () => {
         }
       }
     })
+  })
+
+  it('routes temporary prompt transfer through debounced orchestrator sync only', async () => {
+    const data: StorageSchema = {
+      ...existingData,
+      userData: {
+        prompts: [],
+        categories: [{ id: 'cat-1', name: 'Category', order: 0 }]
+      },
+      temporaryPrompts: [
+        { id: 'temp-1', name: 'Temp', content: 'Draft', categoryId: 'temporary', order: 0 }
+      ]
+    }
+    vi.mocked(chrome.storage.local.get).mockResolvedValue({ [STORAGE_KEY]: data })
+    mocks.orchestratorTriggerSync.mockResolvedValue({ cloudSynced: true, localSynced: true })
+    const sendResponse = vi.fn()
+
+    dispatchRuntimeMessage({
+      type: MessageType.TRANSFER_TEMPORARY_PROMPT,
+      payload: { promptId: 'temp-1', targetCategoryId: 'cat-1' }
+    }, sendResponse)
+    await vi.advanceTimersByTimeAsync(500)
+
+    expect(mocks.storageManager.getData).not.toHaveBeenCalled()
+    expect(mocks.storageManager.saveData).not.toHaveBeenCalled()
+    expect(mocks.oldTriggerSync).not.toHaveBeenCalled()
+    expect(mocks.orchestratorTriggerSync).toHaveBeenCalledTimes(1)
+    expect(mocks.orchestratorTriggerSync).toHaveBeenCalledWith(expect.objectContaining({
+      prompts: [expect.objectContaining({ id: 'temp-1', categoryId: 'cat-1' })],
+      categories: data.userData.categories,
+      temporaryPrompts: []
+    }))
+    expect(sendResponse).toHaveBeenCalledWith({ success: true })
   })
 })

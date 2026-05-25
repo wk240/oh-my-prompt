@@ -990,11 +990,15 @@ export class SyncOrchestrator {
     return this.stableStringify(candidate) < this.stableStringify(existing)
   }
 
-  private preserveMissingImageMetadata<T extends { imageId?: string; localImage?: string; remoteImageUrl?: string }>(
+  private preserveMissingImageMetadata<T extends { updatedAt?: number; imageId?: string; localImage?: string; remoteImageUrl?: string }>(
     preferred: T,
     fallback?: T
   ): T {
     if (!fallback) return preferred
+
+    if ((preferred.updatedAt || 0) > (fallback.updatedAt || 0)) {
+      return preferred
+    }
 
     return {
       ...preferred,

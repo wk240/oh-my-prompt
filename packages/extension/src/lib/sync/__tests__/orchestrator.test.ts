@@ -1350,6 +1350,104 @@ describe('SyncOrchestrator', () => {
       }))
     })
 
+    it('should not resurrect older cloud image metadata when newer local prompt clears it', async () => {
+      const cloudData = makeBackupData({
+        prompts: [
+          {
+            id: '1',
+            name: 'Prompt',
+            content: 'cloud',
+            categoryId: 'c1',
+            order: 0,
+            updatedAt: 1000,
+            imageId: 'image-1',
+            localImage: 'images/1.webp',
+            remoteImageUrl: 'https://example.com/1.webp'
+          }
+        ],
+        categories: [{ id: 'c1', name: 'Category', order: 0, updatedAt: 1000 }]
+      })
+      const localData = makeBackupData({
+        prompts: [
+          {
+            id: '1',
+            name: 'Prompt',
+            content: 'local cleared',
+            categoryId: 'c1',
+            order: 0,
+            updatedAt: 2000,
+            imageId: undefined,
+            localImage: undefined,
+            remoteImageUrl: undefined
+          }
+        ],
+        categories: [{ id: 'c1', name: 'Category', order: 0, updatedAt: 1000 }]
+      })
+
+      vi.spyOn(cloudStrategy, 'restore').mockResolvedValue(cloudData)
+      storageData.prompt_script_data = {
+        userData: { prompts: localData.prompts, categories: localData.categories },
+        temporaryPrompts: localData.temporaryPrompts
+      }
+
+      const result = await orchestrator.downloadAndMerge({ reason: 'manual' })
+      const prompt = result.data.prompts[0]
+
+      expect(prompt.content).toBe('local cleared')
+      expect(prompt.imageId).toBeUndefined()
+      expect(prompt.localImage).toBeUndefined()
+      expect(prompt.remoteImageUrl).toBeUndefined()
+    })
+
+    it('should not resurrect older local image metadata when newer cloud prompt clears it', async () => {
+      const cloudData = makeBackupData({
+        prompts: [
+          {
+            id: '1',
+            name: 'Prompt',
+            content: 'cloud cleared',
+            categoryId: 'c1',
+            order: 0,
+            updatedAt: 2000,
+            imageId: undefined,
+            localImage: undefined,
+            remoteImageUrl: undefined
+          }
+        ],
+        categories: [{ id: 'c1', name: 'Category', order: 0, updatedAt: 1000 }]
+      })
+      const localData = makeBackupData({
+        prompts: [
+          {
+            id: '1',
+            name: 'Prompt',
+            content: 'local',
+            categoryId: 'c1',
+            order: 0,
+            updatedAt: 1000,
+            imageId: 'image-1',
+            localImage: 'images/1.webp',
+            remoteImageUrl: 'https://example.com/1.webp'
+          }
+        ],
+        categories: [{ id: 'c1', name: 'Category', order: 0, updatedAt: 1000 }]
+      })
+
+      vi.spyOn(cloudStrategy, 'restore').mockResolvedValue(cloudData)
+      storageData.prompt_script_data = {
+        userData: { prompts: localData.prompts, categories: localData.categories },
+        temporaryPrompts: localData.temporaryPrompts
+      }
+
+      const result = await orchestrator.downloadAndMerge({ reason: 'manual' })
+      const prompt = result.data.prompts[0]
+
+      expect(prompt.content).toBe('cloud cleared')
+      expect(prompt.imageId).toBeUndefined()
+      expect(prompt.localImage).toBeUndefined()
+      expect(prompt.remoteImageUrl).toBeUndefined()
+    })
+
     it('merges image metadata from cloud and local snapshots', async () => {
       const cloudData = {
         prompts: [],

@@ -58,7 +58,7 @@ export function formatEcommercePromptBundle(
     `套图结构：${formatStructure(configSnapshot)}。`,
     '',
     '图片提示词：',
-    ...promptSections,
+    promptSections.join('\n\n'),
   ].join('\n')
 }
 

@@ -59,6 +59,18 @@ describe('formatEcommercePromptBundle', () => {
     )
   })
 
+  it('separates each prompt section with a blank line for multi-image insertion', () => {
+    const bundle = formatEcommercePromptBundle(result, config)
+
+    expect(bundle).toContain([
+      '01｜白底主图｜用途：电商主图',
+      '提示词：Create the white background hero image.',
+      '',
+      '02｜场景图｜用途：生活场景展示',
+      '提示词：Create a lifestyle desk scene.',
+    ].join('\n'))
+  })
+
   it('uses the generation snapshot instead of prompt-level ratios for global requirements', () => {
     const changedSnapshot: EcommerceConfig = {
       ...config,

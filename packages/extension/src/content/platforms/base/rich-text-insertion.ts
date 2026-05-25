@@ -1,16 +1,22 @@
-export function formatRichTextInsertionHtml(text: string): string {
-  return escapeHtml(text).replace(/\r\n|\r|\n/g, '<br>')
-}
-
 export function hasLineBreak(text: string): boolean {
   return /\r\n|\r|\n/.test(text)
 }
 
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
+export function dispatchMultilinePasteEvent(element: HTMLElement, text: string): boolean {
+  if (typeof ClipboardEvent === 'undefined' || typeof DataTransfer === 'undefined') {
+    return false
+  }
+
+  const beforeText = element.textContent
+  const clipboardData = new DataTransfer()
+  clipboardData.setData('text/plain', text)
+
+  const pasteEvent = new ClipboardEvent('paste', {
+    bubbles: true,
+    cancelable: true,
+    clipboardData,
+  })
+
+  element.dispatchEvent(pasteEvent)
+  return element.textContent !== beforeText
 }

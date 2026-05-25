@@ -17,6 +17,7 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // scripts/release.ts -> release/ -> skills/ -> .claude/ -> project root
 const rootDir = path.resolve(__dirname, '..', '..', '..', '..');
+const extensionDir = path.join(rootDir, 'packages', 'extension');
 
 // ANSI颜色码
 const colors = {
@@ -52,8 +53,8 @@ function writeJson(filePath: string, data: object) {
 }
 
 function checkVersions(): { manifestVersion: string; packageVersion: string } {
-  const manifest = readJson(path.join(rootDir, 'manifest.json'));
-  const pkg = readJson(path.join(rootDir, 'package.json'));
+  const manifest = readJson(path.join(extensionDir, 'manifest.json'));
+  const pkg = readJson(path.join(extensionDir, 'package.json'));
 
   // package.json版本格式: 1.3.5.0, manifest.json: 1.3.5
   const manifestVersion = manifest.version;
@@ -70,7 +71,7 @@ function checkVersions(): { manifestVersion: string; packageVersion: string } {
 }
 
 function createZip(version: string): string {
-  const distDir = path.join(rootDir, 'dist');
+  const distDir = path.join(extensionDir, 'dist');
   const releasesDir = path.join(rootDir, 'releases');
   // 文件名格式: oh-my-prompt-v{版本号}.zip
   const zipName = `oh-my-prompt-v${version}.zip`;

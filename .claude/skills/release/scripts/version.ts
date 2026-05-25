@@ -23,6 +23,7 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // scripts/version.ts -> release/ -> skills/ -> .claude/ -> project root
 const rootDir = path.resolve(__dirname, '..', '..', '..', '..');
+const extensionDir = path.join(rootDir, 'packages', 'extension');
 
 const colors = {
   green: '\x1b[32m',
@@ -119,16 +120,25 @@ function main() {
   log('green', `✓ package.json: ${oldPackageVersion} → ${version}`);
   updatedFiles.push('package.json');
 
-  // 2. 更新 manifest.json (在 packages/extension/ 目录下)
-  const manifestPath = path.join(rootDir, 'packages', 'extension', 'manifest.json');
+  // 2. 更新 extension package.json
+  const extensionPkgPath = path.join(extensionDir, 'package.json');
+  const extensionPkg = readJson(extensionPkgPath);
+  const oldExtensionPackageVersion = extensionPkg.version;
+  extensionPkg.version = version;
+  writeJson(extensionPkgPath, extensionPkg);
+  log('green', `✓ packages/extension/package.json: ${oldExtensionPackageVersion} → ${version}`);
+  updatedFiles.push('packages/extension/package.json');
+
+  // 3. 更新 manifest.json (在 packages/extension/ 目录下)
+  const manifestPath = path.join(extensionDir, 'manifest.json');
   const manifest = readJson(manifestPath);
   const oldManifestVersion = manifest.version;
   manifest.version = version;
   writeJson(manifestPath, manifest);
-  log('green', `✓ manifest.json: ${oldManifestVersion} → ${version}`);
-  updatedFiles.push('manifest.json');
+  log('green', `✓ packages/extension/manifest.json: ${oldManifestVersion} → ${version}`);
+  updatedFiles.push('packages/extension/manifest.json');
 
-  // 3. 更新 VERSION 文件
+  // 4. 更新 VERSION 文件
   const versionPath = path.join(rootDir, 'VERSION');
   if (fs.existsSync(versionPath)) {
     const oldVersionContent = fs.readFileSync(versionPath, 'utf-8').trim();
@@ -137,7 +147,7 @@ function main() {
     updatedFiles.push('VERSION');
   }
 
-  // 4. 更新 BUILD.md 文档中的版本引用
+  // 5. 更新 BUILD.md 文档中的版本引用
   const buildMdPath = path.join(rootDir, 'BUILD.md');
   if (fs.existsSync(buildMdPath)) {
     // 同时更新可能的4位和3位版本号引用
@@ -159,7 +169,7 @@ function main() {
     }
   }
 
-  // 5. 更新 package-lock.json
+  // 6. 更新 package-lock.json
   log('cyan', `\n▶ 更新 package-lock.json...`);
   try {
     execSync('npm install --ignore-scripts', { stdio: 'inherit', cwd: rootDir });

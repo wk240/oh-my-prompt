@@ -27,6 +27,7 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // scripts/github-release.ts -> release/ -> skills/ -> .claude/ -> project root
 const rootDir = path.resolve(__dirname, '..', '..', '..', '..');
+const extensionDir = path.join(rootDir, 'packages', 'extension');
 
 const colors = {
   green: '\x1b[32m',
@@ -69,7 +70,7 @@ function readJson(filePath: string) {
 }
 
 function checkGitStatus(): boolean {
-  const status = runCommandSilent('git status --porcelain');
+  const status = runCommandSilent('git status --porcelain --ignore-submodules=dirty');
   if (status) {
     log('red', '✗ Git 状态不干净，请先提交更改');
     log('yellow', '未提交的文件:');
@@ -209,7 +210,7 @@ function main() {
   }
 
   // 3. 获取当前版本
-  const manifest = readJson(path.join(rootDir, 'manifest.json'));
+  const manifest = readJson(path.join(extensionDir, 'manifest.json'));
   const version = manifest.version;
   const displayVersion = `v${version}`;
   log('green', `✓ 当前版本: ${displayVersion}\n`);

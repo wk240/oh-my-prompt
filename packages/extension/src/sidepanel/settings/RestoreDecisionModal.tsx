@@ -9,7 +9,7 @@ interface RestoreDecisionModalProps {
   open: boolean
   onClose: () => void
   onRestore: () => void
-  onContinue: () => void
+  onContinue: () => void | Promise<void>
   onReselect: () => void
   existingBackup: ExistingBackupInfo
 }

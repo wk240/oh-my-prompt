@@ -8,7 +8,7 @@ import { MergePreviewModal, MergePreviewData } from './MergePreviewModal'
 import { HistoryModal } from './HistoryModal'
 import { RestoreDecisionModal } from './RestoreDecisionModal'
 import { MergeConflictModal, MergeResult } from './MergeConflictModal'
-import { changeSyncFolder, enableSync, getBackupVersions, restoreFromBackup } from '@/lib/sync/sync-manager'
+import { changeSyncFolder, confirmUseCurrentDataForBackup, enableSync, getBackupVersions, restoreFromBackup } from '@/lib/sync/sync-manager'
 import type { ExistingBackupInfo } from '@/lib/sync/sync-manager'
 import type { BackupStatusStorage, UnifiedSyncStatus } from '@/lib/sync/types'
 import type { BackupVersion } from '@/lib/sync/file-sync'
@@ -521,10 +521,27 @@ export function BackupSection() {
   /**
    * Handle decision modal continue action
    */
-  const handleDecisionContinue = () => {
-    setDecisionModalOpen(false)
-    setExistingBackup(null)
-    setSuccess('备份已启用，当前数据优先')
+  const handleDecisionContinue = async () => {
+    setLoading(true)
+    setError(null)
+    setSuccess(null)
+
+    try {
+      const result = await confirmUseCurrentDataForBackup()
+      if (result.success) {
+        setDecisionModalOpen(false)
+        setExistingBackup(null)
+        setSuccess('备份已启用，当前数据优先')
+        await loadBackupStatus()
+      } else {
+        setError(result.error || '同步失败')
+      }
+    } catch (err) {
+      console.error('[Oh My Prompt] Confirm current data failed:', err)
+      setError('同步失败')
+    } finally {
+      setLoading(false)
+    }
   }
 
   /**

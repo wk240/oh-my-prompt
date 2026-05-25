@@ -13,6 +13,10 @@ import './migrations/register'
 import { createSyncOrchestrator } from './sync'
 import type { FullBackupData } from './sync/types'
 
+interface SaveDataOptions {
+  triggerSync?: boolean
+}
+
 /**
  * StorageManager class for managing extension data persistence
  */
@@ -139,9 +143,13 @@ export class StorageManager {
   /**
    * Saves full storage data and triggers automatic sync
    */
-  async saveData(data: StorageSchema): Promise<void> {
+  async saveData(data: StorageSchema, options: SaveDataOptions = {}): Promise<void> {
     try {
       await chrome.storage.local.set({ [STORAGE_KEY]: data })
+
+      if (options.triggerSync === false) {
+        return
+      }
 
       // Trigger automatic sync (fire-and-forget, non-blocking)
       const syncData: FullBackupData = {
@@ -163,10 +171,10 @@ export class StorageManager {
   /**
    * Update settings with partial updates
    */
-  async updateSettings(updates: Partial<SyncSettings>): Promise<void> {
+  async updateSettings(updates: Partial<SyncSettings>, options: SaveDataOptions = {}): Promise<void> {
     const data = await this.getData()
     data.settings = { ...data.settings, ...updates }
-    await this.saveData(data)
+    await this.saveData(data, options)
   }
 
   /**

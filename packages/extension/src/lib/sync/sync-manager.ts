@@ -288,6 +288,65 @@ export interface EnableSyncResult {
   existingBackup?: ExistingBackupInfo
 }
 
+function hasRestorableBackup(data: FullBackupData | null): data is FullBackupData {
+  return Boolean(
+    data &&
+    (
+      data.prompts.length > 0 ||
+      data.categories.length > 0 ||
+      (data.temporaryPrompts?.length || 0) > 0
+    )
+  )
+}
+
+async function getExistingBackupInfo(handle: FileSystemDirectoryHandle): Promise<ExistingBackupInfo> {
+  const existingBackupInfo: ExistingBackupInfo = { hasBackup: false }
+
+  try {
+    const existingData = await readFromLocalFolder(handle)
+    if (!hasRestorableBackup(existingData)) {
+      return existingBackupInfo
+    }
+
+    existingBackupInfo.hasBackup = true
+    existingBackupInfo.promptCount = existingData.prompts.length
+    existingBackupInfo.categoryCount = existingData.categories.length
+    existingBackupInfo.temporaryPromptCount = existingData.temporaryPrompts?.length || 0
+
+    try {
+      const fileHandle = await handle.getFileHandle(BACKUP_FILE_NAME)
+      const file = await fileHandle.getFile()
+      const content = await file.text()
+      const parsed = JSON.parse(content)
+      existingBackupInfo.backupTime = parsed.backupTime
+    } catch {
+      // Backup metadata is optional; counts are enough to show the decision modal.
+    }
+  } catch {
+    // No existing backup or read error - ignore
+  }
+
+  return existingBackupInfo
+}
+
+async function updateLocalSyncStatusCache(handle: FileSystemDirectoryHandle, updates: Record<string, unknown> = {}): Promise<void> {
+  try {
+    const result = await chrome.storage.local.get('syncStatus')
+    const existing = result.syncStatus || {}
+    await chrome.storage.local.set({
+      syncStatus: {
+        ...existing,
+        localEnabled: true,
+        folderName: handle.name,
+        permissionStatus: 'granted',
+        ...updates
+      }
+    })
+  } catch (cacheError) {
+    console.warn('[Oh My Prompt] Failed to update syncStatus cache:', cacheError)
+  }
+}
+
 /**
  * Enable sync - reuse existing folder if permission valid, otherwise select new
  */
@@ -339,53 +398,21 @@ export async function enableSync(): Promise<EnableSyncResult> {
     await saveFolderHandle(handle)
 
     // Check for existing backup in the selected folder
-    const existingBackupInfo: ExistingBackupInfo = { hasBackup: false }
-    try {
-      const existingData = await readFromLocalFolder(handle)
-      if (existingData && existingData.prompts.length > 0) {
-        // Read backup time from latest file
-        try {
-          const fileHandle = await handle.getFileHandle(BACKUP_FILE_NAME)
-          const file = await fileHandle.getFile()
-          const content = await file.text()
-          const parsed = JSON.parse(content)
-          existingBackupInfo.hasBackup = true
-          existingBackupInfo.promptCount = existingData.prompts.length
-          existingBackupInfo.categoryCount = existingData.categories.length
-          existingBackupInfo.temporaryPromptCount = existingData.temporaryPrompts?.length || 0
-          existingBackupInfo.backupTime = parsed.backupTime
-        } catch {
-          existingBackupInfo.hasBackup = true
-          existingBackupInfo.promptCount = existingData.prompts.length
-          existingBackupInfo.categoryCount = existingData.categories.length
-          existingBackupInfo.temporaryPromptCount = existingData.temporaryPrompts?.length || 0
-        }
-      }
-    } catch {
-      // No existing backup or read error - ignore
+    const existingBackupInfo = await getExistingBackupInfo(handle)
+    if (existingBackupInfo.hasBackup) {
+      await updateLocalSyncStatusCache(handle)
+      await restoreApiConfigFromFolder()
+      return { success: true, existingBackup: existingBackupInfo }
     }
 
-    // Only save folder handle and enable sync, no auto-backup on first selection
+    // No existing backup: enable sync immediately so the current data becomes the first backup.
     const storageManager = StorageManager.getInstance()
     await storageManager.updateSettings({
       syncEnabled: true
     })
 
     // Update syncStatus cache for instant display on next settings page open
-    try {
-      const result = await chrome.storage.local.get('syncStatus')
-      const existing = result.syncStatus || {}
-      await chrome.storage.local.set({
-        syncStatus: {
-          ...existing,
-          localEnabled: true,
-          folderName: handle.name,
-          permissionStatus: 'granted'
-        }
-      })
-    } catch (cacheError) {
-      console.warn('[Oh My Prompt] Failed to update syncStatus cache:', cacheError)
-    }
+    await updateLocalSyncStatusCache(handle)
 
     // Restore API config from folder if not in storage
     await restoreApiConfigFromFolder()
@@ -430,30 +457,11 @@ export async function changeSyncFolder(): Promise<{ success: boolean; error?: st
     await saveFolderHandle(handle)
 
     // Check for existing backup in the new folder
-    const existingBackupInfo: ExistingBackupInfo = { hasBackup: false }
-    try {
-      const existingData = await readFromLocalFolder(handle)
-      if (existingData && existingData.prompts.length > 0) {
-        // Read backup time from latest file
-        try {
-          const fileHandle = await handle.getFileHandle(BACKUP_FILE_NAME)
-          const file = await fileHandle.getFile()
-          const content = await file.text()
-          const parsed = JSON.parse(content)
-          existingBackupInfo.hasBackup = true
-          existingBackupInfo.promptCount = existingData.prompts.length
-          existingBackupInfo.categoryCount = existingData.categories.length
-          existingBackupInfo.temporaryPromptCount = existingData.temporaryPrompts?.length || 0
-          existingBackupInfo.backupTime = parsed.backupTime
-        } catch {
-          existingBackupInfo.hasBackup = true
-          existingBackupInfo.promptCount = existingData.prompts.length
-          existingBackupInfo.categoryCount = existingData.categories.length
-          existingBackupInfo.temporaryPromptCount = existingData.temporaryPrompts?.length || 0
-        }
-      }
-    } catch {
-      // No existing backup or read error - ignore
+    const existingBackupInfo = await getExistingBackupInfo(handle)
+    if (existingBackupInfo.hasBackup) {
+      await updateLocalSyncStatusCache(handle)
+      await restoreApiConfigFromFolder()
+      return { success: true, existingBackup: existingBackupInfo }
     }
 
     const storageManager = StorageManager.getInstance()
@@ -463,21 +471,7 @@ export async function changeSyncFolder(): Promise<{ success: boolean; error?: st
     })
 
     // Update syncStatus cache for instant display on next settings page open
-    try {
-      const result = await chrome.storage.local.get('syncStatus')
-      const existing = result.syncStatus || {}
-      await chrome.storage.local.set({
-        syncStatus: {
-          ...existing,
-          localEnabled: true,
-          folderName: handle.name,
-          permissionStatus: 'granted',
-          lastLocalSyncTime: Date.now()
-        }
-      })
-    } catch (cacheError) {
-      console.warn('[Oh My Prompt] Failed to update syncStatus cache:', cacheError)
-    }
+    await updateLocalSyncStatusCache(handle, { lastLocalSyncTime: Date.now() })
 
     // Restore API config from folder if not in storage
     await restoreApiConfigFromFolder()
@@ -528,7 +522,10 @@ export async function manualSync(): Promise<{ success: boolean; createdNewBackup
     const syncResult = await sendToOffscreen(MessageType.OFFSCREEN_SYNC, { backupData, version })
 
     if (syncResult.success) {
-      await storageManager.updateSettings({ lastSyncTime: Date.now(), hasUnsyncedChanges: false })
+      await storageManager.updateSettings(
+        { lastSyncTime: Date.now(), hasUnsyncedChanges: false },
+        { triggerSync: false }
+      )
       return { success: true, createdNewBackup: true }
     }
 
@@ -537,6 +534,22 @@ export async function manualSync(): Promise<{ success: boolean; createdNewBackup
     console.error('[Oh My Prompt] Manual sync failed:', error)
     return { success: false, error: '同步失败，请检查文件夹权限' }
   }
+}
+
+/**
+ * Explicitly keep current storage data after a selected folder already had a backup.
+ * This is only called after the user chooses "skip/current data first" in the decision modal.
+ */
+export async function confirmUseCurrentDataForBackup(): Promise<{ success: boolean; error?: string }> {
+  const storageManager = StorageManager.getInstance()
+  await storageManager.updateSettings({ syncEnabled: true }, { triggerSync: false })
+
+  const result = await manualSync()
+  if (!result.success) {
+    return { success: false, error: result.error || '同步失败' }
+  }
+
+  return { success: true }
 }
 
 /**

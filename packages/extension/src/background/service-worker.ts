@@ -897,6 +897,26 @@ chrome.runtime.onMessage.addListener(
         }
         return true // Required for async response
 
+      case MessageType.OPEN_SIDEPANEL_FOR_MINE:
+        // Open sidepanel and navigate to settings > mine tab
+        // CRITICAL: sidePanel.open() must be called in sync path to preserve user gesture
+        const mineTabId = _sender.tab?.id
+        if (mineTabId && mineTabId >= 0) {
+          chrome.sidePanel.open({ tabId: mineTabId })
+            .then(() => {
+              chrome.storage.session.set({ sidepanelIntent: 'mine' })
+              sendResponse({ success: true })
+            })
+            .catch(error => {
+              chrome.storage.session.set({ sidepanelIntent: 'mine' })
+              console.error('[Oh My Prompt] sidePanel.open error:', error)
+              sendResponse({ success: false, error: String(error) })
+            })
+        } else {
+          sendResponse({ success: false, error: 'No sender tab' })
+        }
+        return true // Required for async response
+
       case MessageType.OPEN_SIDEPANEL_FOR_PERMISSION:
         // Open sidepanel to restore folder permission (user gesture propagates from content script click)
         // CRITICAL: User gesture must be used in synchronous execution path, NOT after await

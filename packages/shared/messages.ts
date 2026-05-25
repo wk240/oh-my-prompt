@@ -26,6 +26,7 @@ export enum MessageType {
   OPEN_SIDEPANEL = 'OPEN_SIDEPANEL',  // Open sidepanel (general use - backup settings, etc.)
   OPEN_SIDEPANEL_FOR_PERMISSION = 'OPEN_SIDEPANEL_FOR_PERMISSION',  // Open sidepanel to restore folder permission (user gesture propagates)
   OPEN_SIDEPANEL_FOR_SETTINGS = 'OPEN_SIDEPANEL_FOR_SETTINGS',  // Open sidepanel and navigate to settings view
+  OPEN_SIDEPANEL_FOR_MINE = 'OPEN_SIDEPANEL_FOR_MINE',  // Open sidepanel and navigate to My page
 
   // Phase 10: API configuration operations
   GET_API_CONFIG = 'GET_API_CONFIG',

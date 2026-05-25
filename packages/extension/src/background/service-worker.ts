@@ -173,6 +173,8 @@ async function saveDataAndDebouncedSync(data: StorageSchema): Promise<{ success:
     prompts: data.userData?.prompts || [],
     categories: data.userData?.categories || [],
     temporaryPrompts: data.temporaryPrompts || [],
+    imageAssets: data.imageAssets || {},
+    pendingImageDeletes: data.pendingImageDeletes || [],
     timestamp: Date.now()
   })
 }
@@ -405,6 +407,15 @@ chrome.runtime.onMessage.addListener(
             settings: mergedSettings,
             temporaryPrompts: payload.temporaryPrompts ?? existingData?.temporaryPrompts ?? [],
             _migrationComplete: payload._migrationComplete ?? existingData?._migrationComplete ?? true
+          }
+          const imageAssets = payload.imageAssets ?? existingData?.imageAssets
+          const pendingImageDeletes = payload.pendingImageDeletes ?? existingData?.pendingImageDeletes
+
+          if (imageAssets) {
+            mergedData.imageAssets = imageAssets
+          }
+          if (pendingImageDeletes) {
+            mergedData.pendingImageDeletes = pendingImageDeletes
           }
 
           return saveDataAndDebouncedSync(mergedData)

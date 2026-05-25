@@ -60,6 +60,21 @@ Final product rule:
   - Cloud sync is disabled.
   - Official API access depends only on remaining one-time trial quota.
 
+### Effective Plan Rules
+
+Quota access must be derived from an effective plan, not only the stored
+`plan_type`.
+
+- `effectivePlan = 'pro' | 'team'` only when the user's own subscription is
+  active.
+- Inherited Team access may enable cloud sync and team features, but does not
+  give the member an additional personal official API quota unless team-level
+  quota pooling is explicitly implemented later.
+- Any inactive, expired, canceled, missing, or FREE subscription record resolves
+  to `effectivePlan = 'free'` for official API quota.
+- `/api/vision/generate`, `/api/billing/status`, and `/api/sync/status` must use
+  the same effective plan helper so exhausted/expired states cannot drift.
+
 ## UI Design
 
 Scope is limited to the existing API configuration switching area. Do not add new pricing cards, comparison blocks, or standalone quota explanation sections.
@@ -117,6 +132,9 @@ officialApiQuota: {
 }
 ```
 
+The backend may also return legacy fields during migration, but UI rendering for
+the official service should prefer `officialApiQuota`.
+
 ### Quota Semantics
 
 - FREE:
@@ -132,6 +150,29 @@ officialApiQuota: {
   - `limit: 1000`
   - `resetsAt`: next monthly reset timestamp
 
+### Quota Pool Selection
+
+- `effectivePlan = 'free'` uses the one-time trial pool.
+- `effectivePlan = 'pro' | 'team'` uses the paid monthly pool.
+- Paid monthly usage never consumes or displays remaining trial quota.
+- Trial quota remains persisted while the user is paid, so an expired user can
+  fall back to the remaining trial balance.
+
+### Monthly Reset Semantics
+
+Paid monthly quota must have an explicit reset mechanism.
+
+- Store `monthly_quota_used` and `monthly_quota_reset_at` as separate fields, or
+  continue using the existing paid quota field with an equivalent reset column.
+- `monthly_quota_reset_at` should align with the current paid period end when a
+  Stripe/WeChat subscription period is known.
+- Status endpoints should lazily reset paid monthly usage when
+  `monthly_quota_reset_at <= now()` before returning `officialApiQuota`.
+- `/api/vision/generate` should also perform the same lazy reset before quota
+  deduction to avoid charging against an expired period.
+- Payment webhooks may eagerly set the next reset timestamp, but API correctness
+  must not depend only on webhook delivery.
+
 ## API Behavior
 
 ### `/api/vision/generate`
@@ -142,11 +183,17 @@ officialApiQuota: {
 - Deducts monthly official API quota for Pro/Team users.
 - Rolls back quota if the downstream model request fails.
 - Returns `QUOTA_EXCEEDED` when the relevant quota pool is exhausted.
+- Uses a pool-aware atomic quota RPC or equivalent transaction so concurrent
+  requests cannot overspend either trial or monthly quota.
+- Returns the updated `officialApiQuota` on success and on `QUOTA_EXCEEDED`
+  where possible.
 
 ### `/api/billing/status`
 
 - Returns subscription status and `officialApiQuota`.
 - Uses the same quota limit constants as `/api/vision/generate`.
+- Calculates `officialApiQuota` from the same effective plan helper used by
+  `/api/vision/generate`.
 
 ### `/api/sync/status`
 
@@ -169,8 +216,64 @@ Recommended persisted fields or equivalent table columns:
 - `trial_quota_used`: default `0`
 - `trial_quota_granted_at`: timestamp set on registration or first quota record creation
 - Existing paid monthly quota field can continue to track Pro/Team monthly usage.
+- `monthly_quota_used`: default `0`, or the existing paid-only quota usage
+  field after it no longer represents FREE trial usage.
+- `monthly_quota_reset_at`: timestamp for the next paid quota reset.
 
-Registration should create or initialize the user's FREE trial quota record so the extension can show `50/50` immediately after login.
+### Trial Quota Initialization And Migration
+
+Registration should create or initialize the user's FREE trial quota record so
+the extension can show `50/50` immediately after login. Existing users need the
+same guarantee.
+
+- New registrations: create the quota record during registration or on first
+  status/API request.
+- Existing logged-in FREE users without a quota record: lazily upsert
+  `trial_quota_limit = 50`, `trial_quota_used = 0`, and
+  `trial_quota_granted_at = now()` on `/api/billing/status`, `/api/sync/status`,
+  or `/api/vision/generate`.
+- Existing paid users without a trial record: create the trial record with
+  `trial_quota_used = 0`; it stays hidden while paid and becomes available only
+  if they later fall back to FREE.
+- Missing `user_subscriptions` rows must not block FREE trial access. Treat them
+  as FREE for official API quota and initialize the trial record.
+
+### Atomic Quota Operations
+
+The quota mutation layer should expose one pool-aware operation, either as a
+Supabase RPC or a transaction in server code:
+
+```ts
+incrementOfficialApiQuota(userId, {
+  pool: 'trial' | 'monthly',
+  limit: number,
+  resetAt?: string | null
+})
+```
+
+Required behavior:
+
+- Increment exactly one quota pool and return the new `used` value.
+- Refuse increment when `used >= limit` and return `QUOTA_EXCEEDED`.
+- For `monthly`, lazily reset usage first when `resetAt <= now()`.
+- Rollback must decrement the same pool that was incremented for the downstream
+  request.
+- Concurrent requests must be serialized by the database update condition or
+  transaction, not by frontend checks.
+
+## Frontend And Type Migration
+
+- Add `officialApiQuota` to shared auth/status types used by extension and
+  web-app.
+- Keep `optimizationQuota` and/or `visionQuota` as compatibility aliases only
+  during migration if existing UI still reads them.
+- Official API config cards should render `officialApiQuota.remaining`,
+  `officialApiQuota.limit`, and `officialApiQuota.kind`.
+- Extension feature gates must stop treating all FREE users as ineligible for
+  official API. Logged-in FREE users are eligible when
+  `officialApiQuota.remaining > 0`.
+- Third-party API config availability remains unchanged and must not depend on
+  official quota.
 
 ## Existing Consistency Issues To Fix During Implementation
 
@@ -194,3 +297,18 @@ Implementation should converge on:
 - Team user sees monthly quota and cloud sync enabled.
 - Expired Pro user falls back to FREE trial quota behavior and cloud sync disabled.
 - Backend rollback restores quota when downstream official API call fails.
+- Existing FREE user without `user_subscriptions` or trial quota rows receives a
+  lazily initialized `50/50` trial quota.
+- Existing paid user without a trial row gets a hidden trial row and still sees
+  only the paid monthly quota while active.
+- Inactive/canceled/expired paid subscription with stored `plan_type = 'pro'` or
+  `team` returns `kind: 'trial'`, not monthly quota.
+- Paid monthly quota resets when `monthly_quota_reset_at <= now()` before status
+  display and before `/api/vision/generate` deduction.
+- Concurrent FREE trial requests at 49/50 allow only one successful increment.
+- Concurrent paid monthly requests at `limit - 1` allow only one successful
+  increment.
+- Rollback after a failed Agent request decrements the same quota pool as a
+  failed Vision request would.
+- Extension official config eligibility uses `officialApiQuota`, while
+  third-party config behavior stays unchanged.

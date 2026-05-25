@@ -5,6 +5,10 @@ import { FullBackupData, SyncResult, StrategyStatus, SyncResultError } from '../
 
 const AUTH_STORAGE_KEY = `sb-${SUPABASE_PROJECT_REF}-auth-token`
 
+function hasDirectCloudSyncPlan(planType: string, subscriptionStatus?: string): boolean {
+  return (planType === 'pro' || planType === 'team') && subscriptionStatus === 'active'
+}
+
 /**
  * Get auth token directly from storage (without cache).
  * Used by sync/restore operations that need raw token.
@@ -86,7 +90,7 @@ export class CloudSyncStrategy extends BaseSyncStrategy {
 
     const planType = authState.subscription?.planType || 'free'
     const subscriptionStatus = authState.subscription?.status
-    return (planType === 'pro' || planType === 'team') && subscriptionStatus === 'active'
+    return authState.cloudSyncEnabled ?? hasDirectCloudSyncPlan(planType, subscriptionStatus)
   }
 
   /**
@@ -201,7 +205,7 @@ export class CloudSyncStrategy extends BaseSyncStrategy {
 
     const planType = authState.subscription?.planType || 'free'
     const subscriptionStatus = authState.subscription?.status
-    const enabled = (planType === 'pro' || planType === 'team') && subscriptionStatus === 'active'
+    const enabled = authState.cloudSyncEnabled ?? hasDirectCloudSyncPlan(planType, subscriptionStatus)
 
     return enabled
       ? {

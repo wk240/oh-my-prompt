@@ -104,6 +104,37 @@ describe('CloudSyncStrategy', () => {
     expect(available).toBe(false)
   })
 
+  it('should be available for free users with team cloud sync entitlement', async () => {
+    const mockGet = vi.fn().mockResolvedValue({
+      'sb-futfxudabvjfldlismun-auth-token': JSON.stringify({
+        access_token: 'test-token',
+        user: { id: 'user-123' },
+        expires_at: Math.floor(Date.now() / 1000) + 3600
+      })
+    })
+    global.chrome = {
+      storage: {
+        local: {
+          get: mockGet,
+          set: vi.fn().mockResolvedValue(undefined)
+        }
+      }
+    } as any
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue({
+        user: { id: 'user-123' },
+        subscription: { planType: 'free', status: 'active' },
+        cloudSyncEnabled: true
+      })
+    })
+
+    const available = await strategy.isAvailable()
+    expect(available).toBe(true)
+  })
+
   it('should return false when auth token is expired', async () => {
     // Mock chrome.storage.local.get to return expired auth token
     const mockGet = vi.fn().mockResolvedValue({
@@ -407,6 +438,39 @@ describe('CloudSyncStrategy', () => {
     const status = await strategy.getStatus()
     expect(status.enabled).toBe(false)
     expect(status.error).toBe('SUBSCRIPTION_REQUIRED')
+  })
+
+  it('should return enabled status for free users with team cloud sync entitlement', async () => {
+    const mockGet = vi.fn().mockResolvedValue({
+      'sb-futfxudabvjfldlismun-auth-token': JSON.stringify({
+        access_token: 'test-token',
+        user: { id: 'user-123' },
+        expires_at: Math.floor(Date.now() / 1000) + 3600
+      })
+    })
+    global.chrome = {
+      storage: {
+        local: {
+          get: mockGet,
+          set: vi.fn().mockResolvedValue(undefined)
+        }
+      }
+    } as any
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue({
+        user: { id: 'user-123' },
+        subscription: { planType: 'free', status: 'active' },
+        cloudSyncEnabled: true,
+        lastSyncedAt: 1234567890
+      })
+    })
+
+    const status = await strategy.getStatus()
+    expect(status.enabled).toBe(true)
+    expect(status.lastSyncTime).toBe(1234567890)
   })
 
   it('should return disabled status when not authenticated', async () => {

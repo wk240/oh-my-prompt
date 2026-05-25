@@ -74,6 +74,7 @@ let cachedSyncStatus: {
     currentPeriodEnd?: number
     optimizationQuota?: { used: number; remaining: number; limit: number }
   }
+  cloudSyncEnabled?: boolean
   lastSyncAt?: number
   timestamp: number
 } | null = null
@@ -91,6 +92,7 @@ function getAuthStateFromCache(): CloudAuthState | null {
     status: 'logged_in',
     user: cachedSyncStatus.user,
     subscription: cachedSyncStatus.subscription,
+    cloudSyncEnabled: cachedSyncStatus.cloudSyncEnabled,
     lastSyncAt: cachedSyncStatus.lastSyncAt
   }
 }
@@ -224,6 +226,7 @@ export async function getAuthState(): Promise<CloudAuthState> {
           currentPeriodEnd?: number
         }
         optimizationQuota?: { used: number; remaining: number; limit: number }
+        cloudSyncEnabled?: boolean
         lastSyncedAt?: number
       }
 
@@ -234,6 +237,7 @@ export async function getAuthState(): Promise<CloudAuthState> {
           ...statusData.subscription,
           optimizationQuota: statusData.optimizationQuota
         } : undefined,
+        cloudSyncEnabled: statusData.cloudSyncEnabled,
         lastSyncAt: statusData.lastSyncedAt,
         timestamp: Date.now()
       }
@@ -242,6 +246,7 @@ export async function getAuthState(): Promise<CloudAuthState> {
         status: 'logged_in',
         user: cachedSyncStatus.user,
         subscription: cachedSyncStatus.subscription,
+        cloudSyncEnabled: cachedSyncStatus.cloudSyncEnabled,
         lastSyncAt: cachedSyncStatus.lastSyncAt
       }
     } catch (apiError) {

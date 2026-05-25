@@ -70,6 +70,37 @@ async function ensureOfficialConfig(): Promise<void> {
 }
 
 /**
+ * Ensure official config is not active when user is logged out.
+ * If official is active, fallback to first non-official config; otherwise set null.
+ */
+async function deactivateOfficialConfigWhenLoggedOut(): Promise<void> {
+  const officialConfigId = 'omp-official-default'
+  try {
+    const result = await chrome.storage.local.get(PROVIDER_CONFIGS_STORAGE_KEY)
+    const storage = result[PROVIDER_CONFIGS_STORAGE_KEY] as ProviderConfigsStorage | undefined
+    if (!storage || !storage.activeConfigId) {
+      return
+    }
+
+    const activeConfig = storage.configs.find(c => c.id === storage.activeConfigId)
+    const isOfficialActive = activeConfig?.id === officialConfigId || activeConfig?.apiFormat === 'omp_official'
+    if (!isOfficialActive) {
+      return
+    }
+
+    const fallbackConfig = storage.configs.find(c => c.id !== officialConfigId && c.apiFormat !== 'omp_official')
+    const updatedStorage: ProviderConfigsStorage = {
+      ...storage,
+      activeConfigId: fallbackConfig?.id || null
+    }
+    await chrome.storage.local.set({ [PROVIDER_CONFIGS_STORAGE_KEY]: updatedStorage })
+    console.log('[Oh My Prompt] Official config deactivated (logged out)')
+  } catch (error) {
+    console.error('[Oh My Prompt] Failed to deactivate official config on logout:', error)
+  }
+}
+
+/**
  * Debounced sync state - batches rapid sync requests from frontend
  */
 let syncTimeout: ReturnType<typeof setTimeout> | null = null
@@ -714,6 +745,9 @@ chrome.runtime.onMessage.addListener(
         // Clear Supabase client singleton to ensure fresh session state
         if (logoutPayload?.logout) {
           clearSupabaseClient()
+          deactivateOfficialConfigWhenLoggedOut().catch(error => {
+            console.error('[Oh My Prompt] Logout official config fallback failed:', error)
+          })
         }
 
         // Rebroadcast to all extension pages (sidepanel, popup)

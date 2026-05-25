@@ -58,6 +58,7 @@ export default function MineView() {
         if (message.payload?.logout) {
           clearSupabaseClient()
           setAuthState({ status: 'not_logged_in' })
+          loadConfigs()
         } else {
           refreshAuthState()
         }

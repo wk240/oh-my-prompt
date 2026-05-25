@@ -122,7 +122,7 @@ export function buildEcommerceSystemPrompt(
   }
 
   const imageInstruction = hasProductImages
-    ? `用户提供了商品参考图片，请仔细分析图片中的商品外观、颜色、材质、形状等特征，确保生成的提示词准确描述商品。`
+    ? `用户提供了同一组商品参考图，请将所有图片视为同一商品的多角度/细节/包装参考。请综合分析商品外观、颜色、材质、形状、包装和细节特征，确保生成的提示词准确描述商品；除非用户文字明确说明，否则不要将不同照片误判为不同商品。`
     : ''
 
   const sellingPointsSection = config.sellingPoints.trim()

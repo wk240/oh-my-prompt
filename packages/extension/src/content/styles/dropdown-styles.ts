@@ -839,6 +839,7 @@ export const DROPDOWN_STYLES = `
     flex-direction: column;
     align-items: center;
     gap: 6px;
+    pointer-events: none;
   }
 
   #${PORTAL_ID} .agent-panel-image-preview {

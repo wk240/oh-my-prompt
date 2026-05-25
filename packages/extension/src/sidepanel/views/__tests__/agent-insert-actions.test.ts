@@ -99,4 +99,13 @@ describe('Agent sidepanel insert actions', () => {
 
     expect(css).toMatch(/\.agent-image-upload-content\s*\{[^}]*pointer-events:\s*none;/s)
   })
+
+  it('keeps the dropdown Agent upload affordance from blocking file picker clicks', () => {
+    const source = readFileSync(
+      resolve(repoRoot, 'src/content/styles/dropdown-styles.ts'),
+      'utf8',
+    )
+
+    expect(source).toMatch(/\.agent-panel-upload-content\s*\{[^}]*pointer-events:\s*none;/s)
+  })
 })

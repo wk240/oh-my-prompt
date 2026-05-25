@@ -1048,8 +1048,7 @@ export class SyncOrchestrator {
     const cloudAsset = this.normalizeImageAssets(cloud.imageAssets)?.[id]
     if (!cloudAsset) return true
 
-    return (localAsset.updatedAt || 0) > (cloudAsset.updatedAt || 0) ||
-      this.stableStringify(localAsset) !== this.stableStringify(cloudAsset)
+    return (localAsset.updatedAt || 0) > (cloudAsset.updatedAt || 0)
   }
 
   private pendingImageDeleteNeedsCloudUpload(
@@ -1061,8 +1060,7 @@ export class SyncOrchestrator {
     )
     if (!cloudItem) return true
 
-    return (localItem.updatedAt || 0) > (cloudItem.updatedAt || 0) ||
-      this.stableStringify(localItem) !== this.stableStringify(cloudItem)
+    return (localItem.updatedAt || 0) > (cloudItem.updatedAt || 0)
   }
 
   private mergeFullBackupData(

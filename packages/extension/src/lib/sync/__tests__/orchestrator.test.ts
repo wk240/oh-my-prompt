@@ -1397,6 +1397,53 @@ describe('SyncOrchestrator', () => {
       expect(result.localOnlyItems.imageAssetIds).toEqual(['image-1'])
     })
 
+    it('does not track cloud-newer image assets for follow-up upload', async () => {
+      const cloudData = {
+        prompts: [],
+        categories: [],
+        temporaryPrompts: [],
+        timestamp: 2,
+        imageAssets: {
+          'image-1': {
+            id: 'image-1',
+            promptId: 'prompt-1',
+            localPath: 'images/image-1.webp',
+            cloudUrl: 'https://blob/new.webp',
+            cloudPath: 'users/u/images/image-1.webp',
+            mimeType: 'image/webp' as const,
+            width: 100,
+            height: 80,
+            size: 1000,
+            hash: 'hash-cloud',
+            status: 'synced' as const,
+            updatedAt: 2
+          }
+        },
+        pendingImageDeletes: []
+      }
+      const localData = {
+        ...cloudData,
+        timestamp: 1,
+        imageAssets: {
+          'image-1': {
+            ...cloudData.imageAssets['image-1'],
+            cloudUrl: undefined,
+            hash: 'hash-local',
+            status: 'pending_upload' as const,
+            updatedAt: 1
+          }
+        }
+      }
+
+      const result = orchestrator['mergeFullBackupData'](cloudData, localData)
+
+      expect(result.data.imageAssets?.['image-1']).toMatchObject({
+        status: 'synced',
+        hash: 'hash-cloud'
+      })
+      expect(result.localOnlyItems.imageAssetIds).toEqual([])
+    })
+
     it('normalizes malformed image metadata before merging snapshots', async () => {
       const result = orchestrator['mergeFullBackupData']({
         prompts: [],
@@ -1455,6 +1502,43 @@ describe('SyncOrchestrator', () => {
         updatedAt: 2
       })])
       expect(result.localOnlyItems.pendingImageDeleteKeys).toEqual(['image-1\nusers/u/images/image-1.webp'])
+    })
+
+    it('does not track cloud-newer pending image deletes for follow-up upload', async () => {
+      const cloudData = {
+        prompts: [],
+        categories: [],
+        temporaryPrompts: [],
+        timestamp: 2,
+        imageAssets: {},
+        pendingImageDeletes: [{
+          imageId: 'image-1',
+          cloudPath: 'users/u/images/image-1.webp',
+          attempts: 2,
+          lastError: 'cloud-newer',
+          updatedAt: 2
+        }]
+      }
+      const localData = {
+        ...cloudData,
+        timestamp: 1,
+        pendingImageDeletes: [{
+          imageId: 'image-1',
+          cloudPath: 'users/u/images/image-1.webp',
+          attempts: 1,
+          lastError: 'local-older',
+          updatedAt: 1
+        }]
+      }
+
+      const result = orchestrator['mergeFullBackupData'](cloudData, localData)
+
+      expect(result.data.pendingImageDeletes).toEqual([expect.objectContaining({
+        attempts: 2,
+        lastError: 'cloud-newer',
+        updatedAt: 2
+      })])
+      expect(result.localOnlyItems.pendingImageDeleteKeys).toEqual([])
     })
 
     it('preserves existing image metadata when applying legacy snapshots without metadata fields', async () => {

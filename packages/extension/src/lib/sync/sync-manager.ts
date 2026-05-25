@@ -1,5 +1,5 @@
 import type { FullBackupData } from './file-sync'
-import type { ProviderConfigsStorage } from '@oh-my-prompt/shared/types'
+import type { ProviderConfigsStorage, StorageSchema } from '@oh-my-prompt/shared/types'
 import { BACKUP_FILE_NAME, IMAGE_DIR_NAME, VISION_API_CONFIG_STORAGE_KEY, PROVIDER_CONFIGS_STORAGE_KEY } from '@oh-my-prompt/shared/constants'
 import { StorageManager } from '../storage'
 import { getFolderHandle, saveFolderHandle, checkFolderPermission } from './indexeddb'
@@ -210,14 +210,19 @@ export async function initialSync(): Promise<void> {
 
     // Case: chrome.storage empty, local has data -> restore
     if (localData && storageData.userData.prompts.length === 0) {
-      await storageManager.updateUserData({
-        prompts: localData.prompts,
-        categories: localData.categories
-      })
-      // Restore temporary prompts if exist
-      if (localData.temporaryPrompts && localData.temporaryPrompts.length > 0) {
-        await storageManager.updateTemporaryPrompts(localData.temporaryPrompts)
-      }
+      await storageManager.saveData(
+        {
+          ...storageData,
+          userData: {
+            prompts: localData.prompts,
+            categories: localData.categories
+          },
+          temporaryPrompts: localData.temporaryPrompts || [],
+          imageAssets: localData.imageAssets || {},
+          pendingImageDeletes: localData.pendingImageDeletes || []
+        },
+        { triggerSync: false }
+      )
     }
 
     // Case: both have data -> sync chrome.storage to local
@@ -225,11 +230,7 @@ export async function initialSync(): Promise<void> {
       const settings = await storageManager.getSettings()
       if (settings.syncEnabled) {
         const version = chrome.runtime.getManifest().version
-        const backupData: FullBackupData = {
-          prompts: storageData.userData.prompts,
-          categories: storageData.userData.categories,
-          temporaryPrompts: storageData.temporaryPrompts || []
-        }
+        const backupData = buildBackupDataFromStorage(storageData)
         const syncResult = await sendToOffscreen(MessageType.OFFSCREEN_SYNC, { backupData, version })
         if (syncResult.success) {
           await storageManager.updateSettings({ lastSyncTime: Date.now() })
@@ -299,6 +300,16 @@ function hasRestorableBackup(data: FullBackupData | null): data is FullBackupDat
   )
 }
 
+function buildBackupDataFromStorage(data: StorageSchema): FullBackupData {
+  return {
+    prompts: data.userData.prompts,
+    categories: data.userData.categories,
+    temporaryPrompts: data.temporaryPrompts || [],
+    imageAssets: data.imageAssets || {},
+    pendingImageDeletes: data.pendingImageDeletes || []
+  }
+}
+
 async function getExistingBackupInfo(handle: FileSystemDirectoryHandle): Promise<ExistingBackupInfo> {
   const existingBackupInfo: ExistingBackupInfo = { hasBackup: false }
 
@@ -359,11 +370,7 @@ export async function enableSync(): Promise<EnableSyncResult> {
     try {
       const storageManager = StorageManager.getInstance()
       const data = await storageManager.getData()
-      const backupData: FullBackupData = {
-        prompts: data.userData.prompts,
-        categories: data.userData.categories,
-        temporaryPrompts: data.temporaryPrompts || []
-      }
+      const backupData = buildBackupDataFromStorage(data)
       await syncToLocalFolder(backupData, existingHandle)
       await storageManager.updateSettings({
         syncEnabled: true,
@@ -514,11 +521,7 @@ export async function manualSync(): Promise<{ success: boolean; createdNewBackup
     const storageManager = StorageManager.getInstance()
     const data = await storageManager.getData()
     const version = chrome.runtime.getManifest().version
-    const backupData: FullBackupData = {
-      prompts: data.userData.prompts,
-      categories: data.userData.categories,
-      temporaryPrompts: data.temporaryPrompts || []
-    }
+    const backupData = buildBackupDataFromStorage(data)
     const syncResult = await sendToOffscreen(MessageType.OFFSCREEN_SYNC, { backupData, version })
 
     if (syncResult.success) {
@@ -637,11 +640,7 @@ export async function restorePermission(): Promise<{ success: boolean; error?: s
       // Permission restored successfully - sync current data
       const storageManager = StorageManager.getInstance()
       const data = await storageManager.getData()
-      const backupData: FullBackupData = {
-        prompts: data.userData.prompts,
-        categories: data.userData.categories,
-        temporaryPrompts: data.temporaryPrompts || []
-      }
+      const backupData = buildBackupDataFromStorage(data)
       const syncResult = await sendToOffscreen(MessageType.OFFSCREEN_SYNC, { backupData })
 
       if (syncResult.success) {
@@ -746,11 +745,7 @@ export async function restoreFromBackup(
       const storageManager = StorageManager.getInstance()
       const currentData = await storageManager.getData()
       const version = chrome.runtime.getManifest().version
-      const currentBackupData: FullBackupData = {
-        prompts: currentData.userData.prompts,
-        categories: currentData.userData.categories,
-        temporaryPrompts: currentData.temporaryPrompts || []
-      }
+      const currentBackupData = buildBackupDataFromStorage(currentData)
       await sendToOffscreen(MessageType.OFFSCREEN_SYNC, { backupData: currentBackupData, version })
     }
 
@@ -803,15 +798,24 @@ export async function restoreFromBackup(
 
     // Replace mode: Restore backup data (including temporary prompts)
     const storageManager = StorageManager.getInstance()
-    await storageManager.updateUserData({
-      prompts: backupData.prompts,
-      categories: backupData.categories
-    })
-    // Restore temporary prompts
-    if (backupData.temporaryPrompts) {
-      await storageManager.updateTemporaryPrompts(backupData.temporaryPrompts)
-    }
-    await storageManager.updateSettings({ lastSyncTime: Date.now() })
+    const currentData = await storageManager.getData()
+    await storageManager.saveData(
+      {
+        ...currentData,
+        userData: {
+          prompts: backupData.prompts,
+          categories: backupData.categories
+        },
+        settings: {
+          ...currentData.settings,
+          lastSyncTime: Date.now()
+        },
+        temporaryPrompts: backupData.temporaryPrompts || [],
+        imageAssets: backupData.imageAssets || {},
+        pendingImageDeletes: backupData.pendingImageDeletes || []
+      },
+      { triggerSync: false }
+    )
 
     // Sync restored data to latest backup file (omps-latest.json)
     // This ensures the restored state becomes the "current" backup state

@@ -156,7 +156,9 @@ export class StorageManager {
         prompts: data.userData?.prompts || [],
         categories: data.userData?.categories || [],
         temporaryPrompts: data.temporaryPrompts || [],
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        imageAssets: data.imageAssets || {},
+        pendingImageDeletes: data.pendingImageDeletes || []
       }
 
       this.syncOrchestrator.triggerSync(syncData).catch(err => {

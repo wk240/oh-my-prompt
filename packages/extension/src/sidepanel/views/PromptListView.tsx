@@ -1125,7 +1125,7 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
   useEffect(() => {
     const handleMessage = (message: { type: string }) => {
       if (message.type === MessageType.REFRESH_DATA) {
-        loadFromStorage()
+        loadFromStorage({ showLoading: false })
         refreshStatus() // Refresh sync status to close backup warning after folder config
       }
     }
@@ -1151,7 +1151,7 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
   useEffect(() => {
     const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }) => {
       if (changes[STORAGE_KEY]) {
-        loadFromStorage()
+        loadFromStorage({ showLoading: false })
         refreshStatus() // Refresh sync status to close backup warning after folder config
       }
     }

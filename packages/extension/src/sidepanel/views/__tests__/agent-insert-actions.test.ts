@@ -75,4 +75,19 @@ describe('Agent sidepanel insert actions', () => {
     expect(source).toContain('const insertTextToCurrentTab = useCallback(async (text: string')
     expect(source).toContain('onInsert={insertTextToCurrentTab}')
   })
+
+  it('refreshes prompt data without unmounting the Agent result view after saves', () => {
+    const storeSource = readFileSync(
+      resolve(repoRoot, 'src/lib/store.ts'),
+      'utf8',
+    )
+    const promptListSource = readFileSync(
+      resolve(repoRoot, 'src/sidepanel/views/PromptListView.tsx'),
+      'utf8',
+    )
+
+    expect(storeSource).toContain('loadFromStorage: (options?: { showLoading?: boolean })')
+    expect(storeSource).toContain('if (options?.showLoading !== false) {')
+    expect(promptListSource).toContain('loadFromStorage({ showLoading: false })')
+  })
 })

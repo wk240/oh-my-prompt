@@ -23,7 +23,7 @@ interface PromptStore {
   isLoading: boolean
 
   // Actions
-  loadFromStorage: () => Promise<{ success: boolean; error?: string }>
+  loadFromStorage: (options?: { showLoading?: boolean }) => Promise<{ success: boolean; error?: string }>
   saveToStorage: () => Promise<{ success: boolean; syncSuccess?: boolean; error?: string }>
   setSelectedCategory: (categoryId: string | null) => void
 
@@ -327,8 +327,10 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
   isLoading: true,
 
   // Actions
-  loadFromStorage: async () => {
-    set({ isLoading: true })
+  loadFromStorage: async (options) => {
+    if (options?.showLoading !== false) {
+      set({ isLoading: true })
+    }
     try {
       const data = await sendStorageMessage(MessageType.GET_STORAGE)
       if (data && data.userData) {

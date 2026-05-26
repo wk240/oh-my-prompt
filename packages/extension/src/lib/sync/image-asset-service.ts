@@ -33,6 +33,14 @@ export type PreparedImageAssetBlob = {
   hash: string
 }
 
+let pendingDeleteMutation: Promise<void> = Promise.resolve()
+
+async function withPendingDeleteMutation<T>(mutation: () => Promise<T>): Promise<T> {
+  const run = pendingDeleteMutation.then(mutation, mutation)
+  pendingDeleteMutation = run.then(() => undefined, () => undefined)
+  return run
+}
+
 async function readStorage(): Promise<StorageSchema> {
   const result = await chrome.storage.local.get(STORAGE_KEY)
   return result[STORAGE_KEY] as StorageSchema
@@ -192,28 +200,30 @@ async function markImageAssetStatus(
 }
 
 export async function queuePendingImageDelete(imageId: string, cloudPath: string, error?: string): Promise<void> {
-  const data = await readStorage()
-  const existing = data.pendingImageDeletes || []
-  const index = existing.findIndex(item => item.imageId === imageId && item.cloudPath === cloudPath)
-  const nextItem: PendingImageDelete = index >= 0
-    ? {
-        ...existing[index],
-        attempts: existing[index].attempts + 1,
-        lastError: error,
-        updatedAt: Date.now()
-      }
-    : {
-        imageId,
-        cloudPath,
-        attempts: 1,
-        lastError: error,
-        updatedAt: Date.now()
-      }
-  const next = index >= 0
-    ? existing.map((item, itemIndex) => itemIndex === index ? nextItem : item)
-    : [...existing, nextItem]
+  await withPendingDeleteMutation(async () => {
+    const data = await readStorage()
+    const existing = data.pendingImageDeletes || []
+    const index = existing.findIndex(item => item.imageId === imageId && item.cloudPath === cloudPath)
+    const nextItem: PendingImageDelete = index >= 0
+      ? {
+          ...existing[index],
+          attempts: existing[index].attempts + 1,
+          lastError: error,
+          updatedAt: Date.now()
+        }
+      : {
+          imageId,
+          cloudPath,
+          attempts: 1,
+          lastError: error,
+          updatedAt: Date.now()
+        }
+    const next = index >= 0
+      ? existing.map((item, itemIndex) => itemIndex === index ? nextItem : item)
+      : [...existing, nextItem]
 
-  await writeStorage({ ...data, pendingImageDeletes: next })
+    await writeStorage({ ...data, pendingImageDeletes: next })
+  })
 }
 
 export async function savePromptImageAsset(
@@ -324,17 +334,6 @@ export async function retryImageUpload(imageId: string): Promise<boolean> {
   if (!asset || (asset.status !== 'pending_upload' && asset.status !== 'upload_failed' && asset.status !== 'local_only')) return false
   if (asset.lastUploadAttemptAt && Date.now() - asset.lastUploadAttemptAt < 60_000) return false
 
-  await writeStorage({
-    ...data,
-    imageAssets: {
-      ...(data.imageAssets || {}),
-      [imageId]: {
-        ...asset,
-        lastUploadAttemptAt: Date.now()
-      }
-    }
-  })
-
   let url: string | null
   try {
     url = await getCachedImageUrl(asset.localPath)
@@ -423,31 +422,30 @@ export async function retryPendingImageUploads(): Promise<boolean> {
 }
 
 export async function drainPendingImageDeletes(): Promise<boolean> {
-  const data = await readStorage()
-  if (!data) return false
-  const pendingDeletes = data.pendingImageDeletes || []
-  if (pendingDeletes.length === 0) return false
+  return withPendingDeleteMutation(async () => {
+    const data = await readStorage()
+    if (!data) return false
+    const pendingDeletes = data.pendingImageDeletes || []
+    if (pendingDeletes.length === 0) return false
 
-  const processedKeys = new Set(pendingDeletes.map(item => `${item.imageId}\n${item.cloudPath}`))
-  const remaining: PendingImageDelete[] = []
-  for (const item of pendingDeletes) {
-    const result = await deleteCloudImage(item.imageId, item.cloudPath)
-      .catch(error => ({ success: false, error: getErrorMessage(error) }))
-    if (!result.success) {
-      remaining.push({
-        ...item,
-        attempts: item.attempts + 1,
-        lastError: result.error,
-        updatedAt: Date.now()
-      })
+    const remaining: PendingImageDelete[] = []
+    for (const item of pendingDeletes) {
+      const result = await deleteCloudImage(item.imageId, item.cloudPath)
+        .catch(error => ({ success: false, error: getErrorMessage(error) }))
+      if (!result.success) {
+        remaining.push({
+          ...item,
+          attempts: item.attempts + 1,
+          lastError: result.error,
+          updatedAt: Date.now()
+        })
+      }
     }
-  }
 
-  const latest = await readStorage()
-  const latestNewItems = (latest.pendingImageDeletes || [])
-    .filter(item => !processedKeys.has(`${item.imageId}\n${item.cloudPath}`))
-  await writeStorage({ ...latest, pendingImageDeletes: [...remaining, ...latestNewItems] })
-  return true
+    const latest = await readStorage()
+    await writeStorage({ ...latest, pendingImageDeletes: remaining })
+    return true
+  })
 }
 
 export async function deletePromptImageAsset(promptId: string): Promise<DeletePromptImageAssetResult> {

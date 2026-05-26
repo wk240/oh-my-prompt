@@ -316,19 +316,12 @@ describe('image-asset-service', () => {
       updatedAt: 1
     }]
     vi.mocked(deleteCloudImage).mockImplementationOnce(async () => {
-      storageData.pendingImageDeletes = [
-        ...storageData.pendingImageDeletes!,
-        {
-          imageId: 'new-image',
-          cloudPath: 'users/u/images/new-image.webp',
-          attempts: 1,
-          updatedAt: 2
-        }
-      ]
+      void queuePendingImageDelete('new-image', 'users/u/images/new-image.webp')
       return { success: true }
     })
 
     await drainPendingImageDeletes()
+    await new Promise(resolve => setTimeout(resolve, 0))
 
     expect(storageData.pendingImageDeletes).toEqual([expect.objectContaining({
       imageId: 'new-image',

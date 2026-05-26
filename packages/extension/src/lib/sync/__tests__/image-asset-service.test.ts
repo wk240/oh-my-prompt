@@ -308,6 +308,67 @@ describe('image-asset-service', () => {
     expect(storageData.pendingImageDeletes).toEqual([])
   })
 
+  it('preserves pending deletes queued while draining existing items', async () => {
+    storageData.pendingImageDeletes = [{
+      imageId: 'old-image',
+      cloudPath: 'users/u/images/old-image.webp',
+      attempts: 1,
+      updatedAt: 1
+    }]
+    vi.mocked(deleteCloudImage).mockImplementationOnce(async () => {
+      storageData.pendingImageDeletes = [
+        ...storageData.pendingImageDeletes!,
+        {
+          imageId: 'new-image',
+          cloudPath: 'users/u/images/new-image.webp',
+          attempts: 1,
+          updatedAt: 2
+        }
+      ]
+      return { success: true }
+    })
+
+    await drainPendingImageDeletes()
+
+    expect(storageData.pendingImageDeletes).toEqual([expect.objectContaining({
+      imageId: 'new-image',
+      cloudPath: 'users/u/images/new-image.webp'
+    })])
+  })
+
+  it('cleans up cloud upload when asset is deleted before retry completes', async () => {
+    storageData.imageAssets = {
+      'image-1': {
+        id: 'image-1',
+        promptId: 'prompt-1',
+        localPath: 'images/image-1.webp',
+        mimeType: 'image/webp',
+        width: 100,
+        height: 80,
+        size: 1000,
+        hash: 'hash-1',
+        status: 'pending_upload',
+        updatedAt: 1
+      }
+    }
+    vi.mocked(getCachedImageUrl).mockResolvedValueOnce('blob:local')
+    vi.mocked(uploadCloudImage).mockImplementationOnce(async () => {
+      storageData.imageAssets = {}
+      return {
+        success: true,
+        cloudUrl: 'https://blob/image-1.webp',
+        cloudPath: 'users/u/images/image-1.webp',
+        size: 1000
+      }
+    })
+    vi.mocked(deleteCloudImage).mockResolvedValueOnce({ success: true })
+
+    await retryImageUpload('image-1')
+
+    expect(deleteCloudImage).toHaveBeenCalledWith('image-1', 'users/u/images/image-1.webp')
+    expect(storageData.pendingImageDeletes).toEqual([])
+  })
+
   it('preserves prompt and asset metadata when local delete fails', async () => {
     storageData.userData.prompts[0].imageId = 'image-1'
     storageData.userData.prompts[0].localImage = 'images/image-1.webp'

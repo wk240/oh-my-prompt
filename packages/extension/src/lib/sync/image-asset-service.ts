@@ -372,7 +372,16 @@ export async function retryImageUpload(imageId: string): Promise<boolean> {
 
   const latest = await readStorage()
   const latestAsset = latest.imageAssets?.[imageId]
-  if (!latestAsset) return true
+  if (!latestAsset) {
+    if (result.success && result.cloudPath) {
+      const deleteResult = await deleteCloudImage(imageId, result.cloudPath)
+        .catch(error => ({ success: false, error: getErrorMessage(error) }))
+      if (!deleteResult.success) {
+        await queuePendingImageDelete(imageId, result.cloudPath, deleteResult.error)
+      }
+    }
+    return true
+  }
 
   await writeStorage({
     ...latest,
@@ -419,6 +428,7 @@ export async function drainPendingImageDeletes(): Promise<boolean> {
   const pendingDeletes = data.pendingImageDeletes || []
   if (pendingDeletes.length === 0) return false
 
+  const processedKeys = new Set(pendingDeletes.map(item => `${item.imageId}\n${item.cloudPath}`))
   const remaining: PendingImageDelete[] = []
   for (const item of pendingDeletes) {
     const result = await deleteCloudImage(item.imageId, item.cloudPath)
@@ -434,7 +444,9 @@ export async function drainPendingImageDeletes(): Promise<boolean> {
   }
 
   const latest = await readStorage()
-  await writeStorage({ ...latest, pendingImageDeletes: remaining })
+  const latestNewItems = (latest.pendingImageDeletes || [])
+    .filter(item => !processedKeys.has(`${item.imageId}\n${item.cloudPath}`))
+  await writeStorage({ ...latest, pendingImageDeletes: [...remaining, ...latestNewItems] })
   return true
 }
 

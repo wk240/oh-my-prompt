@@ -703,6 +703,8 @@ export class SyncOrchestrator {
 
     if (!status.pendingUpload) return
 
+    await retryPendingImageUploads()
+    await drainPendingImageDeletes()
     const localData = await this.getLocalData()
     const result = await this.cloudStrategy.sync({
       ...localData,

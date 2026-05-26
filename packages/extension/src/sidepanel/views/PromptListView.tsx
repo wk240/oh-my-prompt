@@ -19,7 +19,7 @@ import { STORAGE_KEY } from '@oh-my-prompt/shared/constants'
 import { Tooltip } from '@/content/components/Tooltip'
 import { ToastNotification } from '@/sidepanel/components/ToastNotification'
 import { downloadImageFromUrl } from '@/lib/sync/image-sync'
-import { getDisplayUrl, normalizePromptImageBlob, savePromptImageAsset } from '@/lib/sync/image-asset-service'
+import { deletePromptImageAsset, getDisplayUrl, normalizePromptImageBlob, savePromptImageAsset } from '@/lib/sync/image-asset-service'
 import { getFolderHandle } from '@/lib/sync/indexeddb'
 import { useAutoPermissionRestore } from '@/sidepanel/hooks/useAutoPermissionRestore'
 import AgentView from '@/sidepanel/views/AgentView'
@@ -1832,6 +1832,7 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
     content: string
     contentEn?: string
     categoryId: string
+    id?: string
     imageId?: string
     localImage?: string
     remoteImageUrl?: string
@@ -1857,6 +1858,7 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
 
     // Save prompt immediately (don't wait for permission response)
     usePromptStore.getState().addPrompt({
+      id: data.id,
       name: data.name,
       nameEn: data.nameEn,
       description: data.description,
@@ -1923,7 +1925,7 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
     setTimeout(hideToast, 2000)
   }, [editingStates.prompt, clearEditingItem, closeModal, setToastMessage, hideToast])
 
-  const handleDeletePrompt = useCallback(() => {
+  const handleDeletePrompt = useCallback(async () => {
     if (!editingStates.deletingPrompt) return
 
     // Temporary library is backed by temporaryPrompts, so identify it by view/membership
@@ -1932,8 +1934,20 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
       temporaryPrompts.some(p => p.id === editingStates.deletingPrompt?.id)
 
     if (isDeletingTemporaryPrompt) {
+      const imageDelete = await deletePromptImageAsset(editingStates.deletingPrompt.id)
+      if (!imageDelete.success) {
+        setToastMessage('图片删除失败，请检查文件夹权限')
+        setTimeout(hideToast, 2000)
+        return
+      }
       deleteTemporaryPrompt(editingStates.deletingPrompt.id)
     } else {
+      const imageDelete = await deletePromptImageAsset(editingStates.deletingPrompt.id)
+      if (!imageDelete.success) {
+        setToastMessage('图片删除失败，请检查文件夹权限')
+        setTimeout(hideToast, 2000)
+        return
+      }
       usePromptStore.getState().deletePrompt(editingStates.deletingPrompt.id)
     }
 

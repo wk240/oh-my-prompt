@@ -28,7 +28,7 @@ interface PromptStore {
   setSelectedCategory: (categoryId: string | null) => void
 
   // Prompt CRUD
-  addPrompt: (prompt: Omit<Prompt, 'id'>) => Promise<{ syncSuccess?: boolean }>
+  addPrompt: (prompt: Omit<Prompt, 'id'> & { id?: string }) => Promise<{ syncSuccess?: boolean; promptId: string }>
   updatePrompt: (id: string, updates: Partial<Prompt>) => void
   deletePrompt: (id: string) => void
 
@@ -411,7 +411,7 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
   },
 
   // Prompt CRUD
-  addPrompt: async (prompt: Omit<Prompt, 'id'>) => {
+  addPrompt: async (prompt: Omit<Prompt, 'id'> & { id?: string }) => {
     const { prompts } = get()
     // Find max order in the same category
     const categoryPrompts = prompts.filter(p => p.categoryId === prompt.categoryId)
@@ -421,7 +421,7 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
 
     const newPrompt: Prompt = {
       ...prompt,
-      id: generateId(),
+      id: prompt.id || generateId(),
       order: maxOrder + 1,
       updatedAt: Date.now()
     }
@@ -430,7 +430,7 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
     }))
     // Wait for save to complete and return sync status
     const result = await get().saveToStorage()
-    return { syncSuccess: result.syncSuccess }
+    return { syncSuccess: result.syncSuccess, promptId: newPrompt.id }
   },
 
   updatePrompt: (id: string, updates: Partial<Prompt>) => {

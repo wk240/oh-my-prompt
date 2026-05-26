@@ -654,6 +654,21 @@ chrome.runtime.onMessage.addListener(
           })
         return true // Required for async response
 
+      case MessageType.NORMALIZE_IMAGE:
+        // Normalize image via offscreen document, creating it first when needed.
+        const normalizeImagePayload = message.payload as { data: number[]; mimeType?: string }
+        if (!normalizeImagePayload?.data) {
+          sendResponse({ success: false, error: 'Invalid payload' })
+          return true
+        }
+        sendToOffscreen(MessageType.OFFSCREEN_NORMALIZE_IMAGE, normalizeImagePayload)
+          .then(result => sendResponse(result as MessageResponse))
+          .catch(error => {
+            console.error('[Oh My Prompt] NORMALIZE_IMAGE error:', error)
+            sendResponse({ success: false, error: String(error) })
+          })
+        return true // Required for async response
+
       case MessageType.READ_IMAGE:
         // Read image from folder via offscreen document
         const readImagePayload = message.payload as { relativePath: string }

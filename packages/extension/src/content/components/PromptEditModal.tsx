@@ -62,6 +62,7 @@ interface PromptEditModalProps {
     content: string
     contentEn?: string
     categoryId: string
+    id?: string
     imageId?: string
     localImage?: string
     remoteImageUrl?: string
@@ -114,6 +115,7 @@ export function PromptEditModal({
   const [imageId, setImageId] = useState<string | undefined>(undefined)
   const [localImage, setLocalImage] = useState<string | undefined>(undefined)
   const [remoteImageUrl, setRemoteImageUrl] = useState<string | undefined>(undefined)
+  const [draftPromptId, setDraftPromptId] = useState<string | undefined>(undefined)
   const [imageUrlInput, setImageUrlInput] = useState('')
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | undefined>(undefined)
   const [isUploadingImage, setIsUploadingImage] = useState(false)
@@ -158,6 +160,7 @@ export function PromptEditModal({
         setContentEn(prompt.contentEn || '')
         // Reset image state from prompt
         setImageId(prompt.imageId)
+        setDraftPromptId(undefined)
         setLocalImage(prompt.localImage)
         setRemoteImageUrl(prompt.remoteImageUrl)
         if (prompt.imageId || prompt.localImage || prompt.remoteImageUrl) {
@@ -198,6 +201,7 @@ export function PromptEditModal({
         setLocalImage(undefined)
         setRemoteImageUrl(undefined)
         setImagePreviewUrl(undefined)
+        setDraftPromptId(crypto.randomUUID())
       }
       setImageUrlInput('')
       setImageError(undefined)
@@ -241,7 +245,10 @@ export function PromptEditModal({
 
       try {
         // Generate temporary ID for new prompts (use timestamp)
-        const tempId = prompt?.id || `temp-${Date.now()}`
+        const tempId = prompt?.id || draftPromptId || crypto.randomUUID()
+        if (!prompt?.id && !draftPromptId) {
+          setDraftPromptId(tempId)
+        }
 
         const result = await savePromptEditModalImage({
           promptId: tempId,
@@ -267,7 +274,7 @@ export function PromptEditModal({
 
       setIsUploadingImage(false)
     },
-    [authState, prompt?.id, remoteImageUrl]
+    [authState, draftPromptId, prompt?.id, remoteImageUrl]
   )
 
   // Handle URL download
@@ -289,7 +296,10 @@ export function PromptEditModal({
       const downloadResult = await downloadImageFromUrl(imageUrlInput.trim())
 
       if (downloadResult.success && downloadResult.blob) {
-        const tempId = prompt?.id || `temp-${Date.now()}`
+        const tempId = prompt?.id || draftPromptId || crypto.randomUUID()
+        if (!prompt?.id && !draftPromptId) {
+          setDraftPromptId(tempId)
+        }
         const result = await savePromptEditModalImage({
           promptId: tempId,
           blob: downloadResult.blob,
@@ -318,7 +328,7 @@ export function PromptEditModal({
     }
 
     setIsUploadingImage(false)
-  }, [authState, imageUrlInput, prompt?.id])
+  }, [authState, draftPromptId, imageUrlInput, prompt?.id])
 
   // Handle image delete
   const handleImageDelete = useCallback(async () => {
@@ -391,6 +401,7 @@ export function PromptEditModal({
       content: trimmedContent,
       contentEn: trimmedContentEn || undefined,
       categoryId,
+      id: prompt?.id ? undefined : draftPromptId,
       imageId,
       localImage,
       remoteImageUrl,

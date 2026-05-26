@@ -12,7 +12,7 @@ import { createPortal } from 'react-dom'
 import { Shapes } from 'lucide-react'
 import type { Prompt } from '@oh-my-prompt/shared/types'
 import { getDisplayUrl } from '../../lib/sync/image-asset-service'
-import { getCachedImageUrl } from '../../lib/sync/image-sync'
+import { queueImageLoad } from '../../lib/sync/image-loader-queue'
 
 interface PromptThumbnailProps {
   prompt?: Prompt           // Preferred image source for asset-backed prompts
@@ -83,7 +83,7 @@ export function PromptThumbnail({
       const url = prompt
         ? await getDisplayUrl(prompt)
         : relativePath
-          ? await getCachedImageUrl(relativePath)
+          ? await queueImageLoad(relativePath)
           : null
       if (url) {
         setImageUrl(url)

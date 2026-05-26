@@ -36,7 +36,7 @@ import { usePromptStore } from '../../lib/store'
 import { getResourcePrompts, getResourceCategories } from '../../lib/resource-library'
 import { MessageType } from '@oh-my-prompt/shared/messages'
 import { clearImageUrlCache, isFolderConfigured, downloadImageFromUrl } from '../../lib/sync/image-sync'
-import { normalizePromptImageBlob, savePromptImageAsset } from '../../lib/sync/image-asset-service'
+import { deletePromptImageAsset, normalizePromptImageBlob, savePromptImageAsset } from '../../lib/sync/image-asset-service'
 import { clearLoadQueue } from '../../lib/sync/image-loader-queue'
 import { clearSupabaseClient } from '../../lib/cloud-sync/supabase-client'
 import { PromptThumbnail } from './PromptThumbnail'
@@ -1171,11 +1171,13 @@ export function DropdownContainer({
     content: string
     contentEn?: string
     categoryId: string
+    id?: string
     imageId?: string
     localImage?: string
     remoteImageUrl?: string
   }) => {
     usePromptStore.getState().addPrompt({
+      id: data.id,
       name: data.name,
       nameEn: data.nameEn,
       description: data.description,
@@ -1220,12 +1222,17 @@ export function DropdownContainer({
     showToast('提示词已更新')
   }, [editingStates.prompt])
 
-  const handleDeletePrompt = useCallback(() => {
+  const handleDeletePrompt = useCallback(async () => {
     if (!editingStates.deletingPrompt) return
     // Check if deleting a temporary prompt
     const isTemporaryPrompt = temporaryPrompts.some(p => p.id === editingStates.deletingPrompt!.id)
     if (isTemporaryPrompt) {
       // Delete from temporary library
+      const imageDelete = await deletePromptImageAsset(editingStates.deletingPrompt.id)
+      if (!imageDelete.success) {
+        showToast('图片删除失败，请检查文件夹权限')
+        return
+      }
       const updatedTemporaryPrompts = temporaryPrompts.filter(p => p.id !== editingStates.deletingPrompt!.id)
       usePromptStore.setState({ temporaryPrompts: updatedTemporaryPrompts })
       // Persist via service worker (settings preserved by merge)
@@ -1240,6 +1247,11 @@ export function DropdownContainer({
       setModalStates(prev => ({ ...prev, isPromptDelete: false }))
       clearEditingItem('deletingPrompt')
       showToast('提示词已删除')
+      return
+    }
+    const imageDelete = await deletePromptImageAsset(editingStates.deletingPrompt.id)
+    if (!imageDelete.success) {
+      showToast('图片删除失败，请检查文件夹权限')
       return
     }
     usePromptStore.getState().deletePrompt(editingStates.deletingPrompt.id)

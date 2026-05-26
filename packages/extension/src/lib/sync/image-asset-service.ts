@@ -2,6 +2,7 @@ import type { ImageAsset, PendingImageDelete, Prompt, StorageSchema } from '@oh-
 import { STORAGE_KEY } from '@oh-my-prompt/shared/constants'
 import { MessageType } from '@oh-my-prompt/shared/messages'
 import { saveImage, deleteImageByPath, getCachedImageUrl } from './image-sync'
+import { queueImageLoad } from './image-loader-queue'
 import { deleteCloudImage, uploadCloudImage } from './image-cloud-client'
 import {
   HARD_IMAGE_SIZE_LIMIT,
@@ -124,7 +125,7 @@ export async function normalizePromptImageBlob(blob: Blob): Promise<PreparedImag
 
   if (typeof chrome !== 'undefined' && typeof chrome.runtime?.sendMessage === 'function') {
     const response = await chrome.runtime.sendMessage({
-      type: MessageType.OFFSCREEN_NORMALIZE_IMAGE,
+      type: MessageType.NORMALIZE_IMAGE,
       payload: {
         data,
         mimeType: blob.type
@@ -303,14 +304,14 @@ export async function getDisplayUrl(prompt: Prompt): Promise<string | null> {
     const data = await readStorage()
     const asset = data.imageAssets?.[prompt.imageId]
     if (asset?.localPath) {
-      const localUrl = await getCachedImageUrl(asset.localPath)
+      const localUrl = await queueImageLoad(asset.localPath)
       if (localUrl) return localUrl
       if (asset.cloudUrl) return asset.cloudUrl
     }
   }
 
   if (prompt.localImage) {
-    const legacyUrl = await getCachedImageUrl(prompt.localImage)
+    const legacyUrl = await queueImageLoad(prompt.localImage)
     if (legacyUrl) return legacyUrl
   }
 

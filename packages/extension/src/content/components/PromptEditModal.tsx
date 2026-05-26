@@ -128,6 +128,7 @@ export function PromptEditModal({
   // Hover preview state
   const [showImagePreview, setShowImagePreview] = useState(false)
   const [imagePreviewMousePos, setImagePreviewMousePos] = useState({ x: 0, y: 0 })
+  const didConfirmRef = useRef(false)
 
   // Cleanup blob URLs to prevent memory leaks
   useEffect(() => {
@@ -141,6 +142,7 @@ export function PromptEditModal({
   // Reset hover preview state when modal closes
   useEffect(() => {
     if (!isOpen) {
+      didConfirmRef.current = false
       setShowImagePreview(false)
     }
   }, [isOpen])
@@ -148,6 +150,7 @@ export function PromptEditModal({
   // Reset state when modal opens
   useEffect(() => {
     if (isOpen) {
+      didConfirmRef.current = false
       let cancelled = false
 
       if (prompt) {
@@ -215,6 +218,13 @@ export function PromptEditModal({
       }
     }
   }, [isOpen, prompt, defaultCategoryId, categories])
+
+  const handleClose = useCallback(() => {
+    if (!didConfirmRef.current && !prompt?.id && draftPromptId && localImage) {
+      void deletePromptImageAsset(draftPromptId)
+    }
+    onClose()
+  }, [draftPromptId, localImage, onClose, prompt?.id])
 
   // Handle file upload
   const handleFileUpload = useCallback(
@@ -385,6 +395,7 @@ export function PromptEditModal({
     if (isTemporary && onTransfer) {
       if (!categoryId) return
       onTransfer(categoryId)
+      didConfirmRef.current = true
       onClose()
       return
     }
@@ -406,6 +417,7 @@ export function PromptEditModal({
       localImage,
       remoteImageUrl,
     })
+    didConfirmRef.current = true
     onClose()
   }
 
@@ -472,14 +484,14 @@ export function PromptEditModal({
       {previewElement && createPortal(previewElement, document.body)}
       <BaseModal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       title={mode === 'add' ? '添加提示词' : '编辑提示词'}
       description={mode === 'add' ? '添加新的提示词到您的收藏' : '修改提示词的名称、内容和分类'}
       width={480}
       footer={
         <>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             style={{
               padding: '10px 16px',
               background: '#f8f8f8',

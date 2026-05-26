@@ -1,6 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { StorageSchema } from '@oh-my-prompt/shared/types'
-import { savePromptImageAsset, deletePromptImageAsset, queuePendingImageDelete, retryImageUpload } from '../image-asset-service'
+import {
+  deletePromptImageAsset,
+  drainPendingImageDeletes,
+  queuePendingImageDelete,
+  retryImageUpload,
+  retryPendingImageUploads,
+  savePromptImageAsset
+} from '../image-asset-service'
 import { deleteImageByPath, getCachedImageUrl, saveImage } from '../image-sync'
 import { deleteCloudImage, uploadCloudImage } from '../image-cloud-client'
 
@@ -250,6 +257,57 @@ describe('image-asset-service', () => {
     })
   })
 
+  it('retries local-only image uploads when cloud sync becomes available', async () => {
+    storageData.imageAssets = {
+      'image-1': {
+        id: 'image-1',
+        promptId: 'prompt-1',
+        localPath: 'images/image-1.webp',
+        mimeType: 'image/webp',
+        width: 100,
+        height: 80,
+        size: 1000,
+        hash: 'hash-1',
+        status: 'local_only',
+        updatedAt: 1
+      }
+    }
+    vi.mocked(getCachedImageUrl).mockResolvedValueOnce('blob:local')
+    vi.mocked(uploadCloudImage).mockResolvedValueOnce({
+      success: true,
+      cloudUrl: 'https://blob/image-1.webp',
+      cloudPath: 'users/u/images/image-1.webp',
+      size: 1000
+    })
+
+    await retryPendingImageUploads()
+
+    expect(uploadCloudImage).toHaveBeenCalledWith(expect.objectContaining({
+      imageId: 'image-1',
+      promptId: 'prompt-1'
+    }))
+    expect(storageData.imageAssets?.['image-1']).toMatchObject({
+      status: 'synced',
+      cloudUrl: 'https://blob/image-1.webp',
+      cloudPath: 'users/u/images/image-1.webp'
+    })
+  })
+
+  it('drains successful pending cloud deletes', async () => {
+    storageData.pendingImageDeletes = [{
+      imageId: 'image-1',
+      cloudPath: 'users/u/images/image-1.webp',
+      attempts: 1,
+      updatedAt: 1
+    }]
+    vi.mocked(deleteCloudImage).mockResolvedValueOnce({ success: true })
+
+    await drainPendingImageDeletes()
+
+    expect(deleteCloudImage).toHaveBeenCalledWith('image-1', 'users/u/images/image-1.webp')
+    expect(storageData.pendingImageDeletes).toEqual([])
+  })
+
   it('preserves prompt and asset metadata when local delete fails', async () => {
     storageData.userData.prompts[0].imageId = 'image-1'
     storageData.userData.prompts[0].localImage = 'images/image-1.webp'
@@ -281,6 +339,21 @@ describe('image-asset-service', () => {
     expect(storageData.imageAssets?.['image-1']).toMatchObject({
       localPath: 'images/image-1.webp',
       lastError: 'PERMISSION_DENIED'
+    })
+  })
+
+  it('deletes legacy local image files without image asset metadata', async () => {
+    storageData.userData.prompts[0].localImage = 'images/legacy.webp'
+    storageData.userData.prompts[0].remoteImageUrl = 'https://example.com/source.png'
+
+    const result = await deletePromptImageAsset('prompt-1')
+
+    expect(result.success).toBe(true)
+    expect(deleteImageByPath).toHaveBeenCalledWith('images/legacy.webp')
+    expect(storageData.userData.prompts[0]).toMatchObject({
+      imageId: undefined,
+      localImage: undefined,
+      remoteImageUrl: undefined
     })
   })
 

@@ -7,6 +7,7 @@ import { MessageType } from '@oh-my-prompt/shared/messages'
 import { getCachedAuthState, invalidateSyncStatusCache } from '../cloud-sync/auth-service'
 import { computeBackupDataHash } from './hash'
 import { mergeImageAssets, mergePendingImageDeletes } from './image-metadata-merge'
+import { drainPendingImageDeletes, retryPendingImageUploads } from './image-asset-service'
 import {
   FullBackupData,
   IdAliasMap,
@@ -92,7 +93,13 @@ export class SyncOrchestrator {
    */
   private createCloudRetryCallback(data: FullBackupData): () => Promise<{ success: boolean; error?: string }> {
     return async () => {
-      const result = await this.cloudStrategy.sync(data)
+      await retryPendingImageUploads()
+      await drainPendingImageDeletes()
+      const latestData = await this.getLocalData()
+      const result = await this.cloudStrategy.sync({
+        ...latestData,
+        timestamp: data.timestamp || Date.now()
+      })
       // Store full result for access after RetryManager.execute()
       this.lastCloudSyncResult = result
       return {

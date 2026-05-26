@@ -502,14 +502,18 @@ async function handleDeleteImage(payload: { promptId?: string; relativePath?: st
       const filename = `${payload.promptId}.${ext}`
       try {
         await imagesDir.removeEntry(filename)
-      } catch {
-        // File doesn't exist with this extension
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === 'NotFoundError')) {
+          return { success: false, error: 'DELETE_FAILED' }
+        }
       }
     }
     return { success: true } as MessageResponse
-  } catch {
-    // images directory doesn't exist
-    return { success: true } as MessageResponse
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'NotFoundError') {
+      return { success: true } as MessageResponse
+    }
+    return { success: false, error: 'DELETE_FAILED' } as MessageResponse
   }
 }
 

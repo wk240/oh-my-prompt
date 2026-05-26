@@ -321,7 +321,7 @@ export async function getDisplayUrl(prompt: Prompt): Promise<string | null> {
 export async function retryImageUpload(imageId: string): Promise<void> {
   const data = await readStorage()
   const asset = data.imageAssets?.[imageId]
-  if (!asset || (asset.status !== 'pending_upload' && asset.status !== 'upload_failed')) return
+  if (!asset || (asset.status !== 'pending_upload' && asset.status !== 'upload_failed' && asset.status !== 'local_only')) return
   if (asset.lastUploadAttemptAt && Date.now() - asset.lastUploadAttemptAt < 60_000) return
 
   await writeStorage({
@@ -396,6 +396,40 @@ export async function retryImageUpload(imageId: string): Promise<void> {
           }
     }
   })
+}
+
+export async function retryPendingImageUploads(): Promise<void> {
+  const data = await readStorage()
+  const imageIds = Object.values(data.imageAssets || {})
+    .filter(asset => asset.status === 'local_only' || asset.status === 'pending_upload' || asset.status === 'upload_failed')
+    .map(asset => asset.id)
+
+  for (const imageId of imageIds) {
+    await retryImageUpload(imageId)
+  }
+}
+
+export async function drainPendingImageDeletes(): Promise<void> {
+  const data = await readStorage()
+  const pendingDeletes = data.pendingImageDeletes || []
+  if (pendingDeletes.length === 0) return
+
+  const remaining: PendingImageDelete[] = []
+  for (const item of pendingDeletes) {
+    const result = await deleteCloudImage(item.imageId, item.cloudPath)
+      .catch(error => ({ success: false, error: getErrorMessage(error) }))
+    if (!result.success) {
+      remaining.push({
+        ...item,
+        attempts: item.attempts + 1,
+        lastError: result.error,
+        updatedAt: Date.now()
+      })
+    }
+  }
+
+  const latest = await readStorage()
+  await writeStorage({ ...latest, pendingImageDeletes: remaining })
 }
 
 export async function deletePromptImageAsset(promptId: string): Promise<DeletePromptImageAssetResult> {

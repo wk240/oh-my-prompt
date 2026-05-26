@@ -31,6 +31,12 @@ function isContentScriptContext(): boolean {
   }
 }
 
+function isNotFoundError(error: unknown): boolean {
+  return error instanceof DOMException
+    ? error.name === 'NotFoundError'
+    : error instanceof Error && error.name === 'NotFoundError'
+}
+
 /**
  * Image operation result types
  */
@@ -242,8 +248,11 @@ async function deleteImageDirect(promptId: string): Promise<{ success: boolean; 
       }
     }
     return { success: true }
-  } catch {
-    return { success: true }
+  } catch (error) {
+    if (isNotFoundError(error)) {
+      return { success: true }
+    }
+    return { success: false, error: 'DELETE_FAILED' }
   }
 }
 
@@ -263,8 +272,11 @@ async function deleteImageByPathDirect(relativePath: string): Promise<{ success:
     await imagesDir.removeEntry(filename)
     revokeCachedImageUrl(relativePath)
     return { success: true }
-  } catch {
-    return { success: true }
+  } catch (error) {
+    if (isNotFoundError(error)) {
+      return { success: true }
+    }
+    return { success: false, error: 'DELETE_FAILED' }
   }
 }
 

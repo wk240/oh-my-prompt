@@ -249,7 +249,7 @@ describe('image-asset-service', () => {
     vi.mocked(getCachedImageUrl).mockResolvedValueOnce('blob:local')
     vi.mocked(fetch).mockRejectedValueOnce(new Error('blob fetch failed'))
 
-    await expect(retryImageUpload('image-1')).resolves.toBeUndefined()
+    await expect(retryImageUpload('image-1')).resolves.toBe(true)
 
     expect(storageData.imageAssets?.['image-1']).toMatchObject({
       status: 'upload_failed',

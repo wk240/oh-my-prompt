@@ -318,11 +318,11 @@ export async function getDisplayUrl(prompt: Prompt): Promise<string | null> {
   return prompt.remoteImageUrl || null
 }
 
-export async function retryImageUpload(imageId: string): Promise<void> {
+export async function retryImageUpload(imageId: string): Promise<boolean> {
   const data = await readStorage()
   const asset = data.imageAssets?.[imageId]
-  if (!asset || (asset.status !== 'pending_upload' && asset.status !== 'upload_failed' && asset.status !== 'local_only')) return
-  if (asset.lastUploadAttemptAt && Date.now() - asset.lastUploadAttemptAt < 60_000) return
+  if (!asset || (asset.status !== 'pending_upload' && asset.status !== 'upload_failed' && asset.status !== 'local_only')) return false
+  if (asset.lastUploadAttemptAt && Date.now() - asset.lastUploadAttemptAt < 60_000) return false
 
   await writeStorage({
     ...data,
@@ -340,12 +340,12 @@ export async function retryImageUpload(imageId: string): Promise<void> {
     url = await getCachedImageUrl(asset.localPath)
   } catch (error) {
     await markImageAssetStatus(imageId, 'upload_failed', getErrorMessage(error))
-    return
+    return true
   }
 
   if (!url) {
     await markImageAssetStatus(imageId, 'missing_local', 'LOCAL_IMAGE_MISSING')
-    return
+    return true
   }
 
   let result: Awaited<ReturnType<typeof uploadCloudImage>>
@@ -353,7 +353,7 @@ export async function retryImageUpload(imageId: string): Promise<void> {
     const response = await fetch(url)
     if (!response.ok) {
       await markImageAssetStatus(imageId, 'upload_failed', `HTTP_${response.status}`)
-      return
+      return true
     }
     const blob = await response.blob()
     result = await uploadCloudImage({
@@ -367,12 +367,12 @@ export async function retryImageUpload(imageId: string): Promise<void> {
     })
   } catch (error) {
     await markImageAssetStatus(imageId, 'upload_failed', getErrorMessage(error))
-    return
+    return true
   }
 
   const latest = await readStorage()
   const latestAsset = latest.imageAssets?.[imageId]
-  if (!latestAsset) return
+  if (!latestAsset) return true
 
   await writeStorage({
     ...latest,
@@ -396,23 +396,28 @@ export async function retryImageUpload(imageId: string): Promise<void> {
           }
     }
   })
+  return true
 }
 
-export async function retryPendingImageUploads(): Promise<void> {
+export async function retryPendingImageUploads(): Promise<boolean> {
   const data = await readStorage()
+  if (!data) return false
   const imageIds = Object.values(data.imageAssets || {})
     .filter(asset => asset.status === 'local_only' || asset.status === 'pending_upload' || asset.status === 'upload_failed')
     .map(asset => asset.id)
 
+  let changed = false
   for (const imageId of imageIds) {
-    await retryImageUpload(imageId)
+    changed = await retryImageUpload(imageId) || changed
   }
+  return changed
 }
 
-export async function drainPendingImageDeletes(): Promise<void> {
+export async function drainPendingImageDeletes(): Promise<boolean> {
   const data = await readStorage()
+  if (!data) return false
   const pendingDeletes = data.pendingImageDeletes || []
-  if (pendingDeletes.length === 0) return
+  if (pendingDeletes.length === 0) return false
 
   const remaining: PendingImageDelete[] = []
   for (const item of pendingDeletes) {
@@ -430,6 +435,7 @@ export async function drainPendingImageDeletes(): Promise<void> {
 
   const latest = await readStorage()
   await writeStorage({ ...latest, pendingImageDeletes: remaining })
+  return true
 }
 
 export async function deletePromptImageAsset(promptId: string): Promise<DeletePromptImageAssetResult> {

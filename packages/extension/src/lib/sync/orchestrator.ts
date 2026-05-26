@@ -93,13 +93,12 @@ export class SyncOrchestrator {
    */
   private createCloudRetryCallback(data: FullBackupData): () => Promise<{ success: boolean; error?: string }> {
     return async () => {
-      await retryPendingImageUploads()
-      await drainPendingImageDeletes()
-      const latestData = await this.getLocalData()
-      const result = await this.cloudStrategy.sync({
-        ...latestData,
-        timestamp: data.timestamp || Date.now()
-      })
+      const uploadChanged = await retryPendingImageUploads()
+      const deleteChanged = await drainPendingImageDeletes()
+      const syncData = uploadChanged || deleteChanged
+        ? { ...await this.getLocalData(), timestamp: data.timestamp || Date.now() }
+        : data
+      const result = await this.cloudStrategy.sync(syncData)
       // Store full result for access after RetryManager.execute()
       this.lastCloudSyncResult = result
       return {

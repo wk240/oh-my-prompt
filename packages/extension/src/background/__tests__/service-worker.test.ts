@@ -360,6 +360,25 @@ describe('service worker message handling', () => {
     })
   })
 
+  it('reports cloud failure from SET_STORAGE even when local backup succeeds', async () => {
+    const sendResponse = await dispatchSetStorageWithSyncResult({
+      cloudSynced: false,
+      localSynced: true,
+      cloudError: 'NETWORK_ERROR'
+    })
+
+    expect(sendResponse).toHaveBeenCalledWith({
+      success: true,
+      data: {
+        syncSuccess: false,
+        syncError: {
+          type: 'unknown',
+          message: 'NETWORK_ERROR'
+        }
+      }
+    })
+  })
+
   it('treats skipped orchestrator sync as successful SET_STORAGE auto-sync', async () => {
     const sendResponse = await dispatchSetStorageWithSyncResult({
       cloudSynced: false,

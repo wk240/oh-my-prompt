@@ -1741,24 +1741,31 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
       newOrder.splice(oldIndex, 1)
       newOrder.splice(newIndex, 0, sortedCategories[oldIndex])
 
+      const now = Date.now()
       const updatedCategories = categories.map(category => ({
         ...category,
-        order: newOrder.map(c => c.id).indexOf(category.id)
+        order: newOrder.map(c => c.id).indexOf(category.id),
+        updatedAt: now
       }))
+      usePromptStore.setState({ categories: updatedCategories })
 
       try {
-        await chrome.runtime.sendMessage({
+        const response = await chrome.runtime.sendMessage({
           type: MessageType.SET_STORAGE,
           payload: {
             version: chrome.runtime.getManifest().version,
             userData: { prompts, categories: updatedCategories }
           }
         })
+        if (response?.data?.syncSuccess === false) {
+          setToastMessage('排序已保存，云端同步失败')
+          setTimeout(hideToast, 2000)
+        }
       } catch (error) {
         console.error('[Oh My Prompt] Category reorder failed:', error)
       }
     }
-  }, [categories, prompts])
+  }, [categories, prompts, setToastMessage, hideToast])
 
   // Handle drag end for prompt reorder
   const handlePromptDragEnd = useCallback(async (event: DragEndEvent) => {
@@ -1770,27 +1777,33 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
       newOrder.splice(oldIndex, 1)
       newOrder.splice(newIndex, 0, displayPrompts[oldIndex])
 
+      const now = Date.now()
       const updatedPrompts = prompts.map(prompt => {
         const newIndexInOrder = newOrder.map(p => p.id).indexOf(prompt.id)
         if (newIndexInOrder !== -1) {
-          return { ...prompt, order: newIndexInOrder }
+          return { ...prompt, order: newIndexInOrder, updatedAt: now }
         }
         return prompt
       })
+      usePromptStore.setState({ prompts: updatedPrompts })
 
       try {
-        await chrome.runtime.sendMessage({
+        const response = await chrome.runtime.sendMessage({
           type: MessageType.SET_STORAGE,
           payload: {
             version: chrome.runtime.getManifest().version,
             userData: { prompts: updatedPrompts, categories }
           }
         })
+        if (response?.data?.syncSuccess === false) {
+          setToastMessage('排序已保存，云端同步失败')
+          setTimeout(hideToast, 2000)
+        }
       } catch (error) {
         console.error('[Oh My Prompt] Prompt reorder failed:', error)
       }
     }
-  }, [displayPrompts, prompts, categories])
+  }, [displayPrompts, prompts, categories, setToastMessage, hideToast])
 
   // CRUD handlers
   const handleAddCategory = useCallback((name: string) => {

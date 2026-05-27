@@ -315,6 +315,11 @@ function migratePromptOrders(prompts: Prompt[]): Prompt[] {
   return migrated
 }
 
+function areCollectionsEqual<T>(current: T[], incoming: T[]): boolean {
+  if (current.length !== incoming.length) return false
+  return current.every((item, index) => JSON.stringify(item) === JSON.stringify(incoming[index]))
+}
+
 export const usePromptStore = create<PromptStore>((set, get) => ({
   // Initial state
   prompts: [],
@@ -341,11 +346,13 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
 
         // Migrate prompts without order field
         const migratedPrompts = migratePromptOrders(data.userData.prompts)
+        const state = get()
+        const incomingTemporaryPrompts = data.temporaryPrompts || []
 
         set({
-          prompts: migratedPrompts,
-          categories: data.userData.categories,
-          temporaryPrompts: data.temporaryPrompts || [],
+          prompts: areCollectionsEqual(state.prompts, migratedPrompts) ? state.prompts : migratedPrompts,
+          categories: areCollectionsEqual(state.categories, data.userData.categories) ? state.categories : data.userData.categories,
+          temporaryPrompts: areCollectionsEqual(state.temporaryPrompts, incomingTemporaryPrompts) ? state.temporaryPrompts : incomingTemporaryPrompts,
           selectedCategoryId: 'all',
           isLoading: false
         })

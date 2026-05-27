@@ -1076,12 +1076,14 @@ export function DropdownContainer({
       newOrder.splice(newIndex, 0, filteredPrompts[oldIndex])
 
       // Global sorting: update order for all prompts based on new position
+      const now = Date.now()
       const updatedPrompts = localPrompts.map((prompt) => {
         const newIndexInOrder = newOrder.map(p => p.id).indexOf(prompt.id)
         if (newIndexInOrder !== -1) {
           return {
             ...prompt,
-            order: newIndexInOrder
+            order: newIndexInOrder,
+            updatedAt: now
           }
         }
         return prompt
@@ -1089,13 +1091,16 @@ export function DropdownContainer({
       setLocalPrompts(updatedPrompts)
 
       try {
-        await chrome.runtime.sendMessage({
+        const response = await chrome.runtime.sendMessage({
           type: MessageType.SET_STORAGE,
           payload: {
             version: '1.0.0',
             userData: { prompts: updatedPrompts, categories: localCategories }
           }
         })
+        if (response?.data?.syncSuccess === false) {
+          showToast('排序已保存，云端同步失败')
+        }
       } catch (error) {
         console.error('[Oh My Prompt] Failed to reorder prompts:', error)
       }
@@ -1113,22 +1118,27 @@ export function DropdownContainer({
       newOrder.splice(oldIndex, 1)
       newOrder.splice(newIndex, 0, sortedCategories[oldIndex])
 
+      const now = Date.now()
       const updatedCategories = localCategories.map((category) => {
         return {
           ...category,
-          order: newOrder.map(c => c.id).indexOf(category.id)
+          order: newOrder.map(c => c.id).indexOf(category.id),
+          updatedAt: now
         }
       })
       setLocalCategories(updatedCategories)
 
       try {
-        await chrome.runtime.sendMessage({
+        const response = await chrome.runtime.sendMessage({
           type: MessageType.SET_STORAGE,
           payload: {
             version: '1.0.0',
             userData: { prompts: localPrompts, categories: updatedCategories }
           }
         })
+        if (response?.data?.syncSuccess === false) {
+          showToast('排序已保存，云端同步失败')
+        }
       } catch (error) {
         console.error('[Oh My Prompt] Failed to reorder categories:', error)
       }

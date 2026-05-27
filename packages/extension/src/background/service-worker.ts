@@ -138,7 +138,8 @@ function debouncedTriggerSync(backupData: FullBackupData): Promise<{ success: bo
         }
 
         const syncResult = await syncOrchestrator.triggerSync(dataToSync)
-        const success = syncResult.cloudSynced || syncResult.localSynced || syncResult.skipped === true
+        const cloudFailed = !syncResult.cloudSynced && Boolean(syncResult.cloudError)
+        const success = !cloudFailed && (syncResult.cloudSynced || syncResult.localSynced || syncResult.skipped === true)
         const message = syncResult.cloudError || syncResult.localError
 
         const result = {

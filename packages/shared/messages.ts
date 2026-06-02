@@ -8,6 +8,10 @@ export enum MessageType {
   NORMALIZE_IMAGE = 'NORMALIZE_IMAGE',  // Normalize image via service worker/offscreen
   READ_IMAGE = 'READ_IMAGE',  // Read image via service worker and return data array for content script
   DELETE_IMAGE = 'DELETE_IMAGE',  // Delete image via service worker
+  ENQUEUE_IMAGE_RESTORE = 'ENQUEUE_IMAGE_RESTORE',  // Enqueue cloud-backed image restore through service worker
+  RESTORE_MISSING_CLOUD_IMAGES = 'RESTORE_MISSING_CLOUD_IMAGES',  // Resume/enqueue all missing cloud-backed images
+  GET_IMAGE_RESTORE_STATUS = 'GET_IMAGE_RESTORE_STATUS',  // Read paused restore notification state
+  IMAGE_RESTORE_FOLDER_REQUIRED = 'IMAGE_RESTORE_FOLDER_REQUIRED',  // SW → UI: local folder needed for restore
   GET_FOLDER_HANDLE = 'GET_FOLDER_HANDLE',  // Get folder handle from service worker (deprecated - handles cannot cross origins)
   SAVE_FOLDER_HANDLE = 'SAVE_FOLDER_HANDLE',
   GET_SYNC_STATUS = 'GET_SYNC_STATUS',
@@ -106,7 +110,6 @@ export enum MessageType {
   BACKUP_RETRY = 'BACKUP_RETRY',  // SW → UI: Notify retry attempt (with count)
   BACKUP_COMPLETE = 'BACKUP_COMPLETE',  // SW → UI: Notify backup completed (success or failure)
   EMERGENCY_EXPORT = 'EMERGENCY_EXPORT',  // UI → SW: Export all data when all backups failed
-  IMAGE_RESTORE_FOLDER_REQUIRED = 'IMAGE_RESTORE_FOLDER_REQUIRED',  // SW → UI: Folder permission needed for image restore
 
   // Official Vision API
   GET_VISION_QUOTA = 'GET_VISION_QUOTA',           // 获取 Vision 额度状态

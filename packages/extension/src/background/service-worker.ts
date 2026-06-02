@@ -14,6 +14,7 @@ import { sendToOffscreen } from '../lib/offscreen-manager'
 import '../lib/migrations/register' // Register all migrations
 import { clearSupabaseClient } from '../lib/cloud-sync/supabase-client'
 import { handleAgentGenerate, handleEcommerceAiWrite } from './agent-handler'
+import { enqueueImageRestore, getImageRestoreStatus, restoreMissingCloudImages } from '../lib/sync/image-asset-service'
 
 // Create sync orchestrator for cloud-first decision matrix
 const syncOrchestrator = createSyncOrchestrator()
@@ -639,6 +640,35 @@ chrome.runtime.onMessage.addListener(
             sendResponse({ success: false, error: String(error) })
           })
         return true // Required for async response
+
+      case MessageType.ENQUEUE_IMAGE_RESTORE: {
+        const payload = message.payload as { imageId?: string; priority?: 'visible' | 'background' } | undefined
+        if (!payload?.imageId) {
+          sendResponse({ success: false, error: 'Invalid payload' })
+          return true
+        }
+        enqueueImageRestore(payload.imageId, { priority: payload.priority || 'background' })
+        sendResponse({ success: true })
+        return true
+      }
+
+      case MessageType.RESTORE_MISSING_CLOUD_IMAGES:
+        restoreMissingCloudImages({ priority: 'background' })
+          .then(enqueued => sendResponse({ success: true, data: { enqueued } } as MessageResponse))
+          .catch(error => {
+            console.error('[Oh My Prompt] RESTORE_MISSING_CLOUD_IMAGES error:', error)
+            sendResponse({ success: false, error: String(error) })
+          })
+        return true
+
+      case MessageType.GET_IMAGE_RESTORE_STATUS:
+        getImageRestoreStatus()
+          .then(status => sendResponse({ success: true, data: status } as MessageResponse))
+          .catch(error => {
+            console.error('[Oh My Prompt] GET_IMAGE_RESTORE_STATUS error:', error)
+            sendResponse({ success: false, error: String(error) })
+          })
+        return true
 
       case MessageType.SAVE_IMAGE:
         // Save image to folder via offscreen document (better permission handling)

@@ -430,7 +430,18 @@ export async function getDisplayUrl(prompt: Prompt): Promise<string | null> {
     if (asset?.localPath) {
       const localUrl = await queueImageLoad(asset.localPath)
       if (localUrl) return localUrl
-      if (asset.cloudUrl) return asset.cloudUrl
+      if (asset.cloudUrl) {
+        chrome.runtime?.sendMessage?.({
+          type: MessageType.ENQUEUE_IMAGE_RESTORE,
+          payload: {
+            imageId: asset.id,
+            priority: 'visible'
+          }
+        }).catch(() => {
+          enqueueImageRestore(asset.id, { priority: 'visible' })
+        })
+        return asset.cloudUrl
+      }
     }
   }
 

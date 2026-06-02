@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { StorageSchema } from '@oh-my-prompt/shared/types'
+import { MessageType } from '@oh-my-prompt/shared/messages'
 import {
   clearImageRestoreQueueForTests,
   deletePromptImageAsset,
   drainPendingImageDeletes,
   enqueueImageRestore,
+  getDisplayUrl,
   getImageRestoreStatus,
   queuePendingImageDelete,
   restoreMissingCloudImages,
@@ -401,6 +403,22 @@ describe('image-asset-service', () => {
     expect(storageData.imageAssets?.['image-1']).toMatchObject({
       status: 'synced',
       lastError: undefined
+    })
+  })
+
+  it('returns cloudUrl and enqueues visible restore when local display loading fails', async () => {
+    addCloudBackedMissingAsset()
+    vi.mocked(getCachedImageUrl).mockResolvedValue(null)
+
+    const result = await getDisplayUrl(storageData.userData.prompts[0])
+
+    expect(result).toBe('https://blob.test/image-1.webp')
+    expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
+      type: MessageType.ENQUEUE_IMAGE_RESTORE,
+      payload: {
+        imageId: 'image-1',
+        priority: 'visible'
+      }
     })
   })
 

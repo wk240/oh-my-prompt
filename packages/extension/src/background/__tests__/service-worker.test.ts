@@ -49,6 +49,12 @@ vi.mock('../../lib/sync', () => ({
   createSyncOrchestrator: mocks.createSyncOrchestrator
 }))
 
+vi.mock('../../lib/sync/image-asset-service', () => ({
+  enqueueImageRestore: vi.fn(),
+  getImageRestoreStatus: vi.fn(async () => ({ folderRequired: false, pendingCount: 0 })),
+  restoreMissingCloudImages: vi.fn(async () => true)
+}))
+
 vi.mock('../../lib/sync/indexeddb', () => ({
   saveFolderHandle: vi.fn(),
   getFolderHandle: vi.fn(() => Promise.resolve(null)),
@@ -343,6 +349,19 @@ describe('service worker message handling', () => {
       imageAssets: imageMetadata.imageAssets,
       pendingImageDeletes: imageMetadata.pendingImageDeletes
     }))
+  })
+
+  it('handles ENQUEUE_IMAGE_RESTORE from content callers', async () => {
+    const { enqueueImageRestore } = await import('../../lib/sync/image-asset-service')
+    const sendResponse = vi.fn()
+
+    dispatchRuntimeMessage({
+      type: MessageType.ENQUEUE_IMAGE_RESTORE,
+      payload: { imageId: 'image-1', priority: 'visible' }
+    }, sendResponse)
+
+    expect(enqueueImageRestore).toHaveBeenCalledWith('image-1', { priority: 'visible' })
+    expect(sendResponse).toHaveBeenCalledWith({ success: true })
   })
 
   it('treats local-only orchestrator sync as successful SET_STORAGE auto-sync', async () => {

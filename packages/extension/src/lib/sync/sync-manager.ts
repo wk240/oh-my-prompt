@@ -25,6 +25,12 @@ export interface SyncErrorInfo {
   message: string
 }
 
+function enqueueBackgroundImageRestore(): void {
+  void restoreMissingCloudImages({ priority: 'background' }).catch(error => {
+    console.warn('[Oh My Prompt] Background image restore enqueue failed:', error)
+  })
+}
+
 /**
  * Trigger sync after data change (including temporary prompts)
  * Called by store.saveToStorage() - routes through offscreen document for better permission handling
@@ -224,7 +230,7 @@ export async function initialSync(): Promise<void> {
         },
         { triggerSync: false }
       )
-      await restoreMissingCloudImages({ priority: 'background' })
+      enqueueBackgroundImageRestore()
     }
 
     // Case: both have data -> sync chrome.storage to local
@@ -842,7 +848,7 @@ export async function restoreFromBackup(
       },
       { triggerSync: false }
     )
-    await restoreMissingCloudImages({ priority: 'background' })
+    enqueueBackgroundImageRestore()
 
     // Sync restored data to latest backup file (omps-latest.json)
     // This ensures the restored state becomes the "current" backup state

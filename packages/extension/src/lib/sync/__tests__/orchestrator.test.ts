@@ -1352,6 +1352,42 @@ describe('SyncOrchestrator', () => {
       expect(result.localOnlyItems.prompts[0].id).toBe('2')
     })
 
+    it('keeps pending-upload bookkeeping when background image restore rejects', async () => {
+      const { restoreMissingCloudImages } = await import('../image-asset-service')
+      const cloudData: FullBackupData = {
+        prompts: [],
+        categories: [{ id: 'c1', name: 'Cloud Category', order: 0, updatedAt: 1 }],
+        temporaryPrompts: [],
+        timestamp: 1
+      }
+      const localData: FullBackupData = {
+        prompts: [
+          { id: 'local-only', name: 'Local Only', content: 'local', categoryId: 'c1', order: 0, updatedAt: 2 }
+        ],
+        categories: [{ id: 'c1', name: 'Cloud Category', order: 0, updatedAt: 1 }],
+        temporaryPrompts: [],
+        timestamp: 2
+      }
+
+      vi.mocked(restoreMissingCloudImages).mockRejectedValueOnce(new Error('restore enqueue failed'))
+      vi.spyOn(cloudStrategy, 'restore').mockResolvedValue(cloudData)
+      storageData.prompt_script_data = {
+        userData: { prompts: localData.prompts, categories: localData.categories },
+        temporaryPrompts: localData.temporaryPrompts
+      }
+
+      const result = await orchestrator.downloadAndMerge({ reason: 'manual' })
+
+      expect(result.localOnlyItems.prompts.map(p => p.id)).toEqual(['local-only'])
+      expect(restoreMissingCloudImages).toHaveBeenCalledWith({ priority: 'background' })
+      expect(storageData.syncStatus).toEqual(expect.objectContaining({
+        pendingUpload: true,
+        localOnlyItems: expect.objectContaining({
+          promptIds: ['local-only']
+        })
+      }))
+    })
+
     it('should not resurrect local image metadata when same-timestamp cloud prompt clears it', async () => {
       const cloudData = makeBackupData({
         prompts: [

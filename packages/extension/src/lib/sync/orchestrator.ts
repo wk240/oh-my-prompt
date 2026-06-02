@@ -51,6 +51,12 @@ interface TriggerSyncGuardOptions {
 const STORAGE_KEY = 'prompt_script_data'
 const SYNC_IN_FLIGHT_STALE_MS = 5 * 60 * 1000
 
+function enqueueBackgroundImageRestore(): void {
+  void restoreMissingCloudImages({ priority: 'background' }).catch(error => {
+    console.warn('[Oh My Prompt] Background image restore enqueue failed:', error)
+  })
+}
+
 /**
  * SyncOrchestrator coordinates cloud and local sync strategies.
  *
@@ -667,7 +673,7 @@ export class SyncOrchestrator {
 
     // Apply merged data to storage
     await this.applyData(result.data)
-    await restoreMissingCloudImages({ priority: 'background' })
+    enqueueBackgroundImageRestore()
 
     // Mark pending upload if there are items to upload to cloud (local-only OR locally-newer)
     const itemsToUploadCount =

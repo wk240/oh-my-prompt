@@ -217,6 +217,46 @@ describe('sync-manager folder selection', () => {
     expect(restoreMissingCloudImages).toHaveBeenCalledWith({ priority: 'background' })
   })
 
+  it('keeps replace restore successful when background image restore rejects', async () => {
+    const { restoreMissingCloudImages } = await import('../image-asset-service')
+    const restoredData: FullBackupData = {
+      prompts: [{ id: 'p-restored', name: 'Restored', content: 'restored', categoryId: 'c-restored', order: 0 }],
+      categories: [{ id: 'c-restored', name: 'Restored Category', order: 0 }],
+      temporaryPrompts: [],
+      imageAssets: {
+        'image-restored': {
+          id: 'image-restored',
+          promptId: 'p-restored',
+          localPath: 'images/image-restored.webp',
+          mimeType: 'image/webp',
+          width: 120,
+          height: 90,
+          size: 1200,
+          hash: 'hash-restored',
+          status: 'missing_local',
+          updatedAt: 1700000000100
+        }
+      },
+      pendingImageDeletes: []
+    }
+    vi.mocked(restoreMissingCloudImages).mockRejectedValueOnce(new Error('restore enqueue failed'))
+    vi.mocked(sendToOffscreen).mockImplementation(async (type: string) => {
+      if (type === 'OFFSCREEN_READ_BACKUP') {
+        return { success: true, data: restoredData }
+      }
+      return { success: true }
+    })
+
+    const result = await restoreFromBackup('omps-latest.json', false, 'replace')
+
+    expect(result.success).toBe(true)
+    expect(restoreMissingCloudImages).toHaveBeenCalledWith({ priority: 'background' })
+    expect(sendToOffscreen).toHaveBeenCalledWith('OFFSCREEN_SYNC', {
+      backupData: restoredData,
+      version: '2.0.0'
+    })
+  })
+
   it('enqueues background image restore after initial local restore writes image metadata', async () => {
     const { restoreMissingCloudImages } = await import('../image-asset-service')
     const restoredData: FullBackupData = {
@@ -312,6 +352,7 @@ describe('sync-manager folder selection', () => {
   })
 
   it('preserves existing image metadata in merged backup data', async () => {
+    const { restoreMissingCloudImages } = await import('../image-asset-service')
     const backupData: FullBackupData = {
       prompts: [{ id: 'p-merged', name: 'Merged', content: 'merged', categoryId: 'c-current', order: 1 }],
       categories: currentData.userData.categories,
@@ -334,5 +375,6 @@ describe('sync-manager folder selection', () => {
       }),
       version: '2.0.0'
     })
+    expect(restoreMissingCloudImages).not.toHaveBeenCalled()
   })
 })

@@ -139,4 +139,19 @@ describe('image-cloud-client', () => {
 
     expect(result).toEqual({ success: false, error: 'SIZE_MISMATCH' })
   })
+
+  it('rejects a cloud download when the expected hash does not match', async () => {
+    const blob = new Blob([
+      new Uint8Array([0x52, 0x49, 0x46, 0x46, 0x0c, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50])
+    ], { type: 'image/webp' })
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(blob, {
+      status: 200,
+      headers: { 'Content-Type': 'image/webp' }
+    }))
+
+    const { downloadCloudImage } = await import('../image-cloud-client')
+    const result = await downloadCloudImage('https://blob.test/image-1.webp', { hash: 'different-hash' })
+
+    expect(result).toEqual({ success: false, error: 'HASH_MISMATCH' })
+  })
 })

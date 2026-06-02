@@ -8,6 +8,7 @@ import type { BackupVersion } from './file-sync'
 import { MessageType } from '@oh-my-prompt/shared/messages'
 import { ensureOffscreenDocument, sendToOffscreen } from '../offscreen-manager'
 import { readApiConfigFromFolder } from './api-config-sync'
+import { restoreMissingCloudImages } from './image-asset-service'
 
 export interface SyncStatus {
   enabled: boolean
@@ -223,6 +224,7 @@ export async function initialSync(): Promise<void> {
         },
         { triggerSync: false }
       )
+      await restoreMissingCloudImages({ priority: 'background' })
     }
 
     // Case: both have data -> sync chrome.storage to local
@@ -840,6 +842,7 @@ export async function restoreFromBackup(
       },
       { triggerSync: false }
     )
+    await restoreMissingCloudImages({ priority: 'background' })
 
     // Sync restored data to latest backup file (omps-latest.json)
     // This ensures the restored state becomes the "current" backup state

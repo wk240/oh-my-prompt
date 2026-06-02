@@ -40,7 +40,11 @@ vi.mock('../api-config-sync', () => ({
   readApiConfigFromFolder: vi.fn()
 }))
 
-import { enableSync, changeSyncFolder, manualSync, restoreFromBackup } from '../sync-manager'
+vi.mock('../image-asset-service', () => ({
+  restoreMissingCloudImages: vi.fn(async () => true)
+}))
+
+import { enableSync, changeSyncFolder, manualSync, restoreFromBackup, initialSync } from '../sync-manager'
 import { readFromLocalFolder, selectSyncFolder, syncToLocalFolder } from '../file-sync'
 import { getFolderHandle, saveFolderHandle } from '../indexeddb'
 import { sendToOffscreen } from '../../offscreen-manager'
@@ -162,6 +166,7 @@ describe('sync-manager folder selection', () => {
   })
 
   it('writes image metadata when replacing storage from a backup', async () => {
+    const { restoreMissingCloudImages } = await import('../image-asset-service')
     const restoredData: FullBackupData = {
       prompts: [{ id: 'p-restored', name: 'Restored', content: 'restored', categoryId: 'c-restored', order: 0 }],
       categories: [{ id: 'c-restored', name: 'Restored Category', order: 0 }],
@@ -209,6 +214,58 @@ describe('sync-manager folder selection', () => {
       }),
       { triggerSync: false }
     )
+    expect(restoreMissingCloudImages).toHaveBeenCalledWith({ priority: 'background' })
+  })
+
+  it('enqueues background image restore after initial local restore writes image metadata', async () => {
+    const { restoreMissingCloudImages } = await import('../image-asset-service')
+    const restoredData: FullBackupData = {
+      prompts: [{ id: 'p-restored', name: 'Restored', content: 'restored', categoryId: 'c-restored', order: 0 }],
+      categories: [{ id: 'c-restored', name: 'Restored Category', order: 0 }],
+      temporaryPrompts: [],
+      imageAssets: {
+        'image-restored': {
+          id: 'image-restored',
+          promptId: 'p-restored',
+          localPath: 'images/image-restored.webp',
+          mimeType: 'image/webp',
+          width: 120,
+          height: 90,
+          size: 1200,
+          hash: 'hash-restored',
+          status: 'missing_local',
+          updatedAt: 1700000000100
+        }
+      },
+      pendingImageDeletes: []
+    }
+    getData.mockResolvedValue({
+      ...currentData,
+      userData: { prompts: [], categories: [] },
+      temporaryPrompts: [],
+      imageAssets: {},
+      pendingImageDeletes: []
+    })
+    vi.mocked(sendToOffscreen).mockImplementation(async (type: string) => {
+      if (type === 'OFFSCREEN_CHECK_PERMISSION') {
+        return { success: true, data: { hasFolder: true, permission: 'granted' } }
+      }
+      if (type === 'OFFSCREEN_READ_BACKUP') {
+        return { success: true, data: restoredData }
+      }
+      return { success: true }
+    })
+
+    await initialSync()
+
+    expect(saveData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        imageAssets: restoredData.imageAssets,
+        pendingImageDeletes: restoredData.pendingImageDeletes
+      }),
+      { triggerSync: false }
+    )
+    expect(restoreMissingCloudImages).toHaveBeenCalledWith({ priority: 'background' })
   })
 
   it('preserves existing image metadata when replacing from a legacy backup without image metadata fields', async () => {

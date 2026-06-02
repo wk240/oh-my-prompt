@@ -12,6 +12,11 @@ vi.mock('../strategies/local')
 vi.mock('../local-sync-executor', () => ({
   executeLocalSync: vi.fn()
 }))
+vi.mock('../image-asset-service', () => ({
+  drainPendingImageDeletes: vi.fn(async () => false),
+  restoreMissingCloudImages: vi.fn(async () => true),
+  retryPendingImageUploads: vi.fn(async () => false)
+}))
 
 type BackupDataInput =
   | { promptId: string; updatedAt: number }
@@ -1193,6 +1198,47 @@ describe('SyncOrchestrator', () => {
   })
 
   describe('downloadAndMerge', () => {
+    it('enqueues background image restore after applying cloud metadata merge', async () => {
+      const { restoreMissingCloudImages } = await import('../image-asset-service')
+      const cloudData = makeBackupData({
+        prompts: [{
+          id: 'prompt-1',
+          name: 'Prompt',
+          content: 'Text',
+          categoryId: 'cat-1',
+          order: 0,
+          imageId: 'image-1',
+          localImage: 'images/image-1.webp',
+          updatedAt: 2
+        }],
+        categories: [{ id: 'cat-1', name: 'Cat', order: 0, updatedAt: 2 }],
+        temporaryPrompts: [],
+        timestamp: 2
+      })
+      cloudData.imageAssets = {
+        'image-1': {
+          id: 'image-1',
+          promptId: 'prompt-1',
+          localPath: 'images/image-1.webp',
+          cloudUrl: 'https://blob.test/image-1.webp',
+          cloudPath: 'users/u/images/image-1.webp',
+          mimeType: 'image/webp',
+          width: 100,
+          height: 80,
+          size: 12,
+          hash: 'hash-1',
+          status: 'missing_local',
+          updatedAt: 2
+        }
+      }
+
+      vi.spyOn(cloudStrategy, 'restore').mockResolvedValue(cloudData)
+
+      await orchestrator.downloadAndMerge({ reason: 'manual' })
+
+      expect(restoreMissingCloudImages).toHaveBeenCalledWith({ priority: 'background' })
+    })
+
     it('should not auto-download inside cloud upload cooldown', async () => {
       vi.useFakeTimers()
       vi.setSystemTime(20_000)

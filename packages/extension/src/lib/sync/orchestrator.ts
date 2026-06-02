@@ -7,7 +7,7 @@ import { MessageType } from '@oh-my-prompt/shared/messages'
 import { getCachedAuthState, invalidateSyncStatusCache } from '../cloud-sync/auth-service'
 import { computeBackupDataHash } from './hash'
 import { mergeImageAssets, mergePendingImageDeletes } from './image-metadata-merge'
-import { drainPendingImageDeletes, retryPendingImageUploads } from './image-asset-service'
+import { drainPendingImageDeletes, restoreMissingCloudImages, retryPendingImageUploads } from './image-asset-service'
 import {
   FullBackupData,
   IdAliasMap,
@@ -667,6 +667,7 @@ export class SyncOrchestrator {
 
     // Apply merged data to storage
     await this.applyData(result.data)
+    await restoreMissingCloudImages({ priority: 'background' })
 
     // Mark pending upload if there are items to upload to cloud (local-only OR locally-newer)
     const itemsToUploadCount =

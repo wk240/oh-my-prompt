@@ -369,8 +369,9 @@ describe('service worker message handling', () => {
     vi.mocked(getImageRestoreStatus).mockResolvedValueOnce({ folderRequired: true, pendingCount: 2 })
     const sendResponse = vi.fn()
 
-    dispatchRuntimeMessage({ type: MessageType.GET_IMAGE_RESTORE_STATUS }, sendResponse)
+    const handled = dispatchRuntimeMessage({ type: MessageType.GET_IMAGE_RESTORE_STATUS }, sendResponse)
 
+    expect(handled).toBe(true)
     await vi.waitFor(() => {
       expect(sendResponse).toHaveBeenCalledWith({
         success: true,
@@ -384,8 +385,9 @@ describe('service worker message handling', () => {
     vi.mocked(restoreMissingCloudImages).mockResolvedValueOnce(true)
     const sendResponse = vi.fn()
 
-    dispatchRuntimeMessage({ type: MessageType.RESTORE_MISSING_CLOUD_IMAGES }, sendResponse)
+    const handled = dispatchRuntimeMessage({ type: MessageType.RESTORE_MISSING_CLOUD_IMAGES }, sendResponse)
 
+    expect(handled).toBe(true)
     await vi.waitFor(() => {
       expect(restoreMissingCloudImages).toHaveBeenCalledWith({ priority: 'background' })
       expect(sendResponse).toHaveBeenCalledWith({

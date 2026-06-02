@@ -2251,6 +2251,7 @@ describe('SyncOrchestrator', () => {
 
   describe('initialSync', () => {
     it('should restore from cloud when storage empty', async () => {
+      const { restoreMissingCloudImages } = await import('../image-asset-service')
       const cloudData: FullBackupData = {
         prompts: [{ id: '1', name: 'Cloud Prompt', content: 'test', categoryId: 'c1', order: 0 }],
         categories: [{ id: 'c1', name: 'Category', order: 0 }],
@@ -2278,6 +2279,9 @@ describe('SyncOrchestrator', () => {
           })
         })
       }))
+      await vi.waitFor(() => {
+        expect(restoreMissingCloudImages).toHaveBeenCalledWith({ priority: 'background' })
+      })
     })
 
     it('should restore from local when cloud unavailable and storage empty', async () => {

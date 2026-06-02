@@ -299,15 +299,29 @@ async function processRestoreQueue(): Promise<void> {
 
     activeRestores.add(item.imageId)
     activeRestoreCount++
+    let shouldRetry = false
     void restorePromptImageAsset(item.imageId, { priority: item.priority })
       .then(restored => {
         if (!restored) {
           restoreFailureBackoff.set(item.imageId, Date.now() + RESTORE_FAILURE_BACKOFF_MS)
+          shouldRetry = true
         }
       })
       .finally(() => {
         activeRestores.delete(item.imageId)
         activeRestoreCount--
+        if (
+          shouldRetry &&
+          !restoreQueuePausedForFolder &&
+          !activeRestores.has(item.imageId) &&
+          !restoreQueue.some(queuedItem => queuedItem.imageId === item.imageId)
+        ) {
+          if (item.priority === 'visible') {
+            restoreQueue.unshift(item)
+          } else {
+            restoreQueue.push(item)
+          }
+        }
         scheduleRestoreQueue()
       })
   }

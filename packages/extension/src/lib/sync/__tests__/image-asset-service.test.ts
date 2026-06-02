@@ -562,7 +562,7 @@ describe('image-asset-service', () => {
     expect(deleteImageByPath).toHaveBeenCalledWith('images/image-1.webp')
   })
 
-  it('keeps a backed-off restore queued for retry', async () => {
+  it('retries the original queued restore after backoff when metadata appears', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(0)
     try {
@@ -575,14 +575,17 @@ describe('image-asset-service', () => {
         success: true,
         data: { hasFolder: true, permission: 'granted' }
       })
-      enqueueImageRestore('image-1', { priority: 'background' })
-      await vi.advanceTimersByTimeAsync(0)
 
       expect(downloadCloudImage).not.toHaveBeenCalled()
 
-      await vi.advanceTimersByTimeAsync(60_000)
+      await vi.advanceTimersByTimeAsync(59_999)
+      expect(downloadCloudImage).not.toHaveBeenCalled()
 
-      expect(downloadCloudImage).toHaveBeenCalledWith('https://blob.test/image-1.webp', expect.any(Object))
+      await vi.advanceTimersByTimeAsync(1)
+
+      await vi.waitFor(() => {
+        expect(downloadCloudImage).toHaveBeenCalledWith('https://blob.test/image-1.webp', expect.any(Object))
+      })
     } finally {
       vi.useRealTimers()
     }

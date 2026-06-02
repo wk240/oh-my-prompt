@@ -747,6 +747,7 @@ export class SyncOrchestrator {
     if (cloudData && storageData.prompts.length === 0) {
       // Cloud has data, local storage empty -> restore from cloud
       await this.applyData(cloudData)
+      enqueueBackgroundImageRestore()
       await this.updateSyncStatus({ initialized: true })
       await this.reconcilePendingSnapshotFromStorage()
       return

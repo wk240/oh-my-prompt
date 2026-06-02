@@ -1,4 +1,5 @@
 import { WEB_APP_URL, SUPABASE_PROJECT_REF } from '@/lib/config'
+import { HARD_IMAGE_SIZE_LIMIT, computeBlobSha256 } from './image-processing'
 
 const AUTH_STORAGE_KEY = `sb-${SUPABASE_PROJECT_REF}-auth-token`
 
@@ -18,6 +19,17 @@ export interface UploadCloudImageResult {
   cloudPath?: string
   size?: number
   error?: string
+}
+
+export interface DownloadCloudImageExpected {
+  size?: number
+  hash?: string
+}
+
+export interface DownloadCloudImageResult {
+  success: boolean
+  blob?: Blob
+  error?: 'DOWNLOAD_FAILED' | 'FILE_TOO_LARGE' | 'INVALID_RESPONSE' | 'SIZE_MISMATCH' | 'HASH_MISMATCH' | string
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -44,6 +56,64 @@ async function getAuthTokenDirect(): Promise<string | null> {
   if (typeof session.access_token !== 'string' || typeof session.expires_at !== 'number') return null
   if (session.expires_at < Math.floor(Date.now() / 1000)) return null
   return session.access_token
+}
+
+async function isWebpBlob(blob: Blob): Promise<boolean> {
+  const header = new Uint8Array(await blob.slice(0, 12).arrayBuffer())
+  return header.length >= 12 &&
+    header[0] === 0x52 &&
+    header[1] === 0x49 &&
+    header[2] === 0x46 &&
+    header[3] === 0x46 &&
+    header[8] === 0x57 &&
+    header[9] === 0x45 &&
+    header[10] === 0x42 &&
+    header[11] === 0x50
+}
+
+function normalizeDownloadedWebp(blob: Blob): Blob {
+  return blob.type === 'image/webp' ? blob : new Blob([blob], { type: 'image/webp' })
+}
+
+export async function downloadCloudImage(
+  url: string,
+  expected: DownloadCloudImageExpected = {}
+): Promise<DownloadCloudImageResult> {
+  try {
+    const response = await fetch(url)
+    if (!response.ok) {
+      return { success: false, error: `HTTP_${response.status}` }
+    }
+
+    const blob = await response.blob()
+    if (blob.size > HARD_IMAGE_SIZE_LIMIT) {
+      return { success: false, error: 'FILE_TOO_LARGE' }
+    }
+
+    const contentType = response.headers.get('Content-Type') || ''
+    if (contentType && !contentType.toLowerCase().startsWith('image/')) {
+      return { success: false, error: 'INVALID_RESPONSE' }
+    }
+
+    if (!await isWebpBlob(blob)) {
+      return { success: false, error: 'INVALID_RESPONSE' }
+    }
+
+    if (expected.size !== undefined && blob.size !== expected.size) {
+      return { success: false, error: 'SIZE_MISMATCH' }
+    }
+
+    if (expected.hash) {
+      const hash = await computeBlobSha256(blob)
+      if (hash !== expected.hash) {
+        return { success: false, error: 'HASH_MISMATCH' }
+      }
+    }
+
+    return { success: true, blob: normalizeDownloadedWebp(blob) }
+  } catch (error) {
+    return { success: false, error: getErrorMessage(error) || 'DOWNLOAD_FAILED' }
+  }
 }
 
 export async function uploadCloudImage(input: UploadCloudImageInput): Promise<UploadCloudImageResult> {

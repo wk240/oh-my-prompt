@@ -95,4 +95,48 @@ describe('image-cloud-client', () => {
 
     expect(result).toEqual({ success: false, error: 'network down' })
   })
+
+  it('downloads and validates a WebP cloud image', async () => {
+    const blob = new Blob([
+      new Uint8Array([0x52, 0x49, 0x46, 0x46, 0x0c, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50])
+    ], { type: 'image/webp' })
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(blob, {
+      status: 200,
+      headers: { 'Content-Type': 'image/webp' }
+    }))
+
+    const { downloadCloudImage } = await import('../image-cloud-client')
+    const result = await downloadCloudImage('https://blob.test/image-1.webp', { size: blob.size })
+
+    expect(result.success).toBe(true)
+    expect(result.blob?.type).toBe('image/webp')
+    expect(fetch).toHaveBeenCalledWith('https://blob.test/image-1.webp')
+  })
+
+  it('rejects a cloud download when the response is not WebP data', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(new Blob(['png'], { type: 'image/png' }), {
+      status: 200,
+      headers: { 'Content-Type': 'image/png' }
+    }))
+
+    const { downloadCloudImage } = await import('../image-cloud-client')
+    const result = await downloadCloudImage('https://blob.test/image-1.png')
+
+    expect(result).toEqual({ success: false, error: 'INVALID_RESPONSE' })
+  })
+
+  it('rejects a cloud download when the expected size does not match', async () => {
+    const blob = new Blob([
+      new Uint8Array([0x52, 0x49, 0x46, 0x46, 0x0c, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50])
+    ], { type: 'image/webp' })
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(blob, {
+      status: 200,
+      headers: { 'Content-Type': 'image/webp' }
+    }))
+
+    const { downloadCloudImage } = await import('../image-cloud-client')
+    const result = await downloadCloudImage('https://blob.test/image-1.webp', { size: blob.size + 1 })
+
+    expect(result).toEqual({ success: false, error: 'SIZE_MISMATCH' })
+  })
 })

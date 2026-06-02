@@ -591,6 +591,32 @@ describe('image-asset-service', () => {
     }
   })
 
+  it('drops a queued restore after repeated terminal failures', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(0)
+    try {
+      enqueueImageRestore('missing-image', { priority: 'background' })
+
+      await vi.advanceTimersByTimeAsync(0)
+      await vi.advanceTimersByTimeAsync(60_000)
+      await vi.advanceTimersByTimeAsync(60_000)
+      await vi.advanceTimersByTimeAsync(60_000)
+      await vi.advanceTimersByTimeAsync(60_000)
+
+      addCloudBackedMissingAssetWithId('missing-image')
+      vi.mocked(getCachedImageUrl).mockResolvedValue(null)
+      vi.mocked(chrome.runtime.sendMessage).mockResolvedValue({
+        success: true,
+        data: { hasFolder: true, permission: 'granted' }
+      })
+      await vi.advanceTimersByTimeAsync(60_000)
+
+      expect(downloadCloudImage).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('prioritizes visible restore over queued background restore', async () => {
     addCloudBackedMissingAsset()
     addCloudBackedMissingAssetWithId('background-image')

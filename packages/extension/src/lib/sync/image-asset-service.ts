@@ -38,10 +38,12 @@ export type PreparedImageAssetBlob = {
 const IMAGE_RESTORE_FOLDER_REQUIRED_SESSION_KEY = 'imageRestoreFolderRequiredPendingCount'
 const RESTORE_CONCURRENCY = 2
 const RESTORE_FAILURE_BACKOFF_MS = 60_000
+const RESTORE_MAX_QUEUED_FAILURES = 3
 
 const restoreQueue: RestoreQueueItem[] = []
 const activeRestores = new Set<string>()
 const restoreFailureBackoff = new Map<string, number>()
+const restoreFailureCounts = new Map<string, number>()
 let activeRestoreCount = 0
 let restoreQueuePausedForFolder = false
 let lastFolderRequiredPendingCount = 0
@@ -303,8 +305,12 @@ async function processRestoreQueue(): Promise<void> {
     void restorePromptImageAsset(item.imageId, { priority: item.priority })
       .then(restored => {
         if (!restored) {
+          const failures = (restoreFailureCounts.get(item.imageId) || 0) + 1
+          restoreFailureCounts.set(item.imageId, failures)
           restoreFailureBackoff.set(item.imageId, Date.now() + RESTORE_FAILURE_BACKOFF_MS)
           shouldRetry = true
+        } else {
+          restoreFailureCounts.delete(item.imageId)
         }
       })
       .finally(() => {
@@ -312,6 +318,7 @@ async function processRestoreQueue(): Promise<void> {
         activeRestoreCount--
         if (
           shouldRetry &&
+          (restoreFailureCounts.get(item.imageId) || 0) < RESTORE_MAX_QUEUED_FAILURES &&
           !restoreQueuePausedForFolder &&
           !activeRestores.has(item.imageId) &&
           !restoreQueue.some(queuedItem => queuedItem.imageId === item.imageId)
@@ -321,6 +328,9 @@ async function processRestoreQueue(): Promise<void> {
           } else {
             restoreQueue.push(item)
           }
+        }
+        if ((restoreFailureCounts.get(item.imageId) || 0) >= RESTORE_MAX_QUEUED_FAILURES) {
+          restoreFailureBackoff.delete(item.imageId)
         }
         scheduleRestoreQueue()
       })
@@ -523,6 +533,7 @@ export async function restorePromptImageAsset(
         }
       })
       restoreFailureBackoff.delete(imageId)
+      restoreFailureCounts.delete(imageId)
       return true
     }
   }
@@ -583,6 +594,7 @@ export async function restorePromptImageAsset(
   })
 
   restoreFailureBackoff.delete(imageId)
+  restoreFailureCounts.delete(imageId)
   return true
 }
 
@@ -630,6 +642,7 @@ export function clearImageRestoreQueueForTests(): void {
   restoreQueue.length = 0
   activeRestores.clear()
   restoreFailureBackoff.clear()
+  restoreFailureCounts.clear()
   if (restoreQueueTimer) {
     clearTimeout(restoreQueueTimer)
     restoreQueueTimer = undefined

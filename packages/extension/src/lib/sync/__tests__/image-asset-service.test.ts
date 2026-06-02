@@ -61,6 +61,35 @@ describe('image-asset-service', () => {
     }
   }
 
+  function addCloudBackedMissingAssetWithId(imageId: string, promptId = `prompt-${imageId}`): void {
+    storageData.userData.prompts.push({
+      id: promptId,
+      name: `Prompt ${imageId}`,
+      content: 'Text',
+      categoryId: 'cat-1',
+      order: storageData.userData.prompts.length,
+      imageId,
+      localImage: `images/${imageId}.webp`
+    })
+    storageData.imageAssets = {
+      ...(storageData.imageAssets || {}),
+      [imageId]: {
+        id: imageId,
+        promptId,
+        localPath: `images/${imageId}.webp`,
+        cloudUrl: `https://blob.test/${imageId}.webp`,
+        cloudPath: `users/u/images/${imageId}.webp`,
+        mimeType: 'image/webp',
+        width: 100,
+        height: 80,
+        size: 12,
+        hash: 'hash-1',
+        status: 'missing_local',
+        updatedAt: 1
+      }
+    }
+  }
+
   beforeEach(() => {
     vi.clearAllMocks()
     clearImageRestoreQueueForTests()
@@ -360,6 +389,21 @@ describe('image-asset-service', () => {
     })
   })
 
+  it('marks a missing cloud-backed asset synced when the local file already exists', async () => {
+    addCloudBackedMissingAsset()
+    storageData.imageAssets!['image-1'].lastError = 'LOCAL_IMAGE_MISSING'
+    vi.mocked(getCachedImageUrl).mockResolvedValueOnce('blob:local')
+
+    const result = await restorePromptImageAsset('image-1')
+
+    expect(result).toBe(true)
+    expect(downloadCloudImage).not.toHaveBeenCalled()
+    expect(storageData.imageAssets?.['image-1']).toMatchObject({
+      status: 'synced',
+      lastError: undefined
+    })
+  })
+
   it('skips restore for an asset without cloudUrl', async () => {
     addCloudBackedMissingAsset()
     delete storageData.imageAssets?.['image-1'].cloudUrl
@@ -464,20 +508,75 @@ describe('image-asset-service', () => {
     expect(saveImage).not.toHaveBeenCalled()
   })
 
+  it('deletes a restored file when the asset is unreferenced after save', async () => {
+    addCloudBackedMissingAsset()
+    vi.mocked(getCachedImageUrl).mockResolvedValueOnce(null)
+    vi.mocked(chrome.runtime.sendMessage).mockResolvedValueOnce({
+      success: true,
+      data: { hasFolder: true, permission: 'granted' }
+    })
+    vi.mocked(saveImage).mockImplementationOnce(async () => {
+      storageData.userData.prompts[0].imageId = undefined
+      return { success: true, relativePath: 'images/image-1.webp' }
+    })
+
+    const result = await restorePromptImageAsset('image-1')
+
+    expect(result).toBe(false)
+    expect(deleteImageByPath).toHaveBeenCalledWith('images/image-1.webp')
+  })
+
+  it('keeps a backed-off restore queued for retry', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(0)
+    try {
+      enqueueImageRestore('image-1', { priority: 'background' })
+      await vi.advanceTimersByTimeAsync(0)
+
+      addCloudBackedMissingAsset()
+      vi.mocked(getCachedImageUrl).mockResolvedValue(null)
+      vi.mocked(chrome.runtime.sendMessage).mockResolvedValue({
+        success: true,
+        data: { hasFolder: true, permission: 'granted' }
+      })
+      enqueueImageRestore('image-1', { priority: 'background' })
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(downloadCloudImage).not.toHaveBeenCalled()
+
+      await vi.advanceTimersByTimeAsync(60_000)
+
+      expect(downloadCloudImage).toHaveBeenCalledWith('https://blob.test/image-1.webp', expect.any(Object))
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('prioritizes visible restore over queued background restore', async () => {
     addCloudBackedMissingAsset()
+    addCloudBackedMissingAssetWithId('background-image')
     vi.mocked(getCachedImageUrl).mockResolvedValue(null)
     vi.mocked(chrome.runtime.sendMessage).mockResolvedValue({
       success: true,
       data: { hasFolder: true, permission: 'granted' }
+    })
+    let releaseBackground: (() => void) | undefined
+    vi.mocked(downloadCloudImage).mockImplementation(async url => {
+      if (url === 'https://blob.test/background-image.webp') {
+        await new Promise<void>(resolve => {
+          releaseBackground = resolve
+        })
+      }
+      return { success: true, blob: new Blob(['restored'], { type: 'image/webp' }) }
     })
 
     enqueueImageRestore('background-image', { priority: 'background' })
     enqueueImageRestore('image-1', { priority: 'visible' })
 
     await vi.waitFor(() => {
-      expect(downloadCloudImage).toHaveBeenCalledWith('https://blob.test/image-1.webp', expect.any(Object))
+      expect(downloadCloudImage).toHaveBeenNthCalledWith(2, 'https://blob.test/image-1.webp', expect.any(Object))
     })
+    releaseBackground?.()
   })
 
   it('drains successful pending cloud deletes', async () => {

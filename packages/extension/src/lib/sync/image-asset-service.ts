@@ -45,6 +45,7 @@ const restoreFailureBackoff = new Map<string, number>()
 let activeRestoreCount = 0
 let restoreQueuePausedForFolder = false
 let lastFolderRequiredPendingCount = 0
+let restoreQueueTimer: ReturnType<typeof setTimeout> | undefined
 let pendingDeleteMutation: Promise<void> = Promise.resolve()
 
 async function withPendingDeleteMutation<T>(mutation: () => Promise<T>): Promise<T> {
@@ -265,19 +266,36 @@ function getPendingRestoreCount(currentImageId?: string): number {
   ]).size
 }
 
-function scheduleRestoreQueue(): void {
+function scheduleRestoreQueue(delayMs = 0): void {
+  if (delayMs > 0) {
+    if (!restoreQueueTimer) {
+      restoreQueueTimer = setTimeout(() => {
+        restoreQueueTimer = undefined
+        void processRestoreQueue()
+      }, delayMs)
+    }
+    return
+  }
+
   void processRestoreQueue()
 }
 
 async function processRestoreQueue(): Promise<void> {
   if (restoreQueuePausedForFolder) return
 
-  while (activeRestoreCount < RESTORE_CONCURRENCY && restoreQueue.length > 0) {
+  let checkedCount = 0
+  const initialQueueLength = restoreQueue.length
+  while (activeRestoreCount < RESTORE_CONCURRENCY && restoreQueue.length > 0 && checkedCount < initialQueueLength) {
     const item = restoreQueue.shift()
+    checkedCount++
     if (!item || activeRestores.has(item.imageId)) continue
 
     const backoffUntil = restoreFailureBackoff.get(item.imageId)
-    if (backoffUntil && Date.now() < backoffUntil) continue
+    if (backoffUntil && Date.now() < backoffUntil) {
+      restoreQueue.push(item)
+      scheduleRestoreQueue(backoffUntil - Date.now())
+      continue
+    }
 
     activeRestores.add(item.imageId)
     activeRestoreCount++
@@ -433,11 +451,10 @@ export function enqueueImageRestore(
 
   if (existingIndex >= 0) {
     const existing = restoreQueue[existingIndex]
-    restoreQueue.splice(existingIndex, 1)
-    restoreQueue.unshift({
-      imageId,
-      priority: existing.priority === 'visible' || priority === 'visible' ? 'visible' : 'background'
-    })
+    if (priority === 'visible' && existing.priority !== 'visible') {
+      restoreQueue.splice(existingIndex, 1)
+      restoreQueue.unshift({ imageId, priority })
+    }
   } else if (!activeRestores.has(imageId)) {
     if (priority === 'visible') {
       restoreQueue.unshift({ imageId, priority })
@@ -461,7 +478,23 @@ export async function restorePromptImageAsset(
 
   if (asset.localPath) {
     const localUrl = await getCachedImageUrl(asset.localPath)
-    if (localUrl) return false
+    if (localUrl) {
+      if (asset.status === 'synced' && asset.lastError === undefined) return false
+      await writeStorage({
+        ...data,
+        imageAssets: {
+          ...(data.imageAssets || {}),
+          [imageId]: {
+            ...asset,
+            status: 'synced',
+            lastError: undefined,
+            updatedAt: Date.now()
+          }
+        }
+      })
+      restoreFailureBackoff.delete(imageId)
+      return true
+    }
   }
 
   const folder = await checkRestoreFolderAvailable()
@@ -501,6 +534,7 @@ export async function restorePromptImageAsset(
   const latest = await readStorage()
   const assetAfterSave = latest.imageAssets?.[imageId]
   if (!assetAfterSave || hasPendingImageDelete(latest, imageId) || !isAssetReferenced(latest, imageId)) {
+    await deleteImageByPath(saveResult.relativePath || buildRestoredLocalPath(imageId)).catch(() => undefined)
     return false
   }
 
@@ -566,6 +600,10 @@ export function clearImageRestoreQueueForTests(): void {
   restoreQueue.length = 0
   activeRestores.clear()
   restoreFailureBackoff.clear()
+  if (restoreQueueTimer) {
+    clearTimeout(restoreQueueTimer)
+    restoreQueueTimer = undefined
+  }
   activeRestoreCount = 0
   restoreQueuePausedForFolder = false
   lastFolderRequiredPendingCount = 0

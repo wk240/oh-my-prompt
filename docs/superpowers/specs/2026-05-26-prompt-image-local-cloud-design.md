@@ -66,6 +66,14 @@ interface ImageAsset {
   lastUploadAttemptAt?: number
   lastError?: string
 }
+
+interface PendingImageDelete {
+  imageId: string
+  cloudPath: string
+  attempts: number
+  lastError?: string
+  updatedAt: number
+}
 ```
 
 Storage shape:
@@ -73,19 +81,20 @@ Storage shape:
 ```ts
 prompt_script_data: {
   userData: { prompts, categories },
+  settings,
   temporaryPrompts,
+  teamPrompts,
+  teamSyncStatus,
   imageAssets?: Record<string, ImageAsset>,
-  pendingImageDeletes?: Array<{
-    imageId: string
-    cloudPath: string
-    attempts: number
-    lastError?: string
-    updatedAt: number
-  }>
+  pendingImageDeletes?: PendingImageDelete[]
 }
 ```
 
 New writes should set `prompt.imageId`, `prompt.localImage`, and `imageAssets[imageId]`. `localImage` remains as a compatibility field so existing display code can be migrated incrementally. Existing legacy records without `imageId` continue to render through `localImage`; when a user replaces or re-saves the image, the prompt moves to the new asset model.
+
+`remoteImageUrl` remains the original source URL only. It must not be overwritten with Vercel Blob URLs. First-party recovery URLs live only on `ImageAsset.cloudUrl`.
+
+Top-level image metadata is a first-class sync object. Any shared `StorageSchema`, `SyncPayload`, `FullBackupData`, local backup JSON, and cloud download response types must include `imageAssets` and `pendingImageDeletes` before the feature is considered wired.
 
 ## Image Processing
 
@@ -101,6 +110,8 @@ All saved prompt images are normalized before local storage:
 - Hard output limit is `1MB`; if compression cannot meet it, return a clear error.
 
 The output file name is `images/{imageId}.webp`, where `imageId` is generated with `crypto.randomUUID()`.
+
+Compression should run in an extension context that supports image decoding and canvas work. Content scripts should pass image bytes to the service worker, and the service worker should delegate WebP normalization to the offscreen document before writing to the File System Access folder. The service worker remains the coordinator for permission checks, storage updates, upload retries, and offscreen lifecycle.
 
 ## Save Flow
 
@@ -118,9 +129,33 @@ UI components should call a single image asset service rather than directly mana
 8. On upload success, the asset is updated with `cloudUrl`, `cloudPath`, and `status: 'synced'`.
 9. On upload failure, prompt save remains successful and the asset keeps `pending_upload` or `upload_failed` with error metadata.
 
+## Replace Flow
+
+Replacing a prompt image creates a new asset instead of mutating the old file in place.
+
+1. Read the current `prompt.imageId` and copy the old asset metadata.
+2. Save the replacement image using the normal save flow and persist the prompt with the new `imageId`.
+3. After the new prompt state is durable, delete the old local file.
+4. If the old asset has `cloudPath`, call cloud delete asynchronously.
+5. Remove the old `imageAssets[oldImageId]`.
+6. If cloud deletion fails, append or update a `pendingImageDeletes` item using the copied `cloudPath`.
+
+This avoids broken prompts if the replacement image save fails, while still preventing orphan local files and orphan Blob objects in the common case.
+
 ## Cloud APIs
 
 Image binary upload is separate from JSON sync. Existing `/api/sync/upload` should continue to sync prompt/category/temporary prompt JSON plus `imageAssets` metadata, not image bytes.
+
+### Cloud Metadata Storage
+
+The web app needs persistent image metadata separate from prompt rows. Add Supabase-backed metadata for the sync routes:
+
+- `image_assets`: keyed by `(user_id, image_id)`, storing the fields from `ImageAsset`.
+- `pending_image_deletes`: keyed by `(user_id, image_id, cloud_path)`, storing retry attempts and latest error.
+
+`/api/sync/upload` must upsert the uploaded `imageAssets`, upsert/dedupe `pendingImageDeletes`, and delete metadata rows that are absent from the full uploaded snapshot unless they are represented by a pending delete. `/api/sync/download` must return image metadata along with prompts, categories, and temporary prompts.
+
+This route still never accepts image bytes. It only syncs metadata needed for lazy recovery and retry orchestration.
 
 ### `POST /api/images/upload`
 
@@ -133,6 +168,7 @@ Requirements:
 - Enforce a `1MB` single-image hard limit.
 - Validate `imageId` as UUID or a strict safe filename token.
 - Store in Vercel Blob at `users/{userId}/images/{imageId}.webp`.
+- Upsert the corresponding `image_assets` row with the authoritative `cloudUrl`, `cloudPath`, size, hash, and `status: 'synced'`.
 - Return `cloudUrl`, `cloudPath`, and stored `size`.
 
 ### `DELETE /api/images/:imageId`
@@ -141,7 +177,9 @@ Requirements:
 
 - Authenticated user only.
 - Delete only from the current user's namespace.
-- Use stored `cloudPath` or reconstruct the safe user-scoped path.
+- Prefer the stored `cloudPath` from `image_assets` or the request payload.
+- If `cloudPath` is missing, reconstruct only the safe user-scoped path `users/{userId}/images/{imageId}.webp`.
+- Remove the `image_assets` row only after Blob deletion succeeds.
 - Delete failures should not block prompt deletion; the extension records a retry item.
 
 ## Load and Recovery Flow
@@ -163,14 +201,16 @@ Recovery is lazy. A cloud restore should load image metadata but must not immedi
 
 Prompt deletion immediately deletes the associated image.
 
-1. Read `prompt.imageId`.
+1. Read `prompt.imageId` and copy `{ imageId, localPath, cloudPath }` from `imageAssets[imageId]`.
 2. Delete local `images/{imageId}.webp`.
-3. If `imageAssets[imageId].cloudPath` exists, call `DELETE /api/images/:imageId` asynchronously.
+3. If the copied `cloudPath` exists, call `DELETE /api/images/:imageId` asynchronously.
 4. Remove `imageAssets[imageId]`.
 5. Delete and persist the prompt.
-6. If cloud deletion fails, append a `pendingImageDeletes` item for retry during future cloud/manual sync.
+6. If cloud deletion fails, append or update a `pendingImageDeletes` item using the copied `cloudPath`.
 
 The first version does not support shared image references, so prompt deletion owns image deletion.
+
+Cloud delete retry state must not depend on the asset row still existing. The delete flow should copy the needed path before removing `imageAssets[imageId]`.
 
 ## Retry Rules
 
@@ -191,6 +231,13 @@ Retry behavior:
 
 Delete retries apply to `pendingImageDeletes`.
 
+Delete retry behavior:
+
+- Dedupe by `imageId` and `cloudPath`.
+- Increment `attempts` and update `lastError` on failure.
+- Remove the retry item after successful Blob deletion or a confirmed not-found response.
+- Do not recreate `imageAssets` for a pending delete.
+
 ## Error Handling
 
 - Local folder not configured: prompt image upload asks the user to configure the folder first.
@@ -206,8 +253,14 @@ Delete retries apply to `pendingImageDeletes`.
 - `imageAssets` and `pendingImageDeletes` are included in local backup JSON and cloud JSON sync.
 - Image binary data is never embedded in JSON sync payloads.
 - Cloud restore returns image metadata only.
-- The existing hash logic should include image metadata so cloud URL/status changes are preserved.
-- Existing merge behavior should preserve image metadata when one side lacks it, similar to the current `localImage` and `remoteImageUrl` preservation.
+- The extension backup hash and web upload hash must include normalized image metadata so `cloudUrl`, `cloudPath`, `status`, and retry changes are not skipped as unchanged.
+- Hash normalization sorts `imageAssets` by `id` and `pendingImageDeletes` by `imageId + cloudPath`.
+- Include durable fields in the hash: `id`, `promptId`, `localPath`, `cloudUrl`, `cloudPath`, `sourceUrl`, `mimeType`, `width`, `height`, `size`, `hash`, `status`, `updatedAt`, and pending delete `attempts/updatedAt`.
+- Exclude display-only object URLs. `lastError` may be stored and synced, but should be excluded from hash if repeated failures would otherwise create noisy sync churn.
+- Existing prompt merge behavior should preserve `imageId`, `localImage`, and `remoteImageUrl` when one side lacks them.
+- `imageAssets` merge is keyed by `imageId`. If both sides have the asset, the higher `updatedAt` wins, while missing non-conflicting fields such as `cloudUrl`, `cloudPath`, and `sourceUrl` are preserved from the other side.
+- `pendingImageDeletes` merge is keyed by `imageId + cloudPath`. Merged entries keep the highest `attempts`, latest `updatedAt`, and latest non-empty `lastError`.
+- If a prompt is deleted and a pending delete exists for its image, do not resurrect the prompt or asset during merge.
 
 ## Testing
 
@@ -225,8 +278,13 @@ Unit coverage should include:
 - Upload failure does not block prompt save.
 - Prompt delete removes local image and calls cloud delete when available.
 - Cloud delete failure creates a retry item.
+- Replacing an image deletes or queues deletion for the previous local/cloud asset.
 - JSON sync includes image metadata but not image bytes.
 - Cloud restore does not eagerly download image binaries.
+- Hash changes when durable image metadata changes.
+- Bidirectional merge preserves image metadata when only one side has it.
+- Pending delete merge dedupes by `imageId + cloudPath`.
+- Offscreen normalization is called from content-script save paths.
 
 ## Implementation Notes
 
@@ -236,5 +294,8 @@ Suggested units:
 - `image-asset-service`: prompt-facing save, display URL, recovery, upload retry, and delete orchestration.
 - `image-cloud-client`: extension-side API client for upload/delete.
 - Web app image routes: authenticated Vercel Blob upload/delete.
+- Shared sync/storage types: add `imageId`, `ImageAsset`, `PendingImageDelete`, and sync payload metadata.
+- Sync hash and merge helpers: normalize image metadata consistently in extension and web app code.
+- Supabase migrations: add `image_assets` and `pending_image_deletes` with RLS scoped to `auth.uid()`.
 
 Existing `image-sync.ts`, offscreen message handlers, and `imageUrlCache` should be reused where possible. UI components should migrate from direct `saveImage` and `getCachedImageUrl` calls to the asset service over time.

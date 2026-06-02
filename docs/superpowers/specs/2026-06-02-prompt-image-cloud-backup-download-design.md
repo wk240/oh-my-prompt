@@ -13,6 +13,7 @@ The target behavior is:
 - Visible images recover first.
 - A low-concurrency background queue fills in the rest.
 - If no local sync folder is configured, the UI prompts the user to configure one before download recovery starts.
+- Restore work runs through the extension service worker and offscreen file-system path, not directly from content scripts.
 
 ## Current State
 
@@ -36,6 +37,20 @@ Use a hybrid restore model.
 3. **Folder-required restore:** If the local sync folder is missing or permission is unavailable, image recovery pauses and notifies UI to ask the user to configure or reauthorize the folder. Recovery resumes after the folder becomes available.
 
 This keeps the app responsive, avoids a large download burst after sync, and restores the images the user sees first.
+
+### Execution Context
+
+Content scripts may request visible restore, but they must not perform file-system restore work directly. `FileSystemDirectoryHandle` access stays in the extension context and offscreen document path.
+
+The restore flow should therefore be:
+
+1. Content or sidepanel UI calls `getDisplayUrl(prompt)`.
+2. If local load fails and `cloudUrl` exists, `getDisplayUrl` returns `cloudUrl` immediately.
+3. `getDisplayUrl` sends an async runtime message to the service worker to enqueue restore.
+4. The service worker owns restore queue execution.
+5. Local file writes reuse the existing service-worker/offscreen image save path.
+
+This avoids cross-origin handle issues and keeps visible restore safe when called from host-page content scripts.
 
 ## Data Model
 
@@ -70,6 +85,8 @@ When a cloud-backed asset is restored successfully, the service writes `images/{
 }
 ```
 
+No new persisted restore-attempt field is required for the first version. Restore throttling can be in memory because recovery is best-effort and can retry after extension restart. If restore retry state needs to survive restarts later, add explicit restore metadata instead of overloading `updatedAt` or `lastUploadAttemptAt`.
+
 ## Components
 
 ### `image-cloud-client`
@@ -77,7 +94,10 @@ When a cloud-backed asset is restored successfully, the service writes `images/{
 Add a small download helper:
 
 ```ts
-downloadCloudImage(url: string): Promise<{ success: boolean; blob?: Blob; error?: string }>
+downloadCloudImage(
+  url: string,
+  expected?: { size?: number; hash?: string }
+): Promise<{ success: boolean; blob?: Blob; error?: string }>
 ```
 
 Responsibilities:
@@ -85,9 +105,14 @@ Responsibilities:
 - Fetch the `cloudUrl`.
 - Require an image response or tolerate missing content type only if Blob data is valid enough for the existing local save path.
 - Enforce the existing single-image size limit.
+- Verify the downloaded blob is a WebP image before writing it locally.
+- Compare the downloaded size with `expected.size` when available.
+- Compute SHA-256 and compare it with `expected.hash` when available.
 - Return structured errors such as `DOWNLOAD_FAILED`, `FILE_TOO_LARGE`, and `INVALID_RESPONSE`.
 
 No new web API is required for the first version because `cloudUrl` is already public Vercel Blob storage. If Blob URLs later become private, this helper can switch to an authenticated image download endpoint without changing callers.
+
+For users who later lose Pro or Team eligibility, already-synced image metadata may still contain public `cloudUrl` values. Restore should allow recovery from those existing URLs, but new uploads remain gated by the existing cloud sync subscription checks.
 
 ### `image-sync`
 
@@ -102,6 +127,8 @@ Recovery depends on the existing folder helpers:
 
 If the folder is missing or permission cannot be restored, the recovery service should not attempt the download.
 
+Background restore must not trigger a browser permission prompt by itself. If permission is `prompt` or `denied`, the service pauses restore, emits the folder-required notification, and lets the sidepanel perform configuration or reauthorization from a user gesture.
+
 ### `image-asset-service`
 
 Add three prompt-facing recovery functions:
@@ -112,14 +139,30 @@ restoreMissingCloudImages(options?: { priority?: 'background' }): Promise<boolea
 notifyImageRestoreFolderRequired(): void
 ```
 
+Content-script callers should reach these through a runtime message, for example:
+
+```ts
+MessageType.ENQUEUE_IMAGE_RESTORE
+```
+
+with payload:
+
+```ts
+{
+  imageId: string,
+  priority: 'visible' | 'background'
+}
+```
+
 Responsibilities:
 
 - Dedupe concurrent restore attempts by `imageId`.
 - Skip assets without `cloudUrl`.
 - Check local file first to avoid unnecessary downloads.
 - Mark missing local assets as `missing_local`.
-- Prompt for folder configuration when needed.
+- Notify UI for folder configuration when needed.
 - Download the cloud image.
+- Validate downloaded size, WebP signature, and hash before saving.
 - Save it back to `images/{imageId}.webp`.
 - Update `imageAssets[imageId]` after success or failure.
 
@@ -133,9 +176,10 @@ Queue rules:
 
 - Visible-priority items go before background items.
 - Background concurrency should be low, such as 2.
-- Repeated failures should not immediately loop.
+- Repeated failures should not immediately loop; keep an in-memory failure backoff keyed by `imageId`.
 - The queue should dedupe by `imageId`.
 - Folder-required state pauses the queue until the user configures or reauthorizes the folder.
+- A visible-priority enqueue may move an existing background item ahead, but it should not create a duplicate active restore.
 
 ### Sync Orchestrator
 
@@ -147,6 +191,15 @@ After cloud download and merge bring in image metadata, enqueue background recov
 - No pending delete exists for the same `imageId`.
 
 Cloud sync should still run metadata sync even when image download recovery fails. Image binary recovery is a follow-up healing step, not a blocker for text prompt restore.
+
+Hook this enqueue step after every path that applies restored or merged image metadata to storage:
+
+- cloud `downloadAndMerge()` after merged data is applied.
+- initial restore when storage is empty and local or cloud backup data is applied.
+- manual replace restore after backup data is saved.
+- any future restore path that writes `imageAssets` from backup data.
+
+Merge mode that keeps only current `imageAssets` does not need cloud-backed recovery unless the merge result actually includes new cloud image metadata.
 
 ### UI Notification
 
@@ -168,6 +221,8 @@ Payload:
 
 The sidepanel is the natural place to show the prompt because it already owns local sync folder setup flows. The prompt should ask the user to configure or reauthorize the local backup folder, then trigger background recovery again after success.
 
+If the sidepanel is not open, the service worker may store the pending notification state and surface it the next time sidepanel status is requested. It should not repeatedly spam runtime broadcasts while the queue is paused.
+
 ## Flow Details
 
 ### Save And Upload
@@ -186,7 +241,8 @@ The sidepanel is the natural place to show the prompt because it already owns lo
 2. The service tries `asset.localPath`.
 3. If local load fails and `asset.cloudUrl` exists, the service returns `asset.cloudUrl` for immediate display.
 4. It enqueues `restorePromptImageAsset(asset.id, { priority: 'visible' })`.
-5. Restore writes the image to the configured local folder and updates metadata.
+5. The service worker restore queue validates and writes the image to the configured local folder.
+6. Restore updates metadata.
 
 ### Background Restore
 
@@ -208,11 +264,13 @@ The sidepanel is the natural place to show the prompt because it already owns lo
 
 - Missing cloud URL: skip recovery.
 - Missing local folder: pause recovery and prompt the user.
-- Permission denied: pause recovery and prompt reauthorization.
+- Permission prompt or denied: pause recovery and prompt reauthorization from sidepanel.
 - Download failure: keep `cloudUrl`, set `status: 'missing_local'`, and update `lastError`.
+- Invalid WebP, size mismatch, or hash mismatch: keep `cloudUrl`, set `status: 'missing_local'`, and update `lastError`.
 - Save failure: keep `cloudUrl`, set `status: 'missing_local'`, and update `lastError`.
 - Asset deleted during restore: discard the downloaded blob and do not recreate metadata.
 - Pending cloud delete exists for image: skip restore.
+- Subscription no longer eligible: allow recovery from existing `cloudUrl`; do not attempt new uploads.
 
 ## Testing
 
@@ -222,15 +280,19 @@ Unit coverage should include:
 - `restorePromptImageAsset` writes `images/{imageId}.webp` and marks asset `synced`.
 - Restore skips assets without `cloudUrl`.
 - Restore pauses and emits folder-required notification when no local folder is configured.
+- Restore pauses instead of requesting permission directly when folder permission is `prompt`.
+- Restore rejects invalid WebP, size mismatch, and hash mismatch.
 - Restore records `missing_local` and `lastError` on download failure.
 - Background restore dedupes queued image IDs and prioritizes visible items.
 - Sync orchestrator enqueues background restore after cloud metadata restore.
+- Service worker handles `ENQUEUE_IMAGE_RESTORE` from content callers.
 - Pending deletes prevent asset restoration.
 
 Integration coverage should include:
 
 - Save image, upload image, cloud restore metadata, delete local file, then recover binary from `cloudUrl`.
 - New-device restore with no folder configured prompts for folder setup before image download.
+- Visible thumbnail fallback returns `cloudUrl` immediately while restore is queued through the service worker.
 
 ## Non-Goals
 

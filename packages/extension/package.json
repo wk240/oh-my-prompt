@@ -1,6 +1,6 @@
 {
   "name": "@oh-my-prompt/extension",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "type": "module",
   "scripts": {
     "dev": "vite --config vite.config.dev.ts",

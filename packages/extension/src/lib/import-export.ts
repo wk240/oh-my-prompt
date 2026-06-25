@@ -4,6 +4,7 @@
  */
 
 import type { StorageSchema, Prompt, Category } from '@oh-my-prompt/shared/types'
+import { repairPromptCategoryRefs } from '@oh-my-prompt/shared'
 
 interface ValidationResult {
   valid: boolean
@@ -210,9 +211,14 @@ export function mergeImportData(
     }
   }
 
-  return {
+  const repaired = repairPromptCategoryRefs({
     prompts: mergedPrompts,
-    categories: mergedCategories,
+    categories: mergedCategories
+  })
+
+  return {
+    prompts: repaired.userData.prompts,
+    categories: repaired.userData.categories,
     addedCount,
     skippedCount
   }

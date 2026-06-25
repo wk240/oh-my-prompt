@@ -87,4 +87,39 @@ describe('StorageManager', () => {
       pendingImageDeletes: data.pendingImageDeletes
     }))
   })
+
+  it('repairs prompts that reference missing categories before saving and syncing', async () => {
+    const manager = StorageManager.getInstance()
+    const data: StorageSchema = {
+      version: '2.0.0',
+      userData: {
+        prompts: [{ id: 'prompt-1', name: 'Prompt', content: 'Content', categoryId: 'missing-cat', order: 0 }],
+        categories: []
+      },
+      settings: {
+        showBuiltin: true,
+        syncEnabled: true
+      },
+      temporaryPrompts: [],
+      _migrationComplete: true
+    }
+
+    await manager.saveData(data)
+
+    expect(chrome.storage.local.set).toHaveBeenCalledWith({
+      prompt_script_data: expect.objectContaining({
+        userData: {
+          prompts: data.userData.prompts,
+          categories: [expect.objectContaining({
+            id: 'missing-cat',
+            name: '恢复分类'
+          })]
+        }
+      })
+    })
+    expect(triggerSync).toHaveBeenCalledWith(expect.objectContaining({
+      prompts: data.userData.prompts,
+      categories: [expect.objectContaining({ id: 'missing-cat' })]
+    }))
+  })
 })

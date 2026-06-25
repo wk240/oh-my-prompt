@@ -6,6 +6,7 @@
 
 import type { StorageSchema, UserData, SyncSettings, Prompt } from '@oh-my-prompt/shared/types'
 import { STORAGE_KEY } from '@oh-my-prompt/shared/constants'
+import { repairPromptCategoryRefs } from '@oh-my-prompt/shared'
 import { BUILT_IN_CATEGORIES, BUILT_IN_PROMPTS } from '../data/built-in-data'
 import { migrate, isLegacyFormat } from './migrations/index'
 // Import register to ensure migrations are registered before any migrate() calls
@@ -145,7 +146,16 @@ export class StorageManager {
    */
   async saveData(data: StorageSchema, options: SaveDataOptions = {}): Promise<void> {
     try {
-      await chrome.storage.local.set({ [STORAGE_KEY]: data })
+      const repaired = repairPromptCategoryRefs(data.userData)
+      const dataToSave = repaired.addedCategories.length > 0
+        ? { ...data, userData: repaired.userData }
+        : data
+
+      if (repaired.addedCategories.length > 0) {
+        console.warn('[Oh My Prompt] Repaired prompts with missing categories:', repaired.addedCategories.map(category => category.id))
+      }
+
+      await chrome.storage.local.set({ [STORAGE_KEY]: dataToSave })
 
       if (options.triggerSync === false) {
         return
@@ -153,12 +163,12 @@ export class StorageManager {
 
       // Trigger automatic sync (fire-and-forget, non-blocking)
       const syncData: FullBackupData = {
-        prompts: data.userData?.prompts || [],
-        categories: data.userData?.categories || [],
-        temporaryPrompts: data.temporaryPrompts || [],
+        prompts: dataToSave.userData?.prompts || [],
+        categories: dataToSave.userData?.categories || [],
+        temporaryPrompts: dataToSave.temporaryPrompts || [],
         timestamp: Date.now(),
-        imageAssets: data.imageAssets || {},
-        pendingImageDeletes: data.pendingImageDeletes || []
+        imageAssets: dataToSave.imageAssets || {},
+        pendingImageDeletes: dataToSave.pendingImageDeletes || []
       }
 
       this.syncOrchestrator.triggerSync(syncData).catch(err => {

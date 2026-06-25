@@ -106,9 +106,16 @@ type RuntimeMessageListener = (
   sender: chrome.runtime.MessageSender,
   sendResponse: (response?: unknown) => void
 ) => boolean | void
+type AlarmListener = (alarm: chrome.alarms.Alarm) => void
+type StorageChangeListener = (
+  changes: { [key: string]: chrome.storage.StorageChange },
+  areaName: chrome.storage.AreaName
+) => void
 
 describe('service worker message handling', () => {
   let runtimeMessageListener: RuntimeMessageListener
+  let alarmListener: AlarmListener
+  let storageChangeListener: StorageChangeListener
   const existingData: StorageSchema = {
     version: '1.0.0',
     userData: {
@@ -163,6 +170,7 @@ describe('service worker message handling', () => {
     vi.useFakeTimers()
 
     runtimeMessageListener = undefined as unknown as RuntimeMessageListener
+    storageChangeListener = undefined as unknown as StorageChangeListener
     mocks.storageManager.getDefaultData.mockReturnValue(existingData)
 
     global.chrome = {
@@ -189,6 +197,14 @@ describe('service worker message handling', () => {
         },
         sendMessage: vi.fn(() => Promise.resolve())
       },
+      alarms: {
+        create: vi.fn(),
+        onAlarm: {
+          addListener: vi.fn((listener: AlarmListener) => {
+            alarmListener = listener
+          })
+        }
+      },
       sidePanel: {
         setPanelBehavior: vi.fn(() => Promise.resolve())
       },
@@ -200,6 +216,12 @@ describe('service worker message handling', () => {
         },
         session: {
           set: vi.fn(() => Promise.resolve())
+        },
+        onChanged: {
+          addListener: vi.fn((listener: StorageChangeListener) => {
+            storageChangeListener = listener
+          }),
+          removeListener: vi.fn()
         }
       },
       tabs: {
@@ -351,6 +373,98 @@ describe('service worker message handling', () => {
     }))
   })
 
+  it('triggers current storage sync after auth callback succeeds', async () => {
+    const data: StorageSchema = {
+      ...payload,
+      temporaryPrompts: [
+        { id: 'temp-1', name: 'Temp', content: 'Draft', categoryId: 'temporary', order: 0 }
+      ],
+      ...imageMetadata
+    }
+    mocks.storageManager.getData.mockResolvedValue(data)
+    mocks.orchestratorTriggerSync.mockResolvedValue({
+      cloudSynced: true,
+      localSynced: false
+    })
+    const sendResponse = vi.fn()
+
+    dispatchRuntimeMessage({
+      type: MessageType.AUTH_CALLBACK_COMPLETE,
+      payload: { success: true }
+    }, sendResponse)
+
+    await vi.waitFor(() => {
+      expect(mocks.orchestratorTriggerSync).toHaveBeenCalledWith(expect.objectContaining({
+        prompts: data.userData.prompts,
+        categories: data.userData.categories,
+        temporaryPrompts: data.temporaryPrompts,
+        imageAssets: imageMetadata.imageAssets,
+        pendingImageDeletes: imageMetadata.pendingImageDeletes
+      }))
+    })
+    expect(sendResponse).toHaveBeenCalledWith({ success: true })
+    expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
+      type: MessageType.AUTH_STATUS_UPDATE,
+      payload: { success: true }
+    })
+  })
+
+  it('still triggers current storage sync when official config setup fails after auth callback', async () => {
+    const data: StorageSchema = {
+      ...payload,
+      ...imageMetadata
+    }
+    vi.mocked(chrome.storage.local.get).mockRejectedValueOnce(new Error('provider config unavailable'))
+    mocks.storageManager.getData.mockResolvedValue(data)
+    mocks.orchestratorTriggerSync.mockResolvedValue({
+      cloudSynced: true,
+      localSynced: false
+    })
+    const sendResponse = vi.fn()
+
+    dispatchRuntimeMessage({
+      type: MessageType.AUTH_CALLBACK_COMPLETE,
+      payload: { success: true }
+    }, sendResponse)
+
+    await vi.waitFor(() => {
+      expect(mocks.orchestratorTriggerSync).toHaveBeenCalledWith(expect.objectContaining({
+        prompts: data.userData.prompts,
+        categories: data.userData.categories,
+        imageAssets: imageMetadata.imageAssets,
+        pendingImageDeletes: imageMetadata.pendingImageDeletes
+      }))
+    })
+  })
+
+  it('triggers current storage sync when auth token is added to local storage', async () => {
+    const data: StorageSchema = {
+      ...payload,
+      ...imageMetadata
+    }
+    mocks.storageManager.getData.mockResolvedValue(data)
+    mocks.orchestratorTriggerSync.mockResolvedValue({
+      cloudSynced: true,
+      localSynced: false
+    })
+
+    storageChangeListener({
+      'sb-futfxudabvjfldlismun-auth-token': {
+        oldValue: undefined,
+        newValue: JSON.stringify({ access_token: 'token' })
+      }
+    }, 'local')
+
+    await vi.waitFor(() => {
+      expect(mocks.orchestratorTriggerSync).toHaveBeenCalledWith(expect.objectContaining({
+        prompts: data.userData.prompts,
+        categories: data.userData.categories,
+        imageAssets: imageMetadata.imageAssets,
+        pendingImageDeletes: imageMetadata.pendingImageDeletes
+      }))
+    })
+  })
+
   it('handles ENQUEUE_IMAGE_RESTORE from content callers', async () => {
     const { enqueueImageRestore } = await import('../../lib/sync/image-asset-service')
     const sendResponse = vi.fn()
@@ -444,6 +558,53 @@ describe('service worker message handling', () => {
         syncSuccess: true,
         syncError: undefined
       }
+    })
+  })
+
+  it('schedules a durable follow-up when SET_STORAGE auto-sync is skipped', async () => {
+    const sendResponse = await dispatchSetStorageWithSyncResult({
+      cloudSynced: false,
+      localSynced: false,
+      skipped: true
+    })
+
+    expect(sendResponse).toHaveBeenCalledWith({
+      success: true,
+      data: {
+        syncSuccess: true,
+        syncError: undefined
+      }
+    })
+    expect(chrome.alarms.create).toHaveBeenCalledWith(
+      'oh-my-prompt-pending-auto-sync',
+      { delayInMinutes: 0.05 }
+    )
+  })
+
+  it('runs pending auto-sync from current storage when the durable alarm fires', async () => {
+    const data: StorageSchema = {
+      ...payload,
+      temporaryPrompts: [
+        { id: 'temp-1', name: 'Temp', content: 'Draft', categoryId: 'temporary', order: 0 }
+      ]
+    }
+    mocks.storageManager.getData.mockResolvedValue(data)
+    mocks.orchestratorTriggerSync.mockResolvedValue({
+      cloudSynced: true,
+      localSynced: false
+    })
+
+    alarmListener({
+      name: 'oh-my-prompt-pending-auto-sync',
+      scheduledTime: Date.now()
+    })
+
+    await vi.waitFor(() => {
+      expect(mocks.orchestratorTriggerSync).toHaveBeenCalledWith(expect.objectContaining({
+        prompts: data.userData.prompts,
+        categories: data.userData.categories,
+        temporaryPrompts: data.temporaryPrompts
+      }))
     })
   })
 

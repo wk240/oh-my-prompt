@@ -226,6 +226,10 @@ function hasPendingImageDelete(data: StorageSchema, imageId: string): boolean {
   return (data.pendingImageDeletes || []).some(item => item.imageId === imageId)
 }
 
+function isUnrecoverableCloudDeleteError(error?: string): boolean {
+  return error === 'INVALID_CLOUD_PATH' || error === 'INVALID_IMAGE_ID'
+}
+
 async function checkRestoreFolderAvailable(): Promise<{ available: boolean; error?: string }> {
   const response = await chrome.runtime.sendMessage({
     type: MessageType.OFFSCREEN_CHECK_PERMISSION
@@ -757,6 +761,9 @@ export async function drainPendingImageDeletes(): Promise<boolean> {
       const result = await deleteCloudImage(item.imageId, item.cloudPath)
         .catch(error => ({ success: false, error: getErrorMessage(error) }))
       if (!result.success) {
+        if (isUnrecoverableCloudDeleteError(result.error)) {
+          continue
+        }
         remaining.push({
           ...item,
           attempts: item.attempts + 1,

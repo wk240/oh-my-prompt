@@ -13,6 +13,7 @@ import { validateProviderConfig, maskApiKey } from '../lib/config-validator'
 import { sendToOffscreen } from '../lib/offscreen-manager'
 import '../lib/migrations/register' // Register all migrations
 import { clearSupabaseClient } from '../lib/cloud-sync/supabase-client'
+import { SUPABASE_PROJECT_REF } from '../lib/config'
 import { handleAgentGenerate, handleEcommerceAiWrite } from './agent-handler'
 import { enqueueImageRestore, getImageRestoreStatus, restoreMissingCloudImages } from '../lib/sync/image-asset-service'
 
@@ -99,15 +100,24 @@ async function deactivateOfficialConfigWhenLoggedOut(): Promise<void> {
  */
 let syncTimeout: ReturnType<typeof setTimeout> | null = null
 let pendingSyncData: FullBackupData | null = null
-let pendingSyncResolve: ((value: { success: boolean; error?: { type: string; message: string } }) => void) | null = null
+type AutoSyncResult = {
+  success: boolean
+  skipped?: boolean
+  error?: { type: string; message: string }
+}
+
+let pendingSyncResolve: ((value: AutoSyncResult) => void) | null = null
 const SYNC_DEBOUNCE_MS = 500 // 500ms debounce for sync operations
+const PENDING_AUTO_SYNC_ALARM = 'oh-my-prompt-pending-auto-sync'
+const PENDING_AUTO_SYNC_DELAY_MINUTES = 0.05 // 3 seconds; longer than orchestrator's minimum interval
+const SUPABASE_AUTH_STORAGE_KEY = `sb-${SUPABASE_PROJECT_REF}-auth-token`
 
 /**
  * Debounced orchestrator auto-sync - batches rapid SET_STORAGE sync requests
  * @param backupData - Full backup data to sync
  * @returns Promise that resolves when sync completes
  */
-function debouncedTriggerSync(backupData: FullBackupData): Promise<{ success: boolean; error?: { type: string; message: string } }> {
+function debouncedTriggerSync(backupData: FullBackupData): Promise<AutoSyncResult> {
   // Clear existing timeout
   if (syncTimeout) {
     clearTimeout(syncTimeout)
@@ -145,6 +155,7 @@ function debouncedTriggerSync(backupData: FullBackupData): Promise<{ success: bo
 
         const result = {
           success,
+          skipped: syncResult.skipped,
           ...(success || !message ? {} : { error: { type: 'unknown', message } })
         }
 
@@ -164,12 +175,34 @@ function debouncedTriggerSync(backupData: FullBackupData): Promise<{ success: bo
   })
 }
 
+function buildBackupDataFromStorage(data: StorageSchema): FullBackupData {
+  return {
+    prompts: data.userData?.prompts || [],
+    categories: data.userData?.categories || [],
+    temporaryPrompts: data.temporaryPrompts || [],
+    imageAssets: data.imageAssets || {},
+    pendingImageDeletes: data.pendingImageDeletes || [],
+    timestamp: Date.now()
+  }
+}
+
+function schedulePendingAutoSync(): void {
+  chrome.alarms.create(PENDING_AUTO_SYNC_ALARM, {
+    delayInMinutes: PENDING_AUTO_SYNC_DELAY_MINUTES
+  })
+}
+
+async function triggerSyncFromCurrentStorage(): Promise<void> {
+  const data = await storageManager.getData()
+  await syncOrchestrator.triggerSync(buildBackupDataFromStorage(data))
+}
+
 async function getStorageDataForDirectWrite(): Promise<StorageSchema> {
   const result = await chrome.storage.local.get(STORAGE_KEY)
   return (result[STORAGE_KEY] as StorageSchema | undefined) || storageManager.getDefaultData()
 }
 
-async function saveDataAndDebouncedSync(data: StorageSchema): Promise<{ success: boolean; error?: { type: string; message: string } }> {
+async function saveDataAndDebouncedSync(data: StorageSchema): Promise<AutoSyncResult> {
   const existingData = await getStorageDataForDirectWrite()
   const hasImageAssets = Object.prototype.hasOwnProperty.call(data, 'imageAssets')
   const hasPendingImageDeletes = Object.prototype.hasOwnProperty.call(data, 'pendingImageDeletes')
@@ -180,14 +213,11 @@ async function saveDataAndDebouncedSync(data: StorageSchema): Promise<{ success:
   }
 
   await chrome.storage.local.set({ [STORAGE_KEY]: dataToSave })
-  return debouncedTriggerSync({
-    prompts: dataToSave.userData?.prompts || [],
-    categories: dataToSave.userData?.categories || [],
-    temporaryPrompts: dataToSave.temporaryPrompts || [],
-    imageAssets: dataToSave.imageAssets || {},
-    pendingImageDeletes: dataToSave.pendingImageDeletes || [],
-    timestamp: Date.now()
-  })
+  const result = await debouncedTriggerSync(buildBackupDataFromStorage(dataToSave))
+  if (result.skipped) {
+    schedulePendingAutoSync()
+  }
+  return result
 }
 
 function notifyLovartSyncFailed(error?: { type: string; message: string }): void {
@@ -276,6 +306,25 @@ chrome.runtime.onInstalled.addListener(async (_details) => {
     console.error('[Oh My Prompt] Orchestrator initial sync on install failed:', error)
   }
   // Note: initialSync() above already creates offscreen document, no need to call again
+})
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name !== PENDING_AUTO_SYNC_ALARM) return
+
+  triggerSyncFromCurrentStorage().catch(error => {
+    console.warn('[Oh My Prompt] Pending auto-sync alarm failed:', error)
+  })
+})
+
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName !== 'local') return
+
+  const authChange = changes[SUPABASE_AUTH_STORAGE_KEY]
+  if (!authChange?.newValue || authChange.oldValue) return
+
+  triggerSyncFromCurrentStorage().catch(error => {
+    console.warn('[Oh My Prompt] Initial cloud sync after auth storage change failed:', error)
+  })
 })
 
 // NOTE: action.onClicked listener removed - Chrome auto-toggles sidepanel when
@@ -754,6 +803,10 @@ chrome.runtime.onMessage.addListener(
           // This allows Agent/Vision features to work immediately without manual config
           // Must await before broadcasting so components find the config when they re-check
           ensureOfficialConfig()
+            .then(() => triggerSyncFromCurrentStorage())
+            .catch(error => {
+              console.warn('[Oh My Prompt] Initial cloud sync after login failed:', error)
+            })
             .then(() => {
               // Broadcast AUTH_STATUS_UPDATE to extension pages (sidepanel, popup)
               chrome.runtime.sendMessage({

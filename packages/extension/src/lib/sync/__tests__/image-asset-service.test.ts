@@ -659,6 +659,21 @@ describe('image-asset-service', () => {
     expect(storageData.pendingImageDeletes).toEqual([])
   })
 
+  it('drops unrecoverable pending cloud deletes to avoid retry storms', async () => {
+    storageData.pendingImageDeletes = [{
+      imageId: 'manual-image',
+      cloudPath: 'invalid/manual-image.webp',
+      attempts: 4,
+      updatedAt: 1
+    }]
+    vi.mocked(deleteCloudImage).mockResolvedValueOnce({ success: false, error: 'INVALID_CLOUD_PATH' })
+
+    await drainPendingImageDeletes()
+
+    expect(deleteCloudImage).toHaveBeenCalledWith('manual-image', 'invalid/manual-image.webp')
+    expect(storageData.pendingImageDeletes).toEqual([])
+  })
+
   it('preserves pending deletes queued while draining existing items', async () => {
     storageData.pendingImageDeletes = [{
       imageId: 'old-image',

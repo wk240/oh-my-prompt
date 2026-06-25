@@ -81,20 +81,14 @@ export class CloudSyncStrategy extends BaseSyncStrategy {
    * Check if cloud sync is available.
    * Uses unified auth cache from auth-service.ts.
    *
-   * Returns true only if:
-   * 1. User is logged in (status === 'logged_in')
-   * 2. API endpoint is reachable
+   * Returns true when the extension has a valid logged-in session.
+   * Subscription and entitlement are enforced by the upload API so a failed
+   * status preflight cannot silently prevent sync attempts.
    */
   async isAvailable(): Promise<boolean> {
     const authState = await getAuthState()
 
-    if (authState.status !== 'logged_in') {
-      return false
-    }
-
-    const planType = authState.subscription?.planType || 'free'
-    const subscriptionStatus = authState.subscription?.status
-    return authState.cloudSyncEnabled ?? hasDirectCloudSyncPlan(planType, subscriptionStatus)
+    return authState.status === 'logged_in'
   }
 
   /**

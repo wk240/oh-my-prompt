@@ -74,7 +74,7 @@ describe('CloudSyncStrategy', () => {
     expect(available).toBe(true)
   })
 
-  it('should return false for free users', async () => {
+  it('should be available for logged-in free users so upload can report subscription errors', async () => {
     const mockGet = vi.fn().mockResolvedValue({
       'sb-futfxudabvjfldlismun-auth-token': JSON.stringify({
         access_token: 'test-token',
@@ -101,7 +101,7 @@ describe('CloudSyncStrategy', () => {
     })
 
     const available = await strategy.isAvailable()
-    expect(available).toBe(false)
+    expect(available).toBe(true)
   })
 
   it('should be available for free users with team cloud sync entitlement', async () => {
@@ -135,6 +135,29 @@ describe('CloudSyncStrategy', () => {
     expect(available).toBe(true)
   })
 
+  it('should still be available when sync status API is unreachable but session is valid', async () => {
+    const mockGet = vi.fn().mockResolvedValue({
+      'sb-futfxudabvjfldlismun-auth-token': JSON.stringify({
+        access_token: 'test-token',
+        user: { id: 'user-123' },
+        expires_at: Math.floor(Date.now() / 1000) + 3600
+      })
+    })
+    global.chrome = {
+      storage: {
+        local: {
+          get: mockGet,
+          set: vi.fn().mockResolvedValue(undefined)
+        }
+      }
+    } as any
+
+    global.fetch = vi.fn().mockRejectedValue(new Error('status api unavailable'))
+
+    const available = await strategy.isAvailable()
+    expect(available).toBe(true)
+  })
+
   it('should return false when auth token is expired', async () => {
     // Mock chrome.storage.local.get to return expired auth token
     const mockGet = vi.fn().mockResolvedValue({
@@ -157,7 +180,7 @@ describe('CloudSyncStrategy', () => {
     expect(available).toBe(false)
   })
 
-  it('should be unavailable when status fetch fails and plan is unknown', async () => {
+  it('should be available when status fetch fails but session is valid', async () => {
     // Mock chrome.storage.local.get to return auth token
     const mockGet = vi.fn().mockResolvedValue({
       'sb-futfxudabvjfldlismun-auth-token': JSON.stringify({
@@ -179,7 +202,7 @@ describe('CloudSyncStrategy', () => {
     global.fetch = vi.fn().mockRejectedValue(new Error('Network error'))
 
     const available = await strategy.isAvailable()
-    expect(available).toBe(false)
+    expect(available).toBe(true)
   })
 
   it('should upload data via API', async () => {

@@ -10,7 +10,7 @@ import { MessageType } from '@oh-my-prompt/shared/messages'
 import { Sparkles, Loader2, AlertTriangle, Copy, Bookmark, RefreshCw, X, Upload, Settings, LogIn, ArrowUpRight, ArrowLeft } from 'lucide-react'
 import { showToast } from './ToastNotification'
 import { CategorySelectDialog } from './CategorySelectDialog'
-import { WEB_APP_URL } from '../../lib/config'
+import { WEB_APP_URL } from '@/lib/config'
 import { getAgentConfigAvailability, type AgentConfigAvailability } from '@/lib/agent-config-availability'
 import { getCachedAuthState } from '@/lib/cloud-sync/auth-service'
 

@@ -82,4 +82,42 @@ describe('usePromptStore', () => {
     expect(usePromptStore.getState().categories).toBe(beforeCategories)
     expect(usePromptStore.getState().temporaryPrompts).toBe(beforeTemporaryPrompts)
   })
+
+  it('keeps temporary prompt removed after background delete succeeds', async () => {
+    const prompt: Prompt = {
+      id: 'temp-1',
+      name: 'Temp',
+      content: 'Draft',
+      categoryId: 'temporary',
+      order: 0,
+    }
+    vi.mocked(chrome.runtime.sendMessage).mockResolvedValue({ success: true })
+    usePromptStore.setState({ temporaryPrompts: [prompt] })
+
+    const result = await usePromptStore.getState().deleteTemporaryPrompt('temp-1')
+
+    expect(result).toEqual({ success: true })
+    expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
+      type: 'DELETE_TEMPORARY_PROMPT',
+      payload: { promptId: 'temp-1' },
+    })
+    expect(usePromptStore.getState().temporaryPrompts).toEqual([])
+  })
+
+  it('restores temporary prompt when background delete fails', async () => {
+    const prompt: Prompt = {
+      id: 'temp-1',
+      name: 'Temp',
+      content: 'Draft',
+      categoryId: 'temporary',
+      order: 0,
+    }
+    vi.mocked(chrome.runtime.sendMessage).mockResolvedValue({ success: false, error: 'Delete failed' })
+    usePromptStore.setState({ temporaryPrompts: [prompt] })
+
+    const result = await usePromptStore.getState().deleteTemporaryPrompt('temp-1')
+
+    expect(result).toEqual({ success: false, error: 'Delete failed' })
+    expect(usePromptStore.getState().temporaryPrompts).toEqual([prompt])
+  })
 })

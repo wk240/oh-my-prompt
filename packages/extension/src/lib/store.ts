@@ -43,7 +43,7 @@ interface PromptStore {
   reorderAllPrompts: (newOrder: string[]) => void
 
   // Temporary library
-  deleteTemporaryPrompt: (promptId: string) => void
+  deleteTemporaryPrompt: (promptId: string) => Promise<{ success: boolean; error?: string }>
   clearTemporaryPrompts: () => void
   transferTemporaryPrompt: (promptId: string, categoryId: string) => void
 
@@ -573,14 +573,26 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
   },
 
   // Temporary library methods
-  deleteTemporaryPrompt: (promptId: string) => {
-    set((state) => ({
-      temporaryPrompts: state.temporaryPrompts.filter(p => p.id !== promptId)
-    }))
-    chrome.runtime.sendMessage({
-      type: MessageType.DELETE_TEMPORARY_PROMPT,
-      payload: { promptId }
+  deleteTemporaryPrompt: async (promptId: string) => {
+    const previousTemporaryPrompts = get().temporaryPrompts
+    set({
+      temporaryPrompts: previousTemporaryPrompts.filter(p => p.id !== promptId)
     })
+
+    try {
+      const response = await sendMessageWithRetry({
+        type: MessageType.DELETE_TEMPORARY_PROMPT,
+        payload: { promptId }
+      })
+      if (!response.success) {
+        set({ temporaryPrompts: previousTemporaryPrompts })
+        return { success: false, error: response.error || 'Delete failed' }
+      }
+      return { success: true }
+    } catch (error) {
+      set({ temporaryPrompts: previousTemporaryPrompts })
+      return { success: false, error: error instanceof Error ? error.message : 'Delete failed' }
+    }
   },
 
   clearTemporaryPrompts: () => {

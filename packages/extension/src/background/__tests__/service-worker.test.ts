@@ -772,6 +772,27 @@ describe('service worker message handling', () => {
     expect(sendResponse).toHaveBeenCalledWith({ success: true })
   })
 
+  it('treats missing temporary prompt delete as idempotent success', async () => {
+    const data: StorageSchema = {
+      ...existingData,
+      temporaryPrompts: [
+        { id: 'temp-2', name: 'Temp 2', content: 'Draft 2', categoryId: 'temporary', order: 1 }
+      ]
+    }
+    vi.mocked(chrome.storage.local.get).mockResolvedValue({ [STORAGE_KEY]: data })
+    const sendResponse = vi.fn()
+
+    dispatchRuntimeMessage({
+      type: MessageType.DELETE_TEMPORARY_PROMPT,
+      payload: { promptId: 'temp-1' }
+    }, sendResponse)
+    await vi.advanceTimersByTimeAsync(500)
+
+    expect(chrome.storage.local.set).not.toHaveBeenCalled()
+    expect(mocks.orchestratorTriggerSync).not.toHaveBeenCalled()
+    expect(sendResponse).toHaveBeenCalledWith({ success: true })
+  })
+
   it('closes the auth callback tab that requested closure', () => {
     const sendResponse = vi.fn()
 

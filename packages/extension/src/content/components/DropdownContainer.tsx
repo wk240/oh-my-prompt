@@ -476,6 +476,7 @@ export function DropdownContainer({
   const loadTeamPrompts = usePromptStore((state) => state.loadTeamPrompts)
   const loadAuthState = usePromptStore((state) => state.loadAuthState)
   const getUserTeams = usePromptStore((state) => state.getUserTeams)
+  const deleteTemporaryPrompt = usePromptStore((state) => state.deleteTemporaryPrompt)
 
   // Team syncing state
   const [teamSyncing, setTeamSyncing] = useState(false)
@@ -1275,22 +1276,12 @@ export function DropdownContainer({
     const isTemporaryPrompt = temporaryPrompts.some(p => p.id === editingStates.deletingPrompt!.id)
     if (isTemporaryPrompt) {
       // Delete from temporary library
-      const imageDelete = await deletePromptImageAsset(editingStates.deletingPrompt.id)
-      if (!imageDelete.success) {
-        showToast('图片删除失败，请检查文件夹权限')
+      await deletePromptImageAsset(editingStates.deletingPrompt.id)
+      const deleteResult = await deleteTemporaryPrompt(editingStates.deletingPrompt.id)
+      if (!deleteResult.success) {
+        showToast('提示词删除失败，请重试')
         return
       }
-      const updatedTemporaryPrompts = temporaryPrompts.filter(p => p.id !== editingStates.deletingPrompt!.id)
-      usePromptStore.setState({ temporaryPrompts: updatedTemporaryPrompts })
-      // Persist via service worker (settings preserved by merge)
-      chrome.runtime.sendMessage({
-        type: MessageType.SET_STORAGE,
-        payload: {
-          version: chrome.runtime.getManifest().version,
-          userData: { prompts: usePromptStore.getState().prompts, categories: usePromptStore.getState().categories },
-          temporaryPrompts: updatedTemporaryPrompts
-        }
-      })
       setModalStates(prev => ({ ...prev, isPromptDelete: false }))
       clearEditingItem('deletingPrompt')
       showToast('提示词已删除')
@@ -1305,7 +1296,7 @@ export function DropdownContainer({
     setLocalPrompts(prev => prev.filter(p => p.id !== editingStates.deletingPrompt!.id))
     clearEditingItem('deletingPrompt')
     showToast('提示词已删除')
-  }, [editingStates.deletingPrompt, temporaryPrompts])
+  }, [editingStates.deletingPrompt, temporaryPrompts, deleteTemporaryPrompt])
 
   // Handle transfer temporary prompt to category
   const handleTransferTemporaryPrompt = useCallback((categoryId: string) => {

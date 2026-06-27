@@ -1977,13 +1977,13 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
       temporaryPrompts.some(p => p.id === editingStates.deletingPrompt?.id)
 
     if (isDeletingTemporaryPrompt) {
-      const imageDelete = await deletePromptImageAsset(editingStates.deletingPrompt.id)
-      if (!imageDelete.success) {
-        setToastMessage('图片删除失败，请检查文件夹权限')
+      await deletePromptImageAsset(editingStates.deletingPrompt.id)
+      const deleteResult = await deleteTemporaryPrompt(editingStates.deletingPrompt.id)
+      if (!deleteResult.success) {
+        setToastMessage('提示词删除失败，请重试')
         setTimeout(hideToast, 2000)
         return
       }
-      deleteTemporaryPrompt(editingStates.deletingPrompt.id)
     } else {
       const imageDelete = await deletePromptImageAsset(editingStates.deletingPrompt.id)
       if (!imageDelete.success) {

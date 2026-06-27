@@ -1791,7 +1791,7 @@ chrome.runtime.onMessage.addListener(
             const updatedTemporaryPrompts = temporaryPrompts.filter(p => p.id !== deleteTemporaryPayload.promptId)
 
             if (updatedTemporaryPrompts.length === temporaryPrompts.length) {
-              sendResponse({ success: false, error: 'Prompt not found in temporary library' })
+              sendResponse({ success: true })
               return
             }
 

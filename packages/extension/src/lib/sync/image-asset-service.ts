@@ -230,6 +230,13 @@ function isUnrecoverableCloudDeleteError(error?: string): boolean {
   return error === 'INVALID_CLOUD_PATH' || error === 'INVALID_IMAGE_ID'
 }
 
+function isBlockingLocalDeleteError(error?: string): boolean {
+  return error === 'FOLDER_NOT_CONFIGURED' ||
+    error === 'PERMISSION_DENIED' ||
+    error === 'PERMISSION_PROMPT' ||
+    error === 'INVALID_PATH'
+}
+
 async function checkRestoreFolderAvailable(): Promise<{ available: boolean; error?: string }> {
   const response = await chrome.runtime.sendMessage({
     type: MessageType.OFFSCREEN_CHECK_PERMISSION
@@ -793,7 +800,7 @@ export async function deletePromptImageAsset(promptId: string): Promise<DeletePr
   if (localPath) {
     const localDelete = await deleteImageByPath(localPath)
       .catch(error => ({ success: false, error: getErrorMessage(error) }))
-    if (!localDelete.success) {
+    if (!localDelete.success && isBlockingLocalDeleteError(localDelete.error)) {
       if (imageId && asset) {
         await markImageAssetStatus(imageId, asset.status, localDelete.error || 'DELETE_FAILED')
       }

@@ -494,7 +494,13 @@ async function handleDeleteImage(payload: { promptId?: string; relativePath?: st
   try {
     const imagesDir = await handle.getDirectoryHandle(IMAGE_DIR_NAME)
     if (filename) {
-      await imagesDir.removeEntry(filename)
+      try {
+        await imagesDir.removeEntry(filename)
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === 'NotFoundError')) {
+          return { success: false, error: 'DELETE_FAILED' } as MessageResponse
+        }
+      }
       return { success: true } as MessageResponse
     }
 

@@ -762,6 +762,68 @@ describe('image-asset-service', () => {
     })
   })
 
+  it('cleans up prompt metadata when local image is already missing', async () => {
+    storageData.userData.prompts[0].imageId = 'image-1'
+    storageData.userData.prompts[0].localImage = 'images/image-1.webp'
+    storageData.userData.prompts[0].remoteImageUrl = 'https://example.com/source.png'
+    storageData.imageAssets = {
+      'image-1': {
+        id: 'image-1',
+        promptId: 'prompt-1',
+        localPath: 'images/image-1.webp',
+        mimeType: 'image/webp',
+        width: 100,
+        height: 80,
+        size: 1000,
+        hash: 'hash-1',
+        status: 'missing_local',
+        updatedAt: 1
+      }
+    }
+    vi.mocked(deleteImageByPath).mockResolvedValueOnce({ success: false, error: 'FILE_NOT_FOUND' })
+
+    const result = await deletePromptImageAsset('prompt-1')
+
+    expect(result).toEqual({ success: true })
+    expect(storageData.userData.prompts[0]).toMatchObject({
+      imageId: undefined,
+      localImage: undefined,
+      remoteImageUrl: undefined
+    })
+    expect(storageData.imageAssets?.['image-1']).toBeUndefined()
+  })
+
+  it('cleans up prompt metadata when legacy image delete reports delete failed', async () => {
+    storageData.userData.prompts[0].imageId = 'image-1'
+    storageData.userData.prompts[0].localImage = 'images/image-1.webp'
+    storageData.userData.prompts[0].remoteImageUrl = 'https://example.com/source.png'
+    storageData.imageAssets = {
+      'image-1': {
+        id: 'image-1',
+        promptId: 'prompt-1',
+        localPath: 'images/image-1.webp',
+        mimeType: 'image/webp',
+        width: 100,
+        height: 80,
+        size: 1000,
+        hash: 'hash-1',
+        status: 'missing_local',
+        updatedAt: 1
+      }
+    }
+    vi.mocked(deleteImageByPath).mockResolvedValueOnce({ success: false, error: 'DELETE_FAILED' })
+
+    const result = await deletePromptImageAsset('prompt-1')
+
+    expect(result).toEqual({ success: true })
+    expect(storageData.userData.prompts[0]).toMatchObject({
+      imageId: undefined,
+      localImage: undefined,
+      remoteImageUrl: undefined
+    })
+    expect(storageData.imageAssets?.['image-1']).toBeUndefined()
+  })
+
   it('deletes legacy local image files without image asset metadata', async () => {
     storageData.userData.prompts[0].localImage = 'images/legacy.webp'
     storageData.userData.prompts[0].remoteImageUrl = 'https://example.com/source.png'

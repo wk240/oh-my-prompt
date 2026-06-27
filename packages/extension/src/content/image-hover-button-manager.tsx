@@ -26,6 +26,12 @@ const HIDE_DELAY = 100
 // Debug mode - set to true for verbose logging
 const DEBUG_HOVER_BUTTON = false
 
+type RectLike = Pick<DOMRectReadOnly, 'left' | 'top' | 'right' | 'bottom'>
+
+export function isPointInsideRect(x: number, y: number, rect: RectLike): boolean {
+  return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
+}
+
 /**
  * ImageHoverButtonManager - Singleton pattern
  * Uses event delegation for universal image detection
@@ -271,7 +277,7 @@ export class ImageHoverButtonManager {
       // Handle covered images: check if this element contains a large image
       // (Some sites overlay transparent divs on images for hover effects)
       if (el.tagName === 'DIV' || el.tagName === 'A' || el.tagName === 'SPAN') {
-        const containedImg = this.findLargeImageInContainer(el as HTMLElement)
+        const containedImg = this.findLargeImageInContainer(el as HTMLElement, x, y)
         if (containedImg) {
           if (DEBUG_HOVER_BUTTON) {
           }
@@ -287,7 +293,7 @@ export class ImageHoverButtonManager {
    * Find a large image inside a container element
    * Used when images are covered by transparent overlay divs
    */
-  private findLargeImageInContainer(container: HTMLElement): HTMLImageElement | null {
+  private findLargeImageInContainer(container: HTMLElement, x: number, y: number): HTMLImageElement | null {
     // Query for images inside this container (direct children or nested)
     const images = container.querySelectorAll('img')
 
@@ -304,7 +310,7 @@ export class ImageHoverButtonManager {
       }
 
       // Check if image is large enough and visible (opacity > 0)
-      if (rect.width >= MIN_WIDTH && rect.height >= MIN_HEIGHT && opacity > 0) {
+      if (rect.width >= MIN_WIDTH && rect.height >= MIN_HEIGHT && opacity > 0 && isPointInsideRect(x, y, rect)) {
         return img as HTMLImageElement
       }
     }

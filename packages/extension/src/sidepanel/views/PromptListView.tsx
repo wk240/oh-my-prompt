@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo, Suspense, lazy, useRef } from 'react'
-import type { Prompt, Category, ResourcePrompt, UpdateStatus, TeamPrompt } from '@oh-my-prompt/shared/types'
+import type { Prompt, Category, ResourcePrompt, UpdateStatus, TeamPrompt, TeamInfo } from '@oh-my-prompt/shared/types'
 import type { AgentTemplateCategory, AgentViewMode } from '@oh-my-prompt/shared/types/agent'
 import { truncateText, sortCategoriesByOrder, sortPromptsByOrder, sortProviderCategoriesByOrder, sortResourcePromptsByCategoryOrder } from '@oh-my-prompt/shared/utils'
 import { Sparkles, Palette, Shapes, FolderOpen, Layers, Sparkle, Brush, GripVertical, Database, ArrowLeft, Sun, Frame, Paintbrush, Image, ArrowUpCircle, Plus, Pencil, Trash2, House, ArrowUpRight, Bookmark, AlertTriangle, Settings, Loader2, Clock, CheckCircle, Copy, Users, Share2, Bot } from 'lucide-react'
@@ -685,8 +685,11 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
   const syncTeamPrompts = usePromptStore((state) => state.syncTeamPrompts)
   const loadTeamPrompts = usePromptStore((state) => state.loadTeamPrompts)
   const loadAuthState = usePromptStore((state) => state.loadAuthState)
+  const getUserTeams = usePromptStore((state) => state.getUserTeams)
 
   // Local state
+  const [selectedTeamId, setSelectedTeamId] = useState<string>('all')
+  const [teams, setTeams] = useState<TeamInfo[]>([])
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all')
   const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null)
   const [isResourceLibrary, setIsResourceLibrary] = useState(false)
@@ -1313,15 +1316,38 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
     }))
   }, [temporaryPrompts, resourceLanguage])
 
-  // Team prompts display with language transformation
+  // Fetch teams when team category is selected
+  useEffect(() => {
+    if (selectedCategoryId === 'team' && authState?.status === 'logged_in') {
+      getUserTeams().then((result) => {
+        if (result.success && result.teams) {
+          setTeams(result.teams)
+        }
+      })
+    } else {
+      setTeams([])
+      setSelectedTeamId('all')
+    }
+  }, [selectedCategoryId, authState?.status, getUserTeams])
+
+  useEffect(() => {
+    if (selectedTeamId !== 'all' && !teams.some(team => team.id === selectedTeamId)) {
+      setSelectedTeamId('all')
+    }
+  }, [selectedTeamId, teams])
+
+  // Team prompts display with language transformation and team filter
   const displayTeamPrompts: TeamPrompt[] = useMemo(() => {
-    return teamPrompts.map(p => ({
+    const filtered = selectedTeamId === 'all'
+      ? teamPrompts
+      : teamPrompts.filter(p => p.teamId === selectedTeamId)
+    return filtered.map(p => ({
       ...p,
       name: resourceLanguage === 'en' && p.nameEn ? p.nameEn : p.name,
       content: resourceLanguage === 'en' && p.contentEn ? p.contentEn : p.content,
       description: resourceLanguage === 'en' && p.descriptionEn ? p.descriptionEn : p.description,
     }))
-  }, [teamPrompts, resourceLanguage])
+  }, [teamPrompts, resourceLanguage, selectedTeamId])
 
   // Filter prompts by category
   const filteredPrompts = useMemo(() => {
@@ -2439,24 +2465,25 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
                   </button>
                 </div>
               </div>
-            ) : displayTeamPrompts.length === 0 ? (
-              <div className="empty-state">
-                <div className="empty-message">
-                  <p>暂无团队提示词</p>
-                  <button
-                    className="team-action-btn"
-                    onClick={handleTeamSync}
-                    disabled={teamSyncing}
-                  >
-                    {teamSyncing ? '同步中...' : '同步团队库'}
-                  </button>
-                </div>
-              </div>
             ) : (
               <>
                 {/* Team sync button header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', padding: '8px 12px', background: '#f8fafc', borderRadius: '6px' }}>
-                  <span style={{ fontSize: '12px', color: '#64748b' }}>共 {displayTeamPrompts.length} 条团队提示词</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {teams.length > 0 && (
+                      <select
+                        value={selectedTeamId}
+                        onChange={(e) => setSelectedTeamId(e.target.value)}
+                        style={{ fontSize: '12px', padding: '2px 6px', borderRadius: '4px', border: '1px solid #e2e8f0', background: 'white', color: '#334155', cursor: 'pointer', maxWidth: '120px' }}
+                      >
+                        <option value="all">全部团队</option>
+                        {teams.map(team => (
+                          <option key={team.id} value={team.id}>{team.name}</option>
+                        ))}
+                      </select>
+                    )}
+                    <span style={{ fontSize: '12px', color: '#64748b' }}>共 {displayTeamPrompts.length} 条团队提示词</span>
+                  </div>
                   <button
                     className="team-sync-btn"
                     onClick={handleTeamSync}
@@ -2470,24 +2497,38 @@ export default function PromptListView({ onOpenSettings }: PromptListViewProps) 
                     ) : '同步'}
                   </button>
                 </div>
-                {/* Team prompts grid */}
-                <div className="network-cards-grid">
-                  {displayTeamPrompts.map(prompt => (
-                    <SidePanelTeamCard
-                      key={prompt.id}
-                      prompt={prompt}
-                      language={resourceLanguage}
-                      onClick={() => {
-                        setEditingItem('teamPrompt', prompt)
-                        openModal('isPreview')
-                      }}
-                      onInject={() => handleInjectTeamPrompt(prompt)}
-                      onSave={() => handleSaveTeamPromptToPersonal(prompt)}
-                      onCopy={() => handleCopyTeamPrompt(prompt)}
-                      canInject={inputStatus === 'available'}
-                    />
-                  ))}
-                </div>
+                {displayTeamPrompts.length === 0 ? (
+                  <div className="empty-state">
+                    <div className="empty-message">
+                      <p>{teamPrompts.length === 0 ? '暂无团队提示词' : '该团队暂无团队提示词'}</p>
+                      <button
+                        className="team-action-btn"
+                        onClick={handleTeamSync}
+                        disabled={teamSyncing}
+                      >
+                        {teamSyncing ? '同步中...' : '同步团队库'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="network-cards-grid">
+                    {displayTeamPrompts.map(prompt => (
+                      <SidePanelTeamCard
+                        key={prompt.id}
+                        prompt={prompt}
+                        language={resourceLanguage}
+                        onClick={() => {
+                          setEditingItem('teamPrompt', prompt)
+                          openModal('isPreview')
+                        }}
+                        onInject={() => handleInjectTeamPrompt(prompt)}
+                        onSave={() => handleSaveTeamPromptToPersonal(prompt)}
+                        onCopy={() => handleCopyTeamPrompt(prompt)}
+                        canInject={inputStatus === 'available'}
+                      />
+                    ))}
+                  </div>
+                )}
               </>
             )
           ) : filteredPrompts.length === 0 ? (

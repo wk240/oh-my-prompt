@@ -6,7 +6,7 @@
 
 import { useRef, useState, useMemo, useEffect, useCallback, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
-import type { Prompt, Category, GeneralAgentGenerateResult } from '@oh-my-prompt/shared/types'
+import type { Prompt, Category, GeneralAgentGenerateResult, TeamInfo } from '@oh-my-prompt/shared/types'
 import type { TeamPrompt } from '@oh-my-prompt/shared/types'
 import type { AgentTemplateCategory } from '@oh-my-prompt/shared/types/agent'
 import type { ResourcePrompt, ResourceCategory, UpdateStatus } from '@oh-my-prompt/shared/types'
@@ -475,9 +475,18 @@ export function DropdownContainer({
   const syncTeamPrompts = usePromptStore((state) => state.syncTeamPrompts)
   const loadTeamPrompts = usePromptStore((state) => state.loadTeamPrompts)
   const loadAuthState = usePromptStore((state) => state.loadAuthState)
+  const getUserTeams = usePromptStore((state) => state.getUserTeams)
 
   // Team syncing state
   const [teamSyncing, setTeamSyncing] = useState(false)
+  const [selectedTeamId, setSelectedTeamId] = useState<string>('all')
+  const [teams, setTeams] = useState<TeamInfo[]>([])
+
+  const filteredTeamPrompts = useMemo(() => {
+    return selectedTeamId === 'all'
+      ? teamPrompts
+      : teamPrompts.filter(p => p.teamId === selectedTeamId)
+  }, [selectedTeamId, teamPrompts])
 
   // Load team prompts and auth state on mount
   useEffect(() => {
@@ -486,6 +495,26 @@ export function DropdownContainer({
       loadAuthState()
     }
   }, [isOpen, loadTeamPrompts, loadAuthState])
+
+  // Fetch teams when team category is selected
+  useEffect(() => {
+    if (selectedCategoryId === 'team' && authState?.status === 'logged_in') {
+      getUserTeams().then((result) => {
+        if (result.success && result.teams) {
+          setTeams(result.teams)
+        }
+      })
+    } else {
+      setTeams([])
+      setSelectedTeamId('all')
+    }
+  }, [selectedCategoryId, authState?.status, getUserTeams])
+
+  useEffect(() => {
+    if (selectedTeamId !== 'all' && !teams.some(team => team.id === selectedTeamId)) {
+      setSelectedTeamId('all')
+    }
+  }, [selectedTeamId, teams])
 
   // Listen for auth status updates (login/logout) to refresh auth state
   // Critical: Content script's Supabase client singleton must be cleared to pick up new session
@@ -1899,31 +1928,26 @@ export function DropdownContainer({
                   </button>
                 </div>
               </div>
-            ) : teamPrompts.length === 0 ? (
-              // Empty team library state
-              <div className="team-library-empty">
-                <div className="team-library-empty-message">
-                  <p>暂无团队提示词</p>
-                  <button
-                    className="team-library-empty-btn"
-                    onClick={handleTeamSync}
-                    disabled={teamSyncing}
-                  >
-                    {teamSyncing ? (
-                      <>
-                        <Loader2 className="team-sync-spinner" style={{ width: 12, height: 12 }} />
-                        同步中...
-                      </>
-                    ) : '同步团队库'}
-                  </button>
-                </div>
-              </div>
             ) : (
               // Team prompts grid
               <>
                 {/* Team sync header */}
                 <div className="team-library-header">
-                  <span className="team-library-count">共 {teamPrompts.length} 条团队提示词</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {teams.length > 0 && (
+                      <select
+                        value={selectedTeamId}
+                        onChange={(e) => setSelectedTeamId(e.target.value)}
+                        style={{ fontSize: '11px', padding: '1px 4px', borderRadius: '4px', border: '1px solid #e2e8f0', background: 'white', color: '#334155', cursor: 'pointer', maxWidth: '100px' }}
+                      >
+                        <option value="all">全部团队</option>
+                        {teams.map(team => (
+                          <option key={team.id} value={team.id}>{team.name}</option>
+                        ))}
+                      </select>
+                    )}
+                    <span className="team-library-count">共 {filteredTeamPrompts.length} 条团队提示词</span>
+                  </div>
                   <button
                     className="team-sync-btn"
                     onClick={handleTeamSync}
@@ -1937,23 +1961,42 @@ export function DropdownContainer({
                     ) : '同步'}
                   </button>
                 </div>
-                {/* Team prompts grid */}
-                <div className="team-cards-grid">
-                  {teamPrompts.map((prompt) => (
-                    <TeamPromptCard
-                      key={prompt.id}
-                      prompt={prompt}
-                      language={resourceLanguage}
-                      onClick={() => {
-                        setEditingItem('teamPrompt', prompt)
-                        openModal('isPreview')
-                      }}
-                      onInject={() => handleInjectTeamPrompt(prompt)}
-                      onSave={() => handleSaveTeamPrompt(prompt)}
-                      onCopy={() => handleCopyTeamPrompt(prompt)}
-                    />
-                  ))}
-                </div>
+                {filteredTeamPrompts.length === 0 ? (
+                  <div className="team-library-empty">
+                    <div className="team-library-empty-message">
+                      <p>{teamPrompts.length === 0 ? '暂无团队提示词' : '该团队暂无团队提示词'}</p>
+                      <button
+                        className="team-library-empty-btn"
+                        onClick={handleTeamSync}
+                        disabled={teamSyncing}
+                      >
+                        {teamSyncing ? (
+                          <>
+                            <Loader2 className="team-sync-spinner" style={{ width: 12, height: 12 }} />
+                            同步中...
+                          </>
+                        ) : '同步团队库'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="team-cards-grid">
+                    {filteredTeamPrompts.map((prompt) => (
+                      <TeamPromptCard
+                        key={prompt.id}
+                        prompt={prompt}
+                        language={resourceLanguage}
+                        onClick={() => {
+                          setEditingItem('teamPrompt', prompt)
+                          openModal('isPreview')
+                        }}
+                        onInject={() => handleInjectTeamPrompt(prompt)}
+                        onSave={() => handleSaveTeamPrompt(prompt)}
+                        onCopy={() => handleCopyTeamPrompt(prompt)}
+                      />
+                    ))}
+                  </div>
+                )}
               </>
             )
           ) : filteredPrompts.length === 0 ? (

@@ -15,14 +15,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
+
+      - name: Try checkout web-app submodule
+        id: web-app
+        run: |
+          if git submodule update --init --depth=1 packages/web-app; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Skipping shared sync check because packages/web-app submodule is not accessible to this workflow token."
+          fi
 
       - name: Check shared package sync
+        if: steps.web-app.outputs.available == 'true'
         run: ./scripts/check-shared-sync.sh
 
       - name: Upload diff on failure
-        if: failure()
+        if: failure() && steps.web-app.outputs.available == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: shared-drift-diff

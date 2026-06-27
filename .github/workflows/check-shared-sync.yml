@@ -1,6 +1,7 @@
 name: Check Shared Sync
 
 on:
+  workflow_dispatch:
   push:
     paths:
       - 'packages/shared/**'

@@ -2,6 +2,50 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.2] - 2026-06-27
+
+本次更新重点增强提示词图片的云端同步、恢复和清理链路，并修复团队资源库、临时提示词删除、登录后同步等稳定性问题。
+
+### Added / 新增
+- **[CN]** 新增提示词图片元数据合同、哈希与合并能力，支持图片信息在本地备份和云同步中可靠流转
+- **[EN]** Added prompt image metadata contracts, hashing, and merge support for reliable local backup and cloud sync
+- **[CN]** 新增图片资产服务和云端图片客户端，支持图片标准化为 WebP、上传、下载和恢复校验
+- **[EN]** Added image asset service and cloud image client with WebP normalization, upload, download, and restore validation
+- **[CN]** 新增云端图片缺失恢复队列，可在元数据同步后通过 service worker 异步恢复可见图片
+- **[EN]** Added cloud-backed missing image restore queue with service worker based async recovery after metadata sync
+- **[CN]** 新增图片恢复前的本地文件夹授权提示，降低恢复失败概率
+- **[EN]** Added local folder permission prompt before image restore to reduce restore failures
+
+### Fixed / 修复
+- **[CN]** 修复临时提示词无法删除的问题
+- **[EN]** Fixed temporary prompt deletion being blocked
+- **[CN]** 修复团队资源库选择器和团队创建相关 Web App 集成问题
+- **[EN]** Fixed team library selector and team creation related web app integration issues
+- **[CN]** 修复登录后同步加固、缺失分类修复和云同步失败提示问题
+- **[EN]** Hardened sync after login, repaired missing local categories, and surfaced cloud sync failures
+- **[CN]** 修复图片元数据在本地备份、恢复、后台同步和冲突合并中的丢失问题
+- **[EN]** Fixed image metadata loss across local backups, restore, background sync, and conflict merges
+- **[CN]** 修复图片恢复队列状态、重试退避、过期重试和非阻塞入队逻辑
+- **[EN]** Fixed image restore queue status, retry backoff, stale retries, and non-blocking enqueue behavior
+- **[CN]** 修复图片删除、批量删除和重试排空过程中的资产清理竞态
+- **[EN]** Fixed asset cleanup races during image deletion, bulk deletion, and retry drains
+- **[CN]** 收紧图片悬浮提示词按钮的命中区域，避免误触
+- **[EN]** Constrained the image hover prompt button hit test to avoid accidental triggers
+
+### Changed / 变更
+- **[CN]** 更新 Web App 子模块，包含图片路由鉴权、上传、同步元数据和测试接线相关调整
+- **[EN]** Updated the web app submodule for image route auth, upload, sync metadata, and test wiring changes
+- **[CN]** 增强图片资产生命周期在扩展 UI、同步策略和云端回退路径中的一致性
+- **[EN]** Improved image asset lifecycle consistency across extension UI, sync strategies, and cloud fallback paths
+
+### Docs / 文档
+- **[CN]** 补充提示词图片云端恢复、资产存储、云端回退和 Agent 演示说明
+- **[EN]** Documented prompt image cloud restore, asset storage, cloud fallback, and Agent demo notes
+
+### Tests / 测试
+- **[CN]** 补充图片恢复异步 worker、消息处理和云端图片哈希不匹配场景测试
+- **[EN]** Added tests for image restore async workers, worker messages, and cloud image hash mismatch cases
+
 ## [2.0.1] - 2026-05-26
 
 这是 v2.0 大版本后的首个修复版本。v2.0 引入了云同步、账号登录、官方 API 额度、会员能力和团队协作等商业化基础能力；本次更新主要补齐免费额度引导、优化账号额度展示，并修复登录回调和内容脚本注入稳定性问题。
